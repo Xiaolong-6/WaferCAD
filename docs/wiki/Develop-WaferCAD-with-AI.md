@@ -6,15 +6,15 @@
 
 An AI agent should write a short, auditable *acceptance manifest*:
 
-| Contract | Minimum evidence | Insufficient proof |
-| --- | --- | --- |
-| Source provenance | Source file, paper/figure, SHA-256, unchanged original layout vertices and layer names | Hand-copied screenshot rectangles |
-| Physical 2.5D model | Material stacks, XY polygons, Z spans, no unsupported voids/overlaps | Number of colored layers |
-| Process | Base, captured Mask, step-by-step Recipe outputs, real saved History and Recovery | Saved final geometry with invented replay log |
-| Array | Cell template, instance transforms, local/world coordinate mapping, mask/physical parity | 16 visual clones |
-| Interconnect | Ports, actual complete M1–Via–M2–Via–M3–Via–M4 material, short/open/spacing checks | “19 named nets” with outputs still ending as local stubs |
-| Visual | Real WaferCAD Main/Mask/3D/Section in Chromium, right stage/camera/layers, opacity/Border variations | Simulated HTML, standalone SVG or uninspected thumbnail |
-| Artifact | Final exported `.wafercad`, readback using actual IO/schema, independent geometry audit, exact tested commit | Generator's own JSON `pass:true` |
+| Contract            | Minimum evidence                                                                                             | Insufficient proof                                       |
+| ------------------- | ------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------- |
+| Source provenance   | Source file, paper/figure, SHA-256, unchanged original layout vertices and layer names                       | Hand-copied screenshot rectangles                        |
+| Physical 2.5D model | Material stacks, XY polygons, Z spans, no unsupported voids/overlaps                                         | Number of colored layers                                 |
+| Process             | Base, captured Mask, step-by-step Recipe outputs, real saved History and Recovery                            | Saved final geometry with invented replay log            |
+| Array               | Cell template, instance transforms, local/world coordinate mapping, mask/physical parity                     | 16 visual clones                                         |
+| Interconnect        | Ports, actual complete M1–Via–M2–Via–M3–Via–M4 material, short/open/spacing checks                           | “19 named nets” with outputs still ending as local stubs |
+| Visual              | Real WaferCAD Main/Mask/3D/Section in Chromium, right stage/camera/layers, opacity/Border variations         | Simulated HTML, standalone SVG or uninspected thumbnail  |
+| Artifact            | Final exported `.wafercad`, readback using actual IO/schema, independent geometry audit, exact tested commit | Generator's own JSON `pass:true`                         |
 
 Keep **reported**, **source-extracted**, **model-assumed** and **display-only** dimensions separate. WaferCAD is not a dopant diffusion, TCAD or transistor I–V solver.
 
@@ -31,19 +31,19 @@ Keep **reported**, **source-extracted**, **model-assumed** and **display-only** 
 
 ## 3. Fault taxonomy: which layer should be fixed?
 
-| Symptom | What to inspect first | Responsible subsystem |
-| --- | --- | --- |
-| Wrong shape, doubled features, missing contacts | Source vector vs imported/processed Mask, coordinate origin, polygon Boolean | Example input / Mask translation |
-| Array operates on only one device or on wrong XY positions | Template-local vs world transforms; deferred File Mask and repeat Draw Mask | Array Process bridge and model context |
-| Implant appears outside silicon or after etch | Surviving host material; depth start/end interval; exported region semantics | Qualitative Dopant/Implant model |
-| Very thin films shift after save | Source geometry vs 0.0001 µm process-grid quantization, lossless storage | Kernel/IO contract; **never silently weaken tolerance** |
-| Global metal cannot cross instances as an editable step | Native-array template ownership vs world-space material partition | Model architecture, not polygon clipping |
-| “N networks pass” but output traces do not exit array | Explicit port coordinates and complete 3D metal, not just manifest graph | Example design and incomplete acceptance tests |
-| 3D appears suspended or blank | Real supporting ILD, layer visibility, camera, ROI, opacity/Border, rendering phase | Display state/Renderer **before** changing Kernel |
-| File Mask exists but only gray Draw shapes appear | `maskSourceMode` and `selectedLayerKeys` in saved opening state | App/Welcome inspection preset |
-| Uploaded project fails before parsing | Origin storage, IndexedDB, Recovery checkpoint creation | App transaction environment; **keep protection** |
-| Renderer works without Worker but fails in restricted browser | Worker creation, exact source geometry fallback, cancellation | Renderer startup recovery |
-| SVG exists but won't parse | Real XML parser + browser render; doubled attribute quotes | Example generator; test the emitted artifact |
+| Symptom                                                       | What to inspect first                                                               | Responsible subsystem                                   |
+| ------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| Wrong shape, doubled features, missing contacts               | Source vector vs imported/processed Mask, coordinate origin, polygon Boolean        | Example input / Mask translation                        |
+| Array operates on only one device or on wrong XY positions    | Template-local vs world transforms; deferred File Mask and repeat Draw Mask         | Array Process bridge and model context                  |
+| Implant appears outside silicon or after etch                 | Surviving host material; depth start/end interval; exported region semantics        | Qualitative Dopant/Implant model                        |
+| Very thin films shift after save                              | Source geometry vs 0.0001 µm process-grid quantization, lossless storage            | Kernel/IO contract; **never silently weaken tolerance** |
+| Global metal cannot cross instances as an editable step       | Native-array template ownership vs world-space material partition                   | Model architecture, not polygon clipping                |
+| “N networks pass” but output traces do not exit array         | Explicit port coordinates and complete 3D metal, not just manifest graph            | Example design and incomplete acceptance tests          |
+| 3D appears suspended or blank                                 | Real supporting ILD, layer visibility, camera, ROI, opacity/Border, rendering phase | Display state/Renderer **before** changing Kernel       |
+| File Mask exists but only gray Draw shapes appear             | `maskSourceMode` and `selectedLayerKeys` in saved opening state                     | App/Welcome inspection preset                           |
+| Uploaded project fails before parsing                         | Origin storage, IndexedDB, Recovery checkpoint creation                             | App transaction environment; **keep protection**        |
+| Renderer works without Worker but fails in restricted browser | Worker creation, exact source geometry fallback, cancellation                       | Renderer startup recovery                               |
+| SVG exists but won't parse                                    | Real XML parser + browser render; doubled attribute quotes                          | Example generator; test the emitted artifact            |
 
 The original approved SVG and post-process M1 material are different data products: the model's **0.1 nm process-coordinate grid** can create small raw-coordinate differences even when the grid-normalized material is identical. Report these differences, preserve source vertices, and do not increase geometric error thresholds to conceal them.
 
@@ -61,14 +61,14 @@ Document intermediate differences. A scientifically correct mask/region count al
 
 ## 5. Bypass policy: diagnostic tools versus product behavior
 
-| Workaround | Permitted scope | Must never be inferred |
-| --- | --- | --- |
-| `about:blank` boot + interception of real `site/` modules | Read-only local screenshot harness for sandbox `URLBlocklist: ["*"]` | Successful ordinary Origin Open/Recovery |
-| Node `readProjectFile()` then inject restored model at the supported Workstation loading boundary | Verify genuine project/model/renderer behavior in a restricted test | Permission to disable Recovery checkpoint safety |
-| Isolated page sets `Worker` unavailable to trigger an existing equivalent synchronous renderer | Debug a Worker-startup sandbox limit | Automatic retry of an already-started Process task |
-| Xvfb + headed Chromium + offline pinned Three.js | Actual WebGL screenshot reproducibility | A green CI job or mock is a visual inspection |
-| Independent Shapely polygon audits over **exported** project | Falsify wrong metal owners, voids and shorted nets | Electrical simulation, PDK DRC or fabrication proof |
-| Global-array flattening to construct M2–M4 | Clearly isolated engineering prototype | Native global Process/History feature |
+| Workaround                                                                                        | Permitted scope                                                      | Must never be inferred                              |
+| ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------- |
+| `about:blank` boot + interception of real `site/` modules                                         | Read-only local screenshot harness for sandbox `URLBlocklist: ["*"]` | Successful ordinary Origin Open/Recovery            |
+| Node `readProjectFile()` then inject restored model at the supported Workstation loading boundary | Verify genuine project/model/renderer behavior in a restricted test  | Permission to disable Recovery checkpoint safety    |
+| Isolated page sets `Worker` unavailable to trigger an existing equivalent synchronous renderer    | Debug a Worker-startup sandbox limit                                 | Automatic retry of an already-started Process task  |
+| Xvfb + headed Chromium + offline pinned Three.js                                                  | Actual WebGL screenshot reproducibility                              | A green CI job or mock is a visual inspection       |
+| Independent Shapely polygon audits over **exported** project                                      | Falsify wrong metal owners, voids and shorted nets                   | Electrical simulation, PDK DRC or fabrication proof |
+| Global-array flattening to construct M2–M4                                                        | Clearly isolated engineering prototype                               | Native global Process/History feature               |
 
 Normal-Origin Open, Storage and Recovery must be independently verified before release. A failed safe checkpoint is a **correct rejection**, not permission to remove the safeguard.
 

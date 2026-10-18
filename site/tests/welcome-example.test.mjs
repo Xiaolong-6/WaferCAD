@@ -74,7 +74,9 @@ test('welcome example catalog promotes nine literature-backed project families',
 });
 
 test('T-CMOS Welcome project retains source Recipe and two History branches', async () => {
-  const example = BUNDLED_EXAMPLES.find((entry) => entry.id === 'tcmos-ternary-inverter-130nm');
+  const example = BUNDLED_EXAMPLES.find(
+    (entry) => entry.id === 'tcmos-ternary-inverter-130nm',
+  );
   assert.equal(example?.sources?.[0]?.doi, '10.1038/s41928-019-0272-8');
   assert.match(example.preview.alt, /Illustrative/);
   const packed = JSON.parse(
