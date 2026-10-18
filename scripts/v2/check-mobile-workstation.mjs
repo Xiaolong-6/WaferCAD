@@ -155,6 +155,56 @@ try {
         path: resolve(output, `mobile-${width}x${height}-view-navigation.png`),
       });
 
+      // Exercise the production mobile route through the 3D toolbar overflow.
+      // Merely finding the Border button in the DOM is not sufficient: at
+      // compact widths it is hidden until the More Tools popover opens.
+      if (width === 390) {
+        await page.locator('.p-nav [data-action="view:three"]').click();
+        const border = page.locator('#threePanel [data-action="borders:three"]');
+        const overflow = page.getByRole('button', { name: '3D more tools' });
+        assert.equal(await border.isVisible(), false, 'Border is initially in mobile overflow');
+        await overflow.click();
+        await border.waitFor({ state: 'visible' });
+        await border.click();
+        const inspector = page.locator('[data-border-inspector]');
+        await inspector.waitFor({ state: 'visible' });
+        const bounds = await inspector.boundingBox();
+        assert.ok(bounds, 'Mobile Border Inspector must have visible bounds');
+        assert.ok(
+          bounds.x >= 0 && bounds.x + bounds.width <= width + 1,
+          'Inspector must not overflow the mobile viewport horizontally',
+        );
+        assert.ok(
+          bounds.y >= 0 && bounds.y + bounds.height <= height + 1,
+          'Inspector must remain reachable inside the viewport',
+        );
+        const controls = inspector.locator('button, select');
+        for (const size of await controls.evaluateAll((nodes) =>
+          nodes.map((node) => node.getBoundingClientRect().height),
+        )) {
+          assert.ok(size >= 44, 'Border Inspector touch targets must be at least 44px');
+        }
+        const master = inspector.getByRole('button', { name: 'Show 3D borders' });
+        const before = await master.getAttribute('aria-pressed');
+        await master.click();
+        assert.notEqual(await master.getAttribute('aria-pressed'), before);
+        await master.click();
+        assert.equal(await master.getAttribute('aria-pressed'), before);
+        await inspector.locator('[data-border-preset="xray"]').click();
+        assert.equal(
+          await inspector.locator('[data-border-preset="xray"]').getAttribute('aria-pressed'),
+          'true',
+        );
+        await page.screenshot({
+          path: resolve(output, 'mobile-390x844-border-inspector.png'),
+          animations: 'disabled',
+        });
+        await page.keyboard.press('Escape');
+        assert.equal(await inspector.isVisible(), false);
+        await page.locator('.p-nav [data-action="view:main"]').click();
+        await mainCanvas.waitFor({ state: 'visible' });
+      }
+
       // Pure View/Edit navigation must not invalidate all four scientific models.
       const countersBeforeNavigation = await page.evaluate(
         () => window.WaferCadV2Workstation.snapshot().counts,
