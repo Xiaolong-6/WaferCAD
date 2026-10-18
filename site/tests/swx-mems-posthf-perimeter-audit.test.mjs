@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   measureBoxCenterline,
+  measureBoxPolyline,
   auditSwxPostHFPerimeterSupport,
 } from '../../scripts/swx-mems-posthf-perimeter-audit.mjs';
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
@@ -35,6 +36,19 @@ test('BOX polygon boundaries split a supported beam without sampled guesses', ()
   );
 });
 
+test('continuous release run crosses a corner but stops at a real BOX support', () => {
+  const box = [[[[0, -1], [3, -1], [3, 1], [0, 1], [0, -1]]]];
+  const route = measureBoxPolyline(v, box, [[0, 0], [10, 0], [10, 10]]);
+  assert.equal(route.runs.length, 2);
+  assert.equal(route.runs[0].supportedByBOX, true);
+  assert.equal(route.runs[0].lengthUm, 3);
+  assert.equal(route.longestReleasedRun.lengthUm, 17);
+  assert.equal(route.longestReleasedRun.startSegmentIndex, 0);
+  assert.equal(route.longestReleasedRun.endSegmentIndex, 1);
+  assert.deepEqual(route.longestReleasedRun.from, [3, 0]);
+  assert.deepEqual(route.longestReleasedRun.to, [10, 10]);
+});
+
 test('genuine OFF/ON post-HF source models expose nominal-vs-actual Ground and Signal support', async () => {
   const { buildSwxMemsUnified } = await import('../../scripts/build-swx-mems-example.mjs');
   const { SWX_GROUND_RETURN_ASSUMPTIONS, SWX_GROUND_RETURN_PROCESS_PROFILE } =
@@ -60,6 +74,19 @@ test('genuine OFF/ON post-HF source models expose nominal-vs-actual Ground and S
     assert.ok(actual.signalCrossSection.supportedLengthUm < 2.1);
     assert.ok(actual.longestActualReleasedSpan.lengthUm > 35);
     assert.ok(actual.longestActualReleasedSpan.lengthUm < 37);
+    // Scientific regression: a continuous curved free path may cross a
+    // nominal layout corner; checking each straight edge alone underreports it.
+    assert.ok(actual.longestActualContinuousReleasedPath.lengthUm > 56.58);
+    assert.ok(actual.longestActualContinuousReleasedPath.lengthUm < 56.60);
+    assert.ok(actual.longestActualContinuousReleasedPath.route.startsWith('ground-'));
+    assert.ok(
+      actual.longestActualContinuousReleasedPath.lengthUm >
+        actual.longestActualReleasedSpan.lengthUm + 20,
+    );
+    assert.equal(actual.continuousPathArcLengthIsFEMEffectiveBucklingLength, false);
+    for (const route of actual.continuousPaths) {
+      assert.ok(route.longestReleasedRun?.lengthUm > 53);
+    }
     assert.equal(actual.postHFMechanicalAcceptance, false);
     assert.equal(actual.mechanicalFEMVerified, false);
   }

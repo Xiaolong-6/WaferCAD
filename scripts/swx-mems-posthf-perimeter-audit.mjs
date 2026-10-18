@@ -85,6 +85,54 @@ export function measureBoxCenterline(vectorApi, box, a, b) {
   };
 }
 
+/**
+ * Merge adjacent material-support intervals across polyline vertices.
+ * A bent, continuous released rail must NOT be reported as separate shorter
+ * beams merely because the layout editor split it into multiple segments.
+ * This is centerline arc length, not a straight-beam Euler buckling length.
+ */
+export function measureBoxPolyline(vectorApi, box, points) {
+  if (!Array.isArray(points) || points.length < 2)
+    throw new Error('BOX path requires at least two points');
+  const segments = points.slice(1).map((end, index) =>
+    measureBoxCenterline(vectorApi, box, points[index], end),
+  );
+  const runs = [];
+  segments.forEach((segment, segmentIndex) => {
+    for (const span of segment.intervals) {
+      const previous = runs.at(-1);
+      if (
+        previous &&
+        previous.supportedByBOX === span.supportedByBOX &&
+        Math.hypot(previous.to[0] - span.from[0], previous.to[1] - span.from[1]) < 1e-8
+      ) {
+        previous.to = span.to;
+        previous.lengthUm += span.lengthUm;
+        previous.endSegmentIndex = segmentIndex;
+      } else {
+        runs.push({
+          supportedByBOX: span.supportedByBOX,
+          from: span.from,
+          to: span.to,
+          lengthUm: span.lengthUm,
+          startSegmentIndex: segmentIndex,
+          endSegmentIndex: segmentIndex,
+        });
+      }
+    }
+  });
+  const releasedRuns = runs.filter((run) => !run.supportedByBOX);
+  return {
+    segments,
+    runs,
+    releasedRuns,
+    longestReleasedRun: releasedRuns.reduce(
+      (best, run) => (!best || run.lengthUm > best.lengthUm ? run : best),
+      null,
+    ),
+  };
+}
+
 export function auditSwxPostHFPerimeterSupport(vectorApi, model, g) {
   const region = model?.regions;
   if (!Array.isArray(region)) throw new Error('Post-HF audit requires process model regions');
@@ -111,6 +159,20 @@ export function auditSwxPostHFPerimeterSupport(vectorApi, model, g) {
       ...measureBoxCenterline(vectorApi, box, g.signalPathUm[i], b),
     })),
   ];
+  const continuousPaths = [
+    ...g.groundPathsUm.map((points, index) => ({
+      route: 'ground-' + index,
+      ...measureBoxPolyline(vectorApi, box, points),
+    })),
+    { route: 'signal', ...measureBoxPolyline(vectorApi, box, g.signalPathUm) },
+  ];
+  const releasedPathRuns = continuousPaths.flatMap(({ route, releasedRuns }) =>
+    releasedRuns.map((run) => ({ route, ...run })),
+  );
+  const longestActualContinuousReleasedPath = releasedPathRuns.reduce(
+    (best, run) => (!best || run.lengthUm > best.lengthUm ? run : best),
+    null,
+  );
   const unsupportedParts = allSegments.flatMap(({ route, intervals }) =>
     intervals.filter((v) => !v.supportedByBOX).map((v) => ({ route, ...v })),
   );
@@ -123,7 +185,10 @@ export function auditSwxPostHFPerimeterSupport(vectorApi, model, g) {
     ground,
     signal,
     signalCrossSection,
-    longestActualReleasedSpan,
+    longestActualReleasedSpan, // Legacy: longest portion within ONE drawn straight segment.
+    continuousPaths,
+    longestActualContinuousReleasedPath, // Joins unsupported portions across vertices.
+    continuousPathArcLengthIsFEMEffectiveBucklingLength: false,
     externalSignalContinuouslySupported:
       Math.abs(signal.supportedLengthUm - signal.lengthUm) < 1e-7,
     actualGroundSupportShorterThanNominal: ground.every(
