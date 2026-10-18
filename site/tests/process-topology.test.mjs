@@ -286,8 +286,10 @@ test('common-substrate incremental slab union preserves full coverage at each de
   }));
 
   const [solid] = materialSolidsFromTopology(model);
-  assert.deepEqual(solid.slabs.map(({ z0, z1 }) => [z0, z1]), [[-4, 1], [1, 2], [2, 4]]);
-  assert.deepEqual(solid.slabs.map((slab) => geometryArea(slab.polys)), [192, 128, 64]);
+  const spans = solid.slabs.map(({ z0, z1 }) => [z0, z1]);
+  const areas = solid.slabs.map((slab) => geometryArea(slab.polys));
+  assert.deepEqual(spans, [[-4, 1], [1, 2], [2, 4]]);
+  assert.deepEqual(areas, [192, 128, 64]);
   assert.ok(solid.caps.some((cap) => cap.z === -4 && geometryArea(cap.polys) === 192));
   for (const z of [1, 2, 4]) {
     assert.ok(solid.caps.some((cap) => cap.z === z && geometryArea(cap.polys) === 64));
@@ -297,8 +299,16 @@ test('common-substrate incremental slab union preserves full coverage at each de
 test('incremental union remains exact when XY footprints overlap in a provisional model', () => {
   const model = createModel({ shape: 'rect', width: 20, height: 8, thickness: 8 });
   model.regions = [
-    { id: 'high', geom: rectMulti(12, 8, -4, 0), stack: [{ layerId: 'base', z0: -4, z1: 4 }] },
-    { id: 'low', geom: rectMulti(12, 8, 4, 0), stack: [{ layerId: 'base', z0: -4, z1: 2 }] },
+    {
+      id: 'high',
+      geom: rectMulti(12, 8, -4, 0),
+      stack: [{ layerId: 'base', z0: -4, z1: 4 }],
+    },
+    {
+      id: 'low',
+      geom: rectMulti(12, 8, 4, 0),
+      stack: [{ layerId: 'base', z0: -4, z1: 2 }],
+    },
   ];
   const [solid] = materialSolidsFromTopology(model);
   assert.deepEqual(solid.slabs.map((slab) => geometryArea(slab.polys)), [160, 96]);

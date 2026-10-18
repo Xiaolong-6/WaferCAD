@@ -105,11 +105,13 @@ try {
   evidence.timingsMs.threeFirstReady = elapsed(threeStart);
   evidence.threeDiagnostics = await page.evaluate(() => {
     const host = document.getElementById('threeHost');
-    return Object.fromEntries(
-      Object.entries(host?.dataset || {}).filter(([key]) =>
-        /^(renderer|scene|surface|smooth|sidewall|triangle|webgl|modelRevision|processRevision|rough)/.test(key),
-      ),
-    );
+    const entries = Object.entries(host?.dataset || {});
+    const selected = entries.filter(([key]) => {
+      const presentation = /^(renderer|scene|surface|smooth|sidewall|triangle|webgl)/.test(key);
+      const structure = /^(modelRevision|processRevision|rough)/.test(key);
+      return presentation || structure;
+    });
+    return Object.fromEntries(selected);
   });
   evidence.browserMeasures = await page.evaluate(() =>
     performance
