@@ -1,11 +1,13 @@
 // M2 presentation over the original renderer, camera policy and physical exporters.
 import { createThreeView } from '../three-view.js';
 import { mountToolPopover } from './view-kit/tool-popover.js';
+import { BORDER_CATEGORIES, BORDER_PRESETS, normalizeBorderSettings } from '../border-inspector.js';
 
 export function createWorkstationThreeView({ store, workstation }) {
   const { el, button, toolbar } = window.WaferCadV2Components;
   const state = store.state;
   const local = store.local.three;
+  local.borderSettings = normalizeBorderSettings(local.borderSettings);
   const icon = (label, action, glyph) =>
     button('', action, glyph, {
       title: label,
@@ -77,6 +79,7 @@ export function createWorkstationThreeView({ store, workstation }) {
     getInspection: () => ({
       opacity: state.threeOpacity,
       borders: state.threeShowBorders,
+      borderSettings: local.borderSettings,
       fast: startupPreview || state.threeFastMode,
     }),
     getZCollapse: () => state.sectionCollapse,
@@ -215,6 +218,93 @@ export function createWorkstationThreeView({ store, workstation }) {
     opacityValue.textContent = `${Math.round(state.threeOpacity * 100)}%`;
     requestRender();
   };
+  const borderNames = {
+    exterior: 'Exterior',
+    interface: 'Material interfaces',
+    buried: 'Buried features',
+    occluded: 'Occluded edges',
+    roi: 'ROI cut',
+  };
+  const borderMenu = el('div', { class: 'v2-border-inspector p-form', 'data-border-inspector': '' });
+  const borderEnable = el('input', { type: 'checkbox', 'aria-label': 'Show 3D borders' });
+  const presetButtons = Object.keys(BORDER_PRESETS).map((preset) => {
+    const choice = el('button', {
+      type: 'button', class: 'v2-border-preset', 'data-border-preset': preset,
+      'data-help': `three.border.preset.${preset}`,
+    }, preset === 'xray' ? 'X-Ray' : preset === 'clean' ? 'Clean' : 'Structure');
+    choice.onclick = () => {
+      local.borderSettings = normalizeBorderSettings({ preset });
+      state.threeShowBorders = true;
+      updateBorderControls();
+      requestRender();
+    };
+    return choice;
+  });
+  const borderSelectors = new Map();
+  const borderRows = BORDER_CATEGORIES.map((category) => {
+    const selector = el('select', {
+      class: 'v2-border-style', 'data-border-category': category,
+      'aria-label': `${borderNames[category]} line style`,
+    });
+    for (const [value, label] of [
+      ['off', 'Off'], ['auto', 'Auto'], ['solid', 'Solid ━'], ['dashed', 'Dashed ┄'],
+    ]) selector.append(el('option', { value }, label));
+    selector.onchange = () => {
+      local.borderSettings = normalizeBorderSettings({
+        ...local.borderSettings,
+        preset: 'custom',
+        styles: { ...local.borderSettings.styles, [category]: selector.value },
+      });
+      state.threeShowBorders = true;
+      updateBorderControls();
+      requestRender();
+    };
+    borderSelectors.set(category, selector);
+    return el('label', { class: 'v2-border-row', 'data-help': `three.border.${category}` },
+      el('span', { class: 'v2-border-description' }, borderNames[category]), selector,
+    );
+  });
+  const borderStrength = el('input', {
+    type: 'range', min: 15, max: 100, step: 5, 'aria-label': 'Border line strength',
+  });
+  const borderStrengthValue = el('output', {}, '65%');
+  borderStrength.oninput = () => {
+    local.borderSettings = normalizeBorderSettings({
+      ...local.borderSettings, strength: Number(borderStrength.value) / 100,
+    });
+    borderStrengthValue.textContent = `${Math.round(local.borderSettings.strength * 100)}%`;
+    requestRender();
+  };
+  borderEnable.onchange = () => {
+    state.threeShowBorders = borderEnable.checked;
+    updateBorderControls();
+    requestRender();
+  };
+  borderMenu.append(
+    el('div', { class: 'v2-border-header' },
+      el('strong', {}, 'Border Inspector'),
+      el('label', { class: 'v2-border-enabled', 'data-help': 'three.border.enabled' }, borderEnable, ' Show'),
+    ),
+    el('div', { class: 'v2-border-presets' }, ...presetButtons),
+    el('div', { class: 'v2-border-rows' }, ...borderRows),
+    el('label', { class: 'v2-border-strength', 'data-help': 'three.border.strength' },
+      el('span', {}, 'Line strength ', borderStrengthValue), borderStrength,
+    ),
+  );
+  function updateBorderControls() {
+    local.borderSettings = normalizeBorderSettings(local.borderSettings);
+    borderEnable.checked = Boolean(state.threeShowBorders);
+    for (const presetButton of presetButtons) {
+      presetButton.setAttribute('aria-pressed', String(presetButton.dataset.borderPreset === local.borderSettings.preset));
+    }
+    for (const [category, selector] of borderSelectors) {
+      selector.value = local.borderSettings.styles[category];
+      selector.disabled = !state.threeShowBorders;
+    }
+    borderStrength.value = String(Math.round(local.borderSettings.strength * 100));
+    borderStrengthValue.textContent = `${Math.round(local.borderSettings.strength * 100)}%`;
+    borderStrength.disabled = !state.threeShowBorders;
+  }
   const task = workstation.task;
   const download = (blob, name) => {
     const url = URL.createObjectURL(blob),
@@ -304,9 +394,12 @@ export function createWorkstationThreeView({ store, workstation }) {
         trigger,
       });
     } else if (action === 'borders:three') {
-      state.threeShowBorders = !state.threeShowBorders;
-      sync();
-      requestRender();
+      updateBorderControls();
+      mountToolPopover(workstation.overlays, {
+        label: '3D Border Inspector',
+        content: borderMenu,
+        trigger,
+      });
     } else if (action === 'three-export-menu') {
       mountToolPopover(workstation.overlays, {
         trigger,

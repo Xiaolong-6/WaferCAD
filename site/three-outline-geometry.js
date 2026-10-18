@@ -93,6 +93,89 @@ export function buriedInterfaceContours(caps = [], { boundaryProfiles = null } =
   return ownedContourSegments(segments);
 }
 
+// Internal, physically owned vertical junctions. A wall partition is not by
+// itself an edge: only vertices where two non-collinear buried wall spans meet
+// (or where their Z coverage changes) form a structural contour.
+export function buriedSidewallContours(sidewalls = [], exposed = []) {
+  const corners = new Map(),
+    spans = new Map();
+  for (const wall of sidewalls) {
+    for (const part of wall.parts || [wall]) {
+      if (!part?.buried || !(part.z1 > part.z0)) continue;
+      const offsets = wall.instanceTranslations?.length ? wall.instanceTranslations : [[0, 0]];
+      for (const [dx, dy] of offsets) {
+        const p = [part.p[0] + dx, part.p[1] + dy];
+        const q = [part.q[0] + dx, part.q[1] + dy];
+        const length = Math.hypot(q[0] - p[0], q[1] - p[1]);
+        if (length <= 1e-12) continue;
+        const ux = (q[0] - p[0]) / length;
+        const uy = (q[1] - p[1]) / length;
+        for (const point of [p, q]) {
+          const key = `${pointKey(point)}|${part.layerId}`;
+          if (!corners.has(key)) corners.set(key, []);
+          corners.get(key).push({ point, z0: part.z0, z1: part.z1, ux, uy });
+        }
+        const pKey = pointKey(p), qKey = pointKey(q);
+        const edgeKey = `${part.layerId}|${pKey < qKey ? `${pKey}|${qKey}` : `${qKey}|${pKey}`}`;
+        if (!spans.has(edgeKey)) spans.set(edgeKey, { p, q, intervals: [] });
+        spans.get(edgeKey).intervals.push([part.z0, part.z1]);
+      }
+    }
+  }
+  const lines = [];
+  for (const entries of corners.values()) {
+    const levels = [...new Set(entries.flatMap(({ z0, z1 }) => [z0, z1]))].sort((a, b) => a - b);
+    for (let i = 1; i < levels.length; i++) {
+      const z0 = levels[i - 1], z1 = levels[i];
+      if (z1 - z0 <= 1e-9) continue;
+      const active = entries.filter((w) => w.z0 <= z0 + 1e-9 && w.z1 >= z1 - 1e-9);
+      if (!active.length) continue;
+      // Straight collinear partitions are computational seams; a wall's real
+      // endpoint or non-collinear junction is a physical structural corner.
+      const corner = active.length === 1 || active.some((w, j) =>
+        active.slice(j + 1).some((other) => Math.abs(w.ux * other.uy - w.uy * other.ux) > 1e-8),
+      );
+      if (corner) lines.push([[...active[0].point, z0], [...active[0].point, z1]]);
+    }
+  }
+  for (const { p, q, intervals } of spans.values()) {
+    // Coalesce adjacent same-material spans so a split slab does not acquire
+    // an artificial horizontal seam through the middle of a buried wall.
+    intervals.sort((a, b) => a[0] - b[0]);
+    let [lower, upper] = intervals[0];
+    const appendEnds = () => {
+      lines.push([[...p, lower], [...q, lower]], [[...p, upper], [...q, upper]]);
+    };
+    for (const [z0, z1] of intervals.slice(1)) {
+      if (z0 <= upper + 1e-9) upper = Math.max(upper, z1);
+      else {
+        appendEnds();
+        lower = z0;
+        upper = z1;
+      }
+    }
+    appendEnds();
+  }
+  return unownedContourSegments(lines, exposed);
+}
+
+// Physical classes are independent of line style and transparent scene depth.
+// Exterior strong borders remain owned by Process topology; the buried groups
+// intentionally retain actual internal material interfaces for inspection.
+export function borderInspectorContours(plan, options = {}) {
+  const exterior = ownedContourSegments(plan?.borderLines || []);
+  const interfaces = unownedContourSegments(
+    buriedInterfaceContours((plan?.caps || []).filter((cap) => cap.buried && cap.interfaceLayerId), options),
+    exterior,
+  );
+  const embeddedCaps = buriedInterfaceContours(
+    (plan?.caps || []).filter((cap) => cap.buried && !cap.interfaceLayerId), options,
+  );
+  const embeddedWalls = buriedSidewallContours(plan?.sidewalls || [], [...exterior, ...interfaces]);
+  const buried = unownedContourSegments([...embeddedCaps, ...embeddedWalls], [...exterior, ...interfaces]);
+  return { exterior, interface: interfaces, buried };
+}
+
 // Only inspection-ROI cuts own these additional material interface contours.
 // An ordinary triangulated sidewall may contain many display/LOD seams; none
 // of those are appropriate for a structural edge overlay.
