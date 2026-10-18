@@ -32,6 +32,30 @@ python -m http.server 8000 --directory site
 
 Open `http://localhost:8000`.
 
+If managed Chromium rejects local/virtual-domain navigation with
+`ERR_BLOCKED_BY_ADMINISTRATOR`, **do not conclude that local 3D diagnostics
+are impossible or create a parallel capture script**. Reuse the existing
+[offline native app capture](tools/OFFLINE_VISUAL_KERNEL.md#real-native-app-with-offline-swiftshader-diagnostic):
+
+```bash
+# Native v2/Three.js Renderer smoke check (headed Chromium + Xvfb on Linux):
+python3 scripts/offline-native-app-capture.py --root . \
+  --inmemory-demo --output test-results/offline-native-demo
+
+# A real, strictly validated model inside the native Three.js viewport:
+python3 scripts/offline-native-app-capture.py --root . \
+  --inmemory-project site/examples/photodetector-literature-examples.wafercad \
+  --output test-results/offline-native-photodetector
+```
+
+The script first attempts the normal application origin; under administrator
+URL blocking it can fall back to the real app source running at `about:blank`
+with local pinned Three.js. Inspect the actual screenshots and evidence report.
+A null-origin capture is **partial Renderer evidence**, not proof of project
+Open/Worker, synchronized views, IndexedDB, History/Recovery, mobile interaction
+or full release acceptance. `scripts/offline-visual-kernel.mjs` is the separate
+scientific SVG/PNG geometry diagnostic, not a WebGL replacement.
+
 ## Process Recipe / Base lifecycle
 
 `site/controllers/process-recipe-controller.js` owns the guided Recipe editor and runs existing Process operations; `site/process-recipe.js` is the restricted parser/normalizer and must never execute arbitrary JavaScript. **Continue current model** is additive and requires confirmation when a process revision exists. **Rebuild Base first (new Main)** reuses the Base controller's Keep/Clear/Cancel transaction and begins a fresh Main lineage. The Base History contract lives in `workspace-snapshots.js`: when archiving from a detached historical cursor, preserve the source Variant's **original HEAD**, not the currently inspected Step. New features must cover this with unit and browser tests, including Save/Open and Undo/Redo branch graphs.
