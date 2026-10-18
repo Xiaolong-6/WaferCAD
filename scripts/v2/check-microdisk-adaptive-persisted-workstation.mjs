@@ -39,7 +39,9 @@ try {
     null,
     { timeout: 180000 },
   );
-  const bytes = await readFile(resolve('site/examples/suspended-silica-microdisks-adaptive.wafercad'));
+  const bytes = await readFile(
+    resolve('site/examples/suspended-silica-microdisks-adaptive.wafercad'),
+  );
   evidence.projectSha256 = createHash('sha256').update(bytes).digest('hex');
   await page.evaluate(async (text) => {
     const { stageStartupFile } = await import('/startup-file.js');
