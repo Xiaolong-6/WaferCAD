@@ -11,6 +11,28 @@ This directory keeps project fixtures that are useful for regression and develop
 
 For a completed example, prefer links to its PR/CI acceptance for transient status. Retain a short scientific provenance/assumptions record and indispensable source data; do not create per-run audit Markdown solely to record green checks.
 
+## Candidate source packages and promoted project ownership
+
+These source directories retain masks, repair scripts and paper-derived
+assumptions even when the corresponding project has been promoted. The word
+`candidate` in a source folder's name describes its origin, **not** the
+current availability of the corresponding Welcome entry. As of 2026-10-18:
+
+- [Microdisk source package](microdisk-release-candidate/README.md) →
+  `site/examples/suspended-silica-microdisks.wafercad`.
+- [PERC source and implant repair](perc-blakers-1989-candidate/README.md) →
+  `site/examples/perc-solar-cells-point-contacts.wafercad`.
+- [MAGIC-1000 source reconstruction](magic-1000-2026-candidate/README.md) →
+  `site/examples/magic-1000-mos2-beol.wafercad`.
+- [M3D source Mask reconstruction](m3d-selfpowered-2026-candidate/README.md) →
+  `site/examples/m3d-selfpowered-full-replay.wafercad`.
+
+Published status is defined by `site/bundled-examples.js`; the acceptance
+status of paper-figure fidelity remains governed separately by the
+[literature evidence register](../../docs/evidence/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md).
+Source files are kept where the reproducible build and targeted scientific
+tests expect them. No duplicate runtime resource is introduced here.
+
 ## Production bundled example families
 
 The Welcome page is driven by `site/bundled-examples.js`. Public, editable bundled examples live under `site/examples/` and should be grouped by **device/application family**, not one card per paper.

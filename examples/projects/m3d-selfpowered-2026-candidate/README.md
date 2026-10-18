@@ -1,4 +1,10 @@
-# M3D self-powered heterogeneous IC — reconstruction candidate v2
+# M3D self-powered heterogeneous IC — reconstruction source masks v2
+
+**Status reviewed 2026-10-18:** A complete M3D project is published in the
+Welcome catalog as `site/examples/m3d-selfpowered-full-replay.wafercad`.
+This directory remains the source mask/Recipe reconstruction package used by
+the M3D scientific replay tools. Publication does not prove that unpublished
+author routing polygons or original-paper figures match exactly.
 
 Paper: **Monolithic three-dimensional integration of heterogeneous electronics for self-powered sensing and processing**, Nature Electronics 9 (2026), 775–787.
 
