@@ -11,7 +11,14 @@ test('Welcome loads its own stylesheet instead of the retired editor stylesheet'
   ]);
   assert.match(entry, /stylesheet\.href = `\.\/welcome\.css\$\{suffix\}`/);
   assert.doesNotMatch(entry, /stylesheet\.href = `\.\/style\.css\$\{suffix\}`/);
-  for (const selector of ['.welcome-screen', '.welcome-hero', '.welcome-example-card', '.welcome-example-project-preview', '.welcome-workflow-grid', '.welcome-scope-grid']) {
+  for (const selector of [
+    '.welcome-screen',
+    '.welcome-hero',
+    '.welcome-example-card',
+    '.welcome-example-project-preview',
+    '.welcome-workflow-grid',
+    '.welcome-scope-grid',
+  ]) {
     assert.ok(css.includes(selector), `Missing Welcome-owned selector: ${selector}`);
   }
   assert.doesNotMatch(css, /#mainPanel|#maskPanel|#threePanel|#sectionPanel/);
