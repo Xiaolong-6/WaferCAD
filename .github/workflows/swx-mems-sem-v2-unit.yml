@@ -8,6 +8,9 @@ on:
       - 'scripts/swx-mems-posthf-perimeter-audit.mjs'
       - 'scripts/build-swx-sem-v2-unit.mjs'
       - 'scripts/swx-mems-sem-ground-return-candidate.mjs'
+      - 'scripts/swx-mems-sem-perimeter-context.mjs'
+      - 'scripts/build-swx-sem-perimeter-context.mjs'
+      - 'site/tests/swx-mems-sem-perimeter-context.test.mjs'
       - 'scripts/build-swx-sem-v2-ground-return-candidate.mjs'
       - 'scripts/swx-mems-sem-v2-browser-acceptance.mjs'
       - 'scripts/swx-mems-klayout-verify.py'
@@ -33,11 +36,12 @@ jobs:
       - run: npm ci
       - name: Scientific invariants for original and independent ground-return trial
         run: |
-          node --test site/tests/swx-mems-sem-v2-unit.test.mjs site/tests/swx-mems-sem-ground-return-candidate.test.mjs site/tests/swx-mems-posthf-perimeter-audit.test.mjs
+          node --test site/tests/swx-mems-sem-v2-unit.test.mjs site/tests/swx-mems-sem-ground-return-candidate.test.mjs site/tests/swx-mems-posthf-perimeter-audit.test.mjs site/tests/swx-mems-sem-perimeter-context.test.mjs
       - name: Execute original and isolated trial OFF/ON Kernel + common Recipes
         run: |
           node scripts/build-swx-sem-v2-unit.mjs
           node scripts/build-swx-sem-v2-ground-return-candidate.mjs
+          node scripts/build-swx-sem-perimeter-context.mjs
       - name: Install pinned Chromium for real unit visual validation
         run: npx playwright install --with-deps chromium
       - name: Start WaferCAD UI v2
@@ -59,11 +63,16 @@ jobs:
           WAFERCAD_SWX_SEM_PROJECT=swx-sem-ground-return-candidate.wafercad \
           WAFERCAD_SWX_SEM_EXPORT_PREFIX=sem-ground \
           node scripts/swx-mems-sem-v2-browser-acceptance.mjs
+          WAFERCAD_SWX_SEM_OUTPUT=test-results/swx-sem-v2-perimeter \
+          WAFERCAD_SWX_SEM_PROJECT=swx-sem-perimeter-context.wafercad \
+          WAFERCAD_SWX_SEM_EXPORT_PREFIX=sem-perimeter \
+          node scripts/swx-mems-sem-v2-browser-acceptance.mjs
       - name: Independent GDS/OAS Boolean parity (KLayout 0.30.12)
         run: |
           python3 -m pip install --disable-pip-version-check --no-cache-dir klayout==0.30.12
           python3 scripts/swx-mems-klayout-verify.py test-results/swx-sem-v2 sem-v2
           python3 scripts/swx-mems-klayout-verify.py test-results/swx-sem-v2-ground sem-ground
+          python3 scripts/swx-mems-klayout-verify.py test-results/swx-sem-v2-perimeter sem-perimeter
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -71,5 +80,6 @@ jobs:
           path: |
             test-results/swx-sem-v2/
             test-results/swx-sem-v2-ground/
+            test-results/swx-sem-v2-perimeter/
           retention-days: 14
           if-no-files-found: ignore
