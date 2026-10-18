@@ -5,7 +5,13 @@ name: Documentation and Wiki targeted checks
 on:
   pull_request:
     paths:
+      # Repository entrypoints and provenance also affect documentation accuracy.
+      - 'README.md'
+      - 'AGENTS.md'
+      - 'THIRD_PARTY_NOTICES.md'
+      - 'examples/projects/README.md'
       - 'docs/**'
+      - 'site/bundled-examples.js'
       - 'site/process-guide.js'
       - 'site/process-guide-svg.js'
       - 'scripts/build-process-guide.mjs'
@@ -13,6 +19,7 @@ on:
       - 'scripts/check-documentation.mjs'
       - 'scripts/check-wiki-change-coverage.mjs'
       - '.github/workflows/documentation-wiki-targeted.yml'
+      - '.github/workflows/product-manual-wiki.yml'
 
 permissions:
   contents: read
@@ -36,4 +43,4 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Verify Wiki, Process guide and documentation contracts
-        run: node --test site/tests/process-guide.test.mjs site/tests/wiki-manual.test.mjs site/tests/documentation.test.mjs
+        run: node --test site/tests/documentation-suite.test.mjs

@@ -1,5 +1,11 @@
 # MAGIC-1000 MoS2 bit-parallel computer — paper-derived local reconstruction
 
+**Status reviewed 2026-10-18:** The representative project is registered as
+`magic-1000-mos2-beol` in the Welcome catalog and its published project lives at
+`site/examples/magic-1000-mos2-beol.wafercad`. This folder preserves source
+assumptions and generator/validation instructions. Registration is not proof
+of author-GDS equivalence, full-chip reconstruction or paper-figure acceptance.
+
 **Source**: Dongxu Fan et al., *A bit-parallel molybdenum disulfide computer built through multi-level co-optimization*, Nature Electronics **9**, 887–896 (2026), DOI [10.1038/s41928-026-01641-0](https://doi.org/10.1038/s41928-026-01641-0), main text Fig. 1a/d/e/f and Methods p. 893. Source supplemental PDF includes an extended standard-cell layout table, but **does not provide the complete author GDS**.
 
 ## Reproduction target and scientific honesty
@@ -31,13 +37,17 @@ This generator uses the **actual current Process Geometry Kernel**, not handcraf
 - site/examples/magic-1000-mos2-beol.wafercad
 - test-results/magic1000/validation.json
 
-The test validates every intermediate model, full silicon-footprint coverage, selective stop of each via etch, via-fill and CMP continuity, transferred MoS2 support, lossless project reopening, Recipe preflight and GDS/OASIS mask roundtrips. **In-browser Run All and 3D/Section screenshot comparison remain separate acceptance gates** and must be reported, not silently assumed, even if this generator passes. These checks are required before listing the project as an accepted Welcome example.
+The test validates every intermediate model, full silicon-footprint coverage, selective stop of each via etch, via-fill and CMP continuity, transferred MoS2 support, lossless project reopening, Recipe preflight and GDS/OASIS mask roundtrips. **In-browser Run All and 3D/Section screenshot comparison remain separate acceptance gates** and must be reported, not silently assumed, even if this generator passes. These remain distinct scientific and browser acceptance checks and must not
+be treated as passed solely because a project is listed on Welcome.
 
-## Acceptance criteria for promotion
+## Original candidate acceptance checklist (not current publication status)
 
 1. Build from an empty Base, all authored Recipe steps run in order, and real browser **Rebuild Base first → Run all** yields the same canonical model.
 2. Export all mask layers to GDS and OAS, reopen both files and compare mask geometry.
 3. Compare the final local Section with Fig. 1e/f to verify material order (not exact unpublished dimensions).
 4. Inspect the via-fill and CMP steps in Section/3D for internal thin sheets, cracks, arbitrary slits and buried-face leaks.
 5. Verify D-mode annotation is **not** interpreted as predictive doping simulation.
-6. Only after these gates pass, add a real project preview/thumbnail and Welcome catalog entry. Do not substitute a manuscript figure for a WaferCAD-rendered preview.
+6. The original promotion plan required a real WaferCAD preview and Welcome
+   listing. These assets now exist; continue to require actual browser and
+   paper-figure evidence before declaring fidelity. Do not substitute a
+   manuscript figure for a WaferCAD-rendered preview.

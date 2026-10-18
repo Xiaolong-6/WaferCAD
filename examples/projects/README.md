@@ -5,11 +5,33 @@ This directory keeps project fixtures that are useful for regression and develop
 ## Asset lifecycle and directory boundary
 
 - `examples/projects/` holds development/source candidates, scripts, masks, provenance and regression-only projects. Candidate `README`/manifest/audit files are scientific reproducibility material when they record source dimensions, process order, mask geometry or validation assumptions.
-- `site/examples/` holds published Welcome family projects and previews/thumbnails consumed by the app. Do not reorganize published paths without updating `site/bundled-examples.js`, browser regressions, Pages artifact ownership and publication links.
+- `site/examples/` holds published Welcome family projects and previews/thumbnails consumed by the app. Obsolete candidate JPG covers were moved from `site/example-previews/` to `docs/archive/example-previews/`; they are historical evidence, not app runtime fallback images. Do not reorganize published paths without updating `site/bundled-examples.js`, browser regressions, Pages artifact ownership and publication links.
 - `tests/fixtures/` holds low-level compatibility input; `site/tests/` and `scripts/` own assertions and executable acceptance. Ephemeral logs belong in CI artifacts or ignored `test-results/`, not `examples/projects/`.
 - The M3D replay project at `m3d-selfpowered-2026-replay/M3D_selfpowered_full_replay.wafercad` is byte-identical to `site/examples/m3d-selfpowered-full-replay.wafercad` at the 2026-10-15 inventory. Reconstruction scripts and an M3D workflow still reference the source path, so **keep both** until consumers are migrated and reproducibility is revalidated.
 
 For a completed example, prefer links to its PR/CI acceptance for transient status. Retain a short scientific provenance/assumptions record and indispensable source data; do not create per-run audit Markdown solely to record green checks.
+
+## Candidate source packages and promoted project ownership
+
+These source directories retain masks, repair scripts and paper-derived
+assumptions even when the corresponding project has been promoted. The word
+`candidate` in a source folder's name describes its origin, **not** the
+current availability of the corresponding Welcome entry. As of 2026-10-18:
+
+- [Microdisk source package](microdisk-release-candidate/README.md) →
+  `site/examples/suspended-silica-microdisks.wafercad`.
+- [PERC source and implant repair](perc-blakers-1989-candidate/README.md) →
+  `site/examples/perc-solar-cells-point-contacts.wafercad`.
+- [MAGIC-1000 source reconstruction](magic-1000-2026-candidate/README.md) →
+  `site/examples/magic-1000-mos2-beol.wafercad`.
+- [M3D source Mask reconstruction](m3d-selfpowered-2026-candidate/README.md) →
+  `site/examples/m3d-selfpowered-full-replay.wafercad`.
+
+Published status is defined by `site/bundled-examples.js`; the acceptance
+status of paper-figure fidelity remains governed separately by the
+[literature evidence register](../../docs/evidence/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md).
+Source files are kept where the reproducible build and targeted scientific
+tests expect them. No duplicate runtime resource is introduced here.
 
 ## Production bundled example families
 
@@ -18,7 +40,7 @@ The Welcome page is driven by `site/bundled-examples.js`. Public, editable bundl
 The current production literature families are:
 
 - **Photodetectors with nanopatterns** — `site/examples/photodetector-literature-examples.wafercad`
-  - Rebuilt from the current Process Geometry Kernel using `scripts/maintenance/rebuild-photodetectors.mjs`; see `docs/PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md`.
+  - Rebuilt from the current Process Geometry Kernel using `scripts/maintenance/rebuild-photodetectors.mjs`; see `docs/examples/PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md`.
   - **Black-Si Fig. 1a:** ordered thermal oxidation, lithography, ICP-RIE, B/P contact implants, drive-in and oxide-strip records, conformal passivation, contacts and final forming-gas treatment.
     - FINAL · selectively strips blanket Al while protecting active ALD.
     - QA · intentional nonselective overetch; not a fabrication recommendation.
