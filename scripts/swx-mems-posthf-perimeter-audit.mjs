@@ -94,9 +94,9 @@ export function measureBoxCenterline(vectorApi, box, a, b) {
 export function measureBoxPolyline(vectorApi, box, points) {
   if (!Array.isArray(points) || points.length < 2)
     throw new Error('BOX path requires at least two points');
-  const segments = points.slice(1).map((end, index) =>
-    measureBoxCenterline(vectorApi, box, points[index], end),
-  );
+  const segments = points
+    .slice(1)
+    .map((end, index) => measureBoxCenterline(vectorApi, box, points[index], end));
   const runs = [];
   segments.forEach((segment, segmentIndex) => {
     for (const span of segment.intervals) {

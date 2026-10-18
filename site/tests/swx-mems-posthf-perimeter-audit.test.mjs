@@ -37,8 +37,22 @@ test('BOX polygon boundaries split a supported beam without sampled guesses', ()
 });
 
 test('continuous release run crosses a corner but stops at a real BOX support', () => {
-  const box = [[[[0, -1], [3, -1], [3, 1], [0, 1], [0, -1]]]];
-  const route = measureBoxPolyline(v, box, [[0, 0], [10, 0], [10, 10]]);
+  const box = [
+    [
+      [
+        [0, -1],
+        [3, -1],
+        [3, 1],
+        [0, 1],
+        [0, -1],
+      ],
+    ],
+  ];
+  const route = measureBoxPolyline(v, box, [
+    [0, 0],
+    [10, 0],
+    [10, 10],
+  ]);
   assert.equal(route.runs.length, 2);
   assert.equal(route.runs[0].supportedByBOX, true);
   assert.equal(route.runs[0].lengthUm, 3);
@@ -77,7 +91,7 @@ test('genuine OFF/ON post-HF source models expose nominal-vs-actual Ground and S
     // Scientific regression: a continuous curved free path may cross a
     // nominal layout corner; checking each straight edge alone underreports it.
     assert.ok(actual.longestActualContinuousReleasedPath.lengthUm > 56.58);
-    assert.ok(actual.longestActualContinuousReleasedPath.lengthUm < 56.60);
+    assert.ok(actual.longestActualContinuousReleasedPath.lengthUm < 56.6);
     assert.ok(actual.longestActualContinuousReleasedPath.route.startsWith('ground-'));
     assert.ok(
       actual.longestActualContinuousReleasedPath.lengthUm >
