@@ -11,12 +11,8 @@ import {
   makePhysicalPyramidOwner,
   physicalOwnerVolume,
 } from '../experimental/physical-facets/physical-facet-owner.js';
-import {
-  createPhysicalFacetShellQuery,
-} from '../experimental/physical-facets/physical-facet-shell-owner.js';
-import {
-  buildPhysicalFacetPresentation,
-} from '../experimental/physical-facets/physical-facet-render-geometry.js';
+import { createPhysicalFacetShellQuery } from '../experimental/physical-facets/physical-facet-shell-owner.js';
+import { buildPhysicalFacetPresentation } from '../experimental/physical-facets/physical-facet-render-geometry.js';
 import {
   physicalPyramidSection,
   physicalPyramidSolidMesh,
