@@ -2,7 +2,7 @@
 // full-grid-replay workflow keeps the full 4725-site Recipe Run All contract;
 // this check protects the actual shipped Welcome open, geometry and renderer.
 import assert from 'node:assert/strict';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import {
   baseUrl,
   launchBrowser,
@@ -10,7 +10,10 @@ import {
   observePageErrors,
   waitForPaint,
 } from './test-helpers/ui.mjs';
+import { readProjectFile } from '../site/project-io.js';
+import { loadGeometryKernel } from './process-benchmarks.mjs';
 
+await loadGeometryKernel();
 const browser = await launchBrowser();
 const context = await newUiContext(browser, {
   viewport: { width: 1440, height: 950 },
@@ -19,10 +22,10 @@ const context = await newUiContext(browser, {
 const page = await context.newPage();
 const errors = observePageErrors(page);
 try {
-  await page.goto(
-    baseUrl + '/app.html?start=example&example=tio2-metalens-four-unit',
-    { waitUntil: 'domcontentloaded', timeout: 30000 },
-  );
+  await page.goto(baseUrl + '/app.html?start=example&example=tio2-metalens-four-unit', {
+    waitUntil: 'domcontentloaded',
+    timeout: 30000,
+  });
   await page.waitForFunction(
     () => document.body.dataset.ready === 'true' && window.WaferCadV2Workstation?.ready,
     null,
@@ -37,8 +40,15 @@ try {
     4725,
   );
   assert.equal(saved.layout.elements.length, 60232);
-  assert.equal(saved.processRecipe.steps.length, 9);
-  assert.equal(saved.snapshotBranches.nodes.length, 10);
+  // The v2 runtime snapshot intentionally contains presentation/model state,
+  // not the full portable Recipe or History. Inspect the real shipped file
+  // through production Project IO instead of assuming those snapshot fields.
+  const bytes = await readFile(
+    new URL('../site/examples/tio2-metalens-full-array.wafercad', import.meta.url),
+  );
+  const project = await readProjectFile(new Blob([bytes]));
+  assert.equal(project.processRecipe.steps.length, 9);
+  assert.equal(project.snapshotBranches.nodes.length, 10);
   await page.waitForFunction(
     () => {
       const host = document.querySelector('#threeHost');
@@ -80,7 +90,10 @@ try {
     JSON.stringify({ pass: true, ...visual }, null, 2) + '\n',
   );
   assert.deepEqual(errors, [], 'Current v2 browser must not emit page errors');
-  console.log('Metalens actual v2 Welcome and 3D/Section PASS', JSON.stringify(visual));
+  console.log(
+    'Metalens actual v2 Welcome and 3D/Section PASS',
+    JSON.stringify(visual),
+  );
 } finally {
   await context.close();
   await browser.close();
