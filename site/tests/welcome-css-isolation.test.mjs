@@ -49,4 +49,3 @@ test('generated Welcome cards, tags, thumbnails and state classes have CSS owner
     assert.match(css, new RegExp('\\.' + name + '(?![\\w-])'), 'Missing CSS for .' + name);
   }
 });
-

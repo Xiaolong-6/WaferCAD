@@ -18,7 +18,16 @@ test('published scripts, styles, manifests, Workers and previews do not referenc
   const { readdir } = await import('node:fs/promises');
   const { extname, relative } = await import('node:path');
   const root = fileURLToPath(new URL('..', import.meta.url));
-  const extensions = new Set(['.html', '.js', '.mjs', '.css', '.json', '.webmanifest', '.xml', '.txt']);
+  const extensions = new Set([
+    '.html',
+    '.js',
+    '.mjs',
+    '.css',
+    '.json',
+    '.webmanifest',
+    '.xml',
+    '.txt',
+  ]);
   const offenders = [];
   async function visit(folder) {
     for (const item of await readdir(folder, { withFileTypes: true })) {

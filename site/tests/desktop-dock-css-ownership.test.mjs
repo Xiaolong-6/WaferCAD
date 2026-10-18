@@ -9,7 +9,6 @@ const app = readFileSync(new URL('../app.html', root), 'utf8');
 const dockRule =
   /body\[data-workstation\]:not\(\[data-preview-mode\]\) \.p-desktop-dock-actions\s*\{([^}]*)\}/g;
 
-
 function enclosingMedia(css, position) {
   const nesting = [];
   for (let i = 0; i < position; i++) {
