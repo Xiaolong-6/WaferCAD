@@ -324,11 +324,101 @@ function geometryComponents(geometry, cache) {
   return cache.components.get(geometry);
 }
 
+// A radial interval from any reference point encloses the distance to every
+// point of a polygon. Disjoint intervals at *one* point prove no XY overlap;
+// this is an early reject only, never a replacement for robustIntersection.
+function pointInProofRing([x, y], ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i],
+      [xj, yj] = ring[j];
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+function pointInProofPolygon(center, polygon) {
+  if (!polygon.length || !pointInProofRing(center, polygon[0])) return false;
+  return !polygon.slice(1).some((ring) => pointInProofRing(center, ring));
+}
+
+function polygonRadialEnvelope(polygon, center) {
+  const [cx, cy] = center;
+  let minRadius2 = Infinity,
+    maxRadius2 = 0;
+  for (const ring of polygon) {
+    for (let index = 0; index < ring.length; index++) {
+      const p = ring[index],
+        q = ring[(index + 1) % ring.length],
+        px = p[0] - cx,
+        py = p[1] - cy,
+        dx = q[0] - p[0],
+        dy = q[1] - p[1],
+        len2 = dx * dx + dy * dy,
+        t = len2 > 0 ? Math.max(0, Math.min(1, -(px * dx + py * dy) / len2)) : 0,
+        x = px + t * dx,
+        y = py + t * dy;
+      minRadius2 = Math.min(minRadius2, x * x + y * y);
+      maxRadius2 = Math.max(maxRadius2, px * px + py * py);
+    }
+  }
+  if (pointInProofPolygon(center, polygon)) minRadius2 = 0;
+  return { minRadius2, maxRadius2 };
+}
+
+function radialProofForModel(entries, boundaryBounds, cache) {
+  // Amortize polygon preparation only on dense non-array models. Nine centers
+  // (including four outside the bounding box) catch concentric/hollow shapes.
+  if (entries.length < 24) return null;
+  const cx = (boundaryBounds.minX + boundaryBounds.maxX) / 2,
+    cy = (boundaryBounds.minY + boundaryBounds.maxY) / 2,
+    dx = (boundaryBounds.maxX - boundaryBounds.minX) * (2 / 3),
+    dy = (boundaryBounds.maxY - boundaryBounds.minY) * (2 / 3),
+    centers = [
+      [cx, cy],
+      [cx + dx, cy],
+      [cx - dx, cy],
+      [cx, cy + dy],
+      [cx, cy - dy],
+      [cx + dx, cy + dy],
+      [cx - dx, cy + dy],
+      [cx + dx, cy - dy],
+      [cx - dx, cy - dy],
+    ],
+    proof = new WeakMap();
+  for (const { region } of entries) {
+    const geom = canonicalGeometry(region.geom, cache);
+    if (!proof.has(geom)) {
+      proof.set(
+        geom,
+        geom.map((polygon) => centers.map((center) => polygonRadialEnvelope(polygon, center))),
+      );
+    }
+  }
+  return proof;
+}
+
+function provablyRadiallySeparated(a, b) {
+  if (!a || !b) return false;
+  for (let index = 0; index < a.length; index++) {
+    const left = a[index],
+      right = b[index],
+      radiusMargin = Math.max(1e-9, Math.max(left.maxRadius2, right.maxRadius2) * 1e-12);
+    if (
+      left.minRadius2 > right.maxRadius2 + radiusMargin ||
+      right.minRadius2 > left.maxRadius2 + radiusMargin
+    )
+      return true;
+  }
+  return false;
+}
+
 // Discard only polygons whose bounds cannot have a positive-area intersection
 // with any component on the other side. Intersect the remaining sets together,
 // preserving the original aggregate area tolerance and polygon order.
-function intersectionCandidates(left, right, cache) {
-  const sides = [geometryComponents(left, cache), geometryComponents(right, cache)];
+function intersectionCandidates(left, right, cache, radialProof = null) {
+  const sides = [geometryComponents(left, cache), geometryComponents(right, cache)],
+    radial = radialProof ? [radialProof.get(left), radialProof.get(right)] : null;
   const active = [[], []],
     selected = [new Set(), new Set()];
   const cursor = [0, 0];
@@ -348,6 +438,11 @@ function intersectionCandidates(left, right, cache) {
         current.bounds.maxY <= previous.bounds.minY
       )
         continue;
+      if (
+        radial &&
+        provablyRadiallySeparated(radial[side]?.[current.index], radial[other]?.[previous.index])
+      )
+        continue;
       selected[side].add(current.index);
       selected[other].add(previous.index);
     }
@@ -357,7 +452,7 @@ function intersectionCandidates(left, right, cache) {
   return [left.filter((_, i) => selected[0].has(i)), right.filter((_, i) => selected[1].has(i))];
 }
 
-function cachedGeometryArea(left, right, geometryCache, kind, operation) {
+function cachedGeometryArea(left, right, geometryCache, kind, operation, radialProof = null) {
   left = canonicalGeometry(left, geometryCache);
   right = canonicalGeometry(right, geometryCache);
   const cache = geometryCache[kind];
@@ -368,7 +463,9 @@ function cachedGeometryArea(left, right, geometryCache, kind, operation) {
   }
   if (!results.has(right)) {
     const candidates =
-      kind === 'intersections' ? intersectionCandidates(left, right, geometryCache) : [left, right];
+      kind === 'intersections'
+        ? intersectionCandidates(left, right, geometryCache, radialProof)
+        : [left, right];
     const area = candidates ? multiArea(operation(...candidates)) : 0;
     results.set(right, area);
     if (kind === 'intersections') {
@@ -402,7 +499,8 @@ function validateModelGeometry(model, cache) {
   const entries = model.regions
     .map((region, index) => ({ region, index, bounds: cachedGeometryBounds(region.geom, cache) }))
     .sort((a, b) => a.bounds.minX - b.bounds.minX);
-  const active = [];
+  const active = [],
+    radialProof = radialProofForModel(entries, boundaryBounds, cache);
 
   try {
     for (const current of entries) {
@@ -442,6 +540,7 @@ function validateModelGeometry(model, cache) {
           cache,
           'intersections',
           robustIntersection,
+          radialProof,
         );
         if (overlapArea > areaTolerance) {
           fail(
