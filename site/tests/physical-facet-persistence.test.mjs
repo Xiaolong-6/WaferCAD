@@ -9,6 +9,7 @@ import {
 } from '../physical-facet-model.js';
 import { makePhysicalPyramidOwner, physicalOwnerVolume } from '../physical-facet-owner.js';
 import { createPhysicalFacetShellQuery } from '../physical-facet-shell-owner.js';
+import { buildPhysicalFacetPresentation } from '../physical-facet-render-geometry.js';
 import { physicalPyramidSection, physicalPyramidSolidMesh } from '../physical-facet-surface.js';
 import {
   expandProjectStorage,
@@ -160,6 +161,19 @@ test('coated 3D material survives .wafercad, Workspace and History without false
     ['base', 'oxide'],
   );
   assert.equal(sections[1].polys.length, 2, 'Front/back SiO2 must both appear');
+  const displayed = buildPhysicalFacetPresentation(project.model);
+  assert.equal(displayed.oxideLayerId, 'oxide');
+  assert.equal(displayed.oxideTriangleCount, 560);
+  assert.deepEqual(displayed.oxideTopology.exterior, {
+    faces: 560,
+    edges: 840,
+    invalidEdges: 0,
+  });
+  assert.equal(
+    Object.values(displayed.oxidePositions).reduce((sum, values) => sum + values.length / 9, 0),
+    560,
+    'ThreeView must consume every canonical oxide surface triangle',
+  );
   for (const polygon of sections[1].polys) {
     const ring = polygon[0];
     assert.ok(ring.length > 50, 'Physical film must follow real Section facets');
