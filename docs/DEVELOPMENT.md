@@ -24,19 +24,43 @@ or expired writer lease cannot authorize an IndexedDB commit.
 
 Historical implementations remain available through Git history rather than the active working tree. Do not reintroduce retired backend/client APIs merely for compatibility.
 
-## Offline dependency and complete source bundle
+## Offline source transport and Three.js priority
 
-The canonical Three.js 0.179.1 npm archive is tracked at `vendor/npm/three-0.179.1.tgz`.
-Run `python3 scripts/restore-pinned-three.py` to verify its SHA-512 against
-`package-lock.json` and install only `node_modules/three`, without npm/network.
-Do not treat that local renderer dependency as a substitute for `npm ci` when
-linting or running the complete development toolchain.
+**Do not repeatedly request user uploads or retry blocked git clone.** First
+locate the already-uploaded `three@0.179.1` npm tarball in WaferCAD Project
+Sources (materialize if required) or the current container's `/mnt/data`.
+The stored filename may have a numeric suffix. Then restore Three.js using:
 
-The narrowly scoped [Offline WaferCAD source bundle](../.github/workflows/offline-source-bundle.yml)
-workflow packages an exact checked-out Git commit (all Git-tracked sources,
-tests and docs) plus verified local `node_modules/three`. It uploads a ZIP and
-per-file SHA-256 manifest for environments where `git clone` cannot connect.
-This is a source transport mechanism, not a CI/visual/scientific acceptance gate.
+```sh
+python3 scripts/restore-pinned-three.py --archive "/mnt/data/three-0.179.1.tgz"
+# Or: WAFERCAD_THREE_ARCHIVE="/path/to/three.tgz" python3 scripts/restore-pinned-three.py
+```
+
+The helper verifies SHA-512 against `package-lock.json` before extraction.
+If the Sources attachment is unavailable, the tracked
+`vendor/npm/three-0.179.1.tgz` is a verified fallback (run without arguments).
+Reuse `node_modules/three` as long as the local workspace survives.
+Only `npm ci` installs the full development toolchain.
+
+The [source-only Artifact workflow](../.github/workflows/offline-source-bundle.yml)
+uses GitHub's checkout and publishes a ZIP of the exact commit's tracked
+sources, tests, fixtures, docs and workflow files. **It excludes**
+`vendor/npm/three-0.179.1.tgz`, `node_modules` and Chromium. There is no
+npm installation in Actions. `wafercad-source-<SHA>.zip` contains
+`wafercad-source-manifest.json` with the revision and per-file SHA-256.
+Use a completed existing workflow run when possible; run its narrow
+`workflow_dispatch` only when a newer source bundle is necessary.
+The connector downloads the Artifact straight into the execution container,
+where it can be extracted and verified. No `.git` history is included.
+
+**Verified 2026-10-18:** GitHub Connector -> mounted Artifact ZIP -> local
+extraction and hash verification -> native headed Chromium/Xvfb/SwiftShader
+rendering succeeded. `scripts/offline-native-app-capture.py` rendered a real
+in-memory demo and a strictly validated Photodetector model. Managed browser
+navigation still blocked `https://wafercad.local`; `about:blank` fallback
+only verifies the isolated native 3D renderer. Real Worker Open, IndexedDB,
+History/Recovery, synchronized views and complete UI interaction still require
+separate normal-origin acceptance. Do not create a second Chromium runner.
 
 ## Local run
 

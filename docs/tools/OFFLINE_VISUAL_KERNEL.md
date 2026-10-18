@@ -101,6 +101,31 @@ Focused checks: `node --test site/tests/offline-mask-svg.test.mjs`.
 A synthetic File/Draw sample rendered to two PNGs using an in-memory Chromium
 SVG is a smoke test only, not an end-to-end `.wafercad` validation.
 
+### Verified Project Sources + GitHub source-only Artifact workflow
+
+For restricted containers, **use this established chain before trial-and-error**:
+fetch an existing exact-commit `wafercad-source-<SHA>` GitHub Actions Artifact
+(or trigger the narrow `offline-source-bundle.yml` workflow if none exists),
+download it via GitHub Connector to the local execution container, then extract
+and check the `wafercad-source-manifest.json` revision/SHA-256 values.
+The Artifact contains all tracked source/test files but deliberately excludes
+`vendor/npm/three-0.179.1.tgz`, all `node_modules` and Chromium.
+
+Use the already uploaded Three.js 0.179.1 archive from WaferCAD Project
+Sources (materialize the attachment if needed) or an existing `/mnt/data`
+copy, then `python3 scripts/restore-pinned-three.py --archive <path>`.
+The script verifies the archive against `package-lock.json`; if no
+`--archive` or `WAFERCAD_THREE_ARCHIVE` is specified, it uses the
+tracked `vendor/npm/three-0.179.1.tgz` backup. Do not ask the user to
+reupload the same package without checking Sources and cached files.
+
+Run the existing `offline-native-app-capture.py` with real Chromium,
+headed Xvfb and SwiftShader. Its null-origin fallback proves only native
+Renderer diagnostics and cannot validate Worker Open/History/Recovery.
+See [the complete offline bootstrap procedure](../DEVELOPMENT.md#offline-source-transport-and-threejs-priority).
+The separate `scripts/offline-package.py` can still assemble a richer
+locally bundled renderer environment when actually needed.
+
 ## Portable ChatGPT source package (no localhost, CI, or remote browser)
 
 From a **full WaferCAD checkout** containing the target PR's exact HEAD,

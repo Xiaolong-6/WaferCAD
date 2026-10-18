@@ -2,26 +2,36 @@
 """Restore pinned Three.js from the repository's verified offline npm archive."""
 from __future__ import annotations
 
+import argparse
 import base64
 import hashlib
 import json
+import os
 import shutil
 import tarfile
 import tempfile
 from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parent.parent
-ARCHIVE = ROOT / "vendor" / "npm" / "three-0.179.1.tgz"
+FALLBACK_ARCHIVE = ROOT / "vendor" / "npm" / "three-0.179.1.tgz"
 LOCK = ROOT / "package-lock.json"
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--archive", type=Path, help="Pinned Three.js .tgz from Project Sources")
+    args = parser.parse_args()
+    archive = args.archive or (Path(os.environ["WAFERCAD_THREE_ARCHIVE"])
+                               if os.environ.get("WAFERCAD_THREE_ARCHIVE")
+                               else FALLBACK_ARCHIVE)
+    if not archive.is_file():
+        raise FileNotFoundError(f"Three.js archive not found: {archive}")
     entry = json.loads(LOCK.read_text(encoding="utf-8"))["packages"]["node_modules/three"]
     version = entry["version"]
     integrity = entry["integrity"]
     if version != "0.179.1" or not integrity.startswith("sha512-"):
         raise ValueError("Three.js version or integrity does not match the supported pin")
-    actual = base64.b64encode(hashlib.sha512(ARCHIVE.read_bytes()).digest()).decode("ascii")
+    actual = base64.b64encode(hashlib.sha512(archive.read_bytes()).digest()).decode("ascii")
     if actual != integrity.removeprefix("sha512-"):
         raise ValueError("Offline Three.js tarball failed package-lock SHA-512 verification")
 
@@ -30,7 +40,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix=".three-staging-", dir=destination.parent) as temp:
         unpack = Path(temp)
         total_bytes = 0
-        with tarfile.open(ARCHIVE, mode="r:gz") as package:
+        with tarfile.open(archive, mode="r:gz") as package:
             for member in package:
                 parts = PurePosixPath(member.name).parts
                 if not parts or parts[0] != "package" or ".." in parts:

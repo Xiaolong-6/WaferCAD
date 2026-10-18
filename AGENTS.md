@@ -8,6 +8,17 @@ Read `docs/COLLABORATION.md` for the shared ChatGPT/Codex handoff workflow, `doc
 - Use stable internal entity IDs and preserve project migration, transactional workers, History restore and browser recovery contracts.
 - Add regressions to the suite that owns the behavior. Avoid file splitting solely to reduce line counts.
 - Use locked dependencies via `npm ci`. During iteration run focused checks and (for UI/Renderer/Example changes) inspect real-browser output before broad CI. Before final acceptance run the required Quality, targeted CI and scientific/regression gates; do not weaken tolerances or skip data-integrity checks. Report exact commands, results, commit and environment.
+**Source retrieval before requesting uploads:** Reuse the existing exact-SHA
+source-only GitHub Artifact, verify `wafercad-source-manifest.json`, and
+obtain the pinned Three.js 0.179.1 tarball separately. Search the WaferCAD
+Project Sources/current workspace first; use the tracked
+`vendor/npm/three-0.179.1.tgz` fallback only if missing. Restore via
+`python3 scripts/restore-pinned-three.py --archive <path>` (or
+`WAFERCAD_THREE_ARCHIVE`), which checks `package-lock.json` SHA-512.
+Never package Three.js in a source-only Actions Artifact. See
+[offline bootstrap](docs/DEVELOPMENT.md#offline-source-transport-and-threejs-priority)
+before retrying blocked `git clone` or requesting another ZIP.
+
 ## Chromium-first local visual acceptance
 
 For any visual change involving UI, Renderer, Examples, Mask, 3D or Section, default to **real local Chromium screenshots and independent AI visual review**. GitHub CI is not the primary visual-debugging loop.
