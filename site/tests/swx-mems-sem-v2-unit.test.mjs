@@ -86,6 +86,12 @@ test('SEM v2 comb below SWX and opposed fixed optical ports', () => {
       ],
     );
     for (const [index, side] of [-1, 1].entries()) {
+      // Finite area, not boundary-only contact: the suspended aligner must
+      // remain mechanically attached to its stationary silicon anchor.
+      assert.ok(
+        contact([pose.aligners.fixed[index]], [pose.aligners.flexure[index * 2]]) > 0.02,
+        state + ' S7 fixed anchor has insufficient positive silicon overlap',
+      );
       const end = pose.aligners.centerlines[index].at(-1);
       assert.ok(Math.abs(end[0] - side * 4) < 1e-12);
       assert.ok(Math.abs(end[1] - (-50 + pose.travel)) < 1e-12);

@@ -132,7 +132,10 @@ function semV2StructuralAligners(travel) {
       const smooth = fraction * fraction * (3 - 2 * fraction);
       return [fixedX + (movableX - fixedX) * fraction, -50 + travel * smooth];
     });
-    fixed.push(rect(...padCenter, 6, 6));
+    // The illustrative S7 anchor must overlap the 100 nm flexure by finite area.
+    // Its pad width is not recovered from author GDS; retain the source's 7 um
+    // centerline length, but extend only this assumed pad across the beam root.
+    fixed.push(rect(...padCenter, 6.5, 6));
     flexure.push(
       miteredPolyline(centerline, SWX_REPORTED.structuralAlignerBeamUm)[0],
       rect(side * 3.5, -50 + travel, 1, SWX_REPORTED.structuralAlignerTrussUm),
