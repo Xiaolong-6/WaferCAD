@@ -14,7 +14,8 @@ const server = spawn(process.execPath, ['scripts/v2/serve-v2.mjs'], {
   env: { ...process.env, WAFERCAD_V2_PORT: port },
   stdio: 'ignore',
 });
-const url = 'http://127.0.0.1:' + port + '/experimental/physical-facets/physical-facet-preview.html';
+const url =
+  'http://127.0.0.1:' + port + '/experimental/physical-facets/physical-facet-preview.html';
 const report = { url, status: 'running', pictures: [], browserErrors: [], assertions: [] };
 let browser;
 try {
@@ -129,7 +130,10 @@ try {
     const shellPage = await context.newPage();
     shellPage.on('pageerror', (error) => report.browserErrors.push(error.message));
     const shellResponse = await shellPage.goto(
-      url.replace('/experimental/physical-facets/physical-facet-preview.html', '/experimental/physical-facets/physical-facet-shell-preview.html'),
+      url.replace(
+        '/experimental/physical-facets/physical-facet-preview.html',
+        '/experimental/physical-facets/physical-facet-shell-preview.html',
+      ),
       { waitUntil: 'domcontentloaded', timeout: 30000 },
     );
     assert.equal(shellResponse.status(), 200);

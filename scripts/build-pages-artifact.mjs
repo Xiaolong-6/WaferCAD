@@ -3,7 +3,12 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // Developer fixtures are versioned in Git but are not part of the public application.
-const excludedDirectories = ['tests/', 'ui-v2/prototypes/', 'ui-v2/reviews/', 'experimental/microdisk/'];
+const excludedDirectories = [
+  'tests/',
+  'ui-v2/prototypes/',
+  'ui-v2/reviews/',
+  'experimental/microdisk/',
+];
 const excludedFiles = new Set([
   // Archived Legacy source must never be republished as executable UI.
   'app-legacy.html',
