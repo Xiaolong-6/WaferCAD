@@ -4,9 +4,9 @@ import test from 'node:test';
 
 import { createWorkspacePersistenceController } from '../controllers/workspace-persistence-controller.js';
 import { createSnapshotManager } from '../workspace-snapshots.js';
-import { attachExperimentalPhysicalFacetOwner } from '../physical-facet-model.js';
-import { makePhysicalPyramidOwner } from '../physical-facet-owner.js';
-import { physicalPyramidSection } from '../physical-facet-surface.js';
+import { attachExperimentalPhysicalFacetOwner } from '../experimental/physical-facets/physical-facet-model.js';
+import { makePhysicalPyramidOwner } from '../experimental/physical-facets/physical-facet-owner.js';
+import { physicalPyramidSection } from '../experimental/physical-facets/physical-facet-surface.js';
 import { validateProjectFile, CURRENT_PROJECT_VERSION } from '../project-schema.js';
 import { expandProjectStorage, serializeProject } from '../project-io.js';
 

@@ -3,7 +3,7 @@ name: Physical facet scientific contracts
 on:
   pull_request:
     paths:
-      - 'site/physical-facet-*.js'
+      - 'site/experimental/physical-facets/physical-facet-*.js'
       - 'site/model.js'
       - 'site/project-schema.js'
       - 'site/project-io.js'
