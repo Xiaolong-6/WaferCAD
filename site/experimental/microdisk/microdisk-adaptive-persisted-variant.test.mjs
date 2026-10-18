@@ -33,7 +33,9 @@ const at = (model, xy) => model.regions.find((r) => pointInMulti(xy, r.geom))?.s
 
 test('adaptive 72-band saved Variant survives strict read, pack/reopen, History restoration, and legacy parity', async () => {
   const legacy = await parse('suspended-silica-microdisks.wafercad');
+  const readStart = performance.now();
   const current = await parse('suspended-silica-microdisks-adaptive.wafercad');
+  const readAndStrictValidationMs = Number((performance.now() - readStart).toFixed(1));
   const branchId = 'microdisk-adaptive-72-band';
   const originalSnapshots = legacy.snapshots;
   assert.deepEqual(
@@ -104,7 +106,13 @@ test('adaptive 72-band saved Variant survives strict read, pack/reopen, History 
     },
     validateState: (x) => Boolean(x?.model?.regions?.length),
   });
+  const importStart = performance.now();
   manager.importRecords(reopened.snapshots, reopened.snapshotBranches);
+  const historyImportMs = Number((performance.now() - importStart).toFixed(1));
+  console.log(
+    'MICRODISK_PERSISTED_OPEN_TIMING',
+    JSON.stringify({ readAndStrictValidationMs, historyImportMs }),
+  );
   assert.equal(manager.activeBranch().id, branchId);
   assert.equal(manager.listBranches().length, 2);
   assert.equal(manager.restoreProcessNode('process-microdisk-07'), true);
