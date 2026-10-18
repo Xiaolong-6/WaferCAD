@@ -288,7 +288,11 @@ test('common-substrate incremental slab union preserves full coverage at each de
   const [solid] = materialSolidsFromTopology(model);
   const spans = solid.slabs.map(({ z0, z1 }) => [z0, z1]);
   const areas = solid.slabs.map((slab) => geometryArea(slab.polys));
-  assert.deepEqual(spans, [[-4, 1], [1, 2], [2, 4]]);
+  assert.deepEqual(spans, [
+    [-4, 1],
+    [1, 2],
+    [2, 4],
+  ]);
   assert.deepEqual(areas, [192, 128, 64]);
   assert.ok(solid.caps.some((cap) => cap.z === -4 && geometryArea(cap.polys) === 192));
   for (const z of [1, 2, 4]) {
@@ -311,7 +315,10 @@ test('incremental union remains exact when XY footprints overlap in a provisiona
     },
   ];
   const [solid] = materialSolidsFromTopology(model);
-  assert.deepEqual(solid.slabs.map((slab) => geometryArea(slab.polys)), [160, 96]);
+  assert.deepEqual(
+    solid.slabs.map((slab) => geometryArea(slab.polys)),
+    [160, 96],
+  );
   assert.ok(solid.caps.some((cap) => cap.z === 2 && geometryArea(cap.polys) === 64));
 });
 
