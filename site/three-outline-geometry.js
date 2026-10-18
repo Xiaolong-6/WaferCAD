@@ -71,10 +71,13 @@ function translate(segment, delta) {
 
 // Buried caps are owned material interfaces; their perimeters include true
 // material edges and clipped inspection edges. Ignore all artificial LOD edges.
-export function buriedInterfaceContours(caps = [], { boundaryProfiles = null } = {}) {
+export function buriedInterfaceContours(
+  caps = [],
+  { boundaryProfiles = null, includeCap = null } = {},
+) {
   const segments = [];
   for (const [capIndex, cap] of caps.entries()) {
-    if (!cap?.buried) continue;
+    if (!cap?.buried || (includeCap && !includeCap(cap))) continue;
     const profile = boundaryProfiles?.get(capIndex),
       boundary = profile?.positions
         ? Array.from({ length: Math.floor(profile.positions.length / 6) }, (_, index) => [
@@ -164,13 +167,20 @@ export function buriedSidewallContours(sidewalls = [], exposed = []) {
 // intentionally retain actual internal material interfaces for inspection.
 export function borderInspectorContours(plan, options = {}) {
   const exterior = ownedContourSegments(plan?.borderLines || []);
+  const caps = plan?.caps || [];
+  // Preserve canonical indices: boundaryProfiles is keyed by the complete
+  // surface plan, not by an independently filtered presentation category.
   const interfaces = unownedContourSegments(
-    buriedInterfaceContours((plan?.caps || []).filter((cap) => cap.buried && cap.interfaceLayerId), options),
+    buriedInterfaceContours(caps, {
+      ...options,
+      includeCap: (cap) => Boolean(cap.interfaceLayerId),
+    }),
     exterior,
   );
-  const embeddedCaps = buriedInterfaceContours(
-    (plan?.caps || []).filter((cap) => cap.buried && !cap.interfaceLayerId), options,
-  );
+  const embeddedCaps = buriedInterfaceContours(caps, {
+    ...options,
+    includeCap: (cap) => !cap.interfaceLayerId,
+  });
   const embeddedWalls = buriedSidewallContours(plan?.sidewalls || [], [...exterior, ...interfaces]);
   const buried = unownedContourSegments([...embeddedCaps, ...embeddedWalls], [...exterior, ...interfaces]);
   return { exterior, interface: interfaces, buried };
