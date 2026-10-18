@@ -11,14 +11,11 @@ import { createSwxSemGroundReturnCandidate } from '../../scripts/swx-mems-sem-gr
 await loadGeometryKernel();
 const v = await import('../vector-geometry.js');
 const { geometryArea } = await import('../model.js');
-const union = (rings) =>
-  v.unionGeometries(rings.map((ring) => [[[...ring, ring[0]]]]));
+const union = (rings) => v.unionGeometries(rings.map((ring) => [[[...ring, ring[0]]]]));
 
 for (const state of ['off', 'on']) {
   test(
-    'experimental ' +
-      state +
-      ' perimeter is real Si with a disconnected isolation cavity',
+    'experimental ' + state + ' perimeter is real Si with a disconnected isolation cavity',
     () => {
       const a = SWX_PERIMETER_CONTEXT_ASSUMPTIONS;
       const baseline = createSwxSemGroundReturnCandidate(state);
@@ -35,22 +32,10 @@ for (const state of ['off', 'on']) {
         width: 200,
         height: 280,
       });
-      assert.equal(
-        context.maskPolygons.get(1).length,
-        baseline.maskPolygons.get(1).length + 4,
-      );
-      assert.deepEqual(
-        context.maskPolygons.get(2),
-        baseline.maskPolygons.get(2),
-      );
-      assert.deepEqual(
-        context.maskPolygons.get(3),
-        baseline.maskPolygons.get(3),
-      );
-      assert.equal(
-        context.layout.elements.length,
-        baseline.layout.elements.length + 4,
-      );
+      assert.equal(context.maskPolygons.get(1).length, baseline.maskPolygons.get(1).length + 4);
+      assert.deepEqual(context.maskPolygons.get(2), baseline.maskPolygons.get(2));
+      assert.deepEqual(context.maskPolygons.get(3), baseline.maskPolygons.get(3));
+      assert.equal(context.layout.elements.length, baseline.layout.elements.length + 4);
       const bulkUnion = union(bulk);
       const originalUnion = union(baseline.maskPolygons.get(1));
       assert.equal(bulkUnion.length, 1);
@@ -84,12 +69,6 @@ test('peripheral study inherits original real process, but never source-fidelity
   const p = SWX_PERIMETER_CONTEXT_PROCESS_PROFILE;
   assert.deepEqual(p.fieldUm, [200, 280]);
   assert.equal(p.geometryFactory, createSwxSemPerimeterContext);
-  assert.equal(
-    SWX_PERIMETER_CONTEXT_ASSUMPTIONS.perimeterDimensionsSourceVerified,
-    false,
-  );
-  assert.equal(
-    SWX_PERIMETER_CONTEXT_ASSUMPTIONS.contextIsPartOfPaperDeviceFootprint,
-    false,
-  );
+  assert.equal(SWX_PERIMETER_CONTEXT_ASSUMPTIONS.perimeterDimensionsSourceVerified, false);
+  assert.equal(SWX_PERIMETER_CONTEXT_ASSUMPTIONS.contextIsPartOfPaperDeviceFootprint, false);
 });

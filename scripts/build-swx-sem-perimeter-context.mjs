@@ -23,8 +23,7 @@ await writeFile(
   JSON.stringify(
     {
       ...validation,
-      comparisonRole:
-        'real process geometry for inferred peripheral Si and isolation cavity',
+      comparisonRole: 'real process geometry for inferred peripheral Si and isolation cavity',
       perimeter: SWX_PERIMETER_CONTEXT_ASSUMPTIONS,
       sourceAuthorPerimeterGdsAccepted: false,
       sourceIsolationTrenchAccepted: false,

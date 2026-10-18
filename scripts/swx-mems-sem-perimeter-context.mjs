@@ -60,9 +60,7 @@ export function createSwxSemPerimeterContext(state = 'off') {
       })),
     ],
     combos: original.layout.combos.map((combo) =>
-      combo.layer === 1
-        ? { ...combo, count: maskPolygons.get(1).length }
-        : combo,
+      combo.layer === 1 ? { ...combo, count: maskPolygons.get(1).length } : combo,
     ),
     bounds: {
       minX: o.minX,
@@ -81,8 +79,7 @@ export function createSwxSemPerimeterContext(state = 'off') {
       ...original.physicalGroups,
       semPerimeterContext: perimeter,
     },
-    reconstructionStatus:
-      'trial-etched-silicon-perimeter-inferred-not-source-accepted',
+    reconstructionStatus: 'trial-etched-silicon-perimeter-inferred-not-source-accepted',
   };
 }
 
@@ -90,6 +87,5 @@ export const SWX_PERIMETER_CONTEXT_PROCESS_PROFILE = Object.freeze({
   ...SWX_GROUND_RETURN_PROCESS_PROFILE,
   fieldUm: SWX_PERIMETER_CONTEXT_ASSUMPTIONS.fieldUm,
   geometryFactory: createSwxSemPerimeterContext,
-  projectName:
-    'Hu 2025 SWX / real processed Si perimeter / EXPERIMENTAL - NOT AUTHOR GDS',
+  projectName: 'Hu 2025 SWX / real processed Si perimeter / EXPERIMENTAL - NOT AUTHOR GDS',
 });
