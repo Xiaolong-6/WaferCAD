@@ -2,6 +2,7 @@
 // Source vertices always come from the same canonical solid as Section contours.
 import { validateExperimentalPhysicalFacetModel } from './physical-facet-model.js';
 import { physicalPyramidSolidMesh } from './physical-facet-surface.js';
+import { triangulatePhysicalFacetShell } from './physical-facet-shell-mesh.js';
 
 export function physicalFacetPresentationZ(z, { compressBulk = false } = {}) {
   if (!Number.isFinite(z)) throw new RangeError('Physical Z must be finite');
@@ -23,17 +24,32 @@ export function buildPhysicalFacetPresentation(
       groups[triangle.face].push(x, y, physicalFacetPresentationZ(z, { compressBulk }));
     }
   }
+  const film = model.experimentalPhysicalFacetShell
+    ? triangulatePhysicalFacetShell(model.experimentalPhysicalFacetShell, { maxCells })
+    : null;
+  const oxideGroups = { top: [], bottom: [], side: [] };
+  for (const triangle of film?.exterior || []) {
+    for (const [x, y, z] of triangle.vertices) {
+      oxideGroups[triangle.face].push(x, y, physicalFacetPresentationZ(z, { compressBulk }));
+    }
+  }
   return {
     kind: 'wafercad-physical-facet-presentation-v1',
     layerId: owner.layerId,
     ownerKind: owner.kind,
     sourceCells: physical.sourceCells,
     physicalTriangleCount: physical.triangles.length,
+    oxideLayerId: film?.layerId || null,
+    oxideTriangleCount: film?.exterior.length || 0,
+    oxideTopology: film?.topology || null,
     positions: {
       top: new Float32Array(groups.top),
       bottom: new Float32Array(groups.bottom),
       side: new Float32Array(groups.side),
     },
+    oxidePositions: Object.fromEntries(
+      Object.entries(oxideGroups).map(([face, positions]) => [face, new Float32Array(positions)]),
+    ),
     displayOnlyZBreak: Boolean(compressBulk),
   };
 }

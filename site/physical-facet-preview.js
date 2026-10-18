@@ -2,7 +2,10 @@
 // Both WebGL triangles and native Section originate from one physical owner.
 import { createThreeView } from './three-view.js';
 import { createModel } from './model.js';
-import { attachExperimentalPhysicalFacetOwner } from './physical-facet-model.js';
+import {
+  attachExperimentalPhysicalFacetOwner,
+  attachExperimentalPhysicalFacetShell,
+} from './physical-facet-model.js';
 import { physicalOwnerVolume } from './physical-facet-owner.js';
 import {
   buildPhysicalFacetPresentation,
@@ -19,7 +22,14 @@ const physicalDescriptor = {
   domain: { minX: -6.4, maxX: 6.4, minY: -6.4, maxY: 6.4 },
 };
 const source = createModel({ shape: 'rect', width: 12.8, height: 12.8, thickness: 251 });
-const model = attachExperimentalPhysicalFacetOwner(source, physicalDescriptor);
+const siliconModel = attachExperimentalPhysicalFacetOwner(source, physicalDescriptor);
+const oxideEnabled = new URLSearchParams(location.search).get('oxide') === '1';
+const model = oxideEnabled
+  ? attachExperimentalPhysicalFacetShell(siliconModel, {
+      layerId: 'oxide',
+      thicknessUm: 0.05,
+    })
+  : siliconModel;
 const owner = model.experimentalPhysicalFacetOwner;
 const sceneData = buildPhysicalFacetPresentation(model, { compressBulk: true });
 const sectionData = sectionContours(model, [-6.4, 0], [6.4, 0]);
@@ -114,6 +124,24 @@ function drawSection() {
   ctx.strokeStyle = '#2a779d';
   ctx.lineWidth = 2.4 * ratio;
   ctx.stroke();
+  if (oxideEnabled) {
+    const oxide = sectionData.find((part) => part.layerId === 'oxide');
+    if (!oxide || oxide.polys.length !== 2) {
+      throw new Error('Physical oxide has no native front/back Section evidence');
+    }
+    for (const polygon of oxide.polys) {
+      const ring = polygon[0];
+      ctx.beginPath();
+      for (const [index, [t, z]] of ring.entries()) {
+        if (!index) ctx.moveTo(mx(t), my(z));
+        else ctx.lineTo(mx(t), my(z));
+      }
+      ctx.closePath();
+      ctx.strokeStyle = '#d88b37';
+      ctx.lineWidth = 2.4 * ratio;
+      ctx.stroke();
+    }
+  }
   ctx.fillStyle = '#516575';
   ctx.font = `${11 * ratio}px system-ui`;
   ctx.fillText(
@@ -128,12 +156,16 @@ setAngle(document.body.dataset.angle);
 drawSection();
 window.addEventListener('resize', drawSection);
 document.body.dataset.physicalFacetReady = 'true';
-document.getElementById('evidenceStatus').textContent = 'Physical owner · verified geometry view';
+document.getElementById('evidenceStatus').textContent = oxideEnabled
+  ? 'Physical Si + oxide · experimental mesh evidence'
+  : 'Physical owner · verified geometry view';
 window.WaferCadPhysicalFacetEvidence = {
   ready: true,
   sourceKernel: model.kernel,
   ownerKind: owner.kind,
   physicalTriangleCount: sceneData.physicalTriangleCount,
+  physicalOxideTriangles: sceneData.oxideTriangleCount,
+  oxideSectionRegions: sectionData.find((part) => part.layerId === 'oxide')?.polys.length || 0,
   triangleCounts: Object.fromEntries(
     Object.entries(sceneData.positions).map(([k, v]) => [k, v.length / 9]),
   ),
@@ -148,6 +180,7 @@ window.WaferCadPhysicalFacetEvidence = {
     rendererState: canvas3d.dataset.renderState,
     owner: canvas3d.dataset.physicalFacetOwner,
     triangleCount: Number(canvas3d.dataset.physicalFacetTriangles),
+    oxideTriangleCount: Number(canvas3d.dataset.physicalFacetOxideTriangles || 0),
     axesHelperHidden: canvas3d.dataset.physicalFacetAxesHidden === 'true',
   },
   setAngle,

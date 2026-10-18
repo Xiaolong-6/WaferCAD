@@ -154,10 +154,18 @@ test('coated 3D material survives .wafercad, Workspace and History without false
   validateProjectFile(project);
   const query = createPhysicalFacetShellQuery(project.model.experimentalPhysicalFacetShell);
   assert.equal(query.sample([0, 0, 130.02]).materialLayerId, 'oxide');
-  assert.throws(
-    () => sectionContours(project.model, [-6.4, 0], [6.4, 0]),
-    /refusing Si-only surrogate/,
+  const sections = sectionContours(project.model, [-6.4, 0], [6.4, 0]);
+  assert.deepEqual(
+    sections.map((part) => part.layerId),
+    ['base', 'oxide'],
   );
+  assert.equal(sections[1].polys.length, 2, 'Front/back SiO2 must both appear');
+  for (const polygon of sections[1].polys) {
+    const ring = polygon[0];
+    assert.ok(ring.length > 50, 'Physical film must follow real Section facets');
+    const at = ring[Math.floor((ring.length - 1) / 4)];
+    assert.ok(Number.isFinite(at[0]) && Number.isFinite(at[1]));
+  }
   const poisoned = structuredClone(project);
   poisoned.model.experimentalPhysicalFacetShell.silicon.height = 2;
   assert.throws(() => validateProjectFile(poisoned), /coating and silicon descriptors/);

@@ -3024,9 +3024,6 @@ diffuseColor.a *= waferCadAlphaScale;`,
     if (clip) throw new RangeError('Experimental physical facets do not support ROI clipping yet');
     const owner = validateExperimentalPhysicalFacetModel(model);
     if (!owner) throw new RangeError('Missing experimental physical facet owner');
-    if (model.experimentalPhysicalFacetShell) {
-      throw new RangeError('Physical coating mesh is unavailable; refusing Si-only 3D rendering');
-    }
     // The global XYZ helper crosses a locally collapsed Si sheet and reads
     // visually as an erroneous vertical material edge in this inspection.
     if (axesHelper) axesHelper.visible = false;
@@ -3077,22 +3074,62 @@ diffuseColor.a *= waferCadAlphaScale;`,
       }
     }
     if (built !== 3) throw new RangeError('Incomplete physical facet 3D surface faces');
+    if (data.oxideTriangleCount) {
+      // Only the exact owner classifies Si versus oxide. The closed display
+      // envelope is a tessellated approximation; never export it as Process.
+      const physicalOxideLayer = {
+        id: data.oxideLayerId,
+        name: 'Experimental physical SiO2',
+        color: '#d88b37',
+      };
+      let builtOxideFaces = 0;
+      for (const face of ['top', 'bottom', 'side']) {
+        const positions = data.oxidePositions[face];
+        if (!positions?.length) continue;
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.computeVertexNormals();
+        const material = createSurfaceMaterial(physicalOxideLayer, materialState, null, exterior);
+        material.flatShading = true;
+        const mesh = addSurfaceMesh(
+          geometry,
+          material,
+          materialState,
+          null,
+          0,
+          false,
+          null,
+          exterior,
+        );
+        if (mesh) {
+          mesh.name = `physical-${face}-${data.oxideLayerId}`;
+          builtOxideFaces++;
+        }
+      }
+      if (builtOxideFaces !== 3) {
+        throw new RangeError('Incomplete exterior physical oxide surface');
+      }
+    }
     physicalSceneModel = model;
     physicalSceneSignature = signature;
     activeSceneVariant = null;
     physicalSurfacePlan = null;
     host.dataset.physicalFacetOwner = owner.kind;
     host.dataset.physicalFacetTriangles = String(data.physicalTriangleCount);
+    host.dataset.physicalFacetOxideTriangles = String(data.oxideTriangleCount);
     host.dataset.physicalFacetSourceCells = String(data.sourceCells);
     host.dataset.surfaceTopology = JSON.stringify({
       physicalTriangles: data.physicalTriangleCount,
+      physicalOxideTriangles: data.oxideTriangleCount,
       sourceCells: data.sourceCells,
     });
     host.dataset.rendererUpdateKind = 'physical-facet-geometry';
     applyZDisplayState(model);
     applyPresentationState({ profile: false, settle: true });
     host.dataset.sceneVariant = 'physical-facet';
-    stats.textContent = 'physical Si (experimental)';
+    stats.textContent = data.oxideTriangleCount
+      ? 'physical Si + SiO2 (experimental tessellation)'
+      : 'physical Si (experimental)';
   }
 
   async function render() {
@@ -3125,6 +3162,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     delete host.dataset.physicalFacetAxesHidden;
     delete host.dataset.physicalFacetOwner;
     delete host.dataset.physicalFacetTriangles;
+    delete host.dataset.physicalFacetOxideTriangles;
     delete host.dataset.physicalFacetSourceCells;
     const clip = getClipGeometry(),
       inspection = getInspection() || {},
