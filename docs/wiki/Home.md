@@ -26,6 +26,8 @@ _This is the user journey, not a capture of the live interface. Actual device pr
 
 **I want AI to help reproduce a paper or generate a Recipe.** Follow [Using WaferCAD with AI](AI-Assisted-Workflows) for prompts, required attachments, Mask and Recipe handoff, and validation.
 
+**I am developing WaferCAD with AI.** Start with [Develop WaferCAD with AI](Develop-WaferCAD-with-AI) for evidence-first workflows, App versus Kernel diagnostics, local Chromium screenshots and release gates.
+
 **I want to build a process sequence.** Read [Process and Recipes](Process-and-Recipes); then the [Recipe Code Tutorial](Recipe-Code-Tutorial).
 
 **An operation gave me the wrong geometry.** Start with [Troubleshooting](Troubleshooting). For all 19 before/after operation diagrams, use [Illustrated Process Operations](Process-Operations).
@@ -44,8 +46,9 @@ WaferCAD calculates **idealized geometric material stacks**, not physically cali
 - [Process and Recipes](Process-and-Recipes) — individual operations, guided recipes and execution safety.
 - [History, Variants and Recovery](History-Variants-and-Recovery) — previous states, alternate branches and browser checkpoints.
 - [Import and Export](Import-and-Export) — project, mask and 3D interchange.
-- [Examples and Modeling Limits](Examples-and-Modeling-Limits) — the eight Welcome example families and scientific caveats.
+- [Examples and Modeling Limits](Examples-and-Modeling-Limits) — the nine Welcome example families and scientific caveats.
 - [Using WaferCAD with AI](AI-Assisted-Workflows) — practical paper-to-mask and mask-to-Recipe prompts, inputs, outputs and validation.
+- [Develop WaferCAD with AI](Develop-WaferCAD-with-AI) — a contributor's acceptance playbook based on PR #225.
 - [Process Recipe Code Tutorial](Recipe-Code-Tutorial) — eight supported commands, mask capture and replay.
 
 ## For documentation maintainers
