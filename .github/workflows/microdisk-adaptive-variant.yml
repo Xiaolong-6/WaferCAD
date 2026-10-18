@@ -4,13 +4,13 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'scripts/generate-microdisk-adaptive-variant.mjs'
-      - 'scripts/tests/microdisk-adaptive-persisted-variant.test.mjs'
-      - 'scripts/v2/check-microdisk-adaptive-persisted-workstation.mjs'
+      - 'site/experimental/microdisk/generate-microdisk-adaptive-variant.mjs'
+      - 'site/experimental/microdisk/microdisk-adaptive-persisted-variant.test.mjs'
+      - 'site/experimental/microdisk/check-microdisk-adaptive-persisted-workstation.mjs'
       - '.github/workflows/microdisk-adaptive-variant.yml'
       - 'site/model.js'
       - 'site/examples/suspended-silica-microdisks.wafercad'
-      - 'site/examples/suspended-silica-microdisks-adaptive.wafercad'
+      - 'site/experimental/microdisk/suspended-silica-microdisks-adaptive.wafercad'
   workflow_dispatch:
 
 permissions:
@@ -32,13 +32,13 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Assert immutable published adaptive Variant matches reviewed bytes
         run: |
-          test "$(git hash-object site/examples/suspended-silica-microdisks-adaptive.wafercad)" = '89f3f2b1f32593e32e7bdc1f6df712ac87d8df62'
+          test "$(git hash-object site/experimental/microdisk/suspended-silica-microdisks-adaptive.wafercad)" = '89f3f2b1f32593e32e7bdc1f6df712ac87d8df62'
       - name: Build separate saved adaptive M07 Variant
         run: |
-          node scripts/generate-microdisk-adaptive-variant.mjs
-          test "$(git hash-object site/examples/suspended-silica-microdisks-adaptive.wafercad)" = '89f3f2b1f32593e32e7bdc1f6df712ac87d8df62'
+          node site/experimental/microdisk/generate-microdisk-adaptive-variant.mjs
+          test "$(git hash-object site/experimental/microdisk/suspended-silica-microdisks-adaptive.wafercad)" = '89f3f2b1f32593e32e7bdc1f6df712ac87d8df62'
       - name: Verify native source, export/reopen, History and legacy parity
-        run: node --test scripts/tests/microdisk-adaptive-persisted-variant.test.mjs
+        run: node --test site/experimental/microdisk/microdisk-adaptive-persisted-variant.test.mjs
       - run: npx playwright install --with-deps chromium
       - name: Real native-v2 persisted Variant Section and 3D
         shell: bash
@@ -50,13 +50,13 @@ jobs:
             curl --fail --silent http://127.0.0.1:4173/ >/dev/null && break
             sleep 1
           done
-          node scripts/v2/check-microdisk-adaptive-persisted-workstation.mjs
+          node site/experimental/microdisk/check-microdisk-adaptive-persisted-workstation.mjs
       - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: microdisk-adaptive-72band-saved-variant-and-native-evidence
           path: |
-            site/examples/suspended-silica-microdisks-adaptive.wafercad
+            site/experimental/microdisk/suspended-silica-microdisks-adaptive.wafercad
             test-results/issue298-persisted-variant/
           retention-days: 30
           if-no-files-found: warn

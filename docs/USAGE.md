@@ -41,7 +41,7 @@ Selecting a layer selects that `layer/datatype` across the active subtree.
 
 ## 4. Inspect and author the Mask view
 
-Use the **Mask source** control to choose **File** or **Draw**. Depending on the interface/version, this is shown as a source toggle in the Mask header.
+Use the **Mask source** control in the current Workstation Mask header to choose **File** or **Draw**.
 
 **File** mode keeps imported GDSII/OASIS behavior:
 
@@ -91,9 +91,9 @@ The 3D header exposes **Fast** and **Quality** modes. Fast is the default and lo
 
 ## 6. Apply an operation
 
-The v2 **How it works** control opens a compact **Before → After Process schematic** for the selected Operation, Coverage, Transfer Placement, Etch Profile, material selectivity, Surface mode and Orientation. Older interfaces may show the schematic directly beneath **Apply**. The small illustration is not a simulation of your current geometry and is intentionally not to scale. Select **Wiki ↗** to open the same operation in the [illustrated Process Wiki](https://github.com/Xiaolong-6/WaferCAD/wiki/Process-Operations). The [product manual](https://github.com/Xiaolong-6/WaferCAD/wiki) has full workspace, mask, project and operation reference chapters.
+The v2 **How it works** control opens a compact **Before → After Process schematic** for the selected Operation, Coverage, Transfer Placement, Etch Profile, material selectivity, Surface mode and Orientation. The small illustration is not a simulation of your current geometry and is intentionally not to scale. Select **Wiki ↗** to open the same operation in the [illustrated Process Wiki](https://github.com/Xiaolong-6/WaferCAD/wiki/Process-Operations). The [product manual](https://github.com/Xiaolong-6/WaferCAD/wiki) has full workspace, mask, project and operation reference chapters.
 
-In the v2 **Process → Manual → Surface** selector choose **Front**, **Back** or **Both**. Both executes Front then Back as one atomic logical Step when the operation supports it. A successful Both Deposit produces **two paired, independent Layer IDs**; both-side selective Etch or Extend requires a compatible exposed paired target. Lift-off and absolute-Z Planarize/CMP are unavailable for Both. Both does not change the Main/Mask inspection face. The Legacy interface retains Front/Back. See [Kernel behavior](PROCESS_BOTH_FACE_2026-10-11.md) and [v2 Manual acceptance](ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md).
+In the v2 **Process → Manual → Surface** selector choose **Front**, **Back** or **Both**. Both executes Front then Back as one atomic logical Step when the operation supports it. A successful Both Deposit produces **two paired, independent Layer IDs**; both-side selective Etch or Extend requires a compatible exposed paired target. Lift-off and absolute-Z Planarize/CMP are unavailable for Both. Both does not change the Main/Mask inspection face. The frozen Legacy editor has historical Front/Back-only controls; it is not part of the current application. See [Kernel behavior](science/PROCESS_BOTH_FACE_2026-10-11.md) and [v2 Manual acceptance](ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md).
 
 Choose an action:
 
@@ -129,7 +129,7 @@ Electrical Region is a separate schematic annotation for p/n regions, inversion,
 
 Implant is a structural visualization primitive rather than a dopant-physics solver. Set Name, Area, Depth, and optional signed **Tilt X**; Apply records the existing exposed implant volume without creating a material layer. Color is assigned from the active 20-color structure palette after Apply and is edited from the Layers legend. Later Etch operations clip the surviving Implant volume instead of regenerating a new full-depth marker.
 
-Z is physical and stored internally in µm. Deposit/Extend use Z as film thickness; Directional Etch, Implant, and Electrical Region use it as depth; Isotropic release uses the same field as a physical etch radius. Conformal is evaluated as Directional coverage first, followed by an outward normal sidewall offset by the same physical thickness. For example, Z = 0.5 µm gives a 0.5 µm vertical film and a 0.5 µm lateral normal offset. Section defaults to **Auto**, where X and Z fit independently and the header reports the Z exaggeration (for example `Z ×43`). Click **Auto** to switch to **1:1**, where X and Z use the same px/µm and sidewall display widening is disabled. 3D can still exaggerate Z for readability without changing geometry. See [Process benchmarks and limits](PROCESS_BENCHMARKS.md), [surface morphology](ROUGHNESS_MORPHOLOGY.md), and [Implant modeling scope](IMPLANT.md).
+Z is physical and stored internally in µm. Deposit/Extend use Z as film thickness; Directional Etch, Implant, and Electrical Region use it as depth; Isotropic release uses the same field as a physical etch radius. Conformal is evaluated as Directional coverage first, followed by an outward normal sidewall offset by the same physical thickness. For example, Z = 0.5 µm gives a 0.5 µm vertical film and a 0.5 µm lateral normal offset. Section defaults to **Auto**, where X and Z fit independently and the header reports the Z exaggeration (for example `Z ×43`). Click **Auto** to switch to **1:1**, where X and Z use the same px/µm and sidewall display widening is disabled. 3D can still exaggerate Z for readability without changing geometry. See [Process benchmarks and limits](science/PROCESS_BENCHMARKS.md), [surface morphology](science/ROUGHNESS_MORPHOLOGY.md), and [Implant modeling scope](science/IMPLANT.md).
 
 ## 7. Manage layers
 
