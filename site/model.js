@@ -1,4 +1,10 @@
 import { indexedIntersectionInputs } from './process-boundary-index.js';
+import { adaptiveReleaseDepthBands } from './isotropic-release-oracle.js';
+import {
+  assertExperimentalPhysicalFacetNotProcessed,
+  assertExperimentalPhysicalFacetNotRendered,
+  validateExperimentalPhysicalFacetModel,
+} from './physical-facet-model.js';
 import {
   MIN_RESOLVABLE_MATERIAL_SEGMENT_UM,
   validateMaterialThicknessUm,
@@ -239,6 +245,7 @@ export function setLayerVisible(model, id, visible) {
 }
 
 export function visibleMaterialModel(model) {
+  assertExperimentalPhysicalFacetNotRendered(model);
   const hidden = new Set(
     (model?.layers || []).filter((layer) => layer.visible === false).map((layer) => layer.id),
   );
@@ -1163,7 +1170,74 @@ function removeLayerInterval(stack, targetLayerIds, z0, z1) {
   return normalizeStack(out);
 }
 
-function applyIsotropicEtch(model, active, targetLayerIds, amount, face) {
+// An opt-in release has nested XY reach at successively shallower Z depths.
+// Own each source XY point only once: first claim the deepest reachable band,
+// then its unclaimed exterior at shallower bands. This avoids re-splitting and
+// re-merging almost coincident mask boundaries at each of 72+ depth levels.
+// A single original stack defines the material owner throughout the partition.
+function applyAdaptiveIsotropicSeed(model, seed, targets, amount, face, depthBands) {
+  const protectedGeom = difference(model.boundary, seed.geom);
+  const originals = model.regions;
+  const owners = originals.map((region) => ({
+    region,
+    pending: cloneGeom(region.geom),
+    claimed: [],
+    eligible: region.stack.some(
+      (part) =>
+        targets.has(part.layerId) &&
+        (face === 'front'
+          ? part.z1 > seed.z - amount + 1e-9 && part.z0 < seed.z - 1e-9
+          : part.z1 > seed.z + 1e-9 && part.z0 < seed.z + amount - 1e-9),
+    ),
+  }));
+  let changed = false;
+
+  // Reverse the physical reach: near the exposed seed the release is deepest.
+  // Each offset mask is computed once and discarded after the claim; the
+  // per-source original geometry never changes while depth bands are explored.
+  for (let index = depthBands.length - 1; index >= 0; index--) {
+    const band = depthBands[index];
+    const masks = index === depthBands.length - 1 ? [seed.geom] : [];
+    if (band.lateralRadius > 1e-9 && !isEmpty(protectedGeom)) {
+      for (const edgeBand of conformalBoundaryBands(seed.geom, band.lateralRadius)) {
+        const undercut = intersection(edgeBand, protectedGeom);
+        if (!isEmpty(undercut)) masks.push(undercut);
+      }
+    }
+    const z0 = face === 'front' ? seed.z - band.depth1 : seed.z;
+    const z1 = face === 'front' ? seed.z : seed.z + band.depth1;
+    for (const owner of owners) {
+      if (!owner.eligible || isEmpty(owner.pending)) continue;
+      const stack = removeLayerInterval(owner.region.stack, [...targets], z0, z1);
+      if (stackKey(stack) === stackKey(owner.region.stack)) continue;
+      for (const mask of masks) {
+        if (isEmpty(owner.pending)) break;
+        const hit = intersection(owner.pending, mask);
+        if (isEmpty(hit)) continue;
+        owner.pending = sanitizeProcessGeometry(difference(owner.pending, hit));
+        owner.claimed.push({
+          id: `region-${model.nextRegionId++}`,
+          geom: hit,
+          stack,
+        });
+        changed = true;
+      }
+    }
+  }
+  if (changed) {
+    model.regions = [];
+    for (const owner of owners) {
+      if (!isEmpty(owner.pending)) {
+        model.regions.push({ ...owner.region, geom: owner.pending });
+      }
+      model.regions.push(...owner.claimed);
+    }
+    model.regions = mergeRegions(model, model.regions);
+  }
+  return changed;
+}
+
+function applyIsotropicEtch(model, active, targetLayerIds, amount, face, lateralErrorUm = null) {
   const targets = new Set((targetLayerIds || []).filter(Boolean));
   if (!targets.size) {
     return {
@@ -1184,24 +1258,63 @@ function applyIsotropicEtch(model, active, targetLayerIds, amount, face) {
     };
   }
 
+  // Opt-in: actual Process uses physically bounded adaptive Z bands;
+  // the ordinary path keeps its bit-for-bit legacy eight-band definition.
+  // Resolve all budgets BEFORE any mutation of the Model.
+  const adaptiveBands =
+    lateralErrorUm == null
+      ? null
+      : adaptiveReleaseDepthBands({
+          radius: amount,
+          maxLateralErrorUm: lateralErrorUm,
+          maxBands: 128,
+        });
+  // The opt-in branch needs one mutually exclusive XY ownership partition;
+  // do not route it through the legacy repeated split/merge algorithm.
+  if (adaptiveBands) {
+    let changed = false;
+    for (const seed of seeds) {
+      if (applyAdaptiveIsotropicSeed(model, seed, targets, amount, face, adaptiveBands)) {
+        changed = true;
+      }
+    }
+    return changed
+      ? { changed: true }
+      : { changed: false, error: 'The isotropic release did not intersect the selected material.' };
+  }
+
   let changed = false;
   for (const seed of seeds) {
-    // Work from the protected complement rather than repeatedly unioning a
-    // large exposed domain with its dilation. The undercut strip inside the
-    // protected footprint is disjoint from the exposed seed, which avoids
-    // near-coincident slivers at mask edges.
+    // Keep the protected complement as the only undercut target, avoiding
+    // near-coincident overlap with the exposed seed.
     const protectedGeom = difference(model.boundary, seed.geom);
 
-    for (let index = 0; index < ISOTROPIC_ETCH_SLICES; index++) {
-      const d0 = (amount * index) / ISOTROPIC_ETCH_SLICES,
-        d1 = (amount * (index + 1)) / ISOTROPIC_ETCH_SLICES,
-        depth = (d0 + d1) / 2,
-        lateral = Math.sqrt(Math.max(0, amount * amount - depth * depth)),
+    const legacyBands = adaptiveBands
+      ? null
+      : Array.from({ length: ISOTROPIC_ETCH_SLICES }, (_, index) => {
+          const depth0 = (amount * index) / ISOTROPIC_ETCH_SLICES,
+            depth1 = (amount * (index + 1)) / ISOTROPIC_ETCH_SLICES,
+            midDepth = (depth0 + depth1) / 2;
+          return {
+            depth0,
+            depth1,
+            lateralRadius: Math.sqrt(Math.max(0, amount * amount - midDepth * midDepth)),
+          };
+        });
+    for (const band of adaptiveBands || legacyBands) {
+      const d0 = band.depth0,
+        d1 = band.depth1,
+        lateral = band.lateralRadius,
         footprints = [seed.geom];
 
       if (lateral > 1e-9 && !isEmpty(protectedGeom)) {
-        for (const band of conformalBoundaryBands(protectedGeom, lateral)) {
-          const undercut = intersection(band, protectedGeom);
+        // The opt-in Process must trace only true exposed seed boundaries.
+        // The complement has unrelated exterior edges: offsetting those
+        // would etch protected Si at a wafer edge with no exposed release seed.
+        // Keep the legacy eight-band path unchanged for saved History replay.
+        const boundaryOwner = adaptiveBands ? seed.geom : protectedGeom;
+        for (const boundaryBand of conformalBoundaryBands(boundaryOwner, lateral)) {
+          const undercut = intersection(boundaryBand, protectedGeom);
           if (!isEmpty(undercut)) footprints.push(undercut);
         }
       }
@@ -1243,6 +1356,7 @@ function applyOperationImpl(
     targetLayerId,
     etchTargetLayerIds = [],
     etchProfile = 'directional',
+    isotropicLateralErrorUm = null,
     thickness,
     face = 'front',
     area,
@@ -1257,6 +1371,18 @@ function applyOperationImpl(
   // Use the actual requested physical value. Previously this clamped every
   // positive thickness below 0.01 nm up to 0.01 nm without informing the user.
   const amount = Number(thickness);
+  if (
+    isotropicLateralErrorUm != null &&
+    (type !== 'etch' ||
+      etchProfile !== 'isotropic' ||
+      !Number.isFinite(isotropicLateralErrorUm) ||
+      isotropicLateralErrorUm <= 0)
+  ) {
+    return {
+      changed: false,
+      error: 'Opt-in isotropic lateral error must be finite and positive for isotropic etch.',
+    };
+  }
   if (type === 'etch' && !['directional', 'isotropic'].includes(etchProfile)) {
     return { changed: false, error: 'Unsupported Etch profile.' };
   }
@@ -1482,7 +1608,14 @@ function applyOperationImpl(
       protectedEtchVoids = uncoveredGeometryRaw(model);
     }
     if (etchProfile === 'isotropic') {
-      const release = applyIsotropicEtch(model, active, selectiveTargets, amount, face);
+      const release = applyIsotropicEtch(
+        model,
+        active,
+        selectiveTargets,
+        amount,
+        face,
+        isotropicLateralErrorUm,
+      );
       if (!release.changed) return release;
     } else {
       splitByArea(model, active, (stack) =>
@@ -1564,6 +1697,8 @@ function applyOperationImpl(
 }
 
 export function applyOperation(model, params) {
+  const unsupported = assertExperimentalPhysicalFacetNotProcessed(model);
+  if (unsupported) return unsupported;
   if (params?.face === 'both') {
     const applied = applyProcessFaces(model, params, applyOperation);
     if (applied.result?.changed) {
@@ -1574,6 +1709,12 @@ export function applyOperation(model, params) {
   }
   if (!['front', 'back', undefined, null].includes(params?.face)) {
     return { changed: false, error: 'Unsupported Process face.' };
+  }
+  if ((isArrayModel(model) || model?.array != null) && params?.isotropicLateralErrorUm != null) {
+    return {
+      changed: false,
+      error: 'Opt-in adaptive isotropic release does not yet support array Model topology.',
+    };
   }
   if (isArrayModel(model)) return applyArrayOperation(model, params, applyOperation);
   const safeGeometryOperation =
@@ -1598,6 +1739,10 @@ export function applyOperation(model, params) {
 }
 
 export function modelBoundsZ(model) {
+  const physical = validateExperimentalPhysicalFacetModel(model);
+  if (physical) {
+    return [physical.bottomPlaneZ - physical.height, physical.topPlaneZ + physical.height];
+  }
   if (isArrayModel(model)) {
     const bounds = referencedModelParts(model).filter(hasMaterial).map(modelBoundsZ);
     return bounds.length
