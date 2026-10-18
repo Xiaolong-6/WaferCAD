@@ -24,6 +24,20 @@ or expired writer lease cannot authorize an IndexedDB commit.
 
 Historical implementations remain available through Git history rather than the active working tree. Do not reintroduce retired backend/client APIs merely for compatibility.
 
+## Offline dependency and complete source bundle
+
+The canonical Three.js 0.179.1 npm archive is tracked at `vendor/npm/three-0.179.1.tgz`.
+Run `python3 scripts/restore-pinned-three.py` to verify its SHA-512 against
+`package-lock.json` and install only `node_modules/three`, without npm/network.
+Do not treat that local renderer dependency as a substitute for `npm ci` when
+linting or running the complete development toolchain.
+
+The narrowly scoped [Offline WaferCAD source bundle](../.github/workflows/offline-source-bundle.yml)
+workflow packages an exact checked-out Git commit (all Git-tracked sources,
+tests and docs) plus verified local `node_modules/three`. It uploads a ZIP and
+per-file SHA-256 manifest for environments where `git clone` cannot connect.
+This is a source transport mechanism, not a CI/visual/scientific acceptance gate.
+
 ## Local run
 
 ```bash

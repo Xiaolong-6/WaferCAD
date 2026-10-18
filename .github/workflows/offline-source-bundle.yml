@@ -1,0 +1,61 @@
+name: Offline WaferCAD source bundle
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - docs/reuse-offline-chromium-20261018
+    paths:
+      - .github/workflows/offline-source-bundle.yml
+      - scripts/restore-pinned-three.py
+      - vendor/npm/three-0.179.1.tgz
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Verify archive and restore pinned Three.js without npm/network
+        run: python3 scripts/restore-pinned-three.py
+      - name: Build complete source ZIP at exact commit
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          import subprocess
+          import zipfile
+          from pathlib import Path
+
+          sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+          files = [os.fsdecode(item) for item in subprocess.check_output(["git", "ls-files", "-z"]).split(b"\0") if item]
+          modules = [p for p in Path("node_modules/three").rglob("*") if p.is_file()]
+          output = Path(f"wafercad-complete-{sha}.zip")
+          manifest = {"schema": "wafercad-complete-source-v1", "revision": sha, "trackedFiles": len(files),
+                      "restoredThreeFiles": len(modules), "threeVersion": "0.179.1", "files": {}}
+          with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
+              for name in files + [p.as_posix() for p in modules]:
+                  path = Path(name)
+                  if not path.is_file() or path.is_symlink():
+                      raise ValueError(f"Missing or unsafe file: {name}")
+                  content = path.read_bytes()
+                  manifest["files"][name] = hashlib.sha256(content).hexdigest()
+                  archive.writestr(name, content)
+              archive.writestr("wafercad-source-manifest.json", json.dumps(manifest, sort_keys=True, indent=2) + "\n")
+          print(json.dumps({"revision": sha, "tracked": len(files), "three": len(modules),
+                            "zipBytes": output.stat().st_size}, indent=2))
+          PY
+      - uses: actions/upload-artifact@v6
+        with:
+          name: wafercad-complete-${{ github.sha }}
+          path: wafercad-complete-${{ github.sha }}.zip
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
