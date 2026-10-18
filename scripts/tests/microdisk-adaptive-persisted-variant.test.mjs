@@ -2,18 +2,17 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import { createSnapshotManager } from '../../site/workspace-snapshots.js';
 import { loadGeometryKernel } from '../process-benchmarks.mjs';
 await loadGeometryKernel();
 const [
   { readProjectFile, prepareProjectForWorkspaceStorage },
   { geometryArea },
   { pointInMulti },
-  { createSnapshotManager },
 ] = await Promise.all([
   import('../../site/project-io.js'),
   import('../../site/model.js'),
   import('../../site/vector-geometry.js'),
-  import('../../site/workspace-snapshots.js'),
 ]);
 const dir = new URL('../../site/examples/', import.meta.url);
 const parse = async (filename) =>
