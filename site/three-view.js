@@ -9,7 +9,7 @@ import { canRenderPlanarCapInSinglePass } from './transparent-pass-policy.js';
 import { disposeRendererSceneResources } from './renderer-v4-resource-lifetime.js';
 import { runTemporaryRendererCapture } from './renderer-capture-transaction.js';
 import { renderDepthAwareOutlines } from './three-outline-pass.js';
-import { borderNeedsInternalGeometry, resolvedBorderStyle, normalizeBorderSettings } from './border-inspector.js';
+import { borderNeedsInternalGeometry, borderPresentationState } from './border-inspector.js';
 import { shouldYieldDuringSceneAssembly } from './renderer-cooperative-assembly.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
@@ -1145,38 +1145,9 @@ export function createThreeView({
           transparentSort: true,
         };
       case 'border':
-      case 'internal-border': {
-        const category = descriptor.category || 'exterior';
-        const style = resolvedBorderStyle(inspection.borderSettings, category, opacity);
-        const inner = descriptor.kind === 'internal-border';
-        const strength = normalizeBorderSettings(inspection.borderSettings).strength;
-        return {
-          visible: Boolean(inspection.borders) && style === (descriptor.lineStyle || 'solid'),
-          materialState: {
-            opacity: inner ? Math.min(0.7, 0.15 + strength * 0.55) : strength,
-            transparent: true,
-            // Internal inspection is an intentional X-ray overlay; classify
-            // occluded *exterior* edges against structural depth separately.
-            depthTest: !inner,
-            depthWrite: false,
-          },
-          transparentSort: false,
-        };
-      }
-      case 'hidden-border': {
-        const style = resolvedBorderStyle(inspection.borderSettings, 'occluded', opacity);
-        return {
-          visible: transparent && Boolean(inspection.borders) && style === (descriptor.lineStyle || 'dashed'),
-          materialState: {
-            opacity: Math.min(0.36, (0.13 + (1 - opacity) * 0.22) *
-              normalizeBorderSettings(inspection.borderSettings).strength),
-            transparent: true,
-            depthTest: true,
-            depthWrite: false,
-          },
-          transparentSort: false,
-        };
-      }
+      case 'internal-border':
+      case 'hidden-border':
+        return borderPresentationState(descriptor, inspection.borderSettings, opacity, inspection.borders);
       case 'implant-cut':
         return {
           visible: true,

@@ -3,7 +3,7 @@ import test from 'node:test';
 import { readFile } from 'node:fs/promises';
 import {
   BORDER_CATEGORIES, BORDER_PRESETS, normalizeBorderSettings,
-  resolvedBorderStyle, borderNeedsInternalGeometry,
+  resolvedBorderStyle, borderNeedsInternalGeometry, borderPresentationState,
 } from '../border-inspector.js';
 import { buriedInterfaceContours, buriedSidewallContours, borderInspectorContours } from '../three-outline-geometry.js';
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
@@ -118,4 +118,35 @@ test('Border Inspector explanations are owned by the central Tooltip catalog', a
   assert.match(view, /'data-help': `three\.border\.\$\{category\}`/);
   assert.match(view, /'data-help': `three\.border\.preset\.\$\{preset\}`/);
   assert.doesNotMatch(view, /v2-border-hint|Outer surfaces, steps and exposed edges|Auto shows buried geometry when transparent/);
+});
+
+test('border line presentation is view-only and preserves old depth/opacity semantics', () => {
+  for (const preset of ['clean', 'structure', 'xray']) {
+    for (const opacity of [1, 0.7, 0.45, 0.15]) {
+      for (const category of BORDER_CATEGORIES) {
+        for (const lineStyle of ['solid', 'dashed']) {
+          const kind = category === 'occluded' ? 'hidden-border'
+            : ['interface', 'buried'].includes(category) ? 'internal-border' : 'border';
+          const descriptor = { kind, category, lineStyle };
+          const result = borderPresentationState(descriptor, { preset }, opacity, true);
+          const resolved = resolvedBorderStyle({ preset }, category, opacity);
+          assert.equal(result.visible, resolved === lineStyle && (kind !== 'hidden-border' || opacity < 0.999),
+            `${preset}/${opacity}/${category}/${lineStyle}`);
+          assert.equal(result.materialState.transparent, true);
+          assert.equal(result.materialState.depthTest, kind !== 'internal-border');
+          assert.equal(result.materialState.depthWrite, false);
+          assert.equal(result.transparentSort, false);
+          assert.ok(result.materialState.opacity >= 0 && result.materialState.opacity <= 1);
+          assert.equal(borderPresentationState(descriptor, { preset }, opacity, false).visible, false);
+        }
+      }
+    }
+  }
+  const inner = { kind: 'internal-border', category: 'interface', lineStyle: 'solid' };
+  const faint = borderPresentationState(inner, { preset: 'xray', strength: 0.15 }, 0.45, true);
+  const strong = borderPresentationState(inner, { preset: 'xray', strength: 1 }, 0.45, true);
+  assert.ok(strong.materialState.opacity > faint.materialState.opacity);
+  assert.equal(strong.materialState.opacity, 0.7);
+  assert.equal(borderPresentationState({ kind: 'electrical-internal' }, {}, 0.45, true), null);
+  assert.deepEqual(borderPresentationState({kind:'hidden-border'}, {preset:'xray'}, 1, true).visible, false);
 });

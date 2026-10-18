@@ -36,3 +36,31 @@ export function borderNeedsInternalGeometry(settings, opacity, enabled) {
     (category) => resolvedBorderStyle(settings, category, opacity) !== 'off',
   );
 }
+
+// Rendering policy for structural outlines, separate from canonical geometry,
+// depth-pass ownership, and the mutable Three.js scene. Receives the same
+// clamped opacity used by the production surface presentation state.
+export function borderPresentationState(descriptor, settings, opacity, enabled) {
+  const kind = descriptor?.kind;
+  if (!['border', 'internal-border', 'hidden-border'].includes(kind)) return null;
+  const internal = kind === 'internal-border';
+  const hidden = kind === 'hidden-border';
+  const category = hidden ? 'occluded' : descriptor.category || 'exterior';
+  const style = resolvedBorderStyle(settings, category, opacity);
+  const lineStyle = descriptor.lineStyle || (hidden ? 'dashed' : 'solid');
+  const strength = normalizeBorderSettings(settings).strength;
+  return {
+    visible: Boolean(enabled) && (!hidden || opacity < 0.999) && style === lineStyle,
+    materialState: {
+      opacity: hidden
+        ? Math.min(0.36, (0.13 + (1 - opacity) * 0.22) * strength)
+        : internal ? Math.min(0.7, 0.15 + strength * 0.55) : strength,
+      transparent: true,
+      // Buried inspection contours are intentionally X-ray overlays.
+      // Exterior and occluded lines use the structural-depth pass.
+      depthTest: !internal,
+      depthWrite: false,
+    },
+    transparentSort: false,
+  };
+}
