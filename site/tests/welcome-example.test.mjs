@@ -80,7 +80,10 @@ test('T-CMOS Welcome project retains source Recipe and two History branches', as
   assert.equal(example?.sources?.[0]?.doi, '10.1038/s41928-019-0272-8');
   assert.match(example.preview.alt, /Illustrative/);
   const packed = JSON.parse(
-    await readFile(new URL('../examples/tcmos-ternary-inverter-130nm.wafercad', import.meta.url), 'utf8'),
+    await readFile(
+      new URL('../examples/tcmos-ternary-inverter-130nm.wafercad', import.meta.url),
+      'utf8',
+    ),
   );
   expandProjectStorage(packed);
   validateProjectFile(packed);

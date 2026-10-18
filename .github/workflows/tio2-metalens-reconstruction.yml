@@ -5,11 +5,10 @@ on:
     paths:
       - 'site/bundled-examples.js'
       - 'site/examples/tio2-metalens-full-array.wafercad'
-      - 'scripts/tio2-metalens-ui-regression.mjs'
+      - 'scripts/tio2-metalens-v2-browser-acceptance.mjs'
       - 'scripts/build-tio2-metalens-example.mjs'
       - 'site/tests/tio2-metalens-reconstruction.test.mjs'
       - 'scripts/tio2-metalens-array-scale.mjs'
-      - 'scripts/tio2-metalens-grid-browser.mjs'
       - 'site/process-recipe-preflight.js'
       - 'site/process-recipe.js'
       - 'site/controllers/base-controls-controller.js'
@@ -57,15 +56,14 @@ jobs:
           done
           cat /tmp/wafercad-metalens-http.log
           exit 1
-      - name: Real browser Recipe Run All and geometry/export acceptance
-        env:
-          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
-        run: node scripts/tio2-metalens-ui-regression.mjs
-      - name: Open 4725-site compiled GRID project in real 3D/Section browser
+      # The separate full-grid-replay job owns complete 4725-site v2 Recipe
+      # Run All; this job independently checks published app visual IO.
+      # The retired Legacy UI cannot be a release gate after source sunset.
+      - name: Open 4725-site project in real v2 Main, 3D and Section
         timeout-minutes: 8
         env:
           WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
-        run: node scripts/tio2-metalens-grid-browser.mjs
+        run: node scripts/tio2-metalens-v2-browser-acceptance.mjs
       - name: Build exact production Welcome preview
         run: |
           node scripts/build-example-previews.mjs --write --id=tio2-metalens-four-unit

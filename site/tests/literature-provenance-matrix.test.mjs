@@ -85,7 +85,7 @@ function assertPaperMatchEvidence(entry) {
   );
 }
 
-test('eight paper provenance records match the actual published example catalog', async () => {
+test('paper provenance records match the actual published example catalog', async () => {
   assert.equal(provenance.schema, 'wafercad-literature-figure-provenance-v1');
   assert.equal(provenance.issue, 241);
   // Three new family-specific Chromium cuts are real saved artifacts,

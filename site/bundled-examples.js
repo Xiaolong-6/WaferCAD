@@ -264,7 +264,8 @@ export const BUNDLED_EXAMPLES = Object.freeze([
       'A complementary tunnelling-based inverter with eight source-vector Mask layers, 218 W contact sites, a replayable 23-step process and T-CMOS / conventional CMOS History variants. The illustrative 4×4 global-routed engineering prototype is separate.',
     sources: [
       {
-        citation: 'Jeong et al., tunnelling-based ternary CMOS technology, Nature Electronics (2019), Fig. 1a–b.',
+        citation:
+          'Jeong et al., tunnelling-based ternary CMOS technology, Nature Electronics (2019), Fig. 1a–b.',
         doi: '10.1038/s41928-019-0272-8',
         href: 'https://doi.org/10.1038/s41928-019-0272-8',
       },

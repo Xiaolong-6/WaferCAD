@@ -461,6 +461,22 @@
           ]
         }
       }
+    },
+    {
+      "id": "tcmos-ternary-inverter-130nm",
+      "projectPath": "./examples/tcmos-ternary-inverter-130nm.wafercad",
+      "sourceURL": "https://doi.org/10.1038/s41928-019-0272-8",
+      "paperPanel": "Fig. 1a–b T-CMOS inverter layout and source-vector-derived local structural reconstruction",
+      "classification": "derived",
+      "claim": "1x1 structural Mask/Recipe reconstruction; no calibrated original paper figure overlay, measured 130nm gate, electrical transfer curve or foundry route accepted",
+      "acceptance": {
+        "status": "open-paper-match",
+        "calibratedScale": false,
+        "quantitativeOverlay": false
+      },
+      "browserEvidenceURL": null,
+      "evidenceType": "figure cut still missing: independent calibrated paper-to-model overlay; real Chromium geometry screenshots do not establish paper match",
+      "captureEvidence": null
     }
   ]
 }

@@ -14,7 +14,7 @@ const path = resolve(dir, 'tcmos-inverter-4x4-ROUTED-PHYSICAL-PROTOTYPE.wafercad
 await loadGeometryKernel();
 const file = await readProjectFile(new Blob([await readFile(path)]));
 assert.equal(file.model.kernel, 'vector-2.5d-v1');
-assert.equal(file.layout.elements.length, 3963);
+assert.equal(file.layout.elements.length, 4027);
 const browser = await launchBrowser();
 const { page, context } = await newUiPage(browser, {
   viewport: { width: 1440, height: 950 },
@@ -28,7 +28,7 @@ const report = {
   physicalMaterialModel: true,
   routedRecipeReplayValidated: false,
   sourceMasksUntouched: 3712,
-  supplementaryMasks: 251,
+  supplementaryMasks: 315,
   expectedIndependentNetworks: 19,
 };
 page.on('pageerror', (error) => errors.push(error.message));
@@ -53,7 +53,7 @@ try {
   const loaded = await snapshot();
   assert.equal(loaded.model.kernel, 'vector-2.5d-v1');
   assert.ok(!loaded.model.array);
-  assert.equal(loaded.layout.elements.length, 3963);
+  assert.equal(loaded.layout.elements.length, 4027);
   assert.ok(loaded.model.layers.some((l) => l.name === 'METAL4 Al (illustrative)'));
   assert.ok(loaded.model.layers.some((l) => l.name === 'VIA34 W (illustrative)'));
   assert.ok(loaded.model.layers.some((l) => l.name === 'ILD4 SiO2 (illustrative)'));
@@ -152,7 +152,7 @@ try {
   }
   // The six added routing layers contain only Manhattan rectangles.
   // Check EVERY exported rectangle's coordinates, not merely a passing
-  // 14-layer/3963-polygon count. Existing source-SVG 8 layers are protected
+  // 14-layer/4027-polygon count. Existing source-SVG 8 layers are protected
   // by the separate exact-source scientific/Recipe tests.
   const supplementalLayers = new Set([21, 22, 23, 24, 25, 26]);
   const rectangularSignature = (element) => {
@@ -181,7 +181,7 @@ try {
     .filter((element) => supplementalLayers.has(element.layer))
     .map(rectangularSignature)
     .sort();
-  assert.equal(expectedRouting.length, 251);
+  assert.equal(expectedRouting.length, 315);
   const menu = page.locator('[data-action="mask-export-menu"]');
   if (!(await menu.isVisible()))
     await page.getByRole('button', { name: 'Mask more tools' }).click();
@@ -206,7 +206,7 @@ try {
       counts[key] = (counts[key] || 0) + 1;
     }
     assert.deepEqual(counts, expectedCounts, format + ': lost or duplicated routing polygons');
-    assert.equal(elements.length, 3963);
+    assert.equal(elements.length, 4027);
     assert.equal(Object.keys(counts).length, 14);
     const actualRouting = elements
       .filter((element) => supplementalLayers.has(element.layer))
@@ -217,7 +217,7 @@ try {
       expectedRouting,
       format + ': changed one or more supplemental Via/M2/M3/M4 mask rectangles',
     );
-    report.exports.push({ format, bytes: bytes.length, layers: 14, polygons: 3963 });
+    report.exports.push({ format, bytes: bytes.length, layers: 14, polygons: 4027 });
   }
   // Save -> destructive name mutation -> actual Recovery Restore. Merely
   // listing a checkpoint does NOT constitute a recovery acceptance.
