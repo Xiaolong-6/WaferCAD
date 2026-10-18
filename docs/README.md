@@ -51,9 +51,9 @@ The [CI architecture audit](archive/CI_ARCHITECTURE_AUDIT_2026-10-12.md) tracks 
 - [Both-face bundled-example consolidation](examples/EXAMPLE_BOTH_FACE_CONSOLIDATION_2026-10-13.md) — Photodetector, PERC and Tandem process changes, modeling assumptions and regeneration evidence.
 - [Bundled-example literature fidelity audit (2026-10-14)](examples/EXAMPLE_LITERATURE_FIDELITY_2026-10-14.md) — eight literature families, source-to-Recipe/Mask material probes, microdisk process correction and remaining figure-alignment gates.
 - [Photodetector reconstruction (2026-10-08)](examples/PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md) — historical paper-derived process evidence; later Both-face consolidation supersedes applicable front/back steps.
-- [Lift-off v1 handoff](science/LIFTOFF_V1_2026-10-09.md) — geometric support semantics, current CI status and acceptance.
+- [Lift-off v1 implementation record](science/LIFTOFF_V1_2026-10-09.md) — ideal geometry, original 2026-10-09 checks and remaining model limits; PR #167 has merged.
 - [TiO2 metalens reconstruction](examples/TIO2_METALENS_RECONSTRUCTION_2026-10-09.md) — paper-derived process, four-cell Recipe and the 4,725-site full-array Welcome project with matching Mask and compiled History.
-- [Geometry/process roadmap](science/PROCESS_GEOMETRY_ROADMAP_2026-10-09.md) — seven proposed capabilities, priorities and scientific acceptance boundaries.
+- [Geometry/process roadmap](science/PROCESS_GEOMETRY_ROADMAP_2026-10-09.md) — seven planning scopes with current production-versus-experimental boundaries.
 - [Process Geometry Kernel v2](science/PROCESS_GEOMETRY_KERNEL_V2.md) — derived topology and material ownership.
 - [Morphology](science/ROUGHNESS_MORPHOLOGY.md) — deterministic visual relief and physical/export boundaries.
 - [Implant](science/IMPLANT.md) — structural annotation, clipping and shared gradient semantics.
@@ -86,7 +86,7 @@ Dated implementation plans and handoffs preserve the status of their original re
 - [UI v2 contextual tooltip architecture](ui-v2/TOOLTIP_ARCHITECTURE_2026-10-13.md) — delegated plain-text hover, focus and lifecycle contract for the production UI.
 - [UI v2 Z Break editor integration — 2026-10-13](ui-v2/Z_BREAK_EDITOR_2026-10-13.md) — precision-first editor, physical-Z ownership, keyboard controls and contextual-tooltip migration.
 - [UI v2 architecture health](ui-v2/MAIN_ARCHITECTURE_HEALTH_2026-10-11.md) — implementation risk and ownership evidence; review against current main before applying recommendations.
-- [PR 250 renderer audit (2026-10-15)](renderer/PR250_RENDERER_AUDIT_2026-10-15.md) — rough boundary closure, ROI ownership, depth visibility, runtime evidence and remaining acceptance gates.
+- [PR 250 renderer audit (2026-10-15)](renderer/PR250_RENDERER_AUDIT_2026-10-15.md) — merged implementation, dated visual evidence and independent GPU/Worker acceptance limits.
 - [Renderer transparency roadmap](renderer/RENDERER_TRANSPARENCY_ROADMAP.md) — shipped phases, deferred work, and separate hardware validation.
 - [Renderer PNG capture and resource retirement](renderer/RENDERER_LIFECYCLE_CORRECTNESS_2026-10-12.md) — transaction-safe export, nested owned-resource cleanup and test boundaries.
 - [Renderer foreground-first P0](renderer/FOREGROUND_RENDERING_P0_2026-10-12.md) — scene continuity during variant rebuilds, validation gaps and progressive-rendering plan.

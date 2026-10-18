@@ -1,6 +1,13 @@
 # TiO₂ metalens paper-derived reconstruction — experimental
 
-## 2026-10-10 current merge-gate result — true full-array Run All
+> **Status checked 2026-10-18:** [PR #173](https://github.com/Xiaolong-6/WaferCAD/pull/173)
+> has merged. A full 80 × 80 / 4,725-site interactive Recipe Run All passed
+> at the exact 2026-10-10 revision described below. Stored template-compiled
+> History and that independent 9/9 replay are different evidence types.
+> Original author mask placement and calibrated achromatic optical performance
+> remain unverified; this document does not claim a paper-figure match.
+
+## 2026-10-10 verified full-array Run All at the recorded revision
 
 > This dated follow-up supersedes the earlier **unverified full-array Run All**
 > status recorded in the sections below. The earlier paragraphs remain as
@@ -62,7 +69,9 @@ Primary source: Wang et al., _Nature Communications_ **12**, 5560 (2021), DOI [1
 1. **Four-unit local 5 × 5 µm process project** with executable Recipe, Mask layer, material History and checkpoints from cleaning to final pillars. Its four XY sizes and positions are explicitly _illustrative_. The glass thickness shown (2 µm) is a visualization surrogate.
 2. **30 µm / 4,725-site deterministic full-aperture GDS** and CSV: illustrates geometry, source-compatible families, hierarchical topology/annular voids and Mask IO performance. The positions use a golden-angle distribution and **are not the authors' optimized phase/group-delay assignment**. Optical achromatism and focusing efficiency cannot be inferred from this artwork.
 
-The golden-angle full-aperture GDS remains a separate Mask artifact. The small four-unit Process project can be **Run all** from Base. Welcome now opens the existing **4,725-site GRID array** with its own matching Mask; this is a different illustrative layout. Its stored process stages are assembled from Kernel-replayed templates. Full-array interactive Run all has not been certified.
+The golden-angle full-aperture GDS remains a separate Mask artifact. The small four-unit Process project can be **Run all** from Base. Welcome now opens the existing **4,725-site GRID array** with its own matching Mask; this is a different illustrative layout. Its stored process stages are assembled from Kernel-replayed templates. At this earlier checkpoint, full-array interactive Run All had not yet been
+certified; the later 2026-10-10 result at the beginning of this record supersedes
+that status.
 
 ## Build
 
@@ -122,9 +131,10 @@ The reconstruction workflow verifies deterministic regeneration of the committed
 full-array file, independent four-unit Run all, the actual Welcome opening and
 full-array project import/3D/Section. See the follow-up handoff for executed results.
 
-## Merge review: full-array Recipe Base gap (2026-10-10)
+## Earlier merge review: full-array Recipe Base gap (2026-10-10)
 
-PR #173 remains draft. The 4,725-site stored array is kernel-compiled from 49
+At this earlier review PR #173 was Draft (it has since merged). The 4,725-site
+stored array was kernel-compiled from 49
 shared templates; its 30 × 30 µm `processRecipe.base` has no `array` descriptor.
 The interactive Recipe `new-base` path therefore would reconstruct one plain
 rectangular substrate, not the 6,400-cell canonical array. The existing

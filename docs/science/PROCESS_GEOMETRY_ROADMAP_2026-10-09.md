@@ -1,6 +1,7 @@
 # WaferCAD geometry/process capabilities roadmap
 
-> Planning contract · 2026-10-09 · starts from `main` · implementation milestones are **not** claims of shipped features.
+> Planning contract · 2026-10-09 baseline. Status reviewed on 2026-10-18;
+> implementation milestones below are **not** claims of shipped features.
 
 ## Product boundary
 
@@ -19,6 +20,28 @@ Preserve **vector-2.5d-v1**, canonical material ownership, units in µm, native 
 | P2   | **Local true Rough/Pyramid geometry**       | Opt-in ROI-local canonical fine geometry, boundary adapters and a deterministic resolution budget                                                                                                                | Current Rough/Pyramid remains render-only unless explicitly converted; do not voxelize the whole wafer; shared buried profiles and later conformal/etch consistency required                                                                                          |
 | P2   | **Material transformation / oxidation**     | Mass/volume-constrained geometric consumption/replacement (e.g. Si -> SiO2), including layer provenance                                                                                                          | Temperature/time/ambient do not predict reaction kinetics; validated volume ratio, material-host ownership, masks and front/back                                                                                                                                      |
 | P2   | **Simulation-ready export**                 | Physical geometry with explicit material domains/units, watertight interfaces and documented target format                                                                                                       | GLB imagery alone is not simulation-ready; roundtrip mesh/material verification before claiming FEM/FDTD interoperability                                                                                                                                             |
+
+## Current scope versus proposed capabilities (reviewed 2026-10-18)
+
+The seven ranked items above are planning scopes, not a release checklist. The
+existing Process/Recipe interpreter, History and display controls are implemented
+within their documented limits. Typed procedural dimensions, bounded parameter
+sweeps and generalized geometry diagnostics must not be labeled complete merely
+because the current parser and diagnostic scripts exist.
+
+True production etch-profile taper, arbitrary step coverage/gap fill and
+mass-conserving oxidation require separate Kernel and replay acceptance. Rough and
+pyramid appearance currently does not constitute physical microgeometry. The
+[experimental facet model](PHYSICAL_FACET_MODELING_2026-10-16.md) and
+[isotropic release oracle](ISOTROPIC_RELEASE_ORACLE_2026-10-16.md) are bounded
+research owners, not enabled general-purpose production Process operations.
+GLB rendering/export also does not establish watertight, unit-verified
+FEM/FDTD interoperability.
+
+Before advancing an item to **shipped**, name the production entrypoint,
+scientific fixture, real Section/3D correspondence and any necessary
+History/Recovery/export regression at one exact revision. Otherwise classify it
+as a proposal or experimental research, with the unverified gate visible.
 
 ## Delivery plan
 

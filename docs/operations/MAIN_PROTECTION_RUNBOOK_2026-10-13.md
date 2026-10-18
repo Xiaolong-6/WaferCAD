@@ -1,8 +1,8 @@
 # Main branch protection — administrator runbook (2026-10-13)
 
-## Current verification
+## Verification observed on 2026-10-13
 
-Audited `main@c8aa303079d6a3ea3d67f0d34cc65275c74a0215`. GitHub public repository Rulesets API returned `[]`. The Branch Protection endpoint returned `403 Resource not accessible by integration`; therefore the agent **cannot confirm nor change** classic branch protection. Repository management requires an authorized Admin session. Workflow YAML cannot enforce server-side merge restrictions.
+At that date, audited `main@c8aa303079d6a3ea3d67f0d34cc65275c74a0215`. GitHub public repository Rulesets API returned `[]`. The Branch Protection endpoint returned `403 Resource not accessible by integration`; therefore the agent **cannot confirm nor change** classic branch protection. Repository management requires an authorized Admin session. Workflow YAML cannot enforce server-side merge restrictions.
 
 ## Administrator action
 
@@ -16,10 +16,14 @@ In `Xiaolong-6/WaferCAD` → Settings → Rules → Rulesets, add a branch rules
 
 ## Release and preview checks
 
-`.github/workflows/pages.yml` currently coordinates same-commit release Quality, Browser, real UI v2 and Pages deployment. Confirm in GitHub Actions on a non-publishing branch that the successful release artifact corresponds to the exact main SHA. Preview publishing has an independent Pages write path; review environment permissions/concurrency before treating preview as production-approved.
+At the recorded checkpoint, `.github/workflows/pages.yml` coordinated same-commit
+release Quality, Browser, real UI v2 and Pages deployment. Recheck the current
+workflow and repository settings before using this as release authorization. Confirm in GitHub Actions on a non-publishing branch that the successful release artifact corresponds to the exact main SHA. Preview publishing has an independent Pages write path; review environment permissions/concurrency before treating preview as production-approved.
 
 ## Evidence to record
 
 Ruleset identifier, effective branch targeting, required check context, authorized bypass actors, rejected direct-push/failed-PR checks, approved green-PR merge, and timestamp. Do not mark protection complete based only on this Markdown runbook or GitHub's API listing.
 
-**State:** administrator configuration outstanding; no repository settings changed by this branch.
+**Observed state (2026-10-13):** administrator configuration was not verified;
+no repository settings changed during that check. Effective current protection
+remains unknown until an authorized administrator verifies the live rules.

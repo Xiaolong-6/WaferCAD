@@ -98,6 +98,16 @@ deployment verdict remain mandatory. A Draft skipped check means
 
 ## Narrow PR path routing
 
+**GitHub path filters apply to the cumulative base-to-HEAD pull-request
+diff**, not only to the latest documentation-only commit. If earlier commits
+in the same PR touched `scripts/v2/**`, workflows or application owners,
+later prose/formatting pushes can select the same UI/3D jobs again. The
+M3D conformal workflow also explicitly selects `docs/wiki/**`.
+Inspect the complete PR file diff and workflow `paths` filters before
+pushing; batch related documentation corrections and validate formatting
+and references locally first. Retain mandatory scientific/Recovery and
+final release gates; a skipped workflow is not an acceptance pass.
+
 Only production/source owners trigger heavyweight PR UI acceptance. A change to
 `site/tests/**` or the standalone screenshot collector does not start Stage C,
 Main/Mask, D1, Phase B or Example replay. The tests themselves still run under

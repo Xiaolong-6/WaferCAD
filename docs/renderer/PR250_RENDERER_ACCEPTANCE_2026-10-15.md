@@ -1,5 +1,10 @@
 # PR 250 renderer acceptance evidence — 2026-10-15
 
+> **Status checked 2026-10-18:** [PR #250](https://github.com/Xiaolong-6/WaferCAD/pull/250)
+> has merged. The measurements below apply to their cited source revisions.
+> Outstanding software-WebGL numerical precision, no-Worker and RTX 3060
+> acceptance cannot be inferred from the merge or from older screenshots.
+
 This is a local engineering acceptance record, not merge authorization. Human
 visual acceptance, required remote CI results, and explicit user Merge approval
 remain separate gates.
@@ -21,8 +26,9 @@ and Quality passed at that source revision.
 
 These statements apply to the observed ROI cut. Buried-cap interior watertightness,
 cold-refinement latency and complete release Quality remain separate checks.
-When syncing Main, retain #310 documentation relocation and forwarding checks.
-PR #250 stays Draft; merging to Main requires explicit approval.
+At this historical checkpoint, #310 documentation relocation was an integration
+concern. Current repository links must use canonical document paths directly,
+without forwarding stubs. PR #250 was then Draft; it has since merged.
 
 ## Reproduction and environment
 

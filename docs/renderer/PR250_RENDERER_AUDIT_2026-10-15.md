@@ -1,11 +1,17 @@
 # PR 250 renderer integration audit
 
+> **Status checked 2026-10-18:** [PR #250](https://github.com/Xiaolong-6/WaferCAD/pull/250)
+> is merged into Main. The branch snapshots, Draft instructions, test failures
+> and hardware observations below are revision-specific evidence. Merge status
+> does not independently establish RTX 3060, SwiftShader numeric precision,
+> Worker fallback or final hardware/visual acceptance.
+
 Repository: `Xiaolong-6/WaferCAD`. Branch:
 `fix/3d-rough-seams-transparent-outlines-20261015`. Baseline:
 `f76c8e02a2e9944dcea72ea1db3410727bb9a67d`.
 
-This audit records engineering evidence for the existing draft PR, not final
-visual approval or authorization to merge. No merge is authorized.
+This audit records engineering evidence collected while PR #250 was Draft.
+At that checkpoint it was not final visual approval or merge authorization.
 
 ## Evidence owners
 
@@ -68,8 +74,8 @@ limitation even when the targeted PR gate passes.
 ## Budget handoff and resume point
 
 The user requested a committed handoff and push before the remaining account
-budget is exhausted. Preserve the existing draft PR #250; do not merge or enable
-auto-merge. The remote head was refreshed and remains an ancestor of this branch.
+budget is exhausted. At that checkpoint the instruction was to preserve Draft PR #250 and not
+enable auto-merge. The remote head was refreshed and remains an ancestor of this branch.
 Push normally to `origin/fix/3d-rough-seams-transparent-outlines-20261015`.
 
 Production source is frozen at the source tree in `20b387a7`; later commits so far
@@ -156,7 +162,7 @@ and push. Do not interpret this stop as final renderer acceptance.
   Detail viewport. A simple layer substitution was not verified; no assertion
   was removed and no untested helper fix was committed.
 - Pushed-commit CI was queued at last observation. No all-green CI claim is
-  made. PR #250 stays Draft, and user merge authorization remains mandatory.
+  made. PR #250 was still Draft at that checkpoint; merge authorization was pending.
 
 Resume by resolving the SwiftShader precision and Worker fallback failures,
 running bounded full Quality plus CI, and reviewing the committed acceptance
