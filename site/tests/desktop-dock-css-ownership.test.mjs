@@ -15,7 +15,7 @@ function enclosingMedia(css, position) {
     if (css[i] === '{') {
       const prefix = css.slice(Math.max(0, i - 100), i);
       const query = prefix.match(/@media\s*\((?:min|max)-width:\s*\d+px\)\s*$/);
-      nesting.push(query?.[0] || null);
+      nesting.push(query?.[0]?.trim() || null);
     } else if (css[i] === '}') nesting.pop();
   }
   return nesting.filter(Boolean);
