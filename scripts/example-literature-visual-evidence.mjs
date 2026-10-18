@@ -179,6 +179,103 @@ const CASES = [
       },
     ],
   },
+  {
+    id: 'm3d-selfpowered-heterogeneous-ic',
+    file: 'm3d-selfpowered-full-replay',
+    source: 'Ghosh M3D reconstructed power-via interfaces; publication panel not yet calibrated',
+    cuts: [
+      {
+        id: 'power-via-both-tiers',
+        a: [12, -5.3],
+        b: [20, -5.3],
+        probes: [
+          {
+            id: 'first-power-via',
+            xy: [16, -5.3],
+            present: ['M3D Ti power via 120nm', 'M3D via2 Ti 2nm', 'M3D via2 Au 30nm'],
+          },
+          {
+            id: 'second-power-via',
+            xy: [16, 5.3],
+            present: ['M3D Ti power via 120nm', 'M3D via2 Ni 28nm'],
+          },
+        ],
+      },
+      {
+        id: 'data-via-transfer',
+        a: [12, 0],
+        b: [20, 0],
+        probes: [
+          {
+            id: 'data-via-contact',
+            xy: [16, 0],
+            present: ['M3D MoS2 bridge Au 10nm', 'M3D via2 Ti 2nm', 'M3D via2 Au 30nm'],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'magic-1000-mos2-beol',
+    file: 'magic-1000-mos2-beol',
+    source: 'Fan MAGIC-1000 Fig. 1 local BEOL/Gate proxy; 40×24 µm, not author GDS',
+    cuts: [
+      {
+        id: 'beol-four-metal-levels',
+        a: [-10, -4],
+        b: [10, -4],
+        probes: [
+          {
+            id: 'left-four-levels',
+            xy: [-7, -4],
+            present: ['M4 Al conductor', 'V34 W fill', 'V23 W fill', 'V12 W fill'],
+          },
+          {
+            id: 'right-four-levels',
+            xy: [7, 4],
+            present: ['M1 Al conductor', 'Via (to W gate) W fill'],
+          },
+        ],
+      },
+      {
+        id: 'mos2-gate-and-alox',
+        a: [-10, 4],
+        b: [10, 4],
+        probes: [
+          {
+            id: 'enhancement-gate',
+            xy: [7, 4],
+            present: ['W bottom gate 400nm', 'ALD HfO2 10nm', 'Monolayer MoS2'],
+            absent: ['D-mode AlOx coating'],
+          },
+          {
+            id: 'depletion-surrogate',
+            xy: [-7, 4],
+            present: ['D-mode AlOx coating'],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'tio2-metalens-four-unit',
+    file: 'tio2-metalens-four-unit-process',
+    source:
+      'Wang TiO2 metalens 2021 Figs. 2–3 illustrative four-meta-atom geometry; not optimized GDS',
+    cuts: [
+      {
+        id: 'two-nanopillar-diameters',
+        a: [-2.3, 1.1],
+        b: [2.3, 1.1],
+        probes: [
+          { id: 'negative-x-annular-pillar', xy: [-1.2, 1.1], present: ['TiO2', 'ITO'] },
+          { id: 'positive-x-pillar', xy: [1.1, 1.1], present: ['TiO2', 'ITO'] },
+          { id: 'substrate-control', xy: [0, 0], present: ['ITO'], absent: ['TiO2'] },
+        ],
+      },
+      { id: 'opposite-nanopillar-row', a: [-2.3, -1.1], b: [2.3, -1.1] },
+    ],
+  },
   // Branch evidence always selects a real History Variant in the browser. The
   // four models are never synthesized or replaced outside the History UI.
   {
@@ -338,11 +435,28 @@ function regionPhysicalPolygons(project, region) {
   if (!project.sharedPolygonTemplates || typeof geometry[0]?.[0] !== 'number') {
     return geometry;
   }
-  const quantum = project.storage?.lengthQuantumUm;
+  // Older lossless shared-assets-v3 examples omit the explicit quantum.
+  // The canonical project reader defines a 0.0001 µm default for this
+  // encoding; never infer arbitrary XY scales for unknown formats.
+  const encoding = project.storage?.encoding;
+  const quantum =
+    project.storage?.lengthQuantumUm ??
+    (encoding === 'shared-assets-v3' && project.storage?.lossless === true ? 0.0001 : null);
   assert.ok(Number.isFinite(quantum) && quantum > 0, 'Missing shared geometry quantum');
   return geometry.map(([templateId, originX, originY]) => {
     const template = project.sharedPolygonTemplates[templateId];
-    assert.ok(template?.rings?.length, 'Unresolved geometry template ' + templateId);
+    assert.ok(template, 'Unresolved geometry template ' + templateId);
+    if (template.raw) {
+      assert.ok(
+        Array.isArray(template.raw) && originX === undefined && originY === undefined,
+        'Invalid lossless raw polygon placement',
+      );
+      return template.raw;
+    }
+    assert.ok(
+      template.rings?.length && Number.isSafeInteger(originX) && Number.isSafeInteger(originY),
+      'Invalid packed polygon placement',
+    );
     return template.rings.map((deltas) => {
       let x = originX;
       let y = originY;
@@ -453,8 +567,13 @@ async function selectHistoryVariant(page, branchId) {
 }
 
 const requested = process.argv.find((arg) => arg.startsWith('--id='))?.slice(5);
-const selected = requested ? CASES.filter((item) => item.id === requested) : CASES;
-assert.ok(selected.length > 0, 'No matching literature visual evidence case');
+const ids = requested?.split(',').filter(Boolean) || [];
+assert.equal(new Set(ids).size, ids.length, 'Repeated literature figure case identifier');
+const selected = ids.length ? ids.map((id) => CASES.find((item) => item.id === id)) : CASES;
+assert.ok(
+  selected.length > 0 && selected.every(Boolean),
+  'No matching literature visual evidence case',
+);
 
 const output = 'test-results/literature-figure-cuts';
 await mkdir(output, { recursive: true });
@@ -495,6 +614,12 @@ try {
         assert.equal(source.model.electricalRegions.length, item.expected.electrical);
       }
       const examples = [];
+      const largeSource = item.id === 'm3d-selfpowered-heterogeneous-ic';
+      if (largeSource) {
+        // Expanded mixed raw/delta polygons are significantly heavier than
+        // the scalar examples, but still require an explicit bounded import.
+        page.setDefaultTimeout(90000);
+      }
       for (const cut of item.cuts) {
         // Saved presentation preferences may open a Detail ROI overlay that
         // obscures the scientific cut. Keep the underlying geometry intact.
@@ -514,7 +639,21 @@ try {
           section: { a: cut.a, b: cut.b },
         };
         const probes = evaluateProbes(source, cut.probes);
-        await loadProject(page, project, item.id + '-' + cut.id);
+        const loadStarted = Date.now();
+        try {
+          await loadProject(page, project, item.id + '-' + cut.id);
+        } catch (error) {
+          const status = await page
+            .locator('#statusText')
+            .textContent()
+            .catch(() => 'unavailable');
+          const diagnostic = join(output, item.id + '-' + cut.id + '-import-failure.png');
+          await page.screenshot({ path: diagnostic }).catch(() => {});
+          throw new Error(
+            item.id + ': project import incomplete; status=' + status + '; ' + error.message,
+          );
+        }
+        const loadMs = Date.now() - loadStarted;
         // Section is a separate dock, not a primary view tab (Main/Mask/3D).
         const sectionPanel = page.locator('#sectionPanel');
         await sectionPanel.waitFor({ state: 'visible' });
@@ -578,6 +717,7 @@ try {
           a: cut.a,
           b: cut.b,
           sectionInk,
+          loadMs,
           zFocus: cut.zFocus || null,
           physicalProbes: probes,
           detailEvidence,

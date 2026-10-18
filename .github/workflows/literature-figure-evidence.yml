@@ -6,6 +6,16 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'scripts/example-literature-visual-evidence.mjs'
+      - 'scripts/v2/capture-literature-native-v2.mjs'
+      - 'site/tests/native-literature-cases.test.mjs'
+      - 'scripts/v2/check-m3d-second-power-via-section.mjs'
+      - 'site/tests/literature-provenance-matrix.test.mjs'
+      - 'site/isotropic-release-*.js'
+      - 'site/model.js'
+      - 'site/tests/isotropic-release-*.test.mjs'
+      - 'docs/science/ISOTROPIC_RELEASE_ORACLE_2026-10-16.md'
+      - 'docs/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md'
+      - 'docs/evidence/LITERATURE_FIGURE_MATRIX_2026-10-16.json'
       - 'site/examples/photodetector-literature-examples.wafercad'
       - '.github/workflows/literature-figure-evidence.yml'
   workflow_dispatch:
@@ -14,8 +24,71 @@ permissions:
   contents: read
 
 jobs:
+  metadata:
+    name: Paper provenance scientific contract and exact formatting
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify paper provenance and physical exposed-seed release scientific contracts
+        run: >-
+          node --test
+          site/tests/isotropic-release-oracle.test.mjs
+          site/tests/isotropic-release.test.mjs
+          site/tests/isotropic-release-optin.test.mjs
+          site/tests/isotropic-release-microdisk-source.test.mjs
+          site/tests/isotropic-release-topology.test.mjs
+          site/tests/literature-provenance-matrix.test.mjs
+          site/tests/native-literature-cases.test.mjs
+      - name: Show precise formatting differences
+        shell: bash
+        run: |
+          set -euo pipefail
+          failure=0
+          for file in site/tests/isotropic-release-optin.test.mjs site/tests/isotropic-release-microdisk-source.test.mjs site/isotropic-release-topology.js site/tests/isotropic-release-topology.test.mjs site/tests/literature-provenance-matrix.test.mjs docs/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md scripts/v2/check-m3d-second-power-via-section.mjs scripts/v2/capture-literature-native-v2.mjs site/tests/native-literature-cases.test.mjs; do
+            diff -u "$file" <(npx prettier "$file") || failure=1
+          done
+          exit "$failure"
+  native-m3d:
+    name: Targeted native v2 dual power-via Section and topology
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+      WAFERCAD_V2_BASE: http://127.0.0.1:4173
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Launch native v2
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory site > /tmp/wafercad-m3d-v2.log 2>&1 &
+          for i in {1..30}; do
+            curl --fail --silent http://127.0.0.1:4173/ > /dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/wafercad-m3d-v2.log
+          exit 1
+      - name: Capture both M3D power-via A-B sections from physical v2 topology
+        run: node scripts/v2/check-m3d-second-power-via-section.mjs
+      - name: Upload native M3D Section and probe manifest
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: native-v2-m3d-power-via-section
+          path: test-results/literature-figure-cuts/native-v2-m3d/
+          if-no-files-found: warn
   evidence:
-    name: Real browser Section and 3D figure cuts
+    name: Native v2 eight-family Section and selected 3D figure cuts
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
@@ -29,7 +102,10 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npx playwright install --with-deps chromium
-      - name: Inspect published geometric cut locations using Chromium
+      # Legacy app-legacy.html has been removed from Main. Archive its old
+      # snapshot artifacts; acceptance now boots real v2 Workstations with
+      # published projects, canonical A-B geometry and actual browser canvases.
+      - name: Inspect published geometric cut locations using native v2 Chromium
         run: |
           python3 -m http.server 4173 --bind 127.0.0.1 --directory site > /tmp/wafercad-figure-evidence.log 2>&1 &
           SERVER_PID=$!
@@ -38,11 +114,11 @@ jobs:
             curl --fail --silent http://127.0.0.1:4173/ > /dev/null && break
             sleep 1
           done
-          node scripts/example-literature-visual-evidence.mjs
+          node scripts/v2/capture-literature-native-v2.mjs
       - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: literature-section-mask-3d-paper-cut-evidence
-          path: test-results/literature-figure-cuts/
+          path: test-results/literature-figure-cuts/native-v2-eight-family/
           if-no-files-found: warn
           retention-days: 14
