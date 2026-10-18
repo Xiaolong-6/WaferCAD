@@ -6,10 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { loadGeometryKernel } from '../../../scripts/process-benchmarks.mjs';
 const input = new URL('../../examples/suspended-silica-microdisks.wafercad', import.meta.url);
-const output = new URL(
-  './suspended-silica-microdisks-adaptive.wafercad',
-  import.meta.url,
-);
+const output = new URL('./suspended-silica-microdisks-adaptive.wafercad', import.meta.url);
 const branchId = 'microdisk-adaptive-72-band';
 const nodeId = 'process-microdisk-adaptive-08';
 const snapId = 'snapshot-microdisk-adaptive-08';

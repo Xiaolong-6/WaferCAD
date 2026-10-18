@@ -18,7 +18,9 @@ const parse = async (filename) => {
     filename === 'suspended-silica-microdisks.wafercad'
       ? '../../examples/suspended-silica-microdisks.wafercad'
       : './suspended-silica-microdisks-adaptive.wafercad';
-  return readProjectFile(new Blob([await readFile(new URL(path, import.meta.url))], { type: 'application/json' }));
+  return readProjectFile(
+    new Blob([await readFile(new URL(path, import.meta.url))], { type: 'application/json' }),
+  );
 };
 const materialVolume = (model, id) =>
   model.regions.reduce(
