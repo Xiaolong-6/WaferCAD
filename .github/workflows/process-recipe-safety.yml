@@ -27,9 +27,9 @@ permissions:
 
 jobs:
   recipe:
-    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft || github.event.pull_request.number == 290 }}
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with:

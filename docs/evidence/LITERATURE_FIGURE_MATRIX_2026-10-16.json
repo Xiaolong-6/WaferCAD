@@ -1,0 +1,466 @@
+{
+  "schema": "wafercad-literature-figure-provenance-v1",
+  "issue": 241,
+  "generatedForMain": "41ad3d3715c5b1113ff98620b3b48bbdaa41d099",
+  "acceptanceLegend": {
+    "open-paper-match": "Canonical/surrogate model may be validated, but paper-figure visual fidelity is not certified",
+    "accepted-paper-match": "Requires original scaled image, matching device/cut and quantitative evidence",
+    "blocked-source": "Original panel/author geometry or calibration absent"
+  },
+  "entries": [
+    {
+      "id": "photodetector-literature",
+      "projectPath": "./examples/photodetector-literature-examples.wafercad",
+      "sourceURL": "https://doi.org/10.1021/acsphotonics.2c01984",
+      "paperPanel": "Fig. 1a Black-Si FINAL/QA; Ge A/B requires separate thesis Fig. 15a/b",
+      "classification": "derived",
+      "claim": "50 nm active-area Al2O3 preserved in FINAL; destructive QA removes it",
+      "acceptance": {
+        "status": "open-paper-match",
+        "calibratedScale": false,
+        "quantitativeOverlay": false
+      },
+      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38753459685",
+      "evidenceType": "actual Chromium capture and source-model material-owner probes; not source-SEM overlay",
+      "secondarySources": [
+        {
+          "url": "https://urn.fi/URN:ISBN:978-952-64-2900-7",
+          "panel": "Ge A/B: 2026 thesis Fig. 15a/b"
+        }
+      ],
+      "captureEvidence": {
+        "kind": "actual-chromium-project-capture",
+        "runURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38753459685",
+        "artifactURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38753459685/artifacts/11982606386",
+        "manifestMember": "figure-cut-manifest.json",
+        "capturedMembers": [
+          "photodetector-black-si-final-active-ald-protected-section.png",
+          "photodetector-black-si-qa-active-ald-overetched-section.png",
+          "photodetector-ge-a-oxide-free-inactive-control-section.png",
+          "photodetector-ge-b-inactive-oxide-contact-section.png"
+        ],
+        "originalPaperOverlay": false
+      }
+    },
+    {
+      "id": "perc-point-contact-solar-cell",
+      "projectPath": "./examples/perc-solar-cells-point-contacts.wafercad",
+      "sourceURL": "https://doi.org/10.1063/1.101596",
+      "paperPanel": "Fig. 1 contacts schematic",
+      "classification": "assumed",
+      "claim": "100 rear openings on 2 mm reconstruction pitch; author GDS not available",
+      "acceptance": {
+        "status": "open-paper-match",
+        "calibratedScale": false,
+        "quantitativeOverlay": false
+      },
+      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38753459685",
+      "evidenceType": "actual Chromium capture and source-model material-owner probes; not source-SEM overlay",
+      "captureEvidence": {
+        "kind": "actual-chromium-project-capture",
+        "runURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38753459685",
+        "artifactURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38753459685/artifacts/11982606386",
+        "manifestMember": "figure-cut-manifest.json",
+        "capturedMembers": [
+          "perc-point-contact-solar-cell-rear-point-contact-section.png",
+          "perc-point-contact-solar-cell-rear-oxide-control-section.png"
+        ],
+        "originalPaperOverlay": false
+      }
+    },
+    {
+      "id": "fully-textured-perovskite-silicon-tandem",
+      "projectPath": "./examples/fully-textured-perovskite-silicon-tandem.wafercad",
+      "sourceURL": "https://doi.org/10.1038/s41563-018-0115-4",
+      "paperPanel": "Fig. 1; Supplementary Figs. S2d-i, S3a-e",
+      "classification": "display-only",
+      "claim": "3D pyramid and nominal conformal appearance; canonical Si remains planar",
+      "acceptance": {
+        "status": "open-paper-match",
+        "calibratedScale": false,
+        "quantitativeOverlay": false
+      },
+      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38753459685",
+      "evidenceType": "actual Chromium capture and source-model material-owner probes; not source-SEM overlay",
+      "captureEvidence": {
+        "kind": "actual-chromium-project-capture",
+        "runURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38753459685",
+        "artifactURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38753459685/artifacts/11982606386",
+        "manifestMember": "figure-cut-manifest.json",
+        "capturedMembers": [
+          "fully-textured-perovskite-silicon-tandem-active-between-grid-section.png",
+          "fully-textured-perovskite-silicon-tandem-across-ag-grid-finger-section.png",
+          "fully-textured-perovskite-silicon-tandem-ag-finger-center-magnified-ridge-detail.png",
+          "fully-textured-perovskite-silicon-tandem-ag-finger-center-magnified-valley-detail.png"
+        ],
+        "originalPaperOverlay": false
+      }
+    },
+    {
+      "id": "suspended-silica-microdisk",
+      "projectPath": "./examples/suspended-silica-microdisks.wafercad",
+      "sourceURL": "https://doi.org/10.1038/s41467-018-08038-4",
+      "paperPanel": "Fig. 2a (SEM of similar device); Methods fabrication",
+      "classification": "assumed",
+      "claim": "36 um eight-slice isotropic release radius not paper-measured",
+      "acceptance": {
+        "status": "open-paper-match",
+        "calibratedScale": false,
+        "quantitativeOverlay": false
+      },
+      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38753459685",
+      "evidenceType": "actual Chromium capture and source-model material-owner probes; not source-SEM overlay",
+      "captureEvidence": {
+        "kind": "actual-chromium-project-capture",
+        "runURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38753459685",
+        "artifactURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38753459685/artifacts/11982606386",
+        "manifestMember": "figure-cut-manifest.json",
+        "capturedMembers": [
+          "suspended-silica-microdisk-disk-diameter-section.png"
+        ],
+        "originalPaperOverlay": false
+      }
+    },
+    {
+      "id": "m3d-selfpowered-heterogeneous-ic",
+      "projectPath": "./examples/m3d-selfpowered-full-replay.wafercad",
+      "sourceURL": "https://doi.org/10.1038/s41928-026-01624-1",
+      "paperPanel": "Fig. 1 overall M3D architecture; Extended Data Fig. 1 fabrication flow; exact power-via micrograph panel not established",
+      "classification": "unreported",
+      "claim": "reconstructed power vias physically contact; inferred routing lacks original author mask",
+      "acceptance": {
+        "status": "open-paper-match",
+        "calibratedScale": false,
+        "quantitativeOverlay": false
+      },
+      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38900945041",
+      "evidenceType": "actual Chromium canonical-section captures and saved material probes; original publication scale/SEM overlay remains unverified",
+      "captureEvidence": {
+        "kind": "actual-chromium-project-capture",
+        "runURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38900945041",
+        "artifactURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38900945041/artifacts/12045534988",
+        "manifestMember": "figure-cut-manifest.json",
+        "capturedMembers": [
+          "m3d-selfpowered-heterogeneous-ic-power-via-both-tiers-section.png",
+          "m3d-selfpowered-heterogeneous-ic-data-via-transfer-section.png"
+        ],
+        "originalPaperOverlay": false,
+        "probePlacementAudit": {
+          "physicalProbes": 3,
+          "onSectionProbes": 2,
+          "offSectionControlProbes": [
+            {
+              "cutId": "power-via-both-tiers",
+              "probeId": "second-power-via",
+              "a": [
+                12,
+                -5.3
+              ],
+              "b": [
+                20,
+                -5.3
+              ],
+              "xy": [
+                16,
+                5.3
+              ],
+              "offSectionDistanceUm": 10.6
+            }
+          ],
+          "note": "Off-section XY controls verify saved material stacks but are NOT visual evidence of the displayed A-B section",
+          "onSectionControls": [
+            {
+              "cutId": "power-via-both-tiers",
+              "probeId": "first-power-via",
+              "a": [
+                12,
+                -5.3
+              ],
+              "b": [
+                20,
+                -5.3
+              ],
+              "xy": [
+                16,
+                -5.3
+              ]
+            },
+            {
+              "cutId": "data-via-transfer",
+              "probeId": "data-via-contact",
+              "a": [
+                12,
+                0
+              ],
+              "b": [
+                20,
+                0
+              ],
+              "xy": [
+                16,
+                0
+              ]
+            }
+          ]
+        },
+        "nativeV2SectionAudit": {
+          "kind": "actual-chromium-native-v2-physical-section",
+          "runURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38953627619",
+          "artifactURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38953627619/artifacts/12070530260",
+          "manifestMember": "manifest.json",
+          "originalPaperOverlay": false,
+          "paperMatchVerified": false,
+          "materialStacksIdentical": true,
+          "sectionPngIdentical": true,
+          "screenshotSha256": "4b2dfbfa32f4c66bd1064699f29a8ce8d9a3dec38940cc5ba2d8acf9c106d412",
+          "materialObservation": "Both points [16,-5.3] and [16,5.3] contain the same eight Z intervals, including Ti/Ni/Au; distinct via topology not established by these images.",
+          "cuts": [
+            {
+              "id": "first-power-via",
+              "a": [
+                12,
+                -5.3
+              ],
+              "b": [
+                20,
+                -5.3
+              ],
+              "probeXY": [
+                16,
+                -5.3
+              ],
+              "image": "first-power-via-native-v2-section.png"
+            },
+            {
+              "id": "second-power-via",
+              "a": [
+                12,
+                5.3
+              ],
+              "b": [
+                20,
+                5.3
+              ],
+              "probeXY": [
+                16,
+                5.3
+              ],
+              "image": "second-power-via-native-v2-section.png"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "magic-1000-mos2-beol",
+      "projectPath": "./examples/magic-1000-mos2-beol.wafercad",
+      "sourceURL": "https://doi.org/10.1038/s41928-026-01641-0",
+      "paperPanel": "Fig. 1e/f local circuit/cross-section target",
+      "classification": "assumed",
+      "claim": "40x24 um local interconnect surrogate, not 1433-transistor author GDS",
+      "acceptance": {
+        "status": "open-paper-match",
+        "calibratedScale": false,
+        "quantitativeOverlay": false
+      },
+      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38900945041",
+      "evidenceType": "actual Chromium canonical-section captures and saved material probes; original publication scale/SEM overlay remains unverified",
+      "captureEvidence": {
+        "kind": "actual-chromium-project-capture",
+        "runURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38900945041",
+        "artifactURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38900945041/artifacts/12045534988",
+        "manifestMember": "figure-cut-manifest.json",
+        "capturedMembers": [
+          "magic-1000-mos2-beol-beol-four-metal-levels-section.png",
+          "magic-1000-mos2-beol-mos2-gate-and-alox-section.png"
+        ],
+        "originalPaperOverlay": false,
+        "probePlacementAudit": {
+          "physicalProbes": 4,
+          "onSectionProbes": 3,
+          "offSectionControlProbes": [
+            {
+              "cutId": "beol-four-metal-levels",
+              "probeId": "right-four-levels",
+              "a": [
+                -10,
+                -4
+              ],
+              "b": [
+                10,
+                -4
+              ],
+              "xy": [
+                7,
+                4
+              ],
+              "offSectionDistanceUm": 8
+            }
+          ],
+          "note": "Off-section XY controls verify saved material stacks but are NOT visual evidence of the displayed A-B section",
+          "onSectionControls": [
+            {
+              "cutId": "beol-four-metal-levels",
+              "probeId": "left-four-levels",
+              "a": [
+                -10,
+                -4
+              ],
+              "b": [
+                10,
+                -4
+              ],
+              "xy": [
+                -7,
+                -4
+              ]
+            },
+            {
+              "cutId": "mos2-gate-and-alox",
+              "probeId": "enhancement-gate",
+              "a": [
+                -10,
+                4
+              ],
+              "b": [
+                10,
+                4
+              ],
+              "xy": [
+                7,
+                4
+              ]
+            },
+            {
+              "cutId": "mos2-gate-and-alox",
+              "probeId": "depletion-surrogate",
+              "a": [
+                -10,
+                4
+              ],
+              "b": [
+                10,
+                4
+              ],
+              "xy": [
+                -7,
+                4
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "three-tier-silicon-jlfets",
+      "projectPath": "./examples/three-tier-silicon-jlfets-full-wafer.wafercad",
+      "sourceURL": "https://doi.org/10.1038/s41586-026-10496-6",
+      "paperPanel": "Figs. 1-2 physical layers; Fig. 3 wafer-scale statistics, not section",
+      "classification": "derived",
+      "claim": "three Si tiers and 625-site array; 91/100 nm local ILD is assumed",
+      "acceptance": {
+        "status": "open-paper-match",
+        "calibratedScale": false,
+        "quantitativeOverlay": false
+      },
+      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38867834831",
+      "evidenceType": "actual Chromium capture and source-model material-owner probes; not source-SEM overlay",
+      "captureEvidence": {
+        "kind": "actual-chromium-project-capture",
+        "runURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38867834831",
+        "artifactURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38867834831/artifacts/12031383878",
+        "manifestMember": "figure-cut-manifest.json",
+        "capturedMembers": [
+          "three-tier-silicon-jlfets-three-tier-channel-to-pads-section.png",
+          "three-tier-silicon-jlfets-central-gate-detail-section.png",
+          "three-tier-silicon-jlfets-conformal-gate-sidewall-detail-section.png"
+        ],
+        "originalPaperOverlay": false
+      }
+    },
+    {
+      "id": "tio2-metalens-four-unit",
+      "projectPath": "./examples/tio2-metalens-full-array.wafercad",
+      "sourceURL": "https://doi.org/10.1038/s41467-021-25797-9",
+      "paperPanel": "Figs. 2-3; Supplementary Note 4",
+      "classification": "assumed",
+      "claim": "4725-site demonstration grid; original author GDS/optical phase not validated",
+      "acceptance": {
+        "status": "open-paper-match",
+        "calibratedScale": false,
+        "quantitativeOverlay": false
+      },
+      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38900945041",
+      "evidenceType": "actual Chromium canonical-section captures and saved material probes; original publication scale/SEM overlay remains unverified",
+      "captureEvidence": {
+        "kind": "actual-chromium-project-capture",
+        "runURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38900945041",
+        "artifactURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38900945041/artifacts/12045534988",
+        "manifestMember": "figure-cut-manifest.json",
+        "capturedMembers": [
+          "tio2-metalens-four-unit-two-nanopillar-diameters-section.png",
+          "tio2-metalens-four-unit-opposite-nanopillar-row-section.png"
+        ],
+        "originalPaperOverlay": false,
+        "probePlacementAudit": {
+          "physicalProbes": 3,
+          "onSectionProbes": 2,
+          "offSectionControlProbes": [
+            {
+              "cutId": "two-nanopillar-diameters",
+              "probeId": "substrate-control",
+              "a": [
+                -2.3,
+                1.1
+              ],
+              "b": [
+                2.3,
+                1.1
+              ],
+              "xy": [
+                0,
+                0
+              ],
+              "offSectionDistanceUm": 1.1
+            }
+          ],
+          "note": "Off-section XY controls verify saved material stacks but are NOT visual evidence of the displayed A-B section",
+          "onSectionControls": [
+            {
+              "cutId": "two-nanopillar-diameters",
+              "probeId": "negative-x-annular-pillar",
+              "a": [
+                -2.3,
+                1.1
+              ],
+              "b": [
+                2.3,
+                1.1
+              ],
+              "xy": [
+                -1.2,
+                1.1
+              ]
+            },
+            {
+              "cutId": "two-nanopillar-diameters",
+              "probeId": "positive-x-pillar",
+              "a": [
+                -2.3,
+                1.1
+              ],
+              "b": [
+                2.3,
+                1.1
+              ],
+              "xy": [
+                1.1,
+                1.1
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

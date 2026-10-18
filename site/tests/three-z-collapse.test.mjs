@@ -104,15 +104,18 @@ test('thick substrates let the collapse handle approach the physical Z surface',
 
 test('3D follows Section collapse while GLB keeps canonical Z and exported morphology', async () => {
   const root = new URL('../', import.meta.url);
-  const [app, threeView, collapseController] = await Promise.all([
-    readFile(new URL('app.js', root), 'utf8'),
+  const [threeView, collapseController, v2Section, v2Three] = await Promise.all([
     readFile(new URL('three-view.js', root), 'utf8'),
     readFile(new URL('controllers/section-collapse-controller.js', root), 'utf8'),
+    readFile(new URL('ui-v2/section-view.js', root), 'utf8'),
+    readFile(new URL('ui-v2/three-view.js', root), 'utf8'),
   ]);
 
-  assert.match(app, /getZCollapse:\s*\(\) => sectionCollapse/);
-  assert.match(app, /threeView\?\.updateZCollapse\(\)/);
-  assert.match(app, /onSettled:\s*renderThree/);
+  // Verify the shipped v2 wiring, not the deleted Legacy composition root.
+  assert.match(v2Three, /getZCollapse:\s*\(\) => state\.sectionCollapse/);
+  assert.match(v2Section, /store\.views\.get\('three'\)\?\.runtime\.updateZCollapse\?\.\(\)/);
+  assert.match(v2Section, /onSettled:\s*\(\) => store\.invalidate\('three'\)/);
+  assert.match(v2Three, /updateZCollapse: renderer\.updateZCollapse/);
   assert.match(collapseController, /onSettled\(\)/);
   assert.match(threeView, /zCollapseFollow = 'section'/);
   assert.match(threeView, /displaySidewallParts/);

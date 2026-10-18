@@ -7,6 +7,7 @@ import {
 import { IMPLANT_DEPTH_GRADIENT } from './annotation-rendering.js';
 import { layerById, modelBoundsZ } from './model.js';
 import { drawPlanGrid } from './plan-grid.js';
+import { validateExperimentalPhysicalFacetModel } from './physical-facet-model.js';
 import {
   electricalRegionSectionBands,
   electricalRegionSurfaceGroups,
@@ -484,12 +485,21 @@ export function createPlanRenderers({
   }
 
   function renderMask() {
-    const { activeFace, maskSourceMode, layout, maskOpacity, readOnlyPreview } = getState();
+    const { model, activeFace, maskSourceMode, layout, maskOpacity, readOnlyPreview } = getState();
     const c = $('maskCanvas'),
       { ctx, w, h } = setupCanvas(c),
       v = viewport(w, h, 'mask'),
       colors = canvasColors(c);
     ctx.clearRect(0, 0, w, h);
+    if (validateExperimentalPhysicalFacetModel(model)) {
+      // The fixed read-only lab offers physical 3D and Section only. Refuse
+      // to draw the flat compatibility region as a misleading Mask reference.
+      ctx.fillStyle = '#576b7a';
+      ctx.font = '12px system-ui';
+      ctx.fillText('Physical Mask reference unavailable in this experimental model', 24, 36);
+      c.dataset.physicalFacetUnsupported = 'true';
+      return;
+    }
     if (canvasTheme) drawPlanGrid(ctx, v, w, h, worldToCanvas, colors);
 
     const presentation = maskSourceMode === 'file' ? layout.maskPresentation : null;
@@ -546,6 +556,18 @@ export function createPlanRenderers({
 
   function renderMain() {
     const { model, activeFace, section, readOnlyPreview } = getState();
+    if (validateExperimentalPhysicalFacetModel(model)) {
+      // Never display the flat Base compatibility stack as physical Main.
+      // The read-only laboratory route enables only 3D and Section.
+      const canvas = $('mainCanvas');
+      const { ctx, w, h } = setupCanvas(canvas);
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = '#576b7a';
+      ctx.font = '12px system-ui';
+      ctx.fillText('Physical Main view unavailable in this experimental model', 24, 36);
+      canvas.dataset.physicalFacetUnsupported = 'true';
+      return;
+    }
     const c = $('mainCanvas'),
       { ctx, w, h } = setupCanvas(c),
       v = viewport(w, h, 'main'),
@@ -623,6 +645,7 @@ export function createPlanRenderers({
       sectionCollapse,
       sectionViewport,
     } = getState();
+    const physicalOwner = validateExperimentalPhysicalFacetModel(model);
     const mainCanvas = $('sectionCanvas'),
       c = targetCanvas || mainCanvas,
       { ctx, w, h } = setupCanvas(c),
@@ -698,6 +721,7 @@ export function createPlanRenderers({
       effectiveXScale = xScale * screenViewport.zoom * detailScaleX;
 
     if (!detailRoi) {
+      c.dataset.physicalFacetOwner = physicalOwner?.kind || '';
       c.dataset.scaleMode = sectionScaleMode;
       c.dataset.xPxPerUm = String(xScale * screenViewport.zoom);
       c.dataset.zPxPerUm = String(zScale * screenViewport.zoom);
@@ -748,7 +772,7 @@ export function createPlanRenderers({
       }
     }
 
-    const roughColumns = sectionColumns(model, section.a, section.b),
+    const roughColumns = physicalOwner ? [] : sectionColumns(model, section.a, section.b),
       sidewallProfiles = new Map(),
       sectionDx = section.b[0] - section.a[0],
       sectionDy = section.b[1] - section.a[1],
@@ -913,7 +937,9 @@ export function createPlanRenderers({
       });
     }
 
-    for (const electrical of electricalRegionSectionBands(model, section.a, section.b)) {
+    for (const electrical of physicalOwner
+      ? []
+      : electricalRegionSectionBands(model, section.a, section.b)) {
       const appearance = electrical.surfaceAppearance,
         faceDirection = electrical.face === 'back' ? -1 : 1,
         times =
@@ -961,7 +987,7 @@ export function createPlanRenderers({
     }
 
     const implantBorderPolygons = new Map();
-    for (const implant of implantSectionBands(model, section.a, section.b)) {
+    for (const implant of physicalOwner ? [] : implantSectionBands(model, section.a, section.b)) {
       const appearance = implant.surfaceAppearance,
         faceDirection = implant.face === 'back' ? -1 : 1,
         times =
@@ -1123,7 +1149,7 @@ export function createPlanRenderers({
 
     // Auto mode keeps sub-pixel physical sidewalls legible. Draw this last so the
     // visibility aid cannot be erased by rough-surface compositing.
-    for (const slice of sectionSlices(model, section.a, section.b)) {
+    for (const slice of physicalOwner ? [] : sectionSlices(model, section.a, section.b)) {
       if (slice.role !== 'conformal-sidewall') continue;
       const layer = layerById(model, slice.layerId);
       if (!layer) continue;

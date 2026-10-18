@@ -28,6 +28,13 @@ test('Pages includes product assets but excludes previews and developer-only fix
     'app-legacy.html',
     'app.js',
     'workstation.css',
+    'isotropic-release-topology.js',
+    'physical-facet-coating.js',
+    'physical-facet-coating-section.js',
+    'workstation-ui.js',
+    'controllers/build-controller.js',
+    'controllers/startup-controller.js',
+    'controllers/view-popover-controller.js',
     'app-v2.html',
     'app-v2-main.html',
     'app-v2-mask.html',
@@ -87,6 +94,13 @@ test('staging copies production files without altering source or shipping tests'
   assert.match(redirect, /location\.replace\('\.\/app\.html'/);
   assert.doesNotMatch(redirect, /Legacy source must never deploy/);
   await assert.rejects(access(join(destination, 'app.js')));
+  for (const sourceFile of [
+    'isotropic-release-topology.js',
+    'physical-facet-coating.js',
+    'physical-facet-coating-section.js',
+  ]) {
+    await assert.rejects(access(join(destination, sourceFile)));
+  }
   assert.equal(await readFile(join(destination, 'examples', 'live.wafercad'), 'utf8'), 'project');
   await assert.rejects(access(join(destination, 'ui-v2', 'mock-data.js')));
   await assert.rejects(access(join(destination, 'ui-v2', 'prototypes', 'index.html')));

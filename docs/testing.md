@@ -2,6 +2,24 @@
 
 WaferCAD browser tests are split by intent. New coverage should go into the narrowest suite that owns the behavior instead of extending one long stateful scenario.
 
+### Native-v2 source-retirement release ownership
+
+The executable Legacy editor is frozen at the `legacy-frozen` tag.
+Existing `test:ui:interaction`, `test:ui:examples`, `test:ui:process`,
+`test:ui:io`, `test:ui:array`, `test:ui:product:layout` and Renderer
+package commands now run actual native-v2 scientific owners through
+`scripts/v2/check-source-sunset-release-owners.mjs`. Each owner runs its
+mapped scientific Node tests plus real production Chromium checks and fails
+immediately on either class of error. Release jobs are split into isolated
+workstation/interaction/examples/product/renderer and Process/I/O/Array owners,
+to preserve hard correctness gates without a combined 15-minute watchdog.
+
+The old DOM-specific assertions remain auditable at the frozen tag; native
+science coverage and unresolved historical case-by-case differences are
+documented in [Legacy source sunset](LEGACY_SOURCE_SUNSET.md) and Issue #289.
+Do not interpret a native replacement as identical old-UI gesture behavior,
+and do not skip physics, Recovery, worker rollback or morphology contracts.
+
 ## Repository ownership and layout
 
 - `site/tests/*.test.mjs`: Node unit, model, geometry, schema, History and scientific invariants. `npm test` discovers this flat glob; **moving tests into subdirectories without updating the runner and CI routing silently drops coverage**. Group ownership through names and documentation first.
