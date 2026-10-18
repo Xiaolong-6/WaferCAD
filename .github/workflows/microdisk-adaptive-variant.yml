@@ -56,7 +56,14 @@ jobs:
         with:
           name: microdisk-adaptive-72band-saved-variant-and-native-evidence
           path: |
-            site/experimental/microdisk/suspended-silica-microdisks-adaptive.wafercad
+            site/
+            scripts/
+            node_modules/three/
+            node_modules/playwright/
+            node_modules/playwright-core/
+            package.json
+            package-lock.json
+            eslint.config.js
             test-results/issue298-persisted-variant/
           retention-days: 30
           if-no-files-found: warn
