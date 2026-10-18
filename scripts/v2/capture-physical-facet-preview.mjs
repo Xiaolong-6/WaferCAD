@@ -186,8 +186,8 @@ try {
       const evidence = await coatedPage.evaluate(() => window.WaferCadPhysicalFacetEvidence);
       assert.equal(evidence.productionHost.rendererState, 'ready');
       assert.equal(evidence.productionHost.rendererPhase, 'complete');
-      assert.equal(evidence.productionHost.oxideTriangleCount, 560);
-      assert.equal(evidence.physicalOxideTriangles, 560);
+      assert.equal(evidence.productionHost.oxideTriangleCount, 25008);
+      assert.equal(evidence.physicalOxideTriangles, 25008);
       assert.equal(evidence.oxideSectionRegions, 2);
       assert.equal(evidence.productionHost.owner, 'wafercad-physical-pyramid-slab-v1');
       const visible = await coatedPage.evaluate(() => {

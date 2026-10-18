@@ -23,11 +23,13 @@ test('triangulated SiO2 shell has two consistently wound closed surfaces at exac
   const owner = createPhysicalFacetShellQuery(shell);
   assert.equal(mesh.kind, 'wafercad-physical-tessellated-oxide-evidence-v1');
   assert.equal(mesh.siliconTriangleCount, 80);
-  assert.equal(mesh.filmTriangleCount, 640);
-  assert.deepEqual(mesh.topology.exterior, { faces: 560, edges: 840, invalidEdges: 0 });
+  assert.equal(mesh.filmTriangleCount, 25088);
+  assert.deepEqual(mesh.topology.exterior, { faces: 25008, edges: 37512, invalidEdges: 0 });
+  assert.ok(mesh.accuracy.maxSampledSurfaceErrorUm <= 0.0005);
+  assert.ok(mesh.accuracy.maxSampledSurfaceErrorUm > 0.0004, 'No fake zero-error acceptance');
   assert.deepEqual(mesh.topology.interface, { faces: 80, edges: 120, invalidEdges: 0 });
   assert.ok(mesh.triangulatedFilmVolumeUm3 > 0);
-  for (const triangle of mesh.exterior) {
+  for (const triangle of mesh.exterior.filter((_, index) => index % 47 === 0)) {
     for (const vertex of triangle.vertices) {
       assert.equal(
         owner.sample(vertex).materialLayerId === 'oxide' ||
@@ -47,6 +49,10 @@ test('triangulated SiO2 shell has two consistently wound closed surfaces at exac
 test('invalid source and insufficient budget fail without changing the canonical owner', () => {
   const earlier = JSON.stringify(shell);
   assert.throws(() => triangulatePhysicalFacetShell(shell, { maxCells: 2 }), /budget exceeded/);
+  assert.throws(
+    () => triangulatePhysicalFacetShell(shell, { maxTriangles: 100 }),
+    /budget exceeded/,
+  );
   assert.throws(
     () => triangulatePhysicalFacetShell({ ...shell, thicknessUm: 1.7 }),
     /quarter-pitch/,

@@ -103,7 +103,7 @@ try {
         });
         assert.equal(metrics.phase, 'complete');
         assert.equal(metrics.triangles, 80);
-        assert.equal(metrics.oxideTriangles, coated ? 560 : 0);
+        assert.equal(metrics.oxideTriangles, coated ? 25008 : 0);
         assert.equal(metrics.owner, 'wafercad-physical-pyramid-slab-v1');
         assert.equal(metrics.axesHidden, 'true');
         assert.ok(metrics.canvasWidth > 100 && metrics.canvasHeight > 100);

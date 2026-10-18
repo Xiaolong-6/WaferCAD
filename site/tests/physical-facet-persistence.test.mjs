@@ -163,15 +163,15 @@ test('coated 3D material survives .wafercad, Workspace and History without false
   assert.equal(sections[1].polys.length, 2, 'Front/back SiO2 must both appear');
   const displayed = buildPhysicalFacetPresentation(project.model);
   assert.equal(displayed.oxideLayerId, 'oxide');
-  assert.equal(displayed.oxideTriangleCount, 560);
+  assert.equal(displayed.oxideTriangleCount, 25008);
   assert.deepEqual(displayed.oxideTopology.exterior, {
-    faces: 560,
-    edges: 840,
+    faces: 25008,
+    edges: 37512,
     invalidEdges: 0,
   });
   assert.equal(
     Object.values(displayed.oxidePositions).reduce((sum, values) => sum + values.length / 9, 0),
-    560,
+    displayed.oxideTriangleCount,
     'ThreeView must consume every canonical oxide surface triangle',
   );
   for (const polygon of sections[1].polys) {
