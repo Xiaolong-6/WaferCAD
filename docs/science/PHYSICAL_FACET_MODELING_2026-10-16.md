@@ -1,5 +1,7 @@
 # Physical facet modeling — experimental mathematical contract (#297)
 
+> **Current status (October 2026):** This is a retained **opt-in research prototype**, not a production requirement. Detailed physical Si/SiO₂ source and previews live in [site/experimental/physical-facets](../../site/experimental/physical-facets/README.md). Regular WaferCAD Roughness pyramids remain deliberate lightweight display morphology and all eight Welcome examples stay unchanged. See the [Roughness contract](ROUGHNESS_MORPHOLOGY.md). Historical development milestones below are retained for traceability.
+
 This module is **an isolated analytic oracle**, not a Process Kernel feature or a
 new project schema. Existing `geometryMode: ideal` rough/pyramid appearance,
 old `.wafercad` projects and current Sahli example remain unchanged.
@@ -14,7 +16,7 @@ interface; Section, 3D, Save/History and all process operations must consume
 the **same owner**. Mixing physical and appearance-only geometry without an
 explicit conversion is invalid.
 
-The oracle `site/physical-facet-math.js` returns an analytically periodic
+The oracle `site/experimental/physical-facets/physical-facet-math.js` returns an analytically periodic
 four-facet square-pyramid surface, gradients and outward face normal for
 non-crease samples. An apex, diagonal crease, boundary or mask discontinuity
 requires topology-aware geometry; the oracle refuses to invent a unique normal
@@ -72,7 +74,7 @@ source-paper justification. The bundled Sahli project remains intact.
 
 ## Versioned experimental physical material ownership
 
-New `site/physical-facet-owner.js` exports a JSON-safe, opt-in
+New `site/experimental/physical-facets/physical-facet-owner.js` exports a JSON-safe, opt-in
 `wafercad-physical-pyramid-slab-v1` descriptor. It owns one material,
 a rectangular integer-cell XY domain and two analytic physical interfaces.
 Point probes distinguish solid interiors, exact interfaces and voids.
@@ -88,7 +90,7 @@ conformal offsets remain unsupported.
 
 ## One-owner physical 3D/Section geometry (experimental only)
 
-`site/physical-facet-surface.js` now triangulates this same opt-in
+`site/experimental/physical-facets/physical-facet-surface.js` now triangulates this same opt-in
 material owner into a **closed 3D physical Si solid**, including exterior
 sidewalls, and finds exact Section breakpoints by intersecting the A–B cut
 with those triangle edges. It uses the analytic front/back `z(x,y)`
@@ -119,7 +121,7 @@ remain blocked. Old `.wafercad` projects must not be silently upgraded.
 
 ## Explicit opt-in persistence staging (not production UI)
 
-`site/physical-facet-model.js` now validates a new optional
+`site/experimental/physical-facets/physical-facet-model.js` now validates a new optional
 `model.experimentalPhysicalFacetOwner` descriptor against a single
 rectangular Base region and its reference planar Z bounds. Only the
 one-material geometry is supported. The experimental model has a separate

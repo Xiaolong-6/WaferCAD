@@ -37,8 +37,10 @@ python3 scripts/restore-pinned-three.py --archive "/mnt/data/three-0.179.1.tgz"
 ```
 
 The helper verifies SHA-512 against `package-lock.json` before extraction.
-If the Sources attachment is unavailable, the tracked
-`vendor/npm/three-0.179.1.tgz` is a verified fallback (run without arguments).
+If the Sources attachment is unavailable **in a full repository checkout**,
+the tracked `vendor/npm/three-0.179.1.tgz` is a verified fallback
+(run without arguments). The source-only ZIP deliberately omits that tarball;
+therefore its restore requires a separate local Sources/archive copy.
 Reuse `node_modules/three` as long as the local workspace survives.
 Only `npm ci` installs the full development toolchain.
 
@@ -49,7 +51,8 @@ sources, tests, fixtures, docs and workflow files. **It excludes**
 npm installation in Actions. `wafercad-source-<SHA>.zip` contains
 `wafercad-source-manifest.json` with the revision and per-file SHA-256.
 Use a completed existing workflow run when possible; run its narrow
-`workflow_dispatch` only when a newer source bundle is necessary.
+`workflow_dispatch` only when a newer source bundle is necessary (the
+workflow becomes manually dispatchable once present on the default branch).
 The connector downloads the Artifact straight into the execution container,
 where it can be extracted and verified. No `.git` history is included.
 

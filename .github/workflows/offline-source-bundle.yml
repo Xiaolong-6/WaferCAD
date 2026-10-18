@@ -2,11 +2,6 @@ name: Offline WaferCAD source bundle
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - docs/reuse-offline-chromium-20261018
-    paths:
-      - .github/workflows/offline-source-bundle.yml
 
 permissions:
   contents: read

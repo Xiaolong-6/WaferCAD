@@ -4,13 +4,13 @@ import {
   makePhysicalPyramidOwner,
   physicalOwnerVolume,
   restorePhysicalPyramidOwner,
-} from '../physical-facet-owner.js';
-import { samplePhysicalPyramidSlab } from '../physical-facet-math.js';
+} from '../experimental/physical-facets/physical-facet-owner.js';
+import { samplePhysicalPyramidSlab } from '../experimental/physical-facets/physical-facet-math.js';
 import {
   physicalPyramidSection,
   physicalPyramidSolidMesh,
   signedPhysicalMeshVolume,
-} from '../physical-facet-surface.js';
+} from '../experimental/physical-facets/physical-facet-surface.js';
 
 const base = {
   layerId: 'Si-physical',

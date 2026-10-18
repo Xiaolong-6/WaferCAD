@@ -13,7 +13,7 @@ Canonical descriptions of idealized process geometry and numerical/visual interp
 - [Material/Target semantic proposal](MATERIAL_TARGET_SEMANTICS_2026-10-13.md)
 - [Lift-off v1 implementation record](LIFTOFF_V1_2026-10-09.md)
 - [Geometry and Process roadmap](PROCESS_GEOMETRY_ROADMAP_2026-10-09.md)
-- [PHYSICAL FACET MODELING 2026-10-16](PHYSICAL_FACET_MODELING_2026-10-16.md) — experimental Si facet and oxide ownership; full 3D coating mesh not yet accepted.
+- [PHYSICAL FACET MODELING 2026-10-16](PHYSICAL_FACET_MODELING_2026-10-16.md) — retained opt-in physical facet and SiO₂ research, **not a default process feature**. See [experimental ownership](../../site/experimental/README.md).
 - [Physical unit edit integrity](PHYSICAL_UNIT_EDIT_INTEGRITY_2026-10-13.md) — canonical µm coordinates and editor unit conversion.
 - [Process/History transaction integrity](PROCESS_HISTORY_TRANSACTION_INTEGRITY_2026-10-13.md) — Step atomicity and Variant rollback.
 

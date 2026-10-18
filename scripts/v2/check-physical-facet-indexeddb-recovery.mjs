@@ -14,7 +14,7 @@ const server = spawn(process.execPath, ['scripts/v2/serve-v2.mjs'], {
   env: { ...process.env, WAFERCAD_V2_PORT: port },
   stdio: 'ignore',
 });
-const url = `http://127.0.0.1:${port}/physical-facet-preview.html`;
+const url = `http://127.0.0.1:${port}/experimental/physical-facets/physical-facet-preview.html`;
 const report = { status: 'running', browserErrors: [] };
 let browser;
 
@@ -55,12 +55,12 @@ try {
           listWorkspaceRecoveryPoints,
         },
       ] = await Promise.all([
-        import('./ui-v2/workstation-runtime.js'),
-        import('./controllers/workspace-persistence-controller.js'),
-        import('./workspace-snapshots.js'),
-        import('./physical-facet-owner.js'),
-        import('./physical-facet-surface.js'),
-        import('./workspace-persistence.js'),
+        import('/ui-v2/workstation-runtime.js'),
+        import('/controllers/workspace-persistence-controller.js'),
+        import('/workspace-snapshots.js'),
+        import('/experimental/physical-facets/physical-facet-owner.js'),
+        import('/experimental/physical-facets/physical-facet-surface.js'),
+        import('/workspace-persistence.js'),
       ]);
 
       // The browser context has fresh storage; use the production project
