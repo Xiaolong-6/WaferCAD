@@ -22,6 +22,8 @@ For any visual change involving UI, Renderer, Examples, Mask, 3D or Section, def
 
 **Default sequence:** local change → real Chromium screenshot → AI visual inspection → focused local tests → batched fixes → push → necessary CI → final acceptance.
 
+**Managed Chromium recovery (mandatory before declaring visual diagnostics blocked):** If normal app navigation fails with `ERR_BLOCKED_BY_ADMINISTRATOR` (including a managed `URLBlocklist: ["*"]`), reuse the existing `scripts/offline-native-app-capture.py` and follow [Offline Visual Kernel — real native app](docs/tools/OFFLINE_VISUAL_KERNEL.md#real-native-app-with-offline-swiftshader-diagnostic). It attempts normal-origin loading, then uses headed Chromium/Xvfb, pinned local Three.js and an `about:blank` fallback for real app/Renderer diagnostics. Start with `--inmemory-demo`; use `--inmemory-project <file>` plus optional ROI/Z break for real validated model geometry. **Do not create a second standalone Chromium runner** or treat `offline-visual-kernel.mjs` SVGs as native WebGL images. The null-origin diagnostic cannot validate Worker-backed project Open, persistent storage, History/Recovery or complete Workstation interaction; those still need normal-origin targeted acceptance. Record the precise coverage and limitations.
+
 Minimize redundant CI without lowering final acceptance standards.
 
 - Keep approved platform-specific visual baselines separate. Do not replace an approved baseline merely to hide a failed comparison.
