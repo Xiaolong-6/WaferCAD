@@ -21,7 +21,7 @@ const square = [
   ],
 ];
 
-test('production border inspector deduplicates physical contours without exposing tessellation', () => {
+test('production border inspector deduplicates physical edges', () => {
   const exterior = [
     [
       [0, 0, 0],
@@ -32,7 +32,13 @@ test('production border inspector deduplicates physical contours without exposin
       [0, 0, 0],
     ],
   ];
-  const internal = { z: 1, buried: true, polys: [square], layerId: 'buried', interfaceLayerId: 'base' };
+  const internal = {
+    z: 1,
+    buried: true,
+    polys: [square],
+    layerId: 'buried',
+    interfaceLayerId: 'base',
+  };
   const result = borderInspectorContours({
     borderLines: exterior,
     caps: [internal, { ...internal, z: 2, buried: false }],
