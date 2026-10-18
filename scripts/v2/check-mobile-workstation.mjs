@@ -160,12 +160,24 @@ try {
       // compact widths it is hidden until the More Tools popover opens.
       if (width === 390) {
         await page.locator('.p-nav [data-action="view:three"]').click();
+        await page.locator('#threePanel').waitFor({ state: 'visible' });
+        // The responsive toolbar relocates its *original* button via a
+        // ResizeObserver. Wait for its real layout, not a transient visible
+        // state immediately after switching the mobile scientific view.
+        await waitForPaint(page);
         const border = page.locator('#threePanel [data-action="borders:three"]');
-        if (!(await border.isVisible())) {
-          // At narrow widths the toolbar may move Border into its real overflow;
-          // a different host width can legitimately keep it directly visible.
-          await page.getByRole('button', { name: '3D more tools' }).click();
-          await border.waitFor({ state: 'visible' });
+        const more = page.locator('#threePanel [aria-label="3D more tools"]');
+        await page.waitForFunction(() => {
+          const panel = document.getElementById('threePanel');
+          const button = panel?.querySelector('[data-action="borders:three"]');
+          const trigger = panel?.querySelector('[aria-label="3D more tools"]');
+          if (!button || !trigger) return false;
+          return button.closest('.p-overflow') ? !trigger.disabled : button.checkVisibility();
+        });
+        await waitForPaint(page);
+        if (await border.evaluate((node) => Boolean(node.closest('.p-overflow')))) {
+          await more.click();
+          await page.locator('#p-overflow-3d').waitFor({ state: 'visible' });
         }
         await border.click();
         const inspector = page.locator('[data-border-inspector]');

@@ -111,11 +111,26 @@ try {
       );
       return now;
     };
-    // Ten actual Border updates, each followed by a newly completed WebGL frame.
+    // Ten real Border visibility changes, each with a completed WebGL frame.
+    // The toolbar button now opens an Inspector; clicking that trigger alone
+    // never changes the 3D display or schedules a new frame.
     const border = page.locator('#threePanel [data-action="borders:three"]');
+    const inspector = page.locator('[data-border-inspector]');
+    await border.click();
+    await inspector.waitFor({ state: 'visible' });
+    const master = inspector.getByRole('button', { name: 'Show 3D borders' });
+    const initialBorders = (await snap()).threeDisplay.borders;
+    assert.equal(await master.getAttribute('aria-pressed'), String(initialBorders));
     for (let i = 0; i < 10; i++) {
+      // Inspector may close when an independent tool popover takes focus.
+      if (!(await master.isVisible())) {
+        await border.click();
+        await inspector.waitFor({ state: 'visible' });
+      }
       const prev = (await measure()).rendererFrameSerial;
-      await border.click();
+      await master.click();
+      const expected = i % 2 === 0 ? !initialBorders : initialBorders;
+      assert.equal((await snap()).threeDisplay.borders, expected, 'real Border toggle');
       await assertRetained('border-' + i, prev);
     }
     // The Border popover may have dismissed Opacity; reopen its real editor.
