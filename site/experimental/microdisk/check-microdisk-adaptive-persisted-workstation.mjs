@@ -28,8 +28,11 @@ const evidence = {
   paperSemMatch: 'NOT_VERIFIED',
   savedVariant: 'microdisk-adaptive-72-band',
   result: 'running',
+  timingsMs: {},
 };
+const elapsed = (start) => Number((performance.now() - start).toFixed(1));
 try {
+  const initialStart = performance.now();
   await page.goto(base + '/app.html?start=empty', {
     waitUntil: 'domcontentloaded',
     timeout: 180000,
@@ -39,10 +42,14 @@ try {
     null,
     { timeout: 180000 },
   );
+  evidence.timingsMs.emptyWorkstationReady = elapsed(initialStart);
+  const sourceStart = performance.now();
   const bytes = await readFile(
     resolve('site/experimental/microdisk/suspended-silica-microdisks-adaptive.wafercad'),
   );
   evidence.projectSha256 = createHash('sha256').update(bytes).digest('hex');
+  evidence.timingsMs.readPersistedFile = elapsed(sourceStart);
+  const stageStart = performance.now();
   await page.evaluate(async (text) => {
     const { stageStartupFile } = await import('/startup-file.js');
     await stageStartupFile(
@@ -52,6 +59,8 @@ try {
       'project',
     );
   }, bytes.toString('utf8'));
+  evidence.timingsMs.stageToIndexedDb = elapsed(stageStart);
+  const openStart = performance.now();
   await page.goto(base + '/app.html?start=staged', {
     waitUntil: 'domcontentloaded',
     timeout: 180000,
@@ -61,6 +70,7 @@ try {
     null,
     { timeout: 180000 },
   );
+  evidence.timingsMs.savedProjectReady = elapsed(openStart);
   assert.equal(await page.locator('html').getAttribute('data-ui'), 'v2');
   const model = await page.evaluate(async () => {
     const state = window.WaferCadV2Workstation.snapshot();
@@ -77,18 +87,32 @@ try {
   assert.ok(model.sectionSlices > 100);
   assert.deepEqual(model.layers, ['base', 'layer-1']);
   evidence.model = model;
+  const sectionStart = performance.now();
   await selectScientificView(page, 'section', 1560);
   await waitForPaint(page);
   const ink = await canvasInkFraction(page, '#sectionCanvas');
   assert.ok(ink > 0.002, 'Persisted native Section canvas is blank');
   evidence.sectionInk = ink;
+  evidence.timingsMs.sectionFirstPaint = elapsed(sectionStart);
   await page.locator('#sectionPanel').screenshot({
     path: resolve(output, 'persisted-adaptive-section.png'),
     animations: 'disabled',
     timeout: 120000,
   });
+  const threeStart = performance.now();
   await selectScientificView(page, 'three', 1560);
   await waitForThreeReady(page, 180000);
+  evidence.timingsMs.threeFirstReady = elapsed(threeStart);
+  evidence.browserMeasures = await page.evaluate(() =>
+    performance
+      .getEntriesByType('measure')
+      .filter((entry) => entry.name.startsWith('wafercad:'))
+      .map((entry) => ({
+        name: entry.name,
+        durationMs: Number(entry.duration.toFixed(1)),
+        detail: entry.detail,
+      })),
+  );
   await page.locator('#threePanel').screenshot({
     path: resolve(output, 'persisted-adaptive-three.png'),
     animations: 'disabled',
