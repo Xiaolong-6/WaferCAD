@@ -1091,13 +1091,8 @@ export function createThreeView({
       clip: clip || null,
       zCollapse: getZCollapse?.() || null,
       layers,
-      // Allocating internal contours is optional, but style changes within an
-      // allocated outline set are presentation-only (no Kernel/replay cost).
-      internalBorderGeometry: borderNeedsInternalGeometry(
-        inspection.borderSettings,
-        inspection.opacity,
-        inspection.borders,
-      ),
+      // Border presentation is view-only. Internal contours are generated
+      // on demand within the current scene and do not invalidate its geometry.
       arrayPresentationLod: arrayViewLod(model, clip, inspection).tier,
     });
   }
@@ -2045,6 +2040,67 @@ diffuseColor.a *= waferCadAlphaScale;`,
     return edges;
   }
 
+  // Add real, owned internal outlines lazily to an already-built scene.
+  // Keep per-group ownership so cached opaque/transparent variants can restore
+  // their own overlays without forcing another Process surface-plan build.
+  function ensureInternalBorderContours(plan = null, { refresh = false } = {}) {
+    if (!group) return false;
+    const activePlan = plan || group.userData.waferCadSurfacePlan || physicalSurfacePlan;
+    if (!activePlan) return false;
+    const inspection = getInspection() || {};
+    if (
+      !borderNeedsInternalGeometry(
+        inspection.borderSettings,
+        inspection.opacity,
+        inspection.borders,
+      )
+    )
+      return false;
+    if (group.userData.waferCadInternalContoursPrepared && !refresh) return false;
+
+    if (refresh) {
+      for (const object of [...presentationObjects]) {
+        if (!object.userData?.waferCadInternalContourOverlay) continue;
+        presentationObjects.delete(object);
+        zDisplayObjects.delete(object);
+        object.parent?.remove(object);
+        disposeObjectResources(object);
+      }
+    }
+    const profiles = group.userData.waferCadRoughBoundaryProfiles || null;
+    const contours = borderInspectorContours(activePlan, { boundaryProfiles: profiles });
+    const model = getModel();
+    const opacity = Number(inspection.opacity ?? 1);
+    for (const [category, lines] of [
+      ['interface', contours.interface],
+      ['buried', contours.buried],
+    ]) {
+      const positions = displayBorderPositions(contoursToPositions(lines));
+      for (const dashed of [false, true]) {
+        const edge = addBorderPositions(positions, {
+          order: 100006,
+          opacity,
+          dashed,
+          includeHidden: false,
+          dashSize: Math.max(
+            1e-5,
+            Math.min(Number(model.width) || 1, Number(model.height) || 1) * 0.006,
+          ),
+          presentation: {
+            kind: 'internal-border',
+            category,
+            lineStyle: dashed ? 'dashed' : 'solid',
+          },
+        });
+        if (edge) edge.userData.waferCadInternalContourOverlay = true;
+      }
+    }
+    group.userData.waferCadInternalContoursPrepared = true;
+    host.dataset.internalInterfaceBorderCount = String(contours.interface.length);
+    host.dataset.internalBuriedBorderCount = String(contours.buried.length);
+    return true;
+  }
+
   function rebuildInspectionContours(
     boundaryProfiles = null,
     appearanceByCapIndex = null,
@@ -2299,6 +2355,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
     host.dataset.roughImplantCutProfileMatches = String(matchedImplantCuts);
     host.dataset.roughBoundaryProfileCount = String(boundaryProfiles.size);
     host.dataset.roughBoundarySidewallObjects = String(rebuilt);
+    group.userData.waferCadRoughBoundaryProfiles = wallProfiles;
+    if (group.userData.waferCadInternalContoursPrepared) {
+      ensureInternalBorderContours(null, { refresh: true });
+    }
     rebuildInspectionContours(wallProfiles, appearanceByCapIndex, outlinedRoughCapIndices);
   }
 
@@ -3238,6 +3298,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         host.dataset.rendererUpdateKind = 'presentation';
         stats.textContent = 'updating 3D…';
         syncRenderPolicy();
+        ensureInternalBorderContours();
         applyPresentationState();
         return;
       }
@@ -3248,6 +3309,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         host.dataset.renderState = 'updating';
         stats.textContent = 'updating 3D…';
         syncRenderPolicy();
+        ensureInternalBorderContours();
         applyPresentationState({ updateKind: 'variant-swap' });
         return;
       }
@@ -3261,6 +3323,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         host.dataset.rendererUpdateKind = 'presentation';
         stats.textContent = 'updating 3D…';
         syncRenderPolicy();
+        ensureInternalBorderContours();
         applyPresentationState();
         return;
       }
@@ -3313,6 +3376,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         disposeGroup();
         physicalSurfacePlan = plan;
       }
+      group.userData.waferCadSurfacePlan = plan;
       applyZDisplayState(model);
       // Far-array presentation LOD is quantized by projected pixel footprint
       // and restored at zoom/ROI/Quality transitions. Physical geometry and
@@ -3724,36 +3788,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
         opacity,
         presentation: { kind: 'border', category: 'exterior' },
       });
-      // Preserve physical interface ownership independently from exterior
-      // silhouette outlines. Never manufacture edges from mesh triangles.
-      if (borderNeedsInternalGeometry(inspection.borderSettings, opacity, borders)) {
-        const contours = borderInspectorContours(plan);
-        for (const [category, lines] of [
-          ['interface', contours.interface],
-          ['buried', contours.buried],
-        ]) {
-          const positions = displayBorderPositions(contoursToPositions(lines));
-          for (const dashed of [false, true]) {
-            addBorderPositions(positions, {
-              order: 100006,
-              opacity,
-              dashed,
-              includeHidden: false,
-              dashSize: Math.max(
-                1e-5,
-                Math.min(Number(model.width) || 1, Number(model.height) || 1) * 0.006,
-              ),
-              presentation: {
-                kind: 'internal-border',
-                category,
-                lineStyle: dashed ? 'dashed' : 'solid',
-              },
-            });
-          }
-        }
-        host.dataset.internalInterfaceBorderCount = String(contours.interface.length);
-        host.dataset.internalBuriedBorderCount = String(contours.buried.length);
-      } else {
+      // Internal outline geometry is a cached view overlay, not a new
+      // physical scene signature or a second Process ownership calculation.
+      group.userData.waferCadSurfacePlan = plan;
+      ensureInternalBorderContours(plan);
+      if (!group.userData.waferCadInternalContoursPrepared) {
         host.dataset.internalInterfaceBorderCount = '0';
         host.dataset.internalBuriedBorderCount = '0';
       }
