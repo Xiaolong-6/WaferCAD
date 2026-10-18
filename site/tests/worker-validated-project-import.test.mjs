@@ -163,3 +163,39 @@ test('background project reader attests History asynchronously and retains stric
   assert.equal(yieldCount, 2);
   assert.equal(state.isValidSnapshotStates(project.snapshots.map((record) => record.state)), true);
 });
+
+test('shared-model History entries use bounded coalesced attestation batches without trusting mutations', async () => {
+  let yields = 0;
+  const sharedModel = { regions: [{ xy: [0.0000004, 7] }] };
+  const records = [
+    { state: { id: 'same-1', model: sharedModel } },
+    { state: { id: 'different-1', model: { regions: [{ xy: [1, 2] }] } } },
+    { state: { id: 'same-2', model: sharedModel } },
+    { state: { id: 'different-2', model: { regions: [{ xy: [3, 4] }] } } },
+    { state: { id: 'same-3', model: sharedModel } },
+  ];
+  const project = { snapshots: records };
+  const state = controller(
+    async () => project,
+    async () => {
+      yields++;
+    },
+  );
+  const start = performance.getEntriesByName('wafercad:history:attestation-clone').length;
+  await state.readWorkerValidatedProjectSnapshotAsync(project);
+  const entry = performance.getEntriesByName('wafercad:history:attestation-clone')[start];
+  assert.equal(entry.detail.uniqueStates, 5);
+  assert.equal(entry.detail.sharedModelGroups, 3);
+  assert.equal(entry.detail.batches, 2, 'clones must remain limited to four states per batch');
+  assert.equal(yields, 1);
+  assert.equal(state.isValidSnapshotStates(records.map((record) => record.state)), true);
+
+  await state.readWorkerValidatedProjectSnapshotAsync(project);
+  sharedModel.regions[0].xy[0] = 999;
+  assert.equal(
+    state.isValidSnapshotStates([records[0].state, records[2].state, records[4].state]),
+    false,
+    'all History references to a changed model must still fail attestation',
+  );
+  assert.equal(state.isValidSnapshotStates([records[1].state, records[3].state]), true);
+});
