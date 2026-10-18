@@ -17,8 +17,9 @@ import {
   unionGeometries,
 } from './vector-geometry.js';
 import { visibleMaterialModel } from './model.js';
-import { validateExperimentalPhysicalFacetModel } from './physical-facet-model.js';
-import { physicalPyramidSection } from './physical-facet-surface.js';
+import { validateExperimentalPhysicalFacetModel } from './experimental/physical-facets/physical-facet-model.js';
+import { physicalPyramidSection } from './experimental/physical-facets/physical-facet-surface.js';
+import { createPhysicalFacetShellQuery } from './experimental/physical-facets/physical-facet-shell-owner.js';
 import {
   appearanceSurfaceGroupsFromTopology,
   extrusionGroupsFromTopology,
@@ -106,11 +107,6 @@ export function appearanceSurfaceGroups(model, clip = null) {
 }
 
 export function sectionContours(model, a, b) {
-  if (model?.experimentalPhysicalFacetShell) {
-    throw new RangeError(
-      'Physical coating Section requires a multi-material renderer; refusing Si-only surrogate',
-    );
-  }
   const owner = validateExperimentalPhysicalFacetModel(model);
   if (owner) {
     // One true physical solid, directly from its shared 3D triangle owner.
@@ -119,7 +115,39 @@ export function sectionContours(model, a, b) {
     const upper = points.map(({ t, z1 }) => [t, z1]);
     const lower = points.toReversed().map(({ t, z0 }) => [t, z0]);
     const ring = [...upper, ...lower, [...upper[0]]];
-    return [{ layerId: owner.layerId, polys: [[ring]] }];
+    const result = [{ layerId: owner.layerId, polys: [[ring]] }];
+    if (model.experimentalPhysicalFacetShell) {
+      const material = createPhysicalFacetShellQuery(model.experimentalPhysicalFacetShell);
+      const parameters = new Set([
+        ...points.map(({ t }) => t),
+        ...Array.from({ length: 49 }, (_, i) => i / 48),
+      ]);
+      const samples = [...parameters]
+        .sort((u, v) => u - v)
+        .map((t) => {
+          // Column oracle covers strictly interior XY; edge-side coating is
+          // handled by its full 3D point owner, not a flat end-cap shortcut.
+          const interior = Math.max(1e-7, Math.min(1 - 1e-7, t));
+          const x = a[0] + (b[0] - a[0]) * interior;
+          const y = a[1] + (b[1] - a[1]) * interior;
+          const c = material.column(x, y);
+          return { t: interior, ...c };
+        })
+        .filter((p, index, all) => index === 0 || p.t > all[index - 1].t + 1e-9);
+      const front = [
+        ...samples.map((c) => [c.t, c.frontOuterZ]),
+        ...samples.toReversed().map((c) => [c.t, c.siliconZ1]),
+      ];
+      const back = [
+        ...samples.map((c) => [c.t, c.siliconZ0]),
+        ...samples.toReversed().map((c) => [c.t, c.backOuterZ]),
+      ];
+      result.push({
+        layerId: model.experimentalPhysicalFacetShell.layerId,
+        polys: [[[...front, front[0]]], [[...back, back[0]]]],
+      });
+    }
+    return result;
   }
   const groups = new Map();
   for (const { layerId, t0, t1, z0, z1 } of sectionSlices(model, a, b)) {

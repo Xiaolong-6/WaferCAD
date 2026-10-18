@@ -2,6 +2,7 @@
 // Production drawing still does not understand this surface; that path fails closed.
 import { makePhysicalPyramidOwner, restorePhysicalPyramidOwner } from './physical-facet-owner.js';
 import { makePhysicalFacetShell, restorePhysicalFacetShell } from './physical-facet-shell-owner.js';
+import { validateMaterialThicknessUm } from '../../process-numerical-contract.js';
 
 export const PHYSICAL_FACET_MODEL_KERNEL = 'vector-physical-facet-experimental-v1';
 const FIELD = 'experimentalPhysicalFacetOwner';
@@ -36,8 +37,14 @@ export function validateExperimentalPhysicalFacetModel(model) {
     fail('owner descriptor is not canonical versioned JSON');
   }
   if (owner.layerId !== 'base') fail('only the Base silicon material is supported');
-  if (model.layers?.length !== 1 || model.layers[0]?.id !== 'base' || model.regions?.length !== 1) {
-    fail('only one Base layer and one Base region are supported');
+  const explicitFilmLayer =
+    Object.hasOwn(model, SHELL_FIELD) && model.layers?.length === 2 ? model.layers[1] : null;
+  if (
+    model.layers?.[0]?.id !== 'base' ||
+    (model.layers?.length !== 1 && !explicitFilmLayer) ||
+    model.regions?.length !== 1
+  ) {
+    fail('only one Base owner and an optional registered SiO2 shell are supported');
   }
   const region = model.regions[0];
   const segment = region.stack?.[0];
@@ -91,6 +98,14 @@ export function validateExperimentalPhysicalFacetModel(model) {
     } catch (error) {
       fail('invalid complete implicit shell: ' + error.message);
     }
+    if (
+      explicitFilmLayer &&
+      (explicitFilmLayer.id !== shell.layerId ||
+        explicitFilmLayer.name !== 'SiO2' ||
+        explicitFilmLayer.visible !== true)
+    ) {
+      fail('registered SiO2 material must correspond to the exact physical shell');
+    }
     if (JSON.stringify(shell.silicon) !== JSON.stringify(owner)) {
       fail('the coating and silicon descriptors must refer to one identical physical owner');
     }
@@ -121,6 +136,63 @@ export function attachExperimentalPhysicalFacetShell(model, options) {
   copy.revision = (Number(copy.revision) || 0) + 1;
   validateExperimentalPhysicalFacetModel(copy);
   return copy;
+}
+
+// A deliberately restricted laboratory Process path: an unmasked, full
+// exterior, two-sided SiO2 film on a pristine physical silicon owner.
+// Normal production vector/2.5D operations are never routed here.
+export function applyExperimentalPhysicalFacetConformal(model, params) {
+  const silicon = validateExperimentalPhysicalFacetModel(model);
+  if (!silicon) return null;
+  if (
+    params?.type !== 'add' ||
+    params?.growth !== 'conformal' ||
+    params?.face !== 'both' ||
+    params?.name !== 'SiO2' ||
+    params?.targetLayerId != null ||
+    params?.surface != null ||
+    Object.hasOwn(model, SHELL_FIELD) ||
+    JSON.stringify(params?.area) !== JSON.stringify(model.boundary)
+  ) {
+    return {
+      changed: false,
+      error:
+        'Experimental physical facet supports only one full-domain Both-face SiO2 Conformal Add.',
+    };
+  }
+  const thicknessUm = Number(params.thickness);
+  const thicknessError = validateMaterialThicknessUm(thicknessUm, 'SiO2 film thickness');
+  if (thicknessError) return { changed: false, error: thicknessError };
+  // Both chemistry and scientific ranges must validate before touching the
+  // source object. Commit all descriptor, material, and revision changes once.
+  let candidate;
+  try {
+    candidate = structuredClone(model);
+    const ordinal = candidate.nextLayerId;
+    if (!Number.isSafeInteger(ordinal) || ordinal < 1)
+      throw new RangeError('Invalid Layer allocation');
+    const layerId = 'layer-' + ordinal;
+    candidate[SHELL_FIELD] = makePhysicalFacetShell({
+      silicon,
+      layerId,
+      thicknessUm,
+    });
+    candidate.layers.push({
+      id: layerId,
+      name: 'SiO2',
+      color: /^#[0-9a-f]{6}$/i.test(params.color || '') ? params.color : '#d88b37',
+      visible: true,
+    });
+    candidate.nextLayerId++;
+    candidate.revision = (candidate.revision || 0) + 1;
+    candidate.processRevision = (candidate.processRevision || 0) + 1;
+    validateExperimentalPhysicalFacetModel(candidate);
+    for (const key of Object.keys(model)) delete model[key];
+    Object.assign(model, candidate);
+    return { changed: true, layerId };
+  } catch (error) {
+    return { changed: false, error: 'Experimental SiO2 Conformal rejected: ' + error.message };
+  }
 }
 
 export function assertExperimentalPhysicalFacetNotRendered(model) {
