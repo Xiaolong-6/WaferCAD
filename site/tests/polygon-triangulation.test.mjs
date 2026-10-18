@@ -164,3 +164,58 @@ test('validated triangulation ignores repeated boolean corner vertices', () => {
   assert.ok(triangles.length > 0);
   assert.ok(Math.abs(actual - expected) <= expected * 1e-8);
 });
+
+test('validated slab fallback preserves many disjoint holes without filling any hole', () => {
+  const outer = [
+      [-100, -100],
+      [100, -100],
+      [100, 100],
+      [-100, 100],
+      [-100, -100],
+    ],
+    holes = Array.from({ length: 48 }, (_, index) => {
+      const x = -75 + (index % 12) * 12,
+        y = -80 + index * 3;
+      return [
+        [x - 1, y],
+        [x + 1, y],
+        [x, y + 1.5],
+        [x - 1, y],
+      ];
+    }),
+    polygon = [outer, ...holes],
+    expected = ringArea(outer) - holes.reduce((sum, ring) => sum + ringArea(ring), 0),
+    fallbackOnly = {
+      Vector2: THREE.Vector2,
+      ShapeUtils: {
+        triangulateShape(contour, cutouts) {
+          // Force the multi-hole polygon into the exact clipped-slab owner.
+          if (cutouts.length > 1) return [[0, 1, 2]];
+          return THREE.ShapeUtils.triangulateShape(contour, cutouts);
+        },
+      },
+    },
+    triangles = triangulatePolygon(fallbackOnly, polygon),
+    actual = triangles.reduce((sum, triangle) => sum + triangleArea(triangle), 0);
+
+  assert.ok(triangles.length > 0);
+  assert.ok(Math.abs(actual - expected) < expected * 1e-9);
+  const contains = ([x, y], [a, b, c]) => {
+    const cross = (p, q) => (q[0] - p[0]) * (y - p[1]) - (q[1] - p[1]) * (x - p[0]);
+    const s = cross(a, b),
+      t = cross(b, c),
+      u = cross(c, a);
+    return (s >= -1e-10 && t >= -1e-10 && u >= -1e-10) || (s <= 1e-10 && t <= 1e-10 && u <= 1e-10);
+  };
+  for (const hole of holes) {
+    const center = [
+      (hole[0][0] + hole[1][0] + hole[2][0]) / 3,
+      (hole[0][1] + hole[1][1] + hole[2][1]) / 3,
+    ];
+    assert.equal(
+      triangles.some((triangle) => contains(center, triangle)),
+      false,
+      'one of the triangular physical voids was filled',
+    );
+  }
+});
