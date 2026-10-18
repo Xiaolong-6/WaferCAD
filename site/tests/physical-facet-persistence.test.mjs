@@ -362,3 +362,64 @@ test('invalid physical descriptors, modified regions and unsupported UI import f
     legacy.model,
   );
 });
+
+test('bounded physical Both-face Conformal is atomic and survives persisted History', async () => {
+  const project = fixture();
+  const original = structuredClone(project);
+  const operation = {
+    type: 'add',
+    name: 'SiO2',
+    growth: 'conformal',
+    face: 'both',
+    thickness: 0.05,
+    color: '#d88b37',
+    area: structuredClone(project.model.boundary),
+  };
+  for (const wrong of [
+    { ...operation, face: 'front' },
+    { ...operation, area: [] },
+    { ...operation, thickness: 0 },
+    { ...operation, thickness: 1.7 },
+    { ...operation, name: 'Gold' },
+    { ...operation, type: 'etch' },
+  ]) {
+    const before = structuredClone(project.model);
+    const result = applyOperation(project.model, wrong);
+    assert.equal(result.changed, false, 'Unsupported physical operation must fail');
+    assert.ok(result.error);
+    assert.deepEqual(project.model, before, 'Preflight cannot partly mutate the model');
+  }
+  const applied = applyOperation(project.model, operation);
+  assert.deepEqual(applied, { changed: true, layerId: 'layer-1' });
+  assert.equal(project.model.layers.length, 2);
+  assert.equal(project.model.experimentalPhysicalFacetShell.layerId, 'layer-1');
+  assert.deepEqual(modelBoundsZ(project.model), [-130.05, 130.05]);
+  assert.equal(validateProjectFile(project), project);
+  const physical = createPhysicalFacetShellQuery(project.model.experimentalPhysicalFacetShell);
+  assert.equal(physical.sample([0, 0, 130.02]).materialLayerId, 'layer-1');
+  assert.equal(sectionContours(project.model, [-6.4, 0], [6.4, 0])[1].layerId, 'layer-1');
+  const after = structuredClone(project);
+  const time = '2026-10-18T00:00:00.000Z';
+  project.snapshots = [
+    { id: 'before-coat', name: 'Pristine Si', createdAt: time, state: original },
+    { id: 'after-coat', name: 'Full SiO2', createdAt: time, state: after },
+  ];
+  const reopened = expandProjectStorage(JSON.parse(serializeProject(project)));
+  validateProjectFile(reopened);
+  assert.deepEqual(reopened.snapshots[0].state.model, original.model);
+  assert.deepEqual(reopened.snapshots[1].state.model, after.model);
+  const reader = await readProjectFile(
+    {
+      size: Buffer.byteLength(serializeProject(project)),
+      text: async () => serializeProject(project),
+    },
+    { experimentalPhysicalFacetReadOnly: true },
+  );
+  assert.deepEqual(reader.model, after.model);
+  assert.deepEqual(applyOperation(reader.model, operation), {
+    changed: false,
+    error:
+      'Experimental physical facet supports only one full-domain Both-face SiO2 Conformal Add.',
+  });
+  assert.deepEqual(reader.model, after.model);
+});
