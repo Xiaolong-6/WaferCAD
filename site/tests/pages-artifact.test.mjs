@@ -13,6 +13,7 @@ test('Pages includes product assets but excludes previews and developer-only fix
     'app.html',
     'guide/index.html',
     'ui-v2/workstation-entry.js',
+    'experimental/physical-facets/physical-facet-model.js',
     'ui-v2/workstation-preview.css',
     'ui-v2/real-three-controls.js',
     'examples/tio2-metalens-full-array.wafercad',
@@ -28,6 +29,9 @@ test('Pages includes product assets but excludes previews and developer-only fix
     'app-legacy.html',
     'app.js',
     'workstation.css',
+    'isotropic-release-topology.js',
+    'experimental/physical-facets/physical-facet-coating.js',
+    'experimental/physical-facets/physical-facet-coating-section.js',
     'workstation-ui.js',
     'controllers/build-controller.js',
     'controllers/startup-controller.js',
@@ -52,6 +56,7 @@ test('Pages includes product assets but excludes previews and developer-only fix
     'ui-v2/prototypes/a-full/index.html',
     'ui-v2/reviews/contract-decisions.html',
     'tests/ci-workflow-architecture.test.mjs',
+    'experimental/microdisk/suspended-silica-microdisks-adaptive.wafercad',
     '../package.json',
   ]) {
     assert.equal(shouldPublishSitePath(path), false, path);
@@ -91,6 +96,13 @@ test('staging copies production files without altering source or shipping tests'
   assert.match(redirect, /location\.replace\('\.\/app\.html'/);
   assert.doesNotMatch(redirect, /Legacy source must never deploy/);
   await assert.rejects(access(join(destination, 'app.js')));
+  for (const sourceFile of [
+    'isotropic-release-topology.js',
+    'experimental/physical-facets/physical-facet-coating.js',
+    'experimental/physical-facets/physical-facet-coating-section.js',
+  ]) {
+    await assert.rejects(access(join(destination, sourceFile)));
+  }
   assert.equal(await readFile(join(destination, 'examples', 'live.wafercad'), 'utf8'), 'project');
   await assert.rejects(access(join(destination, 'ui-v2', 'mock-data.js')));
   await assert.rejects(access(join(destination, 'ui-v2', 'prototypes', 'index.html')));

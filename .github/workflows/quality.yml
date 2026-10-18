@@ -58,7 +58,7 @@ jobs:
             scripts/v2/check-source-sunset-release-owners.mjs
             scripts/v2/check-source-sunset-renderer-stress.mjs
             scripts/example-recipe-runall-acceptance.mjs
-            docs/LEGACY_SOURCE_SUNSET.md
+            docs/operations/LEGACY_SOURCE_SUNSET.md
           )
           npx prettier --write "${files[@]}"
           node -e 'const fs=require("node:fs"); for(const f of process.argv.slice(1)) console.log("PR290_FORMAT_FILE:"+f+":"+JSON.stringify(fs.readFileSync(f,"utf8")));' "${files[@]}"

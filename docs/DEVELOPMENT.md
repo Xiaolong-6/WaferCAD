@@ -6,11 +6,13 @@ The active product is entirely under `site/`.
 
 `app.html` opens the production v2 Workstation. The Welcome page's four-view
 interactive preview uses a read-only v2 renderer; it never acquires the writer
-lease or saves a preview into the local Workspace. The historical
-`app-legacy.html` editor, `app.js`, and `workstation.css` remain in Git for
-scientific browser regressions pending migration. Published Pages ships only a
-same-origin redirect from `app-legacy.html` to `app.html` (preserving query and
-fragment), and excludes the old editor's executable resources.
+lease or saves a preview into the local Workspace. The executable Legacy editor,
+including `app-legacy.html`, `app.js`, and `workstation.css`, has been removed
+from the active checkout. Its historical source and original DOM checks remain
+reproducible at the immutable `legacy-frozen` tag; native-v2 scientific owners
+run against the current application. The published `app-legacy.html` URL is a
+build-generated redirect to `app.html` that preserves query and fragment.
+See [Legacy source sunset](operations/LEGACY_SOURCE_SUNSET.md) for test and rollback ownership.
 
 The v2 footer links the deployed short commit SHA to its full GitHub commit
 (`commit local` for unstamped development). If browser `localStorage` is
@@ -22,6 +24,47 @@ or expired writer lease cannot authorize an IndexedDB commit.
 
 Historical implementations remain available through Git history rather than the active working tree. Do not reintroduce retired backend/client APIs merely for compatibility.
 
+## Offline source transport and Three.js priority
+
+**Do not repeatedly request user uploads or retry blocked git clone.** First
+locate the already-uploaded `three@0.179.1` npm tarball in WaferCAD Project
+Sources (materialize if required) or the current container's `/mnt/data`.
+The stored filename may have a numeric suffix. Then restore Three.js using:
+
+```sh
+python3 scripts/restore-pinned-three.py --archive "/mnt/data/three-0.179.1.tgz"
+# Or: WAFERCAD_THREE_ARCHIVE="/path/to/three.tgz" python3 scripts/restore-pinned-three.py
+```
+
+The helper verifies SHA-512 against `package-lock.json` before extraction.
+If the Sources attachment is unavailable **in a full repository checkout**,
+the tracked `vendor/npm/three-0.179.1.tgz` is a verified fallback
+(run without arguments). The source-only ZIP deliberately omits that tarball;
+therefore its restore requires a separate local Sources/archive copy.
+Reuse `node_modules/three` as long as the local workspace survives.
+Only `npm ci` installs the full development toolchain.
+
+The [source-only Artifact workflow](../.github/workflows/offline-source-bundle.yml)
+uses GitHub's checkout and publishes a ZIP of the exact commit's tracked
+sources, tests, fixtures, docs and workflow files. **It excludes**
+`vendor/npm/three-0.179.1.tgz`, `node_modules` and Chromium. There is no
+npm installation in Actions. `wafercad-source-<SHA>.zip` contains
+`wafercad-source-manifest.json` with the revision and per-file SHA-256.
+Use a completed existing workflow run when possible; run its narrow
+`workflow_dispatch` only when a newer source bundle is necessary (the
+workflow becomes manually dispatchable once present on the default branch).
+The connector downloads the Artifact straight into the execution container,
+where it can be extracted and verified. No `.git` history is included.
+
+**Verified 2026-10-18:** GitHub Connector -> mounted Artifact ZIP -> local
+extraction and hash verification -> native headed Chromium/Xvfb/SwiftShader
+rendering succeeded. `scripts/offline-native-app-capture.py` rendered a real
+in-memory demo and a strictly validated Photodetector model. Managed browser
+navigation still blocked `https://wafercad.local`; `about:blank` fallback
+only verifies the isolated native 3D renderer. Real Worker Open, IndexedDB,
+History/Recovery, synchronized views and complete UI interaction still require
+separate normal-origin acceptance. Do not create a second Chromium runner.
+
 ## Local run
 
 ```bash
@@ -30,11 +73,35 @@ python -m http.server 8000 --directory site
 
 Open `http://localhost:8000`.
 
+If managed Chromium rejects local/virtual-domain navigation with
+`ERR_BLOCKED_BY_ADMINISTRATOR`, **do not conclude that local 3D diagnostics
+are impossible or create a parallel capture script**. Reuse the existing
+[offline native app capture](tools/OFFLINE_VISUAL_KERNEL.md#real-native-app-with-offline-swiftshader-diagnostic):
+
+```bash
+# Native v2/Three.js Renderer smoke check (headed Chromium + Xvfb on Linux):
+python3 scripts/offline-native-app-capture.py --root . \
+  --inmemory-demo --output test-results/offline-native-demo
+
+# A real, strictly validated model inside the native Three.js viewport:
+python3 scripts/offline-native-app-capture.py --root . \
+  --inmemory-project site/examples/photodetector-literature-examples.wafercad \
+  --output test-results/offline-native-photodetector
+```
+
+The script first attempts the normal application origin; under administrator
+URL blocking it can fall back to the real app source running at `about:blank`
+with local pinned Three.js. Inspect the actual screenshots and evidence report.
+A null-origin capture is **partial Renderer evidence**, not proof of project
+Open/Worker, synchronized views, IndexedDB, History/Recovery, mobile interaction
+or full release acceptance. `scripts/offline-visual-kernel.mjs` is the separate
+scientific SVG/PNG geometry diagnostic, not a WebGL replacement.
+
 ## Process Recipe / Base lifecycle
 
 `site/controllers/process-recipe-controller.js` owns the guided Recipe editor and runs existing Process operations; `site/process-recipe.js` is the restricted parser/normalizer and must never execute arbitrary JavaScript. **Continue current model** is additive and requires confirmation when a process revision exists. **Rebuild Base first (new Main)** reuses the Base controller's Keep/Clear/Cancel transaction and begins a fresh Main lineage. The Base History contract lives in `workspace-snapshots.js`: when archiving from a detached historical cursor, preserve the source Variant's **original HEAD**, not the currently inspected Step. New features must cover this with unit and browser tests, including Save/Open and Undo/Redo branch graphs.
 
-Typed Recipe lengths bypass the manual form's editing grid when assembling the existing transactional Process worker request. This includes film thickness, etch/CMP depth, Implant/Electrical depth and rough profile lengths. A 0.35 nm Recipe film must execute as 0.35 nm in every display unit. Export selects lossless storage if compact quantization would change physical Z/depth/profile lengths in the live model or any restorable History state; strict compact serialization keeps its documented grid contract. Recipe `snapshot()` is a structural History mutation and must trigger autosave even when no material operation runs. Material process lengths follow the [numerical/physical interpretation contract](PROCESS_NUMERICAL_CONTRACT_2026-10-14.md); the continuum Z representation threshold is not a universal atomic-film lower bound.
+Typed Recipe lengths bypass the manual form's editing grid when assembling the existing transactional Process worker request. This includes film thickness, etch/CMP depth, Implant/Electrical depth and rough profile lengths. A 0.35 nm Recipe film must execute as 0.35 nm in every display unit. Export selects lossless storage if compact quantization would change physical Z/depth/profile lengths in the live model or any restorable History state; strict compact serialization keeps its documented grid contract. Recipe `snapshot()` is a structural History mutation and must trigger autosave even when no material operation runs. Material process lengths follow the [numerical/physical interpretation contract](science/PROCESS_NUMERICAL_CONTRACT_2026-10-14.md); the continuum Z representation threshold is not a universal atomic-film lower bound.
 
 Recipe validation drafts are keyed by stable Step ID. Deleting a Step or changing its operation invalidates stale field errors, and Undo/Redo restores the persisted valid Recipe without unapplied field drafts. Run to Step validates only the requested prefix, and displayed error numbers follow current Step order. The Process material menu caches derived exposure only across identical model/revision, active face and Mask selection (Cell, Layers, transform, ROI, Draw source, layout elements); Geometry Kernel and Process worker validation remain authoritative. See [the Recipe field/cache integration note](archive/RECIPE_LOCAL_REPAIR_2026-10-08.md) for the original patch provenance and acceptance boundaries.
 
@@ -136,7 +203,7 @@ Surface/Implant changes should add both pure geometry/profile assertions and at 
 
 See [Testing](testing.md) for current product layout/renderer commands and [Product review](archive/PRODUCT_REVIEW.md) for the historical Chromium gallery and interaction evidence. Current CI selects semantic coverage by ownership; full screenshot galleries belong to weekly/manual full runs with pinned Three.js. See [Testing](testing.md) for suite ownership and [Development handoff](COLLABORATION.md) for ChatGPT/Codex coordination.
 
-See [Process benchmarks](PROCESS_BENCHMARKS.md) for analytic step/trench/island geometry, both faces, Direct/Conformal/Grow/Etch checks, and explicit approximation boundaries. These tests run under `npm test`.
+See [Process benchmarks](science/PROCESS_BENCHMARKS.md) for analytic step/trench/island geometry, both faces, Direct/Conformal/Grow/Etch checks, and explicit approximation boundaries. These tests run under `npm test`.
 
 ## UI visual system
 

@@ -7,7 +7,7 @@
 
 This document records what WaferCAD is comparable to, which external tools are useful references, and where WaferCAD should deliberately stop.
 
-It is a product and engineering reference, not a claim of numerical parity with any commercial simulator. The current geometry contract remains defined by [PROCESS_BENCHMARKS.md](../PROCESS_BENCHMARKS.md). When this document and a tested WaferCAD geometry contract disagree, the tested contract is authoritative until an explicit contract change is made.
+It is a product and engineering reference, not a claim of numerical parity with any commercial simulator. The current geometry contract remains defined by [PROCESS_BENCHMARKS.md](../science/PROCESS_BENCHMARKS.md). When this document and a tested WaferCAD geometry contract disagree, the tested contract is authoritative until an explicit contract change is made.
 
 The main conclusion is that WaferCAD occupies a useful middle layer between layout viewers / static layer-stack extruders and full semiconductor process TCAD:
 

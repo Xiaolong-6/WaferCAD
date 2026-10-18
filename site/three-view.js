@@ -16,6 +16,11 @@ import {
   electricalRegionSolids,
   implantSolids,
 } from './model-view-geometry.js';
+import { buildPhysicalFacetPresentation } from './experimental/physical-facets/physical-facet-render-geometry.js';
+import {
+  PHYSICAL_FACET_MODEL_KERNEL,
+  validateExperimentalPhysicalFacetModel,
+} from './experimental/physical-facets/physical-facet-model.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
 import {
   ownedContourSegments,
@@ -3013,6 +3018,120 @@ diffuseColor.a *= waferCadAlphaScale;`,
     return initPromise;
   }
 
+  // Experimental physical facet Model uses actual owner triangles. This is an
+  // opt-in production ThreeView path; old vector models never enter it.
+  function renderExperimentalPhysicalFacet(model, clip, inspection, signature) {
+    if (clip) throw new RangeError('Experimental physical facets do not support ROI clipping yet');
+    const owner = validateExperimentalPhysicalFacetModel(model);
+    if (!owner) throw new RangeError('Missing experimental physical facet owner');
+    // The global XYZ helper crosses a locally collapsed Si sheet and reads
+    // visually as an erroneous vertical material edge in this inspection.
+    if (axesHelper) axesHelper.visible = false;
+    host.dataset.physicalFacetAxesHidden = 'true';
+    if (
+      physicalSceneModel === model &&
+      physicalSceneSignature === signature &&
+      presentationObjects.size
+    ) {
+      applyPresentationState();
+      host.dataset.physicalFacetOwner = owner.kind;
+      return;
+    }
+
+    // Never route a real faceted owner into the flat Process topology plan.
+    // Group disposal also drops any stale surface variants and GPU resources.
+    disposeGroup();
+    const data = buildPhysicalFacetPresentation(model);
+    const exterior = { kind: 'material-exterior' };
+    const materialState = presentationState(exterior, inspection).materialState;
+    let built = 0;
+    for (const face of ['top', 'bottom', 'side']) {
+      const vertices = data.positions[face];
+      if (!vertices.length) continue;
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+      geometry.computeVertexNormals();
+      const material = createSurfaceMaterial(
+        layerById(model, owner.layerId),
+        materialState,
+        null,
+        exterior,
+      );
+      material.flatShading = true;
+      const mesh = addSurfaceMesh(
+        geometry,
+        material,
+        materialState,
+        null,
+        0,
+        false,
+        null,
+        exterior,
+      );
+      if (mesh) {
+        mesh.name = `physical-${face}-${owner.layerId}`;
+        built++;
+      }
+    }
+    if (built !== 3) throw new RangeError('Incomplete physical facet 3D surface faces');
+    if (data.oxideTriangleCount) {
+      // Only the exact owner classifies Si versus oxide. The closed display
+      // envelope is a tessellated approximation; never export it as Process.
+      const physicalOxideLayer = {
+        id: data.oxideLayerId,
+        name: 'Experimental physical SiO2',
+        color: '#d88b37',
+      };
+      let builtOxideFaces = 0;
+      for (const face of ['top', 'bottom', 'side']) {
+        const positions = data.oxidePositions[face];
+        if (!positions?.length) continue;
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.computeVertexNormals();
+        const material = createSurfaceMaterial(physicalOxideLayer, materialState, null, exterior);
+        material.flatShading = true;
+        const mesh = addSurfaceMesh(
+          geometry,
+          material,
+          materialState,
+          null,
+          0,
+          false,
+          null,
+          exterior,
+        );
+        if (mesh) {
+          mesh.name = `physical-${face}-${data.oxideLayerId}`;
+          builtOxideFaces++;
+        }
+      }
+      if (builtOxideFaces !== 3) {
+        throw new RangeError('Incomplete exterior physical oxide surface');
+      }
+    }
+    physicalSceneModel = model;
+    physicalSceneSignature = signature;
+    activeSceneVariant = null;
+    physicalSurfacePlan = null;
+    host.dataset.physicalFacetOwner = owner.kind;
+    host.dataset.physicalFacetTriangles = String(data.physicalTriangleCount);
+    host.dataset.physicalFacetOxideTriangles = String(data.oxideTriangleCount);
+    host.dataset.physicalFacetSourceCells = String(data.sourceCells);
+    host.dataset.surfaceTopology = JSON.stringify({
+      physicalTriangles: data.physicalTriangleCount,
+      physicalOxideTriangles: data.oxideTriangleCount,
+      sourceCells: data.sourceCells,
+    });
+    host.dataset.rendererUpdateKind = 'physical-facet-geometry';
+    applyZDisplayState(model);
+    applyPresentationState({ profile: false, settle: true });
+    host.dataset.sceneVariant = 'physical-facet';
+    stats.textContent = data.oxideTriangleCount
+      ? 'physical Si + SiO2 (experimental tessellation)'
+      : 'physical Si (experimental)';
+  }
+
   async function render() {
     if (!ready) return;
     if (rendering) {
@@ -3022,6 +3141,29 @@ diffuseColor.a *= waferCadAlphaScale;`,
     }
     const model = getModel();
     if (!model) return;
+    if (model.kernel === PHYSICAL_FACET_MODEL_KERNEL) {
+      try {
+        renderExperimentalPhysicalFacet(
+          model,
+          getClipGeometry(),
+          getInspection() || {},
+          sceneSignature(model, getClipGeometry(), getInspection() || {}),
+        );
+      } catch (error) {
+        host.dataset.renderState = 'error';
+        host.dataset.renderPhase = 'build-failed';
+        host.dataset.rendererBuildFailure = error?.message || String(error);
+        stats.textContent = 'Experimental physical 3D unavailable';
+        console.error('Physical facet 3D build failed:', error);
+      }
+      return;
+    }
+    if (axesHelper) axesHelper.visible = true;
+    delete host.dataset.physicalFacetAxesHidden;
+    delete host.dataset.physicalFacetOwner;
+    delete host.dataset.physicalFacetTriangles;
+    delete host.dataset.physicalFacetOxideTriangles;
+    delete host.dataset.physicalFacetSourceCells;
     const clip = getClipGeometry(),
       inspection = getInspection() || {},
       signature = sceneSignature(model, clip, inspection),

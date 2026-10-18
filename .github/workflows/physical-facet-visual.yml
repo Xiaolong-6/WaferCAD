@@ -1,0 +1,69 @@
+name: Physical facet real-browser preview
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'site/experimental/physical-facets/physical-facet-preview.html'
+      - 'site/experimental/physical-facets/physical-facet-preview.js'
+      - 'site/experimental/physical-facets/physical-facet-shell-preview.html'
+      - 'site/experimental/physical-facets/physical-facet-shell-preview.js'
+      - 'site/experimental/physical-facets/physical-facet-shell-owner.js'
+      - 'site/experimental/physical-facets/physical-facet-render-geometry.js'
+      - 'site/experimental/physical-facets/physical-facet-surface.js'
+      - 'site/plan-renderers.js'
+      - 'site/project-io.js'
+      - 'site/ui-v2/workstation-runtime.js'
+      - 'site/ui-v2/workstation-entry.js'
+      - 'scripts/v2/capture-physical-facet-workstation.mjs'
+      - 'scripts/v2/check-physical-facet-indexeddb-recovery.mjs'
+      - 'site/three-view.js'
+      - 'site/model-view-geometry.js'
+      - 'scripts/v2/capture-physical-facet-preview.mjs'
+      - '.github/workflows/physical-facet-visual.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: physical-facet-preview-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  screenshot:
+    name: Real Chromium 3D and Section evidence (review required)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium-1.55.1
+      - run: npx playwright install --with-deps chromium
+      - name: Render true physical facet geometry in Chromium
+        run: node scripts/v2/capture-physical-facet-preview.mjs
+      - name: Inspect native v2 Workstation physical file read-only
+        run: node scripts/v2/capture-physical-facet-workstation.mjs
+      - name: Fault-inject real IndexedDB Recovery write in Chromium
+        run: node scripts/v2/check-physical-facet-indexeddb-recovery.mjs
+      - name: Retain unreviewed screenshots and metrics
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: physical-facet-same-owner-browser-evidence
+          path: |
+            test-results/physical-facet-preview/
+            test-results/physical-facet-workstation/
+            test-results/physical-facet-recovery/
+          retention-days: 14
+          if-no-files-found: warn

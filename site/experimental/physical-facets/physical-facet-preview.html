@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>WaferCAD | Experimental physical facet inspection</title>
+    <style>
+      :root {
+        font-family: Inter, system-ui, sans-serif;
+        color: #172b3e;
+        background: #f3f6fa;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 28px;
+      }
+      header {
+        max-width: 1320px;
+        margin: 0 auto 18px;
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        gap: 16px;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 0 0 6px;
+        font-weight: 650;
+        letter-spacing: -0.45px;
+      }
+      p {
+        margin: 0;
+        color: #576b7a;
+        font-size: 13px;
+        line-height: 1.55;
+      }
+      .status {
+        display: inline-block;
+        font:
+          600 11px/1.5 ui-monospace,
+          monospace;
+        padding: 6px 10px;
+        border: 1px solid #aebfcb;
+        border-radius: 6px;
+        background: white;
+      }
+      .views {
+        margin: 0 auto;
+        max-width: 1320px;
+        display: grid;
+        grid-template-columns: 1.2fr 1fr;
+        gap: 16px;
+      }
+      article {
+        background: white;
+        overflow: hidden;
+        border: 1px solid #d9e2ea;
+        border-radius: 14px;
+      }
+      .heading {
+        padding: 14px 18px 12px;
+        border-bottom: 1px solid #ebeff3;
+      }
+      h2 {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 660;
+      }
+      .heading p {
+        margin-top: 4px;
+      }
+      #physicalThree,
+      #physicalSection {
+        display: block;
+        width: 100%;
+        height: 510px;
+      }
+      #physicalThree {
+        position: relative;
+      }
+      #physicalThree canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      .foot {
+        margin: 0 auto;
+        max-width: 1320px;
+        margin-top: 16px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        color: #506778;
+        font-size: 12px;
+      }
+      .foot span {
+        background: white;
+        padding: 9px 12px;
+        border: 1px solid #dde5eb;
+        border-radius: 7px;
+      }
+      @media (max-width: 800px) {
+        body {
+          padding: 12px;
+        }
+        header {
+          align-items: start;
+          flex-direction: column;
+        }
+        .views {
+          grid-template-columns: 1fr;
+        }
+        #physicalThree,
+        #physicalSection {
+          height: 345px;
+        }
+      }
+    </style>
+    <script src="../../vendor/polygon-clipping.umd.js"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.179.1/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.179.1/examples/jsm/"
+        }
+      }
+    </script>
+    <script type="module" src="./physical-facet-preview.js"></script>
+  </head>
+  <body data-physical-facet-ready="false">
+    <header>
+      <div>
+        <h1>Physical Si facet | one-owner inspection</h1>
+        <p>
+          Isolated experimental evidence for #297/#300; this page does not enable a Process or
+          production project import.
+        </p>
+      </div>
+      <span class="status" id="evidenceStatus" role="status">Rendering physical owner…</span>
+    </header>
+    <main class="views">
+      <article>
+        <div class="heading">
+          <h2>Physical 3D solid</h2>
+          <p>Closed front, back and sidewall triangles · same analytic material owner</p>
+        </div>
+        <div
+          id="physicalThree"
+          role="img"
+          aria-label="Experimental production ThreeView silicon triangulation"
+        ></div>
+      </article>
+      <article>
+        <div class="heading">
+          <h2>Native A–B Section</h2>
+          <p>Section contour derived from matching facet-edge breakpoints</p>
+        </div>
+        <canvas
+          id="physicalSection"
+          aria-label="Experimental physical silicon section profile"
+        ></canvas>
+      </article>
+    </main>
+    <div class="foot">
+      <span id="physicalThreeStats" role="status">Preparing production ThreeView…</span>
+      <span>Period: 6.4 μm · relief: 4.5 μm</span>
+      <span>Reference thickness: 251 μm</span>
+      <span>Displayed with symmetric Z-break ±118 μm, view only</span>
+      <span>Source: canonical experimental physical facet owner</span>
+    </div>
+  </body>
+</html>

@@ -9,6 +9,10 @@ import {
 } from './model-array.js';
 import { robustDifference, robustIntersection } from './polygon-boolean.js';
 import { normalizeProcessRecipe } from './process-recipe.js';
+import {
+  PHYSICAL_FACET_MODEL_KERNEL,
+  validateExperimentalPhysicalFacetModel,
+} from './experimental/physical-facets/physical-facet-model.js';
 
 export const CURRENT_PROJECT_VERSION = 14;
 export const PROJECT_COORDINATE_LIMIT_UM = 1e9;
@@ -455,7 +459,11 @@ function validateModelGeometry(model, cache) {
 
 function validateModel(model, budget, geometryCache) {
   assertObject(model, 'model');
-  if (model.kernel !== 'vector-2.5d-v1' && model.kernel !== ARRAY_MODEL_KERNEL)
+  if (
+    model.kernel !== 'vector-2.5d-v1' &&
+    model.kernel !== ARRAY_MODEL_KERNEL &&
+    model.kernel !== PHYSICAL_FACET_MODEL_KERNEL
+  )
     fail('model.kernel', 'is not supported.');
   if (model.array != null && !isArrayModel(model))
     fail('model.array', 'requires the array model kernel.');
@@ -490,6 +498,18 @@ function validateModel(model, budget, geometryCache) {
     validateStack(region.stack, `${path}.stack`, layerIds);
     if (region.stack.length === 0) fail(`${path}.stack`, 'must not be empty.');
   });
+
+  if (
+    model.kernel === PHYSICAL_FACET_MODEL_KERNEL ||
+    Object.hasOwn(model, 'experimentalPhysicalFacetOwner') ||
+    Object.hasOwn(model, 'experimentalPhysicalFacetShell')
+  ) {
+    try {
+      validateExperimentalPhysicalFacetModel(model);
+    } catch (error) {
+      fail('model.experimentalPhysicalFacetOwner', error.message);
+    }
+  }
 
   if (model.implants != null) {
     const implants = assertArray(model.implants, 'model.implants', LIMITS.implants),

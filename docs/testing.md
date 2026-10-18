@@ -16,13 +16,13 @@ to preserve hard correctness gates without a combined 15-minute watchdog.
 
 The old DOM-specific assertions remain auditable at the frozen tag; native
 science coverage and unresolved historical case-by-case differences are
-documented in [Legacy source sunset](LEGACY_SOURCE_SUNSET.md) and Issue #289.
+documented in [Legacy source sunset](operations/LEGACY_SOURCE_SUNSET.md) and Issue #289.
 Do not interpret a native replacement as identical old-UI gesture behavior,
 and do not skip physics, Recovery, worker rollback or morphology contracts.
 
 ## Repository ownership and layout
 
-- `site/tests/*.test.mjs`: Node unit, model, geometry, schema, History and scientific invariants. `npm test` discovers this flat glob; **moving tests into subdirectories without updating the runner and CI routing silently drops coverage**. Group ownership through names and documentation first.
+- `site/tests/*.test.mjs`: flat Node/science ownership and the retained `npm test` discovery glob. Documentation/Wiki/Process Guide checks now live under `site/tests/documentation/*.test.mjs` and are **all imported by** `site/tests/documentation-suite.test.mjs` through the original glob. Five native History tests live under `site/tests/history/`, and four Workspace/Project Recovery tests under `site/tests/recovery/`. Their root suite entrypoints preserve automatic discovery; specialized CI/owner references use canonical nested paths. Adding a documentation test is automatically discovered; other domains must have an explicit verified runner before any relocation. Silent coverage loss is forbidden.
 - `scripts/*-regression.mjs`, `scripts/v2/` and `scripts/test-helpers/`: real-browser acceptance entry points and reusable helpers. `package.json` scripts and `.github/workflows/` specify their invocation; move only with a reference inventory and verified execution.
 - `tests/fixtures/`: byte-exact or calibrated input/expected data, including compressed Legacy and native Fig3 projects. Protect scientific provenance, hashes and reversible decode procedures.
 - `tests/visual-baselines/`: approved platform-specific reference pixels; do not delete/regenerate to hide regressions. Keep routine CI screenshots in artifacts.
@@ -70,15 +70,15 @@ These commands assume WaferCAD is already served at `WAFERCAD_URL` or the defaul
 
 ### Published Legacy URL policy
 
-`app-legacy.html` remains available in the Git source tree for legacy-only
-scientific regression tests. In the staged Pages artifact its public URL
-serves only a same-origin redirect to the v2 `app.html`, preserving query
-and fragment. `app.js` and `workstation.css` are not published.
+The executable Legacy editor and its former `app-legacy.html`, `app.js`, and
+`workstation.css` sources are absent from the current `site/` checkout.
+Their exact historical source and DOM tests are retained at `legacy-frozen`.
+The staged Pages artifact generates `app-legacy.html` as a same-origin
+redirect to the v2 `app.html`, preserving query and fragment.
 `site/tests/pages-artifact.test.mjs` and
-`scripts/smoke-pages-artifact.mjs` enforce the production artifact
-boundary and verify that the deployed Worker-backed app still boots.
-This does **not** remove the old editor's test source or change historical
-project-format and Recovery compatibility.
+`scripts/smoke-pages-artifact.mjs` enforce that public boundary and
+verify that production Workers still boot. Old-project-format and Recovery
+compatibility remain mandatory on the current application.
 
 ### M3D Welcome and 3D Border v2 ownership
 
@@ -87,10 +87,10 @@ Workstation, verifies the Welcome thumbnail and full project handoff,
 36 real History Steps, 27 stage bookmarks, an initialized 3D view and
 reversible Border selection without model mutation. The targeted
 `m3d-example-integration.yml` gate runs on relevant `main` PR changes.
-The full legacy M3D process/geometry/export acceptance remains available
-through manual workflow dispatch until those separate scientific contracts
-are migrated. This is an incremental test-owner transfer, not a reason
-to delete `site/app-legacy.html` from the test source tree.
+Historical Legacy M3D tests can be reproduced at `legacy-frozen`; the
+current branch uses native-v2 owners for corresponding scientific
+process/geometry/export contracts. Do not treat a changed UI harness as
+permission to skip those invariants.
 
 ### MAGIC-1000 Section/3D preview
 
@@ -115,15 +115,15 @@ layout geometry. This browser gate is included in
 `.github/workflows/klayout-compat.yml` and saves evidence in
 `test-results/klayout-v2/`.
 
-The external KLayout parser/export corpus and the full historical Legacy
-UI corpus remain active as separate owners. This focused v2 bridge is a
-progressive ownership transfer and does not yet authorize removing
-`scripts/klayout-ui-compat.mjs` or the Legacy scientific DOM.
+The external KLayout parser/export corpus remains an independent scientific
+owner, while historical Legacy-specific UI tests are reproducible at
+`legacy-frozen`. This v2 bridge does not replace the full KLayout corpus
+or justify deleting its compatibility checks.
 
-### Legacy project compatibility before UI retirement
+### Legacy project format compatibility
 
-The old UI must not be deleted until the v2 Workstation can independently
-read and recover historical project files. The targeted
+The executable old UI is already retired from this checkout, but the v2
+Workstation must continue to read and recover historical project files. The targeted
 [Legacy project compatibility workflow](../.github/workflows/legacy-project-compat.yml)
 runs `node scripts/v2/check-legacy-project-recovery.mjs` when its owned
 startup, persistence, or Legacy entry files change. This exercises the real
@@ -131,10 +131,10 @@ startup, persistence, or Legacy entry files change. This exercises the real
 original 41 process Steps) through the **v2** staged Project worker, autosave,
 reload, and a replacement-created Recovery point. It does not launch the old UI.
 The large historical fixture makes this an independent path-gated browser
-acceptance rather than an unconditional Node test. This check does not by itself
-approve removal of Legacy-specific UI/DOM tests. Welcome's interactive
-preview is now v2-only, but former Legacy-only scientific owners must still be
-migrated without losing scenario ownership.
+acceptance rather than an unconditional Node test. This check does not by itself prove historical UI-gesture parity.
+Welcome's interactive preview is v2-only; remaining historical scientific
+scenario differences are tracked in [Issue #289](https://github.com/Xiaolong-6/WaferCAD/issues/289)
+without dropping current v2 invariants.
 
 ### Production desktop docking ownership
 
@@ -168,19 +168,16 @@ continue to open through the ordinary v2 Project route.
 name while exercising the production v2 Workstation only: complete 47-Step and
 seven-Variant Example handoff, exact saved-model reload, explicit Project Save,
 competing v2 writer exclusion, protected unload, and Recovery after replacement.
-The original executable Legacy↔v2 browser handoff test remains independently
-available in `scripts/v2/check-legacy-cross-ui-recovery.mjs` and runs under
-`legacy-cross-ui-retirement.yml` when either writer implementation changes,
-or by manual dispatch. This separate gate must be retired only after all
-cross-interface storage contracts have a verified replacement.
-Historical pre-v2 project decoding and compatibility remain separately owned
-by `check-legacy-project-recovery.mjs` and its SHA-256-pinned fixture.
-The Workstation footer shows the deployed commit
-from `build-info.json` (or `commit local` in local development).
-Existing scientific/controller suites retain their Legacy DOM assertions at
-`app-legacy.html`. Suites that start through Welcome explicitly use
-`newLegacyUiContext` / `newLegacyUiPage`; these test contexts redirect the
-Welcome navigation to Legacy. Default-route owners use unmodified contexts.
+The original executable Legacy↔v2 handoff scenario is archived with
+`legacy-frozen`; its former `check-legacy-cross-ui-recovery.mjs` script and
+`legacy-cross-ui-retirement.yml` workflow are no longer in the active checkout.
+Current `check-cross-ui-recovery.mjs` exercises native-v2 storage ownership and
+Recovery. Historical project decoding is separately checked by
+`check-legacy-project-recovery.mjs` and its SHA-256-pinned fixture.
+The Workstation footer shows the deployed commit from `build-info.json`
+(or `commit local` in local development). Current scientific/controller
+tests target the production v2 entry; exact Legacy DOM cases are reproducible
+only at the frozen tag.
 
 Small Metalens interaction owners import the complete
 `tio2-metalens-four-unit-process.wafercad` through the staged Project path.
@@ -236,13 +233,13 @@ Final captures also require visible colored material pixels in the compositor PN
 
 [The Phase B CI workflow](../.github/workflows/ui-v2-three.yml) runs these two browser owners separately from the Main/Mask/Section job. It has no manual dispatch entry. Local reports are under `test-results/ui-v2-three-review-metalens/` and `test-results/ui-v2-three-export-abort/`. Passing these checks does not establish hardware GPU or physical touchscreen acceptance; see the [WIP checkpoint](archive/ui-v2/STAGE_B_LOCAL_CHECKPOINT_2026-10-11.md) for actual results and the [current review handoff](archive/ui-v2/STAGE_B_REVIEW_HANDOFF_2026-10-11.md) for the user-approved lightweight acceptance scope. The full-model interaction rerun was stopped at the user's request; its checker remains available and unchanged in scope.
 
-For **frame-accurate transparency measurements**, wait for `rendererFrameSerial` to advance after the opacity change, then sample diagnostics. `renderState=ready` alone may precede the next WebGL frame. `rendererFrameMs` is CPU-observed submission time, while `rendererDrawCalls`/`rendererDrawTriangles` and retained geometry/material counters expose the active and cached scene costs. A browser screenshot/compositor checkpoint is needed when comparing user-visible cold and warm latency. The 625-site transparency benchmark **continues to measure** cold/warm complete-frame latency, but the <15 s cold budget and relative swap times are **temporarily non-blocking** under the recorded renderer acceptance policy. Failures of transparency geometry, buried Electrical/Implant visibility, scene ownership, retained resource stability, interaction, or genuine frame hangs still fail CI. Timing overruns are emitted as `ARRAY_RENDERER_PERF_WARNING` and stored in the renderer report. See [the transparency performance roadmap](RENDERER_TRANSPARENCY_ROADMAP.md) for the evidence, phases and conditions for restoring the hard timing gate.
+For **frame-accurate transparency measurements**, wait for `rendererFrameSerial` to advance after the opacity change, then sample diagnostics. `renderState=ready` alone may precede the next WebGL frame. `rendererFrameMs` is CPU-observed submission time, while `rendererDrawCalls`/`rendererDrawTriangles` and retained geometry/material counters expose the active and cached scene costs. A browser screenshot/compositor checkpoint is needed when comparing user-visible cold and warm latency. The 625-site transparency benchmark **continues to measure** cold/warm complete-frame latency, but the <15 s cold budget and relative swap times are **temporarily non-blocking** under the recorded renderer acceptance policy. Failures of transparency geometry, buried Electrical/Implant visibility, scene ownership, retained resource stability, interaction, or genuine frame hangs still fail CI. Timing overruns are emitted as `ARRAY_RENDERER_PERF_WARNING` and stored in the renderer report. See [the transparency performance roadmap](renderer/RENDERER_TRANSPARENCY_ROADMAP.md) for the evidence, phases and conditions for restoring the hard timing gate.
 
 For renderer performance diagnosis, `npm run benchmark:renderer` opens the bundled 625-site full-wafer project and records stage timings exposed by the 3D renderer (ownership/topology, smooth caps, sidewalls, annotations/scene assembly, presentation updates, and rough preview/final readiness). It also asserts the persistent-scene contract: opacity changes must retain the same scene generation and surface-plan build count, report a presentation update, perform zero physical assembly work, and keep scene object/geometry/material counts stable. The benchmark writes diagnostic output under ignored `test-results/renderer-pipeline/`. It is **not** a CI performance threshold: hardware/browser timing varies, so use it to compare the same environment before/after a renderer change. Changes to the benchmark script route to the renderer browser owner so its surrounding product contracts are still exercised.
 
 ### Documentation checks
 
-`npm run docs:check` validates generated Process output and the repository-wide documentation link/navigation contract. `node --test site/tests/documentation.test.mjs site/tests/wiki-manual.test.mjs site/tests/process-guide.test.mjs` owns link negative cases, actual tutorial parsing, Welcome catalog alignment and generated operation diagrams. See [Documentation architecture](DOCUMENTATION.md) for authority and publishing boundaries.
+`npm run docs:check` validates generated Process output and the repository-wide documentation link/navigation contract. `node --test site/tests/documentation-suite.test.mjs` owns link negative cases, actual tutorial parsing, Welcome catalog alignment and generated operation diagrams. See [Documentation architecture](DOCUMENTATION.md) for authority and publishing boundaries.
 
 ### Focused Recipe audit checks
 
@@ -267,13 +264,13 @@ GitHub Actions caches both npm downloads and the Playwright Chromium browser dir
 
 ### CI cost controls
 
-- Quality skips documentation-only pull requests and owns the PR-level ESLint + documentation checks + complete Node test gate.
+- Quality runs on every PR, including documentation-only changes. Draft runs the focused lint/format/documentation/configuration gates; Ready-for-Review runs the complete Node suite.
 - Browser regression is path-filtered to application, examples, browser-test, dependency, and workflow changes; `site/tests/**` changes alone do not trigger it.
 - Every browser PR runs UI smoke. Workstation and resilience are ownership-selected rather than unconditional; `scripts/ci-test-plan.mjs` then selects History, Persistence, Interaction, Examples, Product Layout, Renderer, and Process Geometry from changed paths.
 - Browser PR jobs do not repeat `npm test`; non-PR runs execute the Node gate because a separate Quality run may not exist for direct pushes.
 - Process Geometry no longer runs on unrelated pull requests. When selected, it runs in a separate job in parallel with the targeted browser suites.
 - Pushes to `main` diff the previous and current main revisions and reuse the same change-impact planner as pull requests, so only the owning suites are repeated after merge.
-- Changes to `site/ui-v2/**` or `scripts/v2/**` select Workstation regression; changes to shared v2 entry/workflow modules also select Legacy History, Persistence and Interaction. Real v2 Stage C/M4 runs separately on relevant `main` pushes and PRs.
+- Changes to `site/ui-v2/**` or `scripts/v2/**` select Workstation regression; changes to shared v2 entry/workflow modules may additionally select native-v2 History, Persistence and Interaction owners. Real v2 Stage C/M4 runs for applicable PRs and as a release gate before Pages publication.
 - The weekly Browser regression schedule (Monday 02:17 UTC) and manual `workflow_dispatch` runs execute the full browser inventory, including Process Geometry.
 - Workflow/planner-only changes stay on UI smoke; planner routing is covered by Node tests. The Product manual/Wiki job installs pinned dependencies before executing its generator.
 - Pull-request and targeted-main product checks suppress human-review screenshot galleries. Weekly/manual full runs retain galleries plus renderer stress and full Process Geometry permutations.
@@ -286,7 +283,7 @@ See [CI routing](CI.md) for the path-to-suite policy and full-regression events.
 
 ## Node test ownership
 
-The former `site/selftest.mjs` monolith has been removed. `npm test` now runs only `node --test site/tests/*.test.mjs`.
+The former `site/selftest.mjs` monolith has been removed. `npm test` runs `node --test site/tests/*.test.mjs`, including the Documentation, History and Recovery suite aggregators that import every grouped owner. Other test owners remain flat pending separately validated migration.
 
 The migrated self-test contracts are owned by focused files:
 
