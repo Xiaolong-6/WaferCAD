@@ -16,6 +16,45 @@ permissions:
   contents: read
 
 jobs:
+  # TEMPORARY trusted same-repository materialization. Remove immediately after
+  # the generated file and Prettier-formatted source have been committed.
+  materialize-saved-asset:
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'feat/issue298-adaptive-variant-20261018' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/issue298-adaptive-variant-20261018
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Format the three new source files only
+        run: |
+          npx prettier --write scripts/generate-microdisk-adaptive-variant.mjs scripts/tests/microdisk-adaptive-persisted-variant.test.mjs scripts/v2/check-microdisk-adaptive-persisted-workstation.mjs
+          npx prettier --check scripts/generate-microdisk-adaptive-variant.mjs scripts/tests/microdisk-adaptive-persisted-variant.test.mjs scripts/v2/check-microdisk-adaptive-persisted-workstation.mjs
+      - name: Generate and validate exactly the opt-in project
+        run: |
+          node scripts/generate-microdisk-adaptive-variant.mjs
+          node --test scripts/tests/microdisk-adaptive-persisted-variant.test.mjs
+      - name: Commit the generated project and formatted sources to the existing PR branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- scripts/generate-microdisk-adaptive-variant.mjs scripts/tests/microdisk-adaptive-persisted-variant.test.mjs scripts/v2/check-microdisk-adaptive-persisted-workstation.mjs site/examples/suspended-silica-microdisks-adaptive.wafercad
+          if git diff --cached --quiet; then
+            echo 'No changes to materialize.'
+            exit 0
+          fi
+          git commit -m 'feat(science): check in reproducible 72-band Microdisk project'
+          git push origin HEAD:refs/heads/feat/issue298-adaptive-variant-20261018
+
   saved-variant:
     runs-on: ubuntu-latest
     timeout-minutes: 35
