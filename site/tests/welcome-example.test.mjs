@@ -167,9 +167,9 @@ test('Welcome previews preserve final structure and display while retaining only
       );
     const original = await read(example.previewSourcePath || example.path);
     if (example.previewSourcePath) {
-      // Full-wafer validity and the 625-site/40-Step contract are covered by
-      // example-structure, Native Fig3 full replay and array browser regression.
-      // This preview test only needs the single-site source used to build the cover.
+      // An intentionally lightweight preview must match its declared source.
+      // The full project is validated independently; it can contain a much
+      // larger native array or a more detailed adaptive History/geometry.
       assert.equal(original.model.kernel, 'vector-2.5d-v1');
     }
     const preview = await read(example.previewProject.path);

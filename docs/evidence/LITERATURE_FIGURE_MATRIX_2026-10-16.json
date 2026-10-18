@@ -98,26 +98,28 @@
     },
     {
       "id": "suspended-silica-microdisk",
-      "projectPath": "./examples/suspended-silica-microdisks.wafercad",
+      "projectPath": "./examples/suspended-silica-microdisks-adaptive.wafercad",
       "sourceURL": "https://doi.org/10.1038/s41467-018-08038-4",
       "paperPanel": "Fig. 2a (SEM of similar device); Methods fabrication",
       "classification": "assumed",
-      "claim": "36 um eight-slice isotropic release radius not paper-measured",
+      "claim": "Original 148/82 µm spoked disk and 1.8 µm thermal oxide follow cited publication. 72-band adaptive XeF₂ undercut and 36 µm release are model assumptions, not a calibrated original SEM or measured etch front.",
       "acceptance": {
         "status": "open-paper-match",
         "calibratedScale": false,
         "quantitativeOverlay": false
       },
-      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38753459685",
-      "evidenceType": "actual Chromium capture and source-model material-owner probes; not source-SEM overlay",
+      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/39145866397",
+      "evidenceType": "Exact published 72-band saved project: real Chromium v2 saved-open/Section/3D and History checks; no paper SEM overlay or calibrated release profile",
       "captureEvidence": {
         "kind": "actual-chromium-project-capture",
-        "runURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38753459685",
-        "artifactURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38753459685/artifacts/11982606386",
-        "manifestMember": "figure-cut-manifest.json",
+        "runURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/39145866397",
+        "artifactURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/39145866397/artifacts/12143342600",
+        "manifestMember": "test-results/issue298-persisted-variant/manifest.json",
         "capturedMembers": [
-          "suspended-silica-microdisk-disk-diameter-section.png"
+          "test-results/issue298-persisted-variant/persisted-adaptive-section.png",
+          "test-results/issue298-persisted-variant/persisted-adaptive-three.png"
         ],
+        "projectSha256": "5fb8b245d933752f99f8559d6777c9d1d040c768ec2a513bc15ebb12c7255cc3",
         "originalPaperOverlay": false
       }
     },

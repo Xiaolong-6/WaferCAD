@@ -56,9 +56,9 @@ jobs:
           - example: fully-textured-perovskite-silicon-tandem
             options: '--id=fully-textured-perovskite-silicon-tandem --history-parity'
           - example: suspended-silica-microdisk
-            options: '--id=suspended-silica-microdisk --history-parity'
+            options: '--id=suspended-silica-microdisk --variant=main --history-parity'
           - example: suspended-silica-keep-history
-            options: '--id=suspended-silica-microdisk --history=keep'
+            options: '--id=suspended-silica-microdisk --variant=main --history=keep'
           - example: m3d-selfpowered-heterogeneous-ic
             options: '--id=m3d-selfpowered-heterogeneous-ic'
           - example: three-tier-silicon-jlfets

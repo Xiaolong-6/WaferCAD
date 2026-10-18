@@ -100,16 +100,24 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     figure: 'Basiri-Esfahani et al. · Fig. 2 reconstruction',
     kind: 'project',
     level: 'MEMS / photonics literature',
-    variants: [],
-    path: './examples/suspended-silica-microdisks.wafercad',
-    filename: 'suspended-silica-microdisks.wafercad',
+    variants: ['Original paper-derived release', 'Adaptive 72-band release · illustrative'],
+    path: './examples/suspended-silica-microdisks-adaptive.wafercad',
+    filename: 'suspended-silica-microdisks-adaptive.wafercad',
+    // Deliberately keep the verified fast cover from the original source.
+    // Its simplified 3D is not a screenshot of the 72-band active Variant.
+    previewSourcePath: './examples/suspended-silica-microdisks.wafercad',
     previewProject: {
       path: './examples/previews/suspended-silica-microdisk.wafercad',
       filename: 'suspended-silica-microdisk-preview.wafercad',
     },
-    preview: { path: './examples/thumbnails/suspended-silica-microdisk-three.webp', view: 'three' },
+    preview: {
+      path: './examples/thumbnails/suspended-silica-microdisk-three.webp',
+      view: 'three',
+      alt: 'Simplified original microdisk 3D preview; full 72-band adaptive release opens separately',
+      label: 'Lightweight original preview · open for full 72-band model',
+    },
     summary:
-      'A spoked silica microdisk released from silicon with a real annular air gap and surviving central support pedestal.',
+      'Paper-derived 148/82 µm spoked silica disk with 1.8 µm oxide. Opens the saved 72-band adaptive undercut Variant (36 µm assumed XeF₂ release), plus its original History branch; preview intentionally shows the lightweight original.',
     sources: [
       {
         citation:
@@ -118,7 +126,7 @@ export const BUNDLED_EXAMPLES = Object.freeze([
         href: 'https://doi.org/10.1038/s41467-018-08038-4',
       },
     ],
-    tags: ['Literature', 'Release', 'Undercut', 'Suspended structure'],
+    tags: ['Literature', 'Release', 'Undercut', '72-band adaptive', 'Illustrative'],
   },
   {
     id: 'm3d-selfpowered-heterogeneous-ic',

@@ -122,7 +122,12 @@ test('paper provenance records match the actual published example catalog', asyn
       assert.equal(entry.captureEvidence.kind, 'actual-chromium-project-capture');
       assert.equal(entry.captureEvidence.runURL, entry.browserEvidenceURL);
       assert.match(entry.captureEvidence.artifactURL, /\/artifacts\/\d+$/);
-      assert.equal(entry.captureEvidence.manifestMember, 'figure-cut-manifest.json');
+      assert.equal(
+        entry.captureEvidence.manifestMember,
+        entry.id === 'suspended-silica-microdisk'
+          ? 'test-results/issue298-persisted-variant/manifest.json'
+          : 'figure-cut-manifest.json',
+      );
       assert.ok(entry.captureEvidence.capturedMembers.length > 0);
       assert.equal(typeof entry.captureEvidence.originalPaperOverlay, 'boolean');
       for (const member of entry.captureEvidence.capturedMembers) {
