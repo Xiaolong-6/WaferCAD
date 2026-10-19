@@ -84,7 +84,7 @@ The original approved SVG and post-process M1 material are different data produc
 
 ## 4. What #225 changed in the product, and what remains a prototype
 
-The PR developed reusable code for instance-aware process Mask queries, repeated Draw Mask processing, optional File Mask grid semantics, material-clipped qualitative Dopant Regions, buried Implant start depth, File Mask palette presentation and 3D ROI Cutaway. Preserve data/History transaction invariants. The boolean geometry Kernel ultimately handled the final multilayer material; the main architecture bottleneck is **native process continuation across array instances**.
+The PR developed reusable code for instance-aware process Mask queries, repeated Draw Mask processing, optional File Mask grid semantics, material-clipped qualitative Dopant Regions, buried Implant start depth, File Mask palette presentation and 3D ROI inspection. Preserve data/History transaction invariants. The boolean geometry Kernel ultimately handled the final multilayer material; the main architecture bottleneck is **native process continuation across array instances**.
 
 There are **three distinct outputs**, never conflate them:
 
