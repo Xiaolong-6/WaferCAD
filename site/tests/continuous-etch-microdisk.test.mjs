@@ -3,19 +3,25 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const vendor = { exports: {} };
-new Function('module', 'exports', readFileSync(new URL('../vendor/polygon-clipping.umd.js', import.meta.url), 'utf8'))(
-  vendor,
-  vendor.exports,
-);
+new Function(
+  'module',
+  'exports',
+  readFileSync(new URL('../vendor/polygon-clipping.umd.js', import.meta.url), 'utf8'),
+)(vendor, vendor.exports);
 globalThis.polygonClipping = vendor.exports;
 
 const { expandProjectStorage } = await import('../project-io.js');
-const { planContinuousEtchFromTopology, remainingMaterialInContinuousPlan } = await import('../continuous-etch-topology.js');
-const { continuousDepthAtXY, sampleContinuousSection } = await import('../continuous-etch-geometry.js');
+const { planContinuousEtchFromTopology, remainingMaterialInContinuousPlan } =
+  await import('../continuous-etch-topology.js');
+const { continuousDepthAtXY, sampleContinuousSection } =
+  await import('../continuous-etch-geometry.js');
 
-const raw = JSON.parse(readFileSync(new URL('../examples/suspended-silica-microdisks.wafercad', import.meta.url)));
+const raw = JSON.parse(
+  readFileSync(new URL('../examples/suspended-silica-microdisks.wafercad', import.meta.url)),
+);
 const project = expandProjectStorage(raw);
-const originalM07 = project.snapshots.find((step) => step.id === 'snapshot-microdisk-07')?.state?.model;
+const originalM07 = project.snapshots.find((step) => step.id === 'snapshot-microdisk-07')?.state
+  ?.model;
 
 function microdiskPlan(model) {
   return planContinuousEtchFromTopology({
