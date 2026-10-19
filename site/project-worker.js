@@ -22,18 +22,34 @@ self.onmessage = async (event) => {
   const { id, arrayBuffer } = event.data || {};
   if (!id) return;
   try {
+    const startedAt = performance.now();
     self.postMessage({ id, type: 'progress', stage: 'Parsing project JSON…' });
     const [projectIo, projectSchema] = await modules();
+    const modulesReadyAt = performance.now();
     let parsed;
     try {
       parsed = JSON.parse(new TextDecoder().decode(new Uint8Array(arrayBuffer)));
     } catch {
       throw new Error('Project file is not valid JSON.');
     }
+    const parsedAt = performance.now();
     self.postMessage({ id, type: 'progress', stage: 'Validating project…' });
     projectIo.expandProjectStorage(parsed);
+    const expandedAt = performance.now();
     const project = projectSchema.validateProjectFile(projectSchema.migrateProjectFile(parsed));
-    self.postMessage({ id, type: 'done', project });
+    const validatedAt = performance.now();
+    self.postMessage({
+      id,
+      type: 'done',
+      project,
+      timingsMs: {
+        moduleLoad: modulesReadyAt - startedAt,
+        parse: parsedAt - modulesReadyAt,
+        expand: expandedAt - parsedAt,
+        migrationAndValidation: validatedAt - expandedAt,
+        workerTotalBeforeSend: validatedAt - startedAt,
+      },
+    });
   } catch (error) {
     self.postMessage({
       id,

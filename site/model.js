@@ -1,4 +1,5 @@
 import { indexedIntersectionInputs } from './process-boundary-index.js';
+import { addQualitativeDopantRegion, resolveQualitativeDopantRegion } from './dopant-regions.js';
 import { adaptiveReleaseDepthBands } from './isotropic-release-oracle.js';
 import {
   assertExperimentalPhysicalFacetNotProcessed,
@@ -88,6 +89,8 @@ export function createModel({
     ],
     implants: [],
     electricalRegions: [],
+    // Qualitative dopants are opt-in. Legacy models must not acquire an empty
+    // field when regenerated, otherwise existing scientific fixtures drift.
     nextImplantId: 1,
     nextElectricalRegionId: 1,
     nextLayerId: 1,
@@ -1365,6 +1368,11 @@ function applyOperationImpl(
     surface,
     color,
     tilt = 0,
+    depthStart = 0,
+    dopantPolarity = null,
+    dopantRole = null,
+    dopantHostLayerId = null,
+    dopantProvenance = null,
     electricalRegionType = 'custom',
     electricalRegionSource = 'custom',
   },
@@ -1392,6 +1400,27 @@ function applyOperationImpl(
     (!Number.isFinite(Number(thickness)) || Number(thickness) <= 0)
   ) {
     return { changed: false, error: 'Process thickness must be finite and greater than zero.' };
+  }
+  if (
+    type === 'implant' &&
+    (!Number.isFinite(depthStart) || depthStart < 0 || depthStart >= amount)
+  ) {
+    return {
+      changed: false,
+      error: 'Implant start depth must be finite, nonnegative and less than total depth.',
+    };
+  }
+  if (type === 'implant' && dopantPolarity != null) {
+    if (
+      !['donor', 'acceptor'].includes(dopantPolarity) ||
+      !['well', 'body', 'source-drain', 'channel', 'contact'].includes(dopantRole) ||
+      !model.layers.some((layer) => layer.id === dopantHostLayerId)
+    ) {
+      return {
+        changed: false,
+        error: 'Invalid qualitative dopant polarity, role or host material.',
+      };
+    }
   }
   // The normalization of physical material stacks removes sub-resolution Z
   // segments. Fail before any mutation rather than reporting a successful
@@ -1480,6 +1509,33 @@ function applyOperationImpl(
     }
 
     if (type === 'implant') {
+      // Invalid host overlap is a transaction rejection. Check before
+      // allocating IDs or touching dopant/model state.
+      if (dopantPolarity != null) {
+        const eligible = patches.some(
+          (patch) =>
+            resolveQualitativeDopantRegion(
+              model,
+              {
+                face,
+                hostLayerId: dopantHostLayerId,
+                area: patch.geom,
+                sourceZ: patch.z,
+                depthStartUm: depthStart,
+                depthEndUm: amount,
+                profile: { kind: 'qualitative-interval' },
+              },
+              { intersection, isEmpty },
+            ).length > 0,
+        );
+        if (!eligible) {
+          return {
+            changed: false,
+            error:
+              'No semiconductor host material overlaps the specified qualitative dopant region.',
+          };
+        }
+      }
       if (!Array.isArray(model.implants)) model.implants = [];
       if (!Number.isInteger(model.nextImplantId) || model.nextImplantId < 1) {
         model.nextImplantId = model.implants.length + 1;
@@ -1491,15 +1547,52 @@ function applyOperationImpl(
           color: /^#[0-9a-f]{6}$/i.test(String(color || '')) ? color : '#D65A6F',
           face,
           thickness: amount,
+          ...(depthStart > 0 ? { depthStart } : {}),
           tilt: Math.max(-80, Math.min(80, Number(tilt) || 0)),
           depthProfile: 'follow',
           visible: true,
           patches,
         };
+      // Optional, separate semiconductor semantics. Historical Implant
+      // operations remain visual annotations unless this is requested.
+      // Each source-surface patch gets an independent intent; resolved
+      // fragments are always clipped to surviving host material.
+      const dopants = [];
+      if (dopantPolarity != null) {
+        for (let index = 0; index < patches.length; index++) {
+          const patch = patches[index];
+          const result = addQualitativeDopantRegion(
+            model,
+            {
+              id: `dopant-${implant.id}-${index}`,
+              name: implant.name,
+              polarity: dopantPolarity,
+              role: dopantRole,
+              face,
+              hostLayerId: dopantHostLayerId,
+              area: patch.geom,
+              sourceZ: patch.z,
+              depthStartUm: depthStart,
+              depthEndUm: amount,
+              sourceImplantId: implant.id,
+              provenance: dopantProvenance || 'illustrative',
+            },
+            { intersection, isEmpty },
+          );
+          if (result.changed) dopants.push(result.id);
+        }
+        if (!dopants.length) {
+          return {
+            changed: false,
+            error:
+              'No semiconductor host material overlaps the specified qualitative dopant region.',
+          };
+        }
+      }
       model.implants.push(implant);
       model.revision++;
       model.processRevision = (model.processRevision || 0) + 1;
-      return { changed: true, implantId: implant.id };
+      return { changed: true, implantId: implant.id, dopantRegionIds: dopants };
     }
 
     const allowedTypes = new Set([

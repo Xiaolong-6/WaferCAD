@@ -398,6 +398,7 @@ export function createProjectMaskPanels({
     readProjectFileTask: async (file) => {
       if (file.size > MAX_PROJECT_FILE_BYTES)
         throw Error('Project exceeds the 256 MB safety limit.');
+      const openStart = performance.now();
       const arrayBuffer = await file.arrayBuffer();
       const result = await task.runWorker(
         '../project-worker.js',
@@ -417,7 +418,19 @@ export function createProjectMaskPanels({
       );
       if (result?.error) throw Error(result.error);
       if (!result?.project) return null;
-      return projectState.readWorkerValidatedProjectSnapshotAsync(result.project);
+      const workerDoneAt = performance.now();
+      const validated = await projectState.readWorkerValidatedProjectSnapshotAsync(result.project);
+      performance.measure('wafercad:project:load-task', {
+        start: openStart,
+        end: performance.now(),
+        detail: {
+          fileBytes: file.size,
+          workerAndTransferMs: workerDoneAt - openStart,
+          attestationMs: performance.now() - workerDoneAt,
+          ...(result.timingsMs ? { worker: result.timingsMs } : {}),
+        },
+      });
+      return validated;
     },
     exportProjectFileTask: async (project, filename) => {
       const result = await task.runWorker(

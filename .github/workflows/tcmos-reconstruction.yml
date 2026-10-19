@@ -1,0 +1,156 @@
+name: T-CMOS candidate reconstruction
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/build-tcmos-inverter-example.mjs'
+      - 'scripts/build-tcmos-array-patch.mjs'
+      - 'scripts/build-tcmos-array-recipe-experiment.mjs'
+      - 'scripts/build-tcmos-array-interconnect.mjs'
+      - 'scripts/build-tcmos-array-physical-interconnect.mjs'
+      - 'scripts/tcmos-array-interconnect-browser-acceptance.mjs'
+      - 'scripts/perf-workstation-cold-open.mjs'
+      - 'site/tests/tcmos-array-physical-interconnect.test.mjs'
+      - 'site/tests/tcmos-array-physical-fast.test.mjs'
+      - 'site/tests/tcmos-array-interconnect.test.mjs'
+      - 'scripts/tcmos-array-recipe-browser-acceptance.mjs'
+      - 'site/model-array-context.js'
+      - 'site/model-array-process.js'
+      - 'site/mask-instance-index.js'
+      - 'site/process-worker.js'
+      - 'site/tests/model-array.test.mjs'
+      - 'site/tests/mask-instance-index.test.mjs'
+      - 'site/tests/tcmos-array-recipe-experiment.test.mjs'
+      - 'site/tests/tcmos-svg-metal-connectivity.test.mjs'
+      - 'scripts/tcmos-array-browser-acceptance.mjs'
+      - 'site/tests/tcmos-array-patch.test.mjs'
+      - 'scripts/tcmos-svg-mask.mjs'
+      - 'scripts/tcmos-browser-acceptance.mjs'
+      - 'scripts/tcmos-svg-mask-browser-acceptance.mjs'
+      - 'site/tests/tcmos-inverter-reconstruction.test.mjs'
+      - 'site/tests/implant-buried-interval.test.mjs'
+      - 'site/tests/dopant-regions.test.mjs'
+      - 'site/dopant-regions.js'
+      - 'site/model.js'
+      - 'site/process-recipe.js'
+      - 'site/project-schema.js'
+      - 'site/project-io.js'
+      - 'site/controllers/process-panel-controller.js'
+      - 'site/controllers/process-recipe-controller.js'
+      - 'examples/projects/tcmos-ternary-inverter-2019-candidate/**'
+      - '.github/workflows/tcmos-reconstruction.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  svg-mask-only:
+    name: SVG Mask visual and GDS/OAS acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Review approved SVG Mask without running legacy Recipe
+        env:
+          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+          WAFERCAD_V2_BASE: http://127.0.0.1:4173
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory site > /tmp/tcmos-mask-browser.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" || true' EXIT
+          for attempt in {1..30}; do
+            curl --fail --silent http://127.0.0.1:4173/ > /dev/null && break
+            sleep 1
+          done
+          node scripts/tcmos-svg-mask-browser-acceptance.mjs
+      - name: Upload source Mask visual, GDS/OAS and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: tcmos-svg-mask-only
+          path: test-results/tcmos-svg-mask/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  paper-geometry:
+    name: T-CMOS kernel, Recipe and storage
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install pinned project dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Check focused regressions and generate project
+        run: |
+          node --test site/tests/tcmos-inverter-reconstruction.test.mjs site/tests/implant-buried-interval.test.mjs site/tests/dopant-regions.test.mjs site/tests/tcmos-array-patch.test.mjs site/tests/tcmos-array-recipe-experiment.test.mjs site/tests/tcmos-svg-metal-connectivity.test.mjs site/tests/tcmos-array-interconnect.test.mjs site/tests/tcmos-array-physical-fast.test.mjs site/tests/tcmos-array-physical-interconnect.test.mjs site/tests/model-array.test.mjs site/tests/mask-instance-index.test.mjs
+          node scripts/build-tcmos-inverter-example.mjs
+          node scripts/build-tcmos-inverter-example.mjs --tilt-demo
+          node scripts/build-tcmos-array-patch.mjs
+          node scripts/build-tcmos-array-recipe-experiment.mjs
+          cmp examples/projects/tcmos-ternary-inverter-2019-candidate/tcmos-ternary-inverter-130nm.wafercad test-results/tcmos/tcmos-ternary-inverter-130nm.wafercad
+      - name: Check source formatting
+        if: always()
+        run: npx prettier --check scripts/build-tcmos-array-physical-interconnect.mjs scripts/tcmos-array-interconnect-browser-acceptance.mjs site/tests/tcmos-array-physical-interconnect.test.mjs site/tests/tcmos-array-physical-fast.test.mjs scripts/build-tcmos-array-interconnect.mjs site/tests/tcmos-array-interconnect.test.mjs site/tests/tcmos-svg-metal-connectivity.test.mjs scripts/tcmos-array-recipe-browser-acceptance.mjs scripts/build-tcmos-array-recipe-experiment.mjs site/tests/tcmos-array-recipe-experiment.test.mjs site/tests/model-array.test.mjs site/tests/mask-instance-index.test.mjs site/model-array-context.js site/model-array-process.js site/process-worker.js site/mask-instance-index.js scripts/tcmos-svg-mask-browser-acceptance.mjs scripts/tcmos-svg-mask.mjs scripts/build-tcmos-array-patch.mjs scripts/tcmos-array-browser-acceptance.mjs site/tests/tcmos-array-patch.test.mjs site/three-view.js scripts/tcmos-browser-acceptance.mjs scripts/build-tcmos-inverter-example.mjs site/tests/tcmos-inverter-reconstruction.test.mjs site/tests/implant-buried-interval.test.mjs site/tests/dopant-regions.test.mjs site/dopant-regions.js site/model.js site/process-recipe.js site/project-schema.js site/project-io.js site/controllers/process-panel-controller.js site/controllers/process-recipe-controller.js examples/projects/tcmos-ternary-inverter-2019-candidate/README.md
+      - name: Share candidate project and verification evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: tcmos-ternary-inverter-130nm-candidate
+          path: test-results/tcmos/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  browser-replay:
+    name: T-CMOS v2 browser Run All
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Generate candidate and replay in v2 Workstation
+        env:
+          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+          WAFERCAD_V2_BASE: http://127.0.0.1:4173
+        run: |
+          node scripts/build-tcmos-inverter-example.mjs
+          node scripts/build-tcmos-inverter-example.mjs --tilt-demo
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory site > /tmp/tcmos-browser.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" || true' EXIT
+          for attempt in {1..30}; do
+            curl --fail --silent http://127.0.0.1:4173/ > /dev/null && break
+            sleep 1
+          done
+          node scripts/tcmos-browser-acceptance.mjs
+          node scripts/build-tcmos-array-patch.mjs
+          node scripts/tcmos-array-browser-acceptance.mjs
+          node scripts/build-tcmos-array-recipe-experiment.mjs
+          node scripts/tcmos-array-recipe-browser-acceptance.mjs
+          node scripts/build-tcmos-array-physical-interconnect.mjs
+          node scripts/tcmos-array-interconnect-browser-acceptance.mjs
+          node scripts/perf-workstation-cold-open.mjs
+      - name: Upload v2 acceptance screenshots and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: tcmos-v2-browser-acceptance
+          path: test-results/tcmos/
+          retention-days: 14
+          if-no-files-found: ignore

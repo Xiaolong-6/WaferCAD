@@ -493,9 +493,13 @@ test('microdisk example contains a canonical suspended air gap and central Si su
     model = project.model,
     oxideId = model.layers.find((layer) => /Thermal SiO/i.test(layer.name))?.id;
 
-  assert.equal(model.processRevision, 9);
-  assert.equal(project.snapshotBranches.nodes.length, 9);
-  assert.equal(project.snapshots.length, 9);
+  assert.equal(model.processRevision, 8);
+  assert.equal(model.regions.length, 74);
+  assert.equal(project.snapshotBranches.activeBranchId, 'microdisk-adaptive-72-band');
+  assert.equal(project.snapshotBranches.nodes.length, 10);
+  assert.equal(project.snapshots.length, 10);
+  assert.equal(project.snapshotBranches.branches.length, 2);
+  assert.ok(project.snapshotBranches.branches.some((branch) => branch.id === 'main'));
   assert.ok(oxideId);
 
   const releaseStep = project.snapshotBranches.nodes.find((node) =>

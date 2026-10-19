@@ -7,6 +7,7 @@
 - [Masks & ROI](Masks-and-ROI)
 - [Process & Recipes](Process-and-Recipes)
 - [Using WaferCAD with AI](AI-Assisted-Workflows)
+- [Develop WaferCAD with AI](Develop-WaferCAD-with-AI) — developer playbook
 - [Recipe Code Tutorial](Recipe-Code-Tutorial)
 - [Illustrated Process Operations](Process-Operations)
 - [History & Recovery](History-Variants-and-Recovery)

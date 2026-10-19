@@ -10,6 +10,7 @@ import {
   unionGeometries,
 } from './vector-geometry.js';
 import {
+  LINE_INTERVAL_EPSILON,
   canonicalLineInterval,
   lineIntervalKey,
   partitionLineIntervals,
@@ -214,16 +215,31 @@ export function materialSolidsFromTopology(model, clip = null) {
     }
 
     const levels = [...events.keys()].sort((a, b) => a - b),
-      active = new Set(),
       slabs = [];
-    for (let index = 0; index < levels.length - 1; index++) {
-      const z0 = levels[index],
-        z1 = levels[index + 1],
-        event = events.get(z0);
-      for (const item of event.end) active.delete(item);
-      for (const item of event.start) active.add(item);
-      const polys = safeUnionGeometry([...active].map((item) => item.polys));
-      slabs.push({ z0, z1, polys });
+    if (items.every((item) => item.z0 === items[0].z0)) {
+      // A common substrate plane and successively terminating slices (e.g.
+      // adaptive isotropic release) can be swept from top to bottom using
+      // unions of only the newly active bands. Union is associative even when
+      // XY regions overlap; do not assume material disjointness or relax any
+      // scientific tolerance. Every slab still receives its exact union.
+      let polys = [];
+      for (let index = levels.length - 2; index >= 0; index--) {
+        const upper = levels[index + 1],
+          added = events.get(upper).end;
+        if (added.length) polys = safeUnionGeometry([polys, ...added.map((item) => item.polys)]);
+        slabs[index] = { z0: levels[index], z1: upper, polys };
+      }
+    } else {
+      const active = new Set();
+      for (let index = 0; index < levels.length - 1; index++) {
+        const z0 = levels[index],
+          z1 = levels[index + 1],
+          event = events.get(z0);
+        for (const item of event.end) active.delete(item);
+        for (const item of event.start) active.add(item);
+        const polys = safeUnionGeometry([...active].map((item) => item.polys));
+        slabs.push({ z0, z1, polys });
+      }
     }
 
     const caps = [];
@@ -457,6 +473,28 @@ function ownVerticalMaterialSidewalls(solids, layerOrder) {
   const owned = [];
   for (const entries of groups.values()) {
     const reference = entries[0].line;
+    // An edge with one owner needs no XY partition or Z-ownership sorting.
+    // The general path below produces exactly this canonical exterior wall.
+    if (entries.length === 1) {
+      const owner = entries[0];
+      if (
+        reference.t1 > reference.t0 + LINE_INTERVAL_EPSILON &&
+        owner.z1 > owner.z0 + TOPOLOGY_EPSILON_UM
+      ) {
+        const a = pointAtLineT(reference, reference.t0),
+          b = pointAtLineT(reference, reference.t1),
+          [p, q] = reference.forward ? [a, b] : [b, a];
+        owned.push({
+          ...owner,
+          p,
+          q,
+          buried: false,
+          ownership: 'exterior',
+          interfaceLayerIds: [],
+        });
+      }
+      continue;
+    }
     for (const { t0, t1, covering: xyCovering } of partitionLineIntervals(entries)) {
       const zLevels = [...new Set(xyCovering.flatMap((entry) => [entry.z0, entry.z1]))].sort(
         (a, b) => a - b,

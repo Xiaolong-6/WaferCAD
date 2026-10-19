@@ -14,7 +14,7 @@ const { BUNDLED_EXAMPLES } = await import('../bundled-examples.js');
 const { expandProjectStorage } = await import('../project-io.js');
 const { validateProjectFile } = await import('../project-schema.js');
 
-test('welcome example catalog promotes eight literature-backed project families', async () => {
+test('welcome example catalog promotes nine literature-backed project families', async () => {
   assert.deepEqual(
     BUNDLED_EXAMPLES.map((example) => example.id),
     [
@@ -26,6 +26,7 @@ test('welcome example catalog promotes eight literature-backed project families'
       'magic-1000-mos2-beol',
       'three-tier-silicon-jlfets',
       'tio2-metalens-four-unit',
+      'tcmos-ternary-inverter-130nm',
     ],
   );
   const literature = BUNDLED_EXAMPLES[0];
@@ -70,6 +71,24 @@ test('welcome example catalog promotes eight literature-backed project families'
       .some((implant) => /^INDUCED/i.test(implant.name)),
     false,
   );
+});
+
+test('T-CMOS Welcome project retains source Recipe and two History branches', async () => {
+  const example = BUNDLED_EXAMPLES.find((entry) => entry.id === 'tcmos-ternary-inverter-130nm');
+  assert.equal(example?.sources?.[0]?.doi, '10.1038/s41928-019-0272-8');
+  assert.match(example.preview.alt, /Illustrative/);
+  const packed = JSON.parse(
+    await readFile(
+      new URL('../examples/tcmos-ternary-inverter-130nm.wafercad', import.meta.url),
+      'utf8',
+    ),
+  );
+  expandProjectStorage(packed);
+  validateProjectFile(packed);
+  assert.equal(packed.processRecipe.steps.length, 23);
+  assert.equal(packed.layout.elements.length, 232);
+  assert.equal(packed.snapshotBranches.branches.length, 2);
+  assert.ok(packed.snapshotBranches.nodes.length > 23);
 });
 
 test('literature examples expose traceable source citations on Welcome', () => {
@@ -148,9 +167,9 @@ test('Welcome previews preserve final structure and display while retaining only
       );
     const original = await read(example.previewSourcePath || example.path);
     if (example.previewSourcePath) {
-      // Full-wafer validity and the 625-site/40-Step contract are covered by
-      // example-structure, Native Fig3 full replay and array browser regression.
-      // This preview test only needs the single-site source used to build the cover.
+      // An intentionally lightweight preview must match its declared source.
+      // The full project is validated independently; it can contain a much
+      // larger native array or a more detailed adaptive History/geometry.
       assert.equal(original.model.kernel, 'vector-2.5d-v1');
     }
     const preview = await read(example.previewProject.path);

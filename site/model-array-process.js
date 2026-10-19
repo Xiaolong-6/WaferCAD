@@ -37,6 +37,8 @@ export function applyArrayOperation(model, params, apply) {
   let changed = false,
     last = null,
     metadata = null;
+  const existingDopants = new Set((model.dopantRegions || []).map((region) => region.id));
+  const newDopants = new Map();
   const counters = Object.fromEntries(COUNTERS.map((k) => [k, model[k]]));
   const parts = arrayParts(model),
     physicalKeys = new WeakMap();
@@ -129,7 +131,20 @@ export function applyArrayOperation(model, params, apply) {
       });
       if (!result?.changed && result?.error && !NO_CHANGE.test(result.error))
         throw new Error(result.error);
-      cached = { result, leaf: result?.changed ? cropContext(context, part.model.boundary) : null };
+      const leaf = result?.changed ? cropContext(context, part.model.boundary) : null;
+      const addedDopants = (leaf?.dopantRegions || []).filter(
+        (dopant) => !existingDopants.has(dopant.id),
+      );
+      // Root array dopants carry world-space intent. A leaf must not
+      // inherit every other site's globally aggregated geometry.
+      if (leaf) {
+        if (part.model.dopantRegions) {
+          leaf.dopantRegions = structuredClone(part.model.dopantRegions);
+        } else {
+          delete leaf.dopantRegions;
+        }
+      }
+      cached = { result, leaf, addedDopants };
       results.set(key, cached);
     }
     if (!cached.result?.changed) continue;
@@ -137,6 +152,20 @@ export function applyArrayOperation(model, params, apply) {
     // A neighboring operation may change its halo but leave this cell intact.
     if (physical(leaf) === physical(part.model)) continue;
     replacements.set(part.id, leaf);
+    for (const dopant of cached.addedDopants) {
+      const world = translateGeometry(dopant.area, part.x, part.y);
+      const previous = newDopants.get(dopant.id);
+      if (previous) {
+        const { area: oldArea, ...oldMeta } = previous;
+        const { area: sourceArea, ...sourceMeta } = dopant;
+        if (JSON.stringify(oldMeta) !== JSON.stringify(sourceMeta)) {
+          throw new Error('Array dopant metadata differs between identical implant IDs.');
+        }
+        oldArea.push(...world);
+      } else {
+        newDopants.set(dopant.id, { ...structuredClone(dopant), area: world });
+      }
+    }
     changed = true;
     last = cached.result;
     metadata = leaf;
@@ -182,6 +211,9 @@ export function applyArrayOperation(model, params, apply) {
         }
       : layer;
   });
+  if (newDopants.size) {
+    model.dopantRegions = [...(model.dopantRegions || []), ...newDopants.values()];
+  }
   for (const key of ['implants', 'electricalRegions']) {
     const definitions = new Map((model[key] || []).map((a) => [a.id, a]));
     for (const leaf of replacements.values())

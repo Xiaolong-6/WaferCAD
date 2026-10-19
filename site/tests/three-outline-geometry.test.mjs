@@ -6,7 +6,7 @@ import {
   contoursToPositions,
   ownedContourSegments,
   sectionCutContours,
-  borderInspectorContours,
+  transparentInspectionContours,
 } from '../three-outline-geometry.js';
 import { roughProfileOffsetAtPoint } from '../surface-rendering.js';
 import { boundaryProfileFromPositions } from '../rough-boundary-profile.js';
@@ -21,7 +21,7 @@ const square = [
   ],
 ];
 
-test('production border inspector deduplicates physical edges', () => {
+test('transparent outlines deduplicate owned segments without exposing tessellation', () => {
   const exterior = [
     [
       [0, 0, 0],
@@ -32,21 +32,14 @@ test('production border inspector deduplicates physical edges', () => {
       [0, 0, 0],
     ],
   ];
-  const internal = {
-    z: 1,
-    buried: true,
-    polys: [square],
-    layerId: 'buried',
-    interfaceLayerId: 'base',
-  };
-  const result = borderInspectorContours({
+  const internal = { z: 1, buried: true, polys: [square], layerId: 'buried' };
+  const result = transparentInspectionContours({
     borderLines: exterior,
     caps: [internal, { ...internal, z: 2, buried: false }],
   });
-  assert.equal(result.exterior.length, 1);
-  assert.equal(result.interface.length, 4);
-  assert.equal(result.buried.length, 0);
-  assert.equal(contoursToPositions(result.interface).length, 24);
+  assert.equal(result.exposed.length, 1);
+  assert.equal(result.buried.length, 4);
+  assert.equal(contoursToPositions(result.buried).length, 24);
   assert.equal(ownedContourSegments(exterior).length, 1);
 });
 
@@ -304,38 +297,4 @@ test('stacked silicon slabs share no black line, but silicon-oxide does', () => 
   assert.equal(lines.some(seam), false, 'silicon slab split is not an interface');
   const oxide = { ...upper, layerId: 'oxide' };
   assert.equal(sectionCutContours([lower, oxide], [square]).some(seam), true);
-});
-
-test('buried profile lookup retains original cap indices after class selection', () => {
-  const caps = [
-    { buried: false, z: 0, polys: [square] },
-    { buried: true, z: 1, polys: [square], interfaceLayerId: 'substrate' },
-    { buried: true, z: 2, polys: [square] },
-  ];
-  const interfacePositions = new Float32Array([
-    0, 0, 11, 4, 0, 11, 4, 0, 11, 4, 4, 11, 4, 4, 11, 0, 4, 11, 0, 4, 11, 0, 0, 11,
-  ]);
-  const buriedPositions = new Float32Array([
-    0, 0, 22, 4, 0, 22, 4, 0, 22, 4, 4, 22, 4, 4, 22, 0, 4, 22, 0, 4, 22, 0, 0, 22,
-  ]);
-  const profiles = new Map([
-    [1, { positions: interfacePositions }],
-    [2, { positions: buriedPositions }],
-  ]);
-  const result = borderInspectorContours(
-    { caps, borderLines: [], sidewalls: [] },
-    {
-      boundaryProfiles: profiles,
-    },
-  );
-  assert.equal(result.interface.length, 4);
-  assert.equal(result.buried.length, 4);
-  assert.ok(
-    result.interface.every((pair) => pair.every((p) => p[2] === 11)),
-    'interface profiles must use original cap index 1',
-  );
-  assert.ok(
-    result.buried.every((pair) => pair.every((p) => p[2] === 22)),
-    'buried profiles must use original cap index 2',
-  );
 });

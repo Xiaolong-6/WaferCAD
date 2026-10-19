@@ -52,6 +52,15 @@ export function createMaskRuntime({
     '#C5678B',
   ];
   const layerColor = (key, alpha = 1) => {
+    const style = state.layout?.maskPresentation?.layers?.find(
+      ({ layer, datatype }) => key === layerKey(layer, datatype),
+    );
+    if (style) {
+      const value = parseInt(style.color.slice(1), 16);
+      return alpha >= 0.999
+        ? style.color
+        : `rgba(${value >> 16},${(value >> 8) & 255},${value & 255},${alpha})`;
+    }
     let hash = 0;
     for (const ch of key) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
     const hex = palette[hash % palette.length],

@@ -3,7 +3,7 @@ import test from 'node:test';
 import { loadGeometryKernel, projectForBenchmark } from '../../scripts/process-benchmarks.mjs';
 await loadGeometryKernel();
 const { createModel } = await import('../model.js');
-const { rectMulti, pointInMulti } = await import('../vector-geometry.js');
+const { rectMulti, pointInMulti, difference } = await import('../vector-geometry.js');
 const { ARRAY_MODEL_KERNEL, isArrayModel, resolveArrayModel, translateGeometry } =
   await import('../model-array.js');
 const { validateProcessModel, migrateProjectFile } = await import('../project-schema.js');
@@ -109,6 +109,7 @@ test('normal project IO preserves canonical array definitions without eager expa
 const modelApi = await import('../model.js');
 const { applyOperation, cloneModel } = modelApi;
 const { applyArrayOperation } = await import('../model-array-process.js');
+const { resolveQualitativeDopantRegion } = await import('../dopant-regions.js');
 const { applyAdvancedProcessOperation } = await import('../advanced-process-operations.js');
 const vector = await import('../vector-geometry.js');
 const { buildRenderSurfacePlan } = await import('../renderer-geometry.js');
@@ -528,4 +529,80 @@ test('array Lift-off rejects invalid sacrificial IDs without changing any templa
     /sacrificial layer/,
   );
   assert.deepEqual(source, saved);
+});
+
+test('array Implant commits translated qualitative doping atomically across both cells', () => {
+  const model = twoSites();
+  const before = structuredClone(model);
+  assert.throws(
+    () =>
+      modelApi.applyOperation(model, {
+        type: 'implant',
+        name: 'Invalid material host',
+        thickness: 0.2,
+        depthStart: 0,
+        face: 'front',
+        area: rectMulti(20, 10),
+        dopantPolarity: 'donor',
+        dopantRole: 'body',
+        dopantHostLayerId: 'not-a-layer',
+      }),
+    /Invalid qualitative dopant polarity, role or host material/,
+  );
+  assert.deepEqual(model, before, 'Invalid Implant cannot write partial dopant data');
+  const result = modelApi.applyOperation(model, {
+    type: 'implant',
+    name: 'Two site donor marker',
+    thickness: 0.2,
+    depthStart: 0,
+    face: 'front',
+    area: rectMulti(20, 10),
+    dopantPolarity: 'donor',
+    dopantRole: 'body',
+    dopantHostLayerId: 'base',
+  });
+  assert.equal(result.changed, true);
+  validateProcessModel(model);
+  assert.equal(model.dopantRegions.length, 1);
+  const fragments = resolveQualitativeDopantRegion(model, model.dopantRegions[0], vector);
+  assert.ok(fragments.length >= 2);
+  assert.ok(fragments.some((fragment) => pointInMulti([-5, 0], fragment.geom)));
+  assert.ok(fragments.some((fragment) => pointInMulti([5, 0], fragment.geom)));
+  for (const template of model.array.templates) {
+    assert.equal(template.model.dopantRegions?.length || 0, 0);
+  }
+});
+
+test('native array local Draw Mask is repeated without touching background sites', async () => {
+  const { attachArrayMaskQuery } = await import('../mask-instance-index.js');
+  const { localGeometry } = await import('../model-array-context.js');
+  const { arrayParts } = await import('../model-array.js');
+  const base = twoSites();
+  const localMask = rectMulti(0.4, 0.8, 1, -2);
+  const area = attachArrayMaskQuery(structuredClone(base.boundary), {
+    index: null,
+    mode: 'mask',
+    boundary: base.boundary,
+    limiter: null,
+    templateGeometry: localMask,
+  });
+  for (const part of arrayParts(base)) {
+    const world = translateGeometry(part.model.boundary, part.x, part.y);
+    const result = localGeometry(area, part, world);
+    assert.equal(difference(result, localMask).length, 0);
+    assert.equal(difference(localMask, result).length, 0);
+  }
+  const inverse = attachArrayMaskQuery(structuredClone(base.boundary), {
+    index: null,
+    mode: 'invert',
+    boundary: base.boundary,
+    limiter: null,
+    templateGeometry: localMask,
+  });
+  for (const part of arrayParts(base)) {
+    const world = translateGeometry(part.model.boundary, part.x, part.y);
+    const result = localGeometry(inverse, part, world);
+    assert.equal(pointInMulti([1, -2], result), false);
+    assert.equal(pointInMulti([3, 0], result), true);
+  }
 });
