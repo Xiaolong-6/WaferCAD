@@ -395,14 +395,14 @@ export function createProjectMaskPanels({
     syncBaseControls,
     syncTransformInputs: importer.syncTransformInputs,
     fit3d,
-    readProjectFileTask: async (file) => {
+    readProjectFileTask: async (file, { trustedBundledExample } = {}) => {
       if (file.size > MAX_PROJECT_FILE_BYTES)
         throw Error('Project exceeds the 256 MB safety limit.');
       const openStart = performance.now();
       const arrayBuffer = await file.arrayBuffer();
       const result = await task.runWorker(
         '../project-worker.js',
-        { arrayBuffer },
+        { arrayBuffer, trustedBundledExample },
         {
           label: `Opening ${file.name}…`,
           transfer: [arrayBuffer],
@@ -410,7 +410,7 @@ export function createProjectMaskPanels({
             file.size <= 8 * 1024 * 1024
               ? async ({ signal }) => {
                   if (signal.aborted) return { aborted: true };
-                  const project = await readProjectFile(file);
+                  const project = await readProjectFile(file, { trustedBundledExample });
                   return signal.aborted ? { aborted: true } : { project };
                 }
               : null,

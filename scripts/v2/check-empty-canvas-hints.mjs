@@ -227,6 +227,28 @@ try {
       );
       await waitForPaint(page);
       assert.equal(await maskHint.isVisible(), false, 'Imported File source hides hint');
+      await page.locator('#maskPanel [data-action="draw-toggle"]').click();
+      await page.waitForFunction(
+        () => window.WaferCadV2Workstation.snapshot().maskSourceMode === 'draw',
+      );
+      await waitForPaint(page);
+      assert.equal(
+        await maskHint.isVisible(),
+        false,
+        'Imported File Mask keeps onboarding hidden when active Draw source is empty',
+      );
+      await shot(page, 'desktop-imported-file-with-empty-draw-no-hint');
+      // Draw opens the drawing source; returning to File uses the source picker.
+      await page.locator('[data-action="mask-source:file"]').click();
+      await page.waitForFunction(
+        () => window.WaferCadV2Workstation.snapshot().maskSourceMode === 'file',
+      );
+      await waitForPaint(page);
+      assert.equal(
+        await maskHint.isVisible(),
+        false,
+        'Switching back to File preserves hidden hint',
+      );
       assert.deepEqual(
         (await page.evaluate(() => window.WaferCadV2Workstation.snapshot())).model,
         initial.model,

@@ -115,7 +115,7 @@ try {
     assert.equal(await page.locator('#workspaceRestoreBtn').isEnabled(), true);
     await page.locator('#workspaceRestoreBtn').click();
     await page
-      .locator('.v2-workflow-dialog-actions')
+      .locator('.v2-confirm-dialog')
       .getByRole('button', { name: 'Restore', exact: true })
       .click();
     await page.waitForFunction(

@@ -104,7 +104,7 @@ try {
     await page.locator('#workspaceRecoverySelect').selectOption(olderKey);
     await page.locator('#workspaceRestoreBtn').click();
     await page
-      .locator('.v2-workflow-dialog-actions')
+      .locator('.v2-confirm-dialog')
       .getByRole('button', { name: 'Restore', exact: true })
       .click();
     await page.waitForFunction(

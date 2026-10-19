@@ -11,6 +11,7 @@ import { createProcessDiagnosticsController } from '../controllers/process-diagn
 import { STRUCTURE_PALETTES } from '../controllers/layer-legend-controller.js';
 import { recolorLayer, recolorImplant, recolorElectricalRegion } from '../model.js';
 import { createInspectionFields } from './view-kit/inspection-fields.js';
+import { createDialogConfirmation } from './view-kit/confirmation-dialog.js';
 import { createDisplayUnits, syncDisplayUnitFields } from './view-kit/display-units.js';
 import { modelInventoryCount } from './view-kit/model-inventory.js';
 import { loadBundledProject } from './workstation-runtime.js';
@@ -68,51 +69,11 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
     syncManualPresentation();
     diagnostics?.onModelRendered();
   };
-  const confirmation = {
-    ask({ title, message, detail, actions, cancelValue = 'cancel' }) {
-      return new Promise((resolve) => {
-        let settled = false;
-        const finish = (value) => {
-          if (settled) return;
-          settled = true;
-          workstation.shell.overlays.close('dialog');
-          resolve(value);
-        };
-        workstation.shell.overlays.mount('dialog', {
-          label: title,
-          content: el(
-            'div',
-            { class: 'p-form' },
-            el('strong', {}, title),
-            el('p', {}, message),
-            detail ? el('p', { class: 'p-aux' }, detail) : null,
-            el(
-              'div',
-              { class: 'p-actions v2-workflow-dialog-actions' },
-              actions.map((action) => {
-                const node = button(action.label, null, null, {
-                  primary: action.kind === 'primary',
-                });
-                node.onclick = () => finish(action.value);
-                return node;
-              }),
-            ),
-          ),
-          onClose: () => finish(cancelValue),
-        });
-      });
-    },
-    confirm(options) {
-      return confirmation.ask({
-        ...options,
-        actions: [
-          { value: false, label: 'Cancel' },
-          { value: true, label: options.confirmLabel || 'Continue', kind: 'primary' },
-        ],
-        cancelValue: false,
-      });
-    },
-  };
+  const confirmation = createDialogConfirmation({
+    overlays: workstation.shell.overlays,
+    el,
+    button,
+  });
   const taskPanel = el(
     'section',
     {
@@ -979,6 +940,7 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
           const bundled = await loadBundledProject(
             params.get('example') || 'photodetector-literature',
             domain.bindings.readProjectFileTask,
+            { strict: params.get('validation') === 'strict' },
           );
           await history.importRecordsAsync(
             bundled.data.snapshots || [],
@@ -1022,6 +984,7 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
         const url = new URL(globalThis.location.href);
         url.searchParams.delete('start');
         url.searchParams.delete('example');
+        url.searchParams.delete('validation');
         globalThis.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
         status(
           staged

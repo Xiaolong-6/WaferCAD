@@ -136,7 +136,32 @@ Exact rectangular containment proofs and per-polygon intersection bounds avoid u
 
 Annotation volume fragments are private derived data shared by Main, Section, Detail and 3D within a model revision. Host-layer, Z-range and XY-bound checks precede polygon intersections. The cache follows model/process revisions, region-array identity and annotation metadata/geometry identity; returned full-view polygons are cloned and ROI intersections remain transient. It must never replace canonical geometry or weaken strict validation.
 
-Welcome interactive cards use `previewProject` assets in `site/examples/previews/`. Each retains the current final structure, layout, camera, ROI and display settings, one final History Step and no bookmarks. Original complete files stay at the catalog's existing `path` as backups; Open example and downloads continue to use complete History/Variants. Regenerate with `node scripts/build-example-previews.mjs --write`, then verify determinism and source preservation with the same command without `--write`. Changes to a full example must regenerate its preview. Preview generation deliberately retains v2 so a new storage codec alone does not invalidate published preview/thumbnail hashes. Welcome browsing shows real 3D-rendered WebP thumbnails without starting app frames or parsing project/layout modules. Clicking Explore 3D or a view tab initializes one interactive frame, preserving the final-only preview workflow. Regenerate thumbnails after preview changes with `node scripts/build-example-thumbnails.mjs` against a running local site and pinned Three; hashes bind each image to its final-preview source.
+Welcome interactive cards use `previewProject` assets in `site/examples/previews/`. Each retains the current final structure, layout, camera, ROI and display settings, one final History Step and no bookmarks. Original complete files stay at the catalog's existing `path` as backups; Open example and downloads continue to use complete History/Variants. Regenerate with `node scripts/build-example-previews.mjs --write`, then verify determinism and source preservation with the same command without `--write`. Changes to a full example must regenerate its preview. Preview generation deliberately retains v2 so a new storage codec alone does not invalidate published preview/thumbnail hashes. Published Welcome assets have per-file SHA-256 receipts in
+`site/examples/bundled-integrity.json`, generated only after strict native
+validation of every bundled full and preview project at Pages staging. Matching
+bytes use the faster trusted decoder; a missing receipt keeps the original
+strict import, and mismatched hashes abort rather than silently bypassing a
+failed receipt. User-imported files always undergo strict validation. The
+developer/test entry `app.html?start=example&example=<id>&validation=strict`
+continues to use the original Worker/History path. The
+`scripts/example-open-benchmark.mjs` baseline defaults to strict; use
+`--fast` to measure the attested production path separately.
+
+The suspended-silica microdisk cover is a cropped Chromium 3D screenshot
+of the exact saved adaptive 72-band Variant, derived from the native Workstation
+acceptance evidence. Its source hash tracks the full adaptive project, while
+the on-demand interactive four-view preview intentionally keeps the validated
+original lightweight model; the card explicitly distinguishes them. Regenerate
+the cover and manifest together if the adaptive source geometry changes.
+
+The TiO₂ metalens Welcome cover is a Chromium 3D render of the complete
+4,725-site illustrative array, and is content-addressed to the full bundled
+file. Its interactive four-view preview remains the four-unit representation,
+so the display explicitly distinguishes the two. The T-CMOS cover is also a
+real Chromium WebP, content-addressed to its saved preview project. Preserve
+these provenance/hash contracts on regeneration.
+
+Welcome browsing shows real 3D-rendered WebP thumbnails without starting app frames or parsing project/layout modules. Clicking Explore 3D or a view tab initializes one interactive frame, preserving the final-only preview workflow. Regenerate thumbnails after preview changes with `node scripts/build-example-thumbnails.mjs` against a running local site and pinned Three; hashes bind each image to its final-preview source.
 
 UI orchestration that does not own canonical geometry lives under `site/controllers/`. Process input/state and worker request assembly belong to `process-panel-controller.js`; History edit/insert strategy, branching gates, and replay transactions belong to `history-mutation-controller.js`; browser autosave/Recovery/cross-tab lease/safe-reload behavior belongs to `workspace-persistence-controller.js`; synchronized view/base summaries belong to `workspace-view-controller.js`; Project toolbar and History-tree presentation belong to `project-controller.js`; Mask/Main/Section canvas drawing lives in `site/plan-renderers.js`. Derived process/ROI selection geometry lives in `site/selection-geometry.js`. Keep build/update checks, welcome startup routing, tab navigation, maximize behavior, rendering details, process-form validation/request assembly, History transaction state, persistence workflows, and similar responsibilities out of the main editor module when they can be expressed through narrow callbacks.
 

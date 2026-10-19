@@ -37,9 +37,9 @@
       "view": "three",
       "width": 640,
       "height": 560,
-      "bytes": 4710,
-      "sourceSha256": "b8d3a2ff5b33ad5c58f79d22f5b75d0835689723f6b69e3c08db3bfe77281d90",
-      "sha256": "242ff1bb4b90582e08578d7dcaf5067d051f1d7dbf90f50c64ba1182c0327cb5"
+      "bytes": 5380,
+      "sourceSha256": "5e6bfca245cdc739d62338711fd55317bf7bead1f67999bef02f1546364aaa60",
+      "sha256": "f34170e3bfac24f0607d6b859cbe175e7e4a3b95b06384e9ce4ac5a4ccf9d8b7"
     },
     {
       "id": "m3d-selfpowered-heterogeneous-ic",
@@ -70,6 +70,26 @@
       "bytes": 8482,
       "sourceSha256": "d7593aa80852866a814008c6db80c268775843066e45597618c2acd39fd87570",
       "sha256": "3f62bfb7a99736765fcf2d2cfbb182202a7e6a31ccc09e3607319ed5e5bdfd3b"
+    },
+    {
+      "id": "tio2-metalens-four-unit",
+      "path": "./examples/thumbnails/tio2-metalens-four-unit-three.webp",
+      "view": "three",
+      "width": 640,
+      "height": 560,
+      "bytes": 3022,
+      "sourceSha256": "c5eee806fd6d6acdd1d405f4f26b61e46fbdc9065d2511fe58fb414bf760968e",
+      "sha256": "d10cf3f2bd83eb4d173d995162e5014f3ae9ee922fc426e0407d26eac7a2b2c3"
+    },
+    {
+      "id": "tcmos-ternary-inverter-130nm",
+      "path": "./examples/thumbnails/tcmos-ternary-inverter-130nm-three.webp",
+      "view": "three",
+      "width": 640,
+      "height": 560,
+      "bytes": 8648,
+      "sourceSha256": "e0eea1c8b9cec3991c025947b9a52ca0dd9caa5991b2f5d577859a50781b5554",
+      "sha256": "74d24b6919b1e7dbc2c5092420c7028c9e4eb982e480f19eeccd68548743bc20"
     }
   ]
 }
