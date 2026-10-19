@@ -88,7 +88,10 @@ test('Pages requires a real deploy and rejects false-green skipped publish jobs'
   );
   assert.ok(verdict.includes('STAGE_RESULT: ${{ needs.stage-pages.result }}'));
   assert.ok(verdict.includes('DEPLOY_RESULT: ${{ needs.deploy.result }}'));
-  assert.match(verdict, /"\$STAGE_RESULT" == success && "\$DEPLOY_RESULT" == success && "\$PUBLISHED" == true/);
+  assert.match(
+    verdict,
+    /"\$STAGE_RESULT" == success && "\$DEPLOY_RESULT" == success && "\$PUBLISHED" == true/,
+  );
   assert.match(verdict, /exit 1/);
 });
 
