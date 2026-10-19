@@ -13,9 +13,9 @@
  */
 import { SEM_FIG3A_MESA_CONTOURS_UM } from './swx-sem-fig3a-mesa-data.mjs';
 import {
-  createSwxSemGroundReturnCandidate,
-  SWX_GROUND_RETURN_PROCESS_PROFILE,
-} from './swx-mems-sem-ground-return-candidate.mjs';
+  createSwxSemV2ProcessGeometry,
+  SWX_SEM_V2_PROCESS_PROFILE,
+} from './swx-mems-sem-v2-unit.mjs';
 
 export const SWX_PERIMETER_CONTEXT_ASSUMPTIONS = Object.freeze({
   sourceAuthorGdsAvailable: false,
@@ -35,7 +35,7 @@ export const SWX_PERIMETER_CONTEXT_ASSUMPTIONS = Object.freeze({
 });
 
 export function createSwxSemPerimeterContext(state = 'off') {
-  const original = createSwxSemGroundReturnCandidate(state);
+  const original = createSwxSemV2ProcessGeometry(state);
   const [width, height] = SWX_PERIMETER_CONTEXT_ASSUMPTIONS.fieldUm;
   const exterior = SEM_FIG3A_MESA_CONTOURS_UM.map((ring) => ring.map(([x, y]) => [x, y]));
   const maskPolygons = new Map(original.maskPolygons);
@@ -75,8 +75,8 @@ export function createSwxSemPerimeterContext(state = 'off') {
 }
 
 export const SWX_PERIMETER_CONTEXT_PROCESS_PROFILE = Object.freeze({
-  ...SWX_GROUND_RETURN_PROCESS_PROFILE,
+  ...SWX_SEM_V2_PROCESS_PROFILE,
   fieldUm: SWX_PERIMETER_CONTEXT_ASSUMPTIONS.fieldUm,
   geometryFactory: createSwxSemPerimeterContext,
-  projectName: 'Hu 2025 SWX / SEM Fig. 3a source review / NOT AUTHOR GDS',
+  projectName: 'Hu 2025 SWX / standalone SEM Fig3a contour trial / NOT AUTHOR GDS',
 });

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
-import { createSwxSemGroundReturnCandidate } from '../../scripts/swx-mems-sem-ground-return-candidate.mjs';
+import { createSwxSemV2ProcessGeometry } from '../../scripts/swx-mems-sem-v2-unit.mjs';
 import {
   SWX_PERIMETER_CONTEXT_ASSUMPTIONS as a,
   createSwxSemPerimeterContext,
@@ -14,7 +14,7 @@ const multi = (rings) => v.unionGeometries(rings.map((ring) => [[[...ring, ring[
 
 for (const state of ['off', 'on']) {
   test('registered SEM mesa mask does not short original silicon ' + state, () => {
-    const base = createSwxSemGroundReturnCandidate(state);
+    const base = createSwxSemV2ProcessGeometry(state);
     const study = createSwxSemPerimeterContext(state);
     const add = study.physicalGroups.semPerimeterContext;
     assert.equal(a.sourceOuterMesaMaterialVerified, false);
