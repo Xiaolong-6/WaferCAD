@@ -339,11 +339,12 @@ export async function createMaskView({ project, sharedState, workstation } = {})
   function floating(id, title, content, trigger) {
     overlays.mountFloating({ id, title, content, trigger });
   }
-  function confirmAction({ title, message, confirmLabel }) {
+  function confirmAction({ title, message, confirmLabel, danger = false }) {
     return createDialogConfirmation({ overlays, el, button }).confirm({
       title,
       message,
       confirmLabel,
+      danger,
     });
   }
   function buildMask() {

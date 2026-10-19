@@ -54,7 +54,7 @@ export function createDialogConfirmation({ overlays, el, button }) {
       ...options,
       actions: [
         { value: false, label: 'Cancel' },
-        { value: true, label: options.confirmLabel || 'Continue', kind: 'primary' },
+        { value: true, label: options.confirmLabel || 'Continue', kind: options.danger ? 'danger' : 'primary' },
       ],
       cancelValue: false,
     });

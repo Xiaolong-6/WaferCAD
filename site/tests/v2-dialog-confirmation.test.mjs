@@ -83,6 +83,21 @@ test('Escape and backdrop return cancellation without applying a choice', async 
   assert.equal(h.closeCount(), 0);
 });
 
+test('danger confirmation keeps destructive semantics and focuses Cancel', async () => {
+  const h = harness();
+  const pending = h.dialog.confirm({
+    title: 'Clear mask',
+    message: 'Remove all shapes?',
+    confirmLabel: 'Clear mask',
+    danger: true,
+  });
+  assert.equal(h.buttons()[0].attrs['data-risk'], 'danger');
+  assert.equal(h.buttons()[0].attrs.primary, false);
+  assert.equal(h.focused(), 'Cancel');
+  h.buttons().at(-1).onclick();
+  assert.equal(await pending, false);
+});
+
 test('two-action confirmation preserves boolean semantics for Mask', async () => {
   const h = harness();
   const pending = h.dialog.confirm({
