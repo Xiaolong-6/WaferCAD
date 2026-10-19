@@ -2853,11 +2853,15 @@ diffuseColor.a *= waferCadAlphaScale;`,
               roughness: cap.appearance ? 0.84 : 0.72,
             })
           : createSurfaceMaterial(task.layer, task.state, task.visualAppearance || cap.appearance);
-        if (geometry.userData.roughGpuDisplacement && !task.implant) {
-          decorateGpuRoughMaterial(material, task.visualAppearance || cap.appearance, {
-            profileNormal: cap.profileNormal ?? cap.normal,
-            normalStrength: interactive ? 0.82 : 1,
-          });
+        if (!task.implant && !cap.buried) {
+          if (geometry.userData.roughGpuDisplacement) {
+            decorateGpuRoughMaterial(material, task.visualAppearance || cap.appearance, {
+              profileNormal: cap.profileNormal ?? cap.normal,
+              normalStrength: interactive ? 0.82 : 1,
+            });
+          } else if (roughFarFieldContrast(0, cap.appearance) > 0) {
+            decorateRoughFarFieldMaterial(material, task.visualAppearance || cap.appearance);
+          }
         }
         if (task.polygonOffset) {
           material.polygonOffset = true;
