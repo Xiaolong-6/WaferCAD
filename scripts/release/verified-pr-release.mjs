@@ -12,7 +12,7 @@ const INTEGRITY_SENSITIVE_PATH =
   /^(?:site\/(?:project-|workspace-|history-|state-equality|model(?:\.|-)|process-|polygon-boolean|controllers\/(?:project-|history-|workspace-|process-)|ui-v2\/(?:workstation-(?:entry|runtime|workflow)|project-mask-panels))|scripts\/(?:release\/|build-pages-artifact|build-bundled-integrity|process-|project-io-|history-|persistence-)|\.github\/)/;
 // New source files do not silently acquire permission to skip Main science.
 const AUDITED_PRODUCTION_PATH =
-  /^(?:docs\/|README\.md$|site\/tests\/|site\/ui-v2\/|site\/three-[a-z0-9-]+\.js$|site\/gpu-rough-surface\.js$|site\/surface-rendering\.js$|site\/examples\/thumbnails\/.+\.(?:svg|webp)$)/;
+  /^(?:docs\/|README\.md$|site\/tests\/|site\/ui-v2\/|site\/three-[a-z0-9-]+\.js$|site\/gpu-rough-surface\.js$|site\/surface-rendering\.js$|site\/examples\/thumbnails\/.+\.(?:svg|webp)$|scripts\/v2\/check-[a-z0-9-]+\.mjs$)/;
 const PR_BROWSER_PATH =
   /^(?:site\/(?!tests\/)|examples\/|scripts\/(?:v2\/|array-|renderer-|pr250-|process-|project-|ui-smoke|workstation-|history-|persistence-|resilience-|interaction-|example-|product-|rough-))/;
 const STAGE_C_PATH = /^(?:site\/(?!tests\/)|scripts\/v2\/)/;
