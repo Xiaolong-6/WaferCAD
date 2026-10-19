@@ -247,7 +247,7 @@ float waferCadRoughProfile(vec2 absolutePoint) {
 
 // The display texture is derived from spatially coherent noise at a scale
 // selected from the pixel footprint. It never displaces physical geometry.
-const ROUGH_FAR_FIELD_GLSL = \`
+const ROUGH_FAR_FIELD_GLSL = `
 uniform float waferCadRoughFarFieldContrast;
 uniform float waferCadRoughFarFieldFeatureSize;
 uniform float waferCadRoughFarFieldSeed;
@@ -285,7 +285,7 @@ float waferCadFarFieldShade(vec2 xy) {
   float visual = waferCadFarValueNoise(xy / displayCell);
   return 1.0 - waferCadRoughFarFieldContrast * (0.25 + 1.05 * visual);
 }
-\`;
+`;
 
 function injectAfter(source, token, code) {
   return source.includes(token) ? source.replace(token, `${token}\n${code}`) : source;
