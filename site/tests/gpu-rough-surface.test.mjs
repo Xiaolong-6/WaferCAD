@@ -183,16 +183,31 @@ test('native worker and synchronous rough-mesh paths both bind far-field materia
   const source = readFileSync(new URL('../three-view.js', import.meta.url), 'utf8'),
     workerStart = source.indexOf('function applyRoughMeshResults('),
     syncStart = source.indexOf('function rebuildAdaptiveRoughGeometrySync('),
-    workerPath = source.slice(workerStart, source.indexOf('function requestRoughGeometry(', workerStart)),
+    workerPath = source.slice(
+      workerStart,
+      source.indexOf('function requestRoughGeometry(', workerStart),
+    ),
     syncPath = source.slice(syncStart, source.indexOf('function init()', syncStart));
 
   assert.ok(workerStart >= 0 && syncStart >= 0, 'both native rough assembly paths must exist');
-  for (const [name, code] of [['worker', workerPath], ['synchronous', syncPath]]) {
-    assert.match(code, /decorateRoughFarFieldMaterial\(material,/,
-      `${name} must decorate CPU rough surfaces`);
-    assert.match(code, /!cap\.buried && roughFarFieldContrast\(0, cap\.appearance\) > 0/,
-      `${name} should only decorate exposed stochastic caps`);
-    assert.match(code, /geometry\.userData\.roughGpuDisplacement && !task\.implant/,
-      `${name} must keep original GPU displacement eligibility`);
+  for (const [name, code] of [
+    ['worker', workerPath],
+    ['synchronous', syncPath],
+  ]) {
+    assert.match(
+      code,
+      /decorateRoughFarFieldMaterial\(material,/,
+      `${name} must decorate CPU rough surfaces`,
+    );
+    assert.match(
+      code,
+      /!cap\.buried && roughFarFieldContrast\(0, cap\.appearance\) > 0/,
+      `${name} should only decorate exposed stochastic caps`,
+    );
+    assert.match(
+      code,
+      /geometry\.userData\.roughGpuDisplacement && !task\.implant/,
+      `${name} must keep original GPU displacement eligibility`,
+    );
   }
 });
