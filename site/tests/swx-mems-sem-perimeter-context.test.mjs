@@ -15,7 +15,7 @@ const union = (rings) => v.unionGeometries(rings.map((ring) => [[[...ring, ring[
 
 for (const state of ['off', 'on']) {
   test(
-    'experimental ' + state + ' perimeter is real Si with a disconnected isolation cavity',
+    'experimental ' + state + ' SEM context has two open flanks, no closed Si ring',
     () => {
       const a = SWX_PERIMETER_CONTEXT_ASSUMPTIONS;
       const baseline = createSwxSemGroundReturnCandidate(state);
@@ -23,7 +23,10 @@ for (const state of ['off', 'on']) {
       const bulk = context.physicalGroups.semPerimeterContext;
       assert.equal(a.sourceAuthorGdsAvailable, false);
       assert.equal(a.actualIsolationTrenchSourceVerified, false);
-      assert.equal(bulk.length, 4);
+      assert.equal(bulk.length, 2);
+      assert.equal(a.sourceClosedPerimeterTrenchObserved, false);
+      assert.equal(a.sourceFlankMaterialIdentityVerified, false);
+      assert.equal(a.studyFieldIsMeasuredDeviceFootprint, false);
       assert.deepEqual(context.layout.bounds, {
         minX: -100,
         minY: -140,
@@ -32,24 +35,24 @@ for (const state of ['off', 'on']) {
         width: 200,
         height: 280,
       });
-      assert.equal(context.maskPolygons.get(1).length, baseline.maskPolygons.get(1).length + 4);
+      assert.equal(context.maskPolygons.get(1).length, baseline.maskPolygons.get(1).length + 2);
       assert.deepEqual(context.maskPolygons.get(2), baseline.maskPolygons.get(2));
       assert.deepEqual(context.maskPolygons.get(3), baseline.maskPolygons.get(3));
-      assert.equal(context.layout.elements.length, baseline.layout.elements.length + 4);
+      assert.equal(context.layout.elements.length, baseline.layout.elements.length + 2);
       const bulkUnion = union(bulk);
       const originalUnion = union(baseline.maskPolygons.get(1));
-      assert.equal(bulkUnion.length, 1);
-      assert.equal(geometryArea(bulkUnion), 37468);
+      assert.equal(bulkUnion.length, 2);
+      assert.equal(geometryArea(bulkUnion), 3195);
       assert.ok(geometryArea(v.intersection(bulkUnion, originalUnion)) < 1e-8);
       assert.equal(
         union(context.maskPolygons.get(1)).length,
-        union(baseline.maskPolygons.get(1)).length + 1,
+        union(baseline.maskPolygons.get(1)).length + 2,
       );
       for (const point of [
         [-90, -50],
         [90, -50],
-        [0, 25],
-        [0, -130],
+        [-95, -95],
+        [95, -95],
       ]) {
         assert.equal(v.pointInMulti(point, bulkUnion), true);
       }
@@ -58,6 +61,8 @@ for (const state of ['off', 'on']) {
         [81, -50],
         [0, -9],
         [0, -120],
+        [0, 25],
+        [0, -130],
       ]) {
         assert.equal(v.pointInMulti(point, bulkUnion), false);
       }

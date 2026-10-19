@@ -3,52 +3,64 @@
  * fabricated SWX in Hu et al., Fig. 3a. These are real full-etch mask shapes,
  * not Three.js decorations, recovered author GDS, or a new official Example.
  *
- * The rectangular trench/cavity is an ENGINEERING HYPOTHESIS. The goal is to
- * restore topological distinction between peripheral, BOX-retained bulk
- * silicon and the suspended MEMS core without creating Si electrical shorts.
+ * REVIEWED AGAINST AUTHOR'S ORIGINAL FIG. 3a SEM (and Fig. 1c/4b):
+ * the original four-sided 200x280um bulk-Si frame had NO observational
+ * support: neither the SEM nor the paper establishes an enclosing closed
+ * isolation trench. Reject that rectangular surround. This isolated test
+ * now models TWO OPEN peripheral context flanks only, separated from the
+ * switching structure. They remain inferred material context, NOT traced
+ * SEM contours or accepted author-mask dimensions. A photo alone cannot
+ * identify buried BOX or establish the exact full-etch boundary.
  */
 import {
   createSwxSemGroundReturnCandidate,
   SWX_GROUND_RETURN_PROCESS_PROFILE,
 } from './swx-mems-sem-ground-return-candidate.mjs';
 
-const rect = (minX, minY, maxX, maxY) => [
-  [minX, minY],
-  [maxX, minY],
-  [maxX, maxY],
-  [minX, maxY],
-];
-
-export const SWX_PERIMETER_CONTEXT_ASSUMPTIONS = Object.freeze({
+ export const SWX_PERIMETER_CONTEXT_ASSUMPTIONS = Object.freeze({
   sourceAuthorGdsAvailable: false,
   perimeterDimensionsSourceVerified: false,
   actualIsolationTrenchSourceVerified: false,
   contextIsPartOfPaperDeviceFootprint: false,
   fieldUm: [200, 280],
   outerUm: Object.freeze({ minX: -100, maxX: 100, minY: -140, maxY: 140 }),
-  cavityUm: Object.freeze({ minX: -82, maxX: 82, minY: -121, maxY: -8 }),
-  nominalMinIsolationUm: 2,
-  expectedPerimeterPolygonCount: 4,
+  sourceFigure: 'Hu et al. Nat Commun 16, 331 (2025), Fig. 3a SEM / Fig. 1c schematic',
+  sourceClosedPerimeterTrenchObserved: false,
+  sourceFlankMaterialIdentityVerified: false,
+  contextualFlankMinYUm: -114,
+  contextualFlankMaxYUm: -10,
+  expectedPerimeterPolygonCount: 2,
+  studyFieldIsMeasuredDeviceFootprint: false,
 });
 
 export function createSwxSemPerimeterContext(state = 'off') {
   const original = createSwxSemGroundReturnCandidate(state);
-  const { outerUm: o, cavityUm: c } = SWX_PERIMETER_CONTEXT_ASSUMPTIONS;
-  // Four touching positive-Si rectangles form a single contiguous outer
-  // frame while the entire active cell, pads and routed nets stay in the
-  // central etched cavity. This geometry is deliberately NOT author GDS.
-  const perimeter = [
-    rect(o.minX, o.minY, c.minX, o.maxY),
-    rect(c.maxX, o.minY, o.maxX, o.maxY),
-    rect(c.minX, c.maxY, c.maxX, o.maxY),
-    rect(c.minX, o.minY, c.maxX, c.minY),
+  // Restricted field-edge context only. NO top/bottom closing rectangles:
+  // those broad continuous silicon walls were invented by the previous
+  // candidate, not present as justified device outlines in Fig. 3a.
+  // These two contextual patches must remain entirely isolated from the
+  // operative Ground/Signal nets and suspended MEMS. Their coordinates
+  // are unverified reconstruction hypotheses, never SEM metrology.
+  const left = [
+    [-100, -114],
+    [-85, -114],
+    [-84, -103],
+    [-83, -88],
+    [-83, -66],
+    [-84, -47],
+    [-86, -28],
+    [-91, -10],
+    [-100, -10],
   ];
+  const right = left.map(([x, y]) => [-x, y]).reverse();
+  const perimeter = [left, right];
+
   const maskPolygons = new Map(original.maskPolygons);
   maskPolygons.set(1, [...original.maskPolygons.get(1), ...perimeter]);
   const field = SWX_PERIMETER_CONTEXT_ASSUMPTIONS.fieldUm;
   const layout = {
     ...original.layout,
-    name: 'Hu 2025 SWX - conjectural bulk-Si perimeter and isolation window (NOT AUTHOR GDS)',
+    name: 'Hu 2025 SWX - open SEM-context flanks (UNVERIFIED, NOT AUTHOR GDS)',
     elements: [
       ...original.layout.elements,
       ...perimeter.map((points) => ({
@@ -79,7 +91,7 @@ export function createSwxSemPerimeterContext(state = 'off') {
       ...original.physicalGroups,
       semPerimeterContext: perimeter,
     },
-    reconstructionStatus: 'trial-etched-silicon-perimeter-inferred-not-source-accepted',
+    reconstructionStatus: 'sem-reviewed-open-context-flanks-inferred-not-source-accepted',
   };
 }
 
@@ -87,5 +99,5 @@ export const SWX_PERIMETER_CONTEXT_PROCESS_PROFILE = Object.freeze({
   ...SWX_GROUND_RETURN_PROCESS_PROFILE,
   fieldUm: SWX_PERIMETER_CONTEXT_ASSUMPTIONS.fieldUm,
   geometryFactory: createSwxSemPerimeterContext,
-  projectName: 'Hu 2025 SWX / real processed Si perimeter / EXPERIMENTAL - NOT AUTHOR GDS',
+  projectName: 'Hu 2025 SWX / open context flanks / EXPERIMENTAL - NOT AUTHOR GDS',
 });

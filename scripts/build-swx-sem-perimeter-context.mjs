@@ -25,8 +25,8 @@ const contains = (model, point) => {
 const perimeterPoints = [
   [-90, -50],
   [90, -50],
-  [0, 25],
-  [0, -130],
+  [-95, -95],
+  [95, -95],
 ];
 const cavityPoints = [
   [-81, -50],
@@ -60,10 +60,12 @@ await writeFile(
   JSON.stringify(
     {
       ...validation,
-      comparisonRole: 'real process geometry for inferred peripheral Si and isolation cavity',
+      comparisonRole: 'real process geometry for open context flanks, not original SEM mask',
       perimeter: SWX_PERIMETER_CONTEXT_ASSUMPTIONS,
       realPostHFPerimeterSiAndBoxColumnsVerified: true,
       realPostHFIsolationCavityOpen: true,
+      sourceClosedPerimeterTrenchRejected: true,
+      experimentallyInferredFlankSiSourceVerified: false,
       realPostHFFixedCombSupportedAndMovingSWXSuspended: true,
       sourceAuthorPerimeterGdsAccepted: false,
       sourceIsolationTrenchAccepted: false,
