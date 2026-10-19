@@ -5,33 +5,28 @@ import { buildCiTestPlan } from '../ci-test-plan.mjs';
 
 // Release evidence is evaluated exclusively on trusted main-push runners.
 // Missing data must cause a complete release gate, never a fast publication.
-export const PRODUCTION_GATES = Object.freeze([
-  'quality',
-  'Plan browser suites',
-  'Chromium targeted regression',
-  'Native v2 Release workstation',
-  'Native v2 Release renderer',
-  'Native v2 Release interaction',
-  '625-site array renderer regression',
-  '625-site edge-on exact-wall restoration',
-  'Process geometry regression (process)',
-  'Process geometry regression (io)',
-  'Process geometry regression (array)',
-  'Stage C shared runtime and M4 real projects',
-  'Main and Mask browser gates',
-]);
 // PR checks are selected by scripts/ci-test-plan.mjs. Requiring every
 // browser owner for every PR makes a normal targeted PR *ineligible* for
 // proven publication. Reuse precisely the owners selected by that planner,
 // while retaining a strict fallback for integrity-sensitive changes.
 const INTEGRITY_SENSITIVE_PATH = /^(?:site\/(?:project-|workspace-|history-|state-equality|model(?:\.|-)|process-|polygon-boolean|controllers\/(?:project-|history-|workspace-|process-)|ui-v2\/(?:workstation-(?:entry|runtime|workflow)|project-mask-panels))|scripts\/(?:release\/|build-pages-artifact|build-bundled-integrity|process-|project-io-|history-|persistence-)|\.github\/)/;
+// This is an explicit, audited fast-path subset. A newly added source path
+// does not silently gain permission to bypass Main science/Recovery checks.
+const AUDITED_PRODUCTION_PATH = /^(?:docs\/|README\.md$|site\/tests\/|site\/ui-v2\/|site\/three-[a-z0-9-]+\.js$|site\/gpu-rough-surface\.js$|site\/surface-rendering\.js$|site\/examples\/thumbnails\/.+\.(?:svg|webp)$)/;
 const PR_BROWSER_PATH = /^(?:site\/(?!tests\/)|examples\/|scripts\/(?:v2\/|array-|renderer-|pr250-|process-|project-|ui-smoke|workstation-|history-|persistence-|resilience-|interaction-|example-|product-|rough-))/;
 const STAGE_C_PATH = /^(?:site\/(?!tests\/)|scripts\/v2\/)/;
 const EXTENDED_OWNERS = Object.freeze(['workstation', 'interaction', 'examples', 'product_layout', 'renderer']);
 export function targetedProductionGates(paths) {
   if (!Array.isArray(paths) || !paths.length || paths.some(p => typeof p !== 'string'))
     return null;
-  if (paths.some(p => INTEGRITY_SENSITIVE_PATH.test(p) || p === 'package.json' || p === 'package-lock.json'))
+  if (
+    paths.some(
+      (p) =>
+        !AUDITED_PRODUCTION_PATH.test(p) ||
+        INTEGRITY_SENSITIVE_PATH.test(p) ||
+        p === 'site/ui-v2/three-view.js',
+    )
+  )
     return null;
   const plan = buildCiTestPlan(paths);
   if (plan.full || plan.release.klayout || plan.release.recipe) return null;
