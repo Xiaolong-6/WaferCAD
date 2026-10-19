@@ -16,6 +16,27 @@ export function roughLod(featurePixels) {
   };
 }
 
+// Statistical subpixel visibility is presentation-only. It avoids synthesizing
+// unresolved peaks or increasing the physical rough-mesh triangle budget.
+export function roughFarFieldContrast(featurePixels, appearance) {
+  const feature = Number(appearance?.featureSize),
+    height = Math.max(0, Number(appearance?.meanHeight ?? appearance?.amplitude) || 0),
+    heightCv = clamp01(appearance?.heightCv);
+  // A uniform stochastic heightfield and deterministic pyramid facets are
+  // not stochastic texture: never add synthetic mottling to either.
+  if (
+    appearance?.kind !== 'rough' ||
+    appearance?.morphology === 'pyramid' ||
+    !(feature > 0) ||
+    !(height > 0) ||
+    !(heightCv > 0)
+  )
+    return 0;
+  const slopeVariation = (height * heightCv) / feature,
+    unresolved = 1 - smoothstep(0.75, 8, Math.max(0, Number(featurePixels) || 0));
+  return 0.28 * (slopeVariation / (0.3 + slopeVariation)) * unresolved;
+}
+
 export function projectedPixelsPerUnit({
   distance = 1,
   viewportHeight = 1,

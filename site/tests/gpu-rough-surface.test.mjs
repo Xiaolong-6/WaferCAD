@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 
 import {
   canUseGpuRoughPreview,
   canUseGpuRoughTask,
   decorateGpuRoughMaterial,
+  decorateRoughFarFieldMaterial,
   decorateGpuRoughLineMaterial,
   gpuRoughAppearanceUniforms,
   supportsPreciseGpuRoughDisplacement,
@@ -38,6 +40,9 @@ test('GPU rough uniforms preserve deterministic appearance identity', () => {
   assert.equal(uniforms.waferCadRoughSampleOriginY.value, -7.25);
   assert.equal(uniforms.waferCadRoughProfileNormal.value, -1);
   assert.equal(uniforms.waferCadRoughNormalStrength.value, 0.75);
+  assert.equal(uniforms.waferCadRoughFarFieldContrast.value, 0);
+  assert.equal(uniforms.waferCadRoughFarFieldFeatureSize.value, 0.8);
+  assert.equal(uniforms.waferCadRoughFarFieldSeed.value, 0xba98);
   assert.equal(uniforms.waferCadRoughVisualBlend.value, 1);
   const filtered = gpuRoughAppearanceUniforms({ ...appearance, displayRoughBlend: 0.12 });
   assert.equal(filtered.waferCadRoughVisualBlend.value, 0.12);
@@ -95,7 +100,7 @@ test('GPU rough decorator chains existing material shader hooks', () => {
     uniforms: {},
     vertexShader: '#include <common>\nvoid main() {\n#include <begin_vertex>\n}',
     fragmentShader:
-      '#include <common>\nvarying vec3 vViewPosition;\nvoid main() {\nvec3 normal = vec3(0.0,0.0,1.0);\n#include <normal_fragment_maps>\n}',
+      '#include <common>\nvarying vec3 vViewPosition;\nvoid main() {\nvec3 normal = vec3(0.0,0.0,1.0);\n#include <color_fragment>\n#include <normal_fragment_maps>\n}',
   };
 
   assert.equal(decorateGpuRoughMaterial(material, appearance), true);
@@ -104,7 +109,7 @@ test('GPU rough decorator chains existing material shader hooks', () => {
   assert.equal(priorCompileCalls, 1);
   assert.equal(material.needsUpdate, true);
   assert.equal(material.userData.waferCadGpuRough.normalStrengthBase, 1);
-  assert.match(material.customProgramCacheKey(), /wafercad-gpu-rough-v5/);
+  assert.match(material.customProgramCacheKey(), /wafercad-gpu-rough-v7/);
   assert.match(shader.vertexShader, /waferCadGpuDisplace/);
   assert.doesNotMatch(shader.vertexShader, /instanceMatrix\[3\]\.xy/);
   assert.match(shader.vertexShader, /transformed\.z \+= waferCadRoughProfileNormal/);
@@ -113,6 +118,12 @@ test('GPU rough decorator chains existing material shader hooks', () => {
   assert.match(shader.vertexShader, /waferCadRoughVisualBlend/);
   assert.match(shader.vertexShader, /return mix\(center, raw, waferCadRoughVisualBlend\)/);
   assert.match(shader.fragmentShader, /waferCadScreenDx/);
+  assert.match(shader.fragmentShader, /waferCadFarFieldShade\(vWaferCadRoughXY\)/);
+  assert.match(shader.fragmentShader, /waferCadFarValueNoise/);
+  assert.match(
+    shader.fragmentShader,
+    /unresolved = 1\.0 - smoothstep\(0\.75, 8\.0, featurePixels\)/,
+  );
   assert.match(shader.fragmentShader, /waferCadMicroNormalWeight = smoothstep\(1\.5, 3\.0/);
   assert.match(shader.fragmentShader, /waferCadRoughNormalStrength \* waferCadMicroNormalWeight/);
   assert.match(shader.vertexShader, /vWaferCadRoughSurface = step\(0\.0, waferCadGpuDisplace\)/);
@@ -145,4 +156,63 @@ test('GPU rough outline shader shares cap vertex-height profile without normal-f
   assert.doesNotMatch(shader.fragmentShader, /waferCadGaussianHash/);
   assert.equal(shader.uniforms.waferCadRoughProfileNormal.value, -1);
   assert.equal(shader.uniforms.waferCadRoughSampleOriginX.value, 12.5);
+});
+
+test('software roughness visibility shader changes only color, not displaced geometry', () => {
+  const material = { userData: {}, customProgramCacheKey: () => 'base' };
+  const sourceVertex = '#include <common>\\nvoid main() {\\n#include <begin_vertex>\\n}';
+  const shader = {
+    uniforms: {},
+    vertexShader: sourceVertex,
+    fragmentShader: '#include <common>\\nvoid main() {\\n#include <color_fragment>\\n}',
+  };
+  assert.equal(decorateRoughFarFieldMaterial(material, appearance), true);
+  material.onBeforeCompile(shader, {});
+  assert.match(shader.vertexShader, /vWaferCadFarXY = position.xy/);
+  assert.match(shader.vertexShader, /vWaferCadFarTop = smoothstep/);
+  assert.doesNotMatch(shader.vertexShader, /transformed.z/);
+  assert.match(shader.fragmentShader, /waferCadFarFieldShade\(vWaferCadFarXY\)/);
+  assert.match(shader.fragmentShader, /waferCadFarValueNoise/);
+  assert.match(
+    shader.fragmentShader,
+    /unresolved = 1\.0 - smoothstep\(0\.75, 8\.0, featurePixels\)/,
+  );
+  assert.match(material.customProgramCacheKey(), /wafercad-rough-farfield-v1/);
+  assert.equal(shader.uniforms.waferCadRoughFarFieldContrast.value, 0);
+  assert.equal(shader.uniforms.waferCadRoughFarFieldFeatureSize.value, 0.8);
+  assert.equal(shader.uniforms.waferCadRoughFarFieldSeed.value, 0xba98);
+  assert.equal(decorateRoughFarFieldMaterial({}, { ...appearance, kind: 'smooth' }), false);
+});
+
+test('native worker and synchronous rough-mesh paths both bind far-field material', () => {
+  const source = readFileSync(new URL('../three-view.js', import.meta.url), 'utf8'),
+    workerStart = source.indexOf('function applyRoughMeshResults('),
+    syncStart = source.indexOf('function rebuildAdaptiveRoughGeometrySync('),
+    workerPath = source.slice(
+      workerStart,
+      source.indexOf('function requestRoughGeometry(', workerStart),
+    ),
+    syncPath = source.slice(syncStart, source.indexOf('function init()', syncStart));
+
+  assert.ok(workerStart >= 0 && syncStart >= 0, 'both native rough assembly paths must exist');
+  for (const [name, code] of [
+    ['worker', workerPath],
+    ['synchronous', syncPath],
+  ]) {
+    assert.match(
+      code,
+      /decorateRoughFarFieldMaterial\(material,/,
+      `${name} must decorate CPU rough surfaces`,
+    );
+    assert.match(
+      code,
+      /!cap\.buried && roughFarFieldContrast\(0, cap\.appearance\) > 0/,
+      `${name} should only decorate exposed stochastic caps`,
+    );
+    assert.match(
+      code,
+      /geometry\.userData\.roughGpuDisplacement && !task\.implant/,
+      `${name} must keep original GPU displacement eligibility`,
+    );
+  }
 });
