@@ -15,7 +15,7 @@ const union = (rings) => v.unionGeometries(rings.map((ring) => [[[...ring, ring[
 
 for (const state of ['off', 'on']) {
   test(
-    'experimental ' + state + ' SEM context has two open flanks, no closed Si ring',
+    'experimental ' + state + ' SEM context has two open flanks, no closed Si ring (source-unverified)',
     () => {
       const a = SWX_PERIMETER_CONTEXT_ASSUMPTIONS;
       const baseline = createSwxSemGroundReturnCandidate(state);
