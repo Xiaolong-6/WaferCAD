@@ -201,7 +201,7 @@ export function buildSwxMaskLayout() {
 }
 
 export function renderSwxMaskSvg(layout){
-  const [w,h]=[1500,1120],sx=11.2,originX=790,originY=552;
+  const [w,h]=[1500,1120],sx=8.8,originX=850,originY=570;
   const plot=([x,y])=>[+(originX+x*sx).toFixed(2),+(originY-y*sx).toFixed(2)];
   const fillBy={fixed:"#5689C6",moving:"#0D9488",compliant:"#8B69B3",metal:"#E5A33D"};
   const title="SWX 2x2 MEMS / source-constrained MASK DRAFT";
