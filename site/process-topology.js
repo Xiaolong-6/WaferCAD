@@ -306,11 +306,11 @@ export function solidBordersFromTopology(
   for (const { z0, z1, polys } of slabs || [])
     for (const poly of polys || [])
       for (const closed of poly || []) {
-        const ring = closed.slice(0, -1);
-        for (let index = 0; index < ring.length; index++) {
-          const p = ring[index],
-            before = ring[(index + ring.length - 1) % ring.length],
-            after = ring[(index + 1) % ring.length],
+        const count = closed.length - 1;
+        for (let index = 0; index < count; index++) {
+          const p = closed[index],
+            before = closed[(index + count - 1) % count],
+            after = closed[(index + 1) % count],
             u = [p[0] - before[0], p[1] - before[1]],
             v = [after[0] - p[0], after[1] - p[1]],
             denominator = Math.hypot(...u) * Math.hypot(...v);

@@ -36,3 +36,28 @@ test('vertical-only border extraction exactly matches filtering the full border 
     solidBordersFromTopology(solid).length > solidBordersFromTopology(solid, 20, true).length,
   );
 });
+
+test('the four closed rectangle corners keep their exact vertical border order', () => {
+  const solid = {
+    slabs: [{ z0: 0, z1: 2, polys: rectMulti(10, 10) }],
+    caps: [],
+  };
+  assert.deepEqual(solidBordersFromTopology(solid, 20, true), [
+    [
+      [-5, -5, 0],
+      [-5, -5, 2],
+    ],
+    [
+      [5, -5, 0],
+      [5, -5, 2],
+    ],
+    [
+      [5, 5, 0],
+      [5, 5, 2],
+    ],
+    [
+      [-5, 5, 0],
+      [-5, 5, 2],
+    ],
+  ]);
+});
