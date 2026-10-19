@@ -950,3 +950,73 @@ test('zero-height rough skirts omit degenerate Float32 closure triangles', () =>
     );
   }
 });
+
+test('separated metal mesas do not acquire a false rough-cap bridge across their gap', () => {
+  // This presentation proxy matches two metal rectangles separated by a rough
+  // substrate. The uncovered gap is an artificial rough spatial zone, not a
+  // material sidewall; reducing the ROI cannot turn it into a physical edge.
+  const appearance = {
+    kind: 'rough',
+    morphology: 'pyramid',
+    polarity: 'normal',
+    featureSize: 0.37,
+    meanHeight: 0.2,
+    etchDepth: 0.2,
+    featureCv: 0,
+    heightCv: 0,
+    seed: 21,
+  };
+  const zone = (left, right) => {
+    const lowLeft = [left, -1, 0],
+      lowRight = [right, -1, 0],
+      highRight = [right, 1, 0],
+      highLeft = [left, 1, 0],
+      baseTriangles = [
+        [lowLeft, lowRight, highRight],
+        [lowLeft, highRight, highLeft],
+      ];
+    return {
+      baseTriangles,
+      edges: roughBoundaryEdgesFromTriangles(baseTriangles),
+      maxEdge: Math.hypot(right - left, 2),
+      triangleBudget: 2,
+      lodContext: { distance: 1000, viewportWidth: 320, viewportHeight: 240, maxDepth: 0 },
+    };
+  };
+  const render = (zoneInput, physical = false, gpuDisplacement = false) =>
+    roughMeshDataFromPreparedCap({
+      z: 0,
+      normal: 1,
+      appearance,
+      lodZones: [zoneInput],
+      closeToIdeal: true,
+      gpuDisplacement,
+      sidewallBoundaryIntervals: physical
+        ? zoneInput.edges.map((edge) => ({
+            key: edge.key,
+            t0: edge.line.t0,
+            t1: edge.line.t1,
+          }))
+        : [],
+    });
+  const leftMetal = render(zone(-3, -1), true),
+    rightMetal = render(zone(1, 3), true),
+    gapFull = render(zone(-1, 1)),
+    gapRoi = render(zone(-1, 0));
+  assert.ok(leftMetal.roughBorderPositions.length > 0);
+  assert.ok(rightMetal.roughBorderPositions.length > 0);
+  assert.equal(gapFull.roughBorderPositions.length, 0);
+  assert.equal(gapRoi.roughBorderPositions.length, 0);
+  assert.ok(gapFull.roughBoundaryPositions.length > 0);
+  assert.ok(gapRoi.roughBoundaryPositions.length > 0);
+  const visible = [...leftMetal.roughBorderPositions, ...rightMetal.roughBorderPositions];
+  for (let index = 0; index < visible.length; index += 3) {
+    assert.ok(
+      visible[index] <= -1 || visible[index] >= 1,
+      `false rough outline entered the gap at x=${visible[index]}`,
+    );
+  }
+  const gpuGap = render(zone(-1, 1), false, true);
+  assert.deepEqual(gpuGap.roughBorderPositions, gapFull.roughBorderPositions);
+  assert.deepEqual(gpuGap.roughBoundaryPositions, gapFull.roughBoundaryPositions);
+});
