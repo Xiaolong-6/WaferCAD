@@ -379,7 +379,6 @@ function geometryComponents(geometry, cache) {
             index,
             bounds: geometryBounds([polygon]),
             outline,
-            hasHoles: polygon.length > 1,
             edges: outline ? contourEdgeBoxes(outline) : null,
           };
         })
@@ -501,15 +500,6 @@ function intersectionCandidates(left, right, cache, radialProof = null) {
       if (
         previous.bounds.maxY <= current.bounds.minY ||
         current.bounds.maxY <= previous.bounds.minY
-      )
-        continue;
-      // Annular/hollow pairs favor the existing radial proof; other complex
-      // boundaries benefit more from contour separation before exact Boolean.
-      if (
-        radial &&
-        current.hasHoles &&
-        previous.hasHoles &&
-        provablyRadiallySeparated(radial[side]?.[current.index], radial[other]?.[previous.index])
       )
         continue;
       if (cachedContourSeparation(current, previous, cache)) continue;
