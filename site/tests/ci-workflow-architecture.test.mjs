@@ -103,7 +103,10 @@ test('Pages scientific gate requires routed Main/Mask, KLayout and Recipe outcom
     pages,
     /needs: \[release-evidence, release-impact, release-main-mask, release-klayout, release-recipe\]/,
   );
-  assert.match(pages, /if: \$\{\{ always\(\) && needs\.release-evidence\.outputs\.fast != 'true' \}\}/);
+  assert.match(
+    pages,
+    /if: \$\{\{ always\(\) && needs\.release-evidence\.outputs\.fast != 'true' \}\}/,
+  );
   assert.match(pages, /test "\$result" = success/);
   assert.match(pages, /test "\$result" = skipped/);
   for (const [job, path] of [
