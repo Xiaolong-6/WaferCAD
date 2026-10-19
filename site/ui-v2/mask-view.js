@@ -7,7 +7,7 @@ import { createInspectionFields } from './view-kit/inspection-fields.js';
 import { createDialogConfirmation } from './view-kit/confirmation-dialog.js';
 import { createDisplayUnits, syncDisplayUnitFields } from './view-kit/display-units.js';
 import { mountToolPopover } from './view-kit/tool-popover.js';
-import { createEmptyHint, isEmptyActiveMask } from './view-kit/empty-state.js';
+import { createEmptyHint, isMaskContentEmpty } from './view-kit/empty-state.js';
 import { maskRoiAnchorPoint } from '../mask-roi-geometry.js';
 
 export async function createMaskView({ project, sharedState, workstation } = {}) {
@@ -70,7 +70,7 @@ export async function createMaskView({ project, sharedState, workstation } = {})
   });
   const updateEmptyHint = () =>
     emptyHint.update(
-      Boolean(workstation && !workstation.readOnlyPreview && isEmptyActiveMask(state)),
+      Boolean(workstation && !workstation.readOnlyPreview && isMaskContentEmpty(state)),
     );
   const caption = () =>
     `${state.maskSourceMode === 'draw' ? `${state.drawMask.shapes.length} drawn shapes` : `${state.layout.elements.length} File elements`} · ${units.label()}`;
