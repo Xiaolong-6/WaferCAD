@@ -31,7 +31,7 @@ export const SWX_PERIMETER_CONTEXT_ASSUMPTIONS = Object.freeze({
   expectedExtraPerimeterSiliconPolygons: SEM_FIG3A_MESA_CONTOURS_UM.length,
   sourceOuterMesaMaterialVerified: false,
   semContrastIsPositiveSiliconHypothesis: true,
-  unverifiedSiIsolationGuardUm: 1.8,
+  unverifiedSiIsolationGuardUm: 1.25,
 });
 
 export function createSwxSemPerimeterContext(state = 'off') {
