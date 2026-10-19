@@ -50,6 +50,23 @@ export async function generateAdaptiveMicrodiskVariant({ target = output } = {})
   state.model = model;
   state.section = { a: [-175, 0], b: [175, 0] };
   state.display.sectionDetailRoi = null;
+  // Keep the saved Recipe and History path strictly equivalent. In particular
+  // the adaptive release must not disappear when the active Variant is restored.
+  const adaptiveEtchStep = {
+    id: 'recipe-process-microdisk-adaptive-08',
+    command: 'etch',
+    params: {
+      area: 'full',
+      face: 'front',
+      target: 'Silicon substrate',
+      thicknessUm: 36,
+      profile: 'isotropic',
+      surface: 'smooth',
+      isotropicLateralErrorUm: 0.25,
+    },
+  };
+  state.processRecipe.steps.push(adaptiveEtchStep);
+  state.processRecipe.activeStepId = adaptiveEtchStep.id;
   // Keep legacy main Recipe/History untouched; this is its own Process branch.
   const step = {
     id: nodeId,
@@ -99,6 +116,7 @@ export async function generateAdaptiveMicrodiskVariant({ target = output } = {})
   project.snapshotBranches.cursorNodeId = nodeId;
   project.snapshotBranches.cursorSnapshotId = snapId;
   project.model = model;
+  project.processRecipe = structuredClone(state.processRecipe);
   project.section = structuredClone(state.section);
   project.display.sectionDetailRoi = null;
   assert.equal(

@@ -65,6 +65,10 @@ test('adaptive 72-band saved Variant survives strict read, pack/reopen, History 
   assert.equal(node.parentId, 'process-microdisk-07');
   assert.equal(node.operation.replay.version, 1);
   assert.equal(node.operation.replay.params.isotropicLateralErrorUm, 0.25);
+  assert.equal(branch.headState.processRecipe.steps.length, 7);
+  assert.deepEqual(saved.state.processRecipe, branch.headState.processRecipe);
+  assert.deepEqual(node.state.processRecipe, branch.headState.processRecipe);
+  assert.deepEqual(current.processRecipe, branch.headState.processRecipe);
   assert.deepEqual(saved.state.model, current.model);
   assert.deepEqual(node.state.model, current.model);
   assert.deepEqual(branch.headState.model, current.model);

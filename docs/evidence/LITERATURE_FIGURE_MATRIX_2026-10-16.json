@@ -109,7 +109,7 @@
         "quantitativeOverlay": false
       },
       "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/39145866397",
-      "evidenceType": "Exact published 72-band saved project: real Chromium v2 saved-open/Section/3D and History checks; no paper SEM overlay or calibrated release profile",
+      "evidenceType": "Earlier real Chromium screenshot confirms unchanged 72-band geometry and existing History; new exact portable asset additionally fixes adaptive Etch Recipe/History parity and still requires current-blob browser acceptance.",
       "captureEvidence": {
         "kind": "actual-chromium-project-capture",
         "runURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/39145866397",
@@ -120,8 +120,10 @@
           "test-results/issue298-persisted-variant/persisted-adaptive-three.png"
         ],
         "projectSha256": "5fb8b245d933752f99f8559d6777c9d1d040c768ec2a513bc15ebb12c7255cc3",
-        "originalPaperOverlay": false
-      }
+        "originalPaperOverlay": false,
+        "exactPublishedBlob": false
+      },
+      "publishedProjectSha256": "5e6bfca245cdc739d62338711fd55317bf7bead1f67999bef02f1546364aaa60"
     },
     {
       "id": "m3d-selfpowered-heterogeneous-ic",
