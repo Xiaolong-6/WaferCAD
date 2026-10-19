@@ -4,6 +4,7 @@ import { createMaskRuntime } from './mask-runtime.js';
 import { createFloatingStrip } from './view-kit/floating-strip.js';
 import { createFloatingEditorManager } from './view-kit/floating-editor.js';
 import { createInspectionFields } from './view-kit/inspection-fields.js';
+import { createDialogConfirmation } from './view-kit/confirmation-dialog.js';
 import { createDisplayUnits, syncDisplayUnitFields } from './view-kit/display-units.js';
 import { mountToolPopover } from './view-kit/tool-popover.js';
 import { createEmptyHint, isEmptyActiveMask } from './view-kit/empty-state.js';
@@ -338,19 +339,11 @@ export async function createMaskView({ project, sharedState, workstation } = {})
   function floating(id, title, content, trigger) {
     overlays.mountFloating({ id, title, content, trigger });
   }
-  function confirmAction({ title, message: text, confirmLabel }) {
-    return new Promise((resolve) => {
-      const content = el('div', { class: 'p-form' }, el('strong', {}, title), el('p', {}, text));
-      const cancel = button('Cancel', null, 'close'),
-        accept = button(confirmLabel, null, 'check', { primary: true });
-      content.append(el('div', { class: 'p-actions' }, cancel, accept));
-      let accepted = false;
-      cancel.onclick = () => overlays.close('dialog');
-      accept.onclick = () => {
-        accepted = true;
-        overlays.close('dialog');
-      };
-      overlays.mount('dialog', { content, label: title, onClose: () => resolve(accepted) });
+  function confirmAction({ title, message, confirmLabel }) {
+    return createDialogConfirmation({ overlays, el, button }).confirm({
+      title,
+      message,
+      confirmLabel,
     });
   }
   function buildMask() {
