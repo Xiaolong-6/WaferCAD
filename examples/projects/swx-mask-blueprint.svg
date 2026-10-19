@@ -40,7 +40,7 @@
 <line x1="55" y1="104" x2="1440" y2="104"/>
 <line x1="55" y1="-8" x2="1440" y2="-8"/>
 </g><g fill-opacity=".77" stroke-opacity=".8" stroke-linejoin="round" stroke-width=".65">
-<polygon points="297.2,543.6 386.8,543.6 406.96,518.4 277.04,518.4" fill="#5689C6" stroke="#5689C6"><title>SWX_FIXED_MMI · inferred</title></polygon>
+<polygon points="274.8,543.6 409.2,543.6 429.36,518.4 254.64,518.4" fill="#5689C6" stroke="#5689C6"><title>SWX_FIXED_MMI · inferred</title></polygon>
 <polygon points="116.58,381.17 188.03,404.98 186.62,409.23 115.17,385.42" fill="#5689C6" stroke="#5689C6"><title>OPTICAL_fixed_LEFT_1 · inferred</title></polygon>
 <polygon points="184.82,403.25 345.15,529.22 342.38,532.75 182.05,406.78" fill="#5689C6" stroke="#5689C6"><title>OPTICAL_fixed_LEFT_2 · inferred</title></polygon>
 <polygon points="338.85,529.22 499.18,403.25 501.95,406.78 341.62,532.75" fill="#5689C6" stroke="#5689C6"><title>OPTICAL_fixed_RIGHT_1 · inferred</title></polygon>
@@ -73,8 +73,8 @@
 <polygon points="373.3,543.6 375.66,543.6 374.48,546.96" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_23 · pitch-depth-source;count-phase-inferred</title></polygon>
 <polygon points="376.55,543.6 378.9,543.6 377.73,546.96" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_24 · pitch-depth-source;count-phase-inferred</title></polygon>
 <polygon points="379.8,543.6 382.15,543.6 380.98,546.96" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_25 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="289.36,546.96 291.6,546.96 291.6,543.6 289.36,543.6" fill="#5689C6" stroke="#5689C6"><title>STOP_FIXED_0 · 15nm-ON-gap-source;shape-inferred</title></polygon>
-<polygon points="398,546.96 400.24,546.96 400.24,543.6 398,543.6" fill="#5689C6" stroke="#5689C6"><title>STOP_FIXED_1 · 15nm-ON-gap-source;shape-inferred</title></polygon>
+<polygon points="289.36,546.96 291.6,546.96 291.6,542.48 289.36,542.48" fill="#5689C6" stroke="#5689C6"><title>STOP_FIXED_0 · 15nm-ON-gap-source;shape-inferred</title></polygon>
+<polygon points="398,546.96 400.24,546.96 400.24,542.48 398,542.48" fill="#5689C6" stroke="#5689C6"><title>STOP_FIXED_1 · 15nm-ON-gap-source;shape-inferred</title></polygon>
 <polygon points="991.6,489.28 1058.8,489.28 1058.8,130.88 991.6,130.88" fill="#5689C6" stroke="#5689C6"><title>NORTH_STATIONARY_HANDLE · inferred</title></polygon>
 <polygon points="955.76,484.8 991.6,484.8 991.6,479.2 955.76,479.2" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_0 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
 <polygon points="955.76,466.88 991.6,466.88 991.6,461.28 955.76,461.28" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_1 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
@@ -123,13 +123,115 @@
 <polygon points="604.08,1100.8 637.68,1100.8 637.68,1013.44 604.08,1013.44" fill="#5689C6" stroke="#5689C6"><title>SPRING_ANCHOR_-14_S · anchor-body-inferred;BOX-support-required</title></polygon>
 <polygon points="1175.28,90.56 1208.88,90.56 1208.88,3.2 1175.28,3.2" fill="#5689C6" stroke="#5689C6"><title>SPRING_ANCHOR_37_N · anchor-body-inferred;BOX-support-required</title></polygon>
 <polygon points="1175.28,1100.8 1208.88,1100.8 1208.88,1013.44 1175.28,1013.44" fill="#5689C6" stroke="#5689C6"><title>SPRING_ANCHOR_37_S · anchor-body-inferred;BOX-support-required</title></polygon>
-<polygon points="297.2,560.4 386.8,560.4 406.96,585.6 277.04,585.6" fill="#0D9488" stroke="#0D9488"><title>SWX_MOVABLE_MMI · inferred</title></polygon>
+<polygon points="274.8,560.4 409.2,560.4 429.36,585.6 254.64,585.6" fill="#0D9488" stroke="#0D9488"><title>SWX_MOVABLE_MMI · inferred</title></polygon>
 <polygon points="115.17,718.58 186.62,694.77 188.03,699.02 116.58,722.83" fill="#0D9488" stroke="#0D9488"><title>OPTICAL_moving_LEFT_1 · inferred</title></polygon>
 <polygon points="182.05,697.22 342.38,571.25 345.15,574.78 184.82,700.75" fill="#0D9488" stroke="#0D9488"><title>OPTICAL_moving_LEFT_2 · inferred</title></polygon>
 <polygon points="341.62,571.25 501.95,697.22 499.18,700.75 338.85,574.78" fill="#0D9488" stroke="#0D9488"><title>OPTICAL_moving_RIGHT_1 · inferred</title></polygon>
 <polygon points="497.55,694.69 557.71,718.75 556.05,722.91 495.89,698.85" fill="#0D9488" stroke="#0D9488"><title>OPTICAL_moving_RIGHT_2 · inferred</title></polygon>
 <polygon points="207.6,688.08 211.52,692 311.76,578.88 291.6,578.88" fill="#0D9488" stroke="#0D9488"><title>TAPER_moving_LEFT · inferred</title></polygon>
 <polygon points="375.6,578.88 393.52,578.88 478.08,692 474.16,688.08" fill="#0D9488" stroke="#0D9488"><title>TAPER_moving_RIGHT · inferred</title></polygon>
+<polygon points="120.24,722.24 48.56,722.24 48.56,717.76 120.24,717.76" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_1 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="53.18,722.09 44.33,722.67 44.03,718.2 52.89,717.62" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_2 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="49.05,722.05 40.34,723.78 39.47,719.38 48.17,717.65" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_3 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="44.94,722.55 36.54,725.4 35.1,721.16 43.5,718.3" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_4 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="40.94,723.58 32.98,727.5 31,723.48 38.96,719.56" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_5 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="37.11,725.12 29.73,730.05 27.24,726.33 34.62,721.39" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_6 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="33.51,727.15 26.83,733 23.88,729.63 30.55,723.78" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_7 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="30.2,729.63 24.35,736.31 20.98,733.35 26.83,726.68" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_8 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="27.25,732.53 22.32,739.91 18.59,737.42 23.53,730.04" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_9 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="24.7,735.78 20.78,743.74 16.76,741.76 20.68,733.8" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_10 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="22.6,739.34 19.75,747.74 15.5,746.3 18.36,737.9" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_11 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="20.98,743.14 19.25,751.85 14.85,750.97 16.58,742.27" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_12 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="19.87,747.13 19.29,755.98 14.82,755.69 15.4,746.83" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_13 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="19.29,751.22 19.87,760.07 15.4,760.37 14.82,751.51" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_14 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="19.25,755.35 20.98,764.06 16.58,764.93 14.85,756.23" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_15 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="19.75,759.46 22.6,767.86 18.36,769.3 15.5,760.9" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_16 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="20.78,763.46 24.7,771.42 20.68,773.4 16.76,765.44" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_17 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="22.32,767.29 27.25,774.67 23.53,777.16 18.59,769.78" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_18 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="24.35,770.89 30.2,777.57 26.83,780.52 20.98,773.85" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_19 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="26.83,774.2 33.51,780.05 30.55,783.42 23.88,777.57" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_20 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="29.73,777.15 37.11,782.08 34.62,785.81 27.24,780.87" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_21 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="32.98,779.7 40.94,783.62 38.96,787.64 31,783.72" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_22 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="36.54,781.8 44.94,784.65 43.5,788.9 35.1,786.04" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_23 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="40.34,783.42 49.05,785.15 48.17,789.55 39.47,787.82" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_24 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="44.33,784.53 53.18,785.11 52.89,789.58 44.03,789" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_25 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="48.56,784.96 187.44,784.96 187.44,789.44 48.56,789.44" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_26 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="183.11,784.82 191.97,785.4 191.67,789.87 182.82,789.29" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_27 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="187.83,784.85 196.53,786.58 195.66,790.98 186.95,789.25" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_28 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="192.5,785.5 200.9,788.36 199.46,792.6 191.06,789.75" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_29 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="197.04,786.76 205,790.68 203.02,794.7 195.06,790.78" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_30 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="201.38,788.59 208.76,793.53 206.27,797.25 198.89,792.32" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_31 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="205.45,790.98 212.12,796.83 209.17,800.2 202.49,794.35" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_32 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="209.17,793.88 215.02,800.55 211.65,803.51 205.8,796.83" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_33 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="212.47,797.24 217.41,804.62 213.68,807.11 208.75,799.73" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_34 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="215.32,801 219.24,808.96 215.22,810.94 211.3,802.98" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_35 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="217.64,805.1 220.5,813.5 216.25,814.94 213.4,806.54" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_36 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="219.42,809.47 221.15,818.17 216.75,819.05 215.02,810.34" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_37 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="220.6,814.03 221.18,822.89 216.71,823.18 216.13,814.33" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_38 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="221.18,818.71 220.6,827.57 216.13,827.27 216.71,818.42" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_39 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="221.15,823.43 219.42,832.13 215.02,831.26 216.75,822.55" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_40 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="220.5,828.1 217.64,836.5 213.4,835.06 216.25,826.66" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_41 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="219.24,832.64 215.32,840.6 211.3,838.62 215.22,830.66" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_42 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="217.41,836.98 212.47,844.36 208.75,841.87 213.68,834.49" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_43 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="215.02,841.05 209.17,847.72 205.8,844.77 211.65,838.09" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_44 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="212.12,844.77 205.45,850.62 202.49,847.25 209.17,841.4" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_45 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="208.76,848.07 201.38,853.01 198.89,849.28 206.27,844.35" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_46 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="205,850.92 197.04,854.84 195.06,850.82 203.02,846.9" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_47 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="200.9,853.24 192.5,856.1 191.06,851.85 199.46,849" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_48 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="196.53,855.02 187.83,856.75 186.95,852.35 195.66,850.62" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_49 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="191.97,856.2 183.11,856.78 182.82,852.31 191.67,851.73" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_50 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="187.44,856.64 14.96,856.64 14.96,852.16 187.44,852.16" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_LEFT_51 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="557.04,722.24 518.96,722.24 518.96,717.76 557.04,717.76" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_1 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="523.58,722.09 514.73,722.67 514.43,718.2 523.29,717.62" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_2 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="519.45,722.05 510.74,723.78 509.87,719.38 518.57,717.65" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_3 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="515.34,722.55 506.94,725.4 505.5,721.16 513.9,718.3" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_4 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="511.34,723.58 503.38,727.5 501.4,723.48 509.36,719.56" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_5 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="507.51,725.12 500.13,730.05 497.64,726.33 505.02,721.39" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_6 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="503.91,727.15 497.23,733 494.28,729.63 500.95,723.78" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_7 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="500.6,729.63 494.75,736.31 491.38,733.35 497.23,726.68" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_8 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="497.65,732.53 492.72,739.91 488.99,737.42 493.93,730.04" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_9 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="495.1,735.78 491.18,743.74 487.16,741.76 491.08,733.8" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_10 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="493,739.34 490.15,747.74 485.9,746.3 488.76,737.9" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_11 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="491.38,743.14 489.65,751.85 485.25,750.97 486.98,742.27" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_12 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="490.27,747.13 489.69,755.98 485.22,755.69 485.8,746.83" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_13 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="489.69,751.22 490.27,760.07 485.8,760.37 485.22,751.51" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_14 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="489.65,755.35 491.38,764.06 486.98,764.93 485.25,756.23" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_15 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="490.15,759.46 493,767.86 488.76,769.3 485.9,760.9" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_16 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="491.18,763.46 495.1,771.42 491.08,773.4 487.16,765.44" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_17 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="492.72,767.29 497.65,774.67 493.93,777.16 488.99,769.78" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_18 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="494.75,770.89 500.6,777.57 497.23,780.52 491.38,773.85" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_19 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="497.23,774.2 503.91,780.05 500.95,783.42 494.28,777.57" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_20 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="500.13,777.15 507.51,782.08 505.02,785.81 497.64,780.87" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_21 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="503.38,779.7 511.34,783.62 509.36,787.64 501.4,783.72" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_22 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="506.94,781.8 515.34,784.65 513.9,788.9 505.5,786.04" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_23 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="510.74,783.42 519.45,785.15 518.57,789.55 509.87,787.82" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_24 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="514.73,784.53 523.58,785.11 523.29,789.58 514.43,789" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_25 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="523.44,789.44 362.16,789.44 362.16,784.96 523.44,784.96" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_26 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="366.78,789.29 357.93,789.87 357.63,785.4 366.49,784.82" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_27 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="362.65,789.25 353.94,790.98 353.07,786.58 361.77,784.85" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_28 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="358.54,789.75 350.14,792.6 348.7,788.36 357.1,785.5" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_29 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="354.54,790.78 346.58,794.7 344.6,790.68 352.56,786.76" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_30 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="350.71,792.32 343.33,797.25 340.84,793.53 348.22,788.59" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_31 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="347.11,794.35 340.43,800.2 337.48,796.83 344.15,790.98" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_32 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="343.8,796.83 337.95,803.51 334.58,800.55 340.43,793.88" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_33 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="340.85,799.73 335.92,807.11 332.19,804.62 337.13,797.24" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_34 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="338.3,802.98 334.38,810.94 330.36,808.96 334.28,801" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_35 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="336.2,806.54 333.35,814.94 329.1,813.5 331.96,805.1" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_36 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="334.58,810.34 332.85,819.05 328.45,818.17 330.18,809.47" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_37 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="333.47,814.33 332.89,823.18 328.42,822.89 329,814.03" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_38 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="332.89,818.42 333.47,827.27 329,827.57 328.42,818.71" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_39 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="332.85,822.55 334.58,831.26 330.18,832.13 328.45,823.43" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_40 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="333.35,826.66 336.2,835.06 331.96,836.5 329.1,828.1" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_41 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="334.38,830.66 338.3,838.62 334.28,840.6 330.36,832.64" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_42 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="335.92,834.49 340.85,841.87 337.13,844.36 332.19,836.98" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_43 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="337.95,838.09 343.8,844.77 340.43,847.72 334.58,841.05" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_44 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="340.43,841.4 347.11,847.25 344.15,850.62 337.48,844.77" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_45 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="343.33,844.35 350.71,849.28 348.22,853.01 340.84,848.07" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_46 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="346.58,846.9 354.54,850.82 352.56,854.84 344.6,850.92" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_47 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="350.14,849 358.54,851.85 357.1,856.1 348.7,853.24" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_48 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="353.94,850.62 362.65,852.35 361.77,856.75 353.07,855.02" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_49 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="357.93,851.73 366.78,852.31 366.49,856.78 357.63,856.2" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_50 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
+<polygon points="362.16,852.16 534.64,852.16 534.64,856.64 362.16,856.64" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_51 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
 <polygon points="298.6,560.4 300.95,560.4 299.78,557.04" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_0 · pitch-depth-source;count-phase-inferred</title></polygon>
 <polygon points="301.85,560.4 304.2,560.4 303.02,557.04" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_1 · pitch-depth-source;count-phase-inferred</title></polygon>
 <polygon points="305.1,560.4 307.45,560.4 306.27,557.04" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_2 · pitch-depth-source;count-phase-inferred</title></polygon>
@@ -156,8 +258,8 @@
 <polygon points="373.3,560.4 375.66,560.4 374.48,557.04" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_23 · pitch-depth-source;count-phase-inferred</title></polygon>
 <polygon points="376.55,560.4 378.9,560.4 377.73,557.04" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_24 · pitch-depth-source;count-phase-inferred</title></polygon>
 <polygon points="379.8,560.4 382.15,560.4 380.98,557.04" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_25 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="289.36,560.4 291.6,560.4 291.6,557.04 289.36,557.04" fill="#0D9488" stroke="#0D9488"><title>STOP_MOVING_0 · 15nm-ON-gap-source;shape-inferred</title></polygon>
-<polygon points="398,560.4 400.24,560.4 400.24,557.04 398,557.04" fill="#0D9488" stroke="#0D9488"><title>STOP_MOVING_1 · 15nm-ON-gap-source;shape-inferred</title></polygon>
+<polygon points="289.36,561.52 291.6,561.52 291.6,557.04 289.36,557.04" fill="#0D9488" stroke="#0D9488"><title>STOP_MOVING_0 · 15nm-ON-gap-source;shape-inferred</title></polygon>
+<polygon points="398,561.52 400.24,561.52 400.24,557.04 398,557.04" fill="#0D9488" stroke="#0D9488"><title>STOP_MOVING_1 · 15nm-ON-gap-source;shape-inferred</title></polygon>
 <polygon points="487.6,523.44 1282.8,523.44 1282.8,518.4 487.6,518.4" fill="#0D9488" stroke="#0D9488"><title>SHUTTLE_RAIL_TOP · inferred</title></polygon>
 <polygon points="487.6,585.6 1282.8,585.6 1282.8,580.56 487.6,580.56" fill="#0D9488" stroke="#0D9488"><title>SHUTTLE_RAIL_BOTTOM · inferred</title></polygon>
 <polygon points="487.6,580.56 492.64,580.56 492.64,523.44 487.6,523.44" fill="#0D9488" stroke="#0D9488"><title>SHUTTLE_CROSSBAR_0 · inferred</title></polygon>
@@ -271,10 +373,16 @@
 <polygon points="1177.52,976.48 1177.52,727.84 1179.76,727.84 1179.76,976.48" fill="#0D9488" stroke="#0D9488"><title>FOLDED_SPRING_37_S_5 · inferred</title></polygon>
 <polygon points="1177.52,727.84 1198.8,727.84 1198.8,730.08 1177.52,730.08" fill="#0D9488" stroke="#0D9488"><title>FOLDED_SPRING_37_S_6 · inferred</title></polygon>
 <polygon points="1198.8,727.84 1198.8,1014.56 1196.56,1014.56 1196.56,727.84" fill="#0D9488" stroke="#0D9488"><title>FOLDED_SPRING_37_S_7 · inferred</title></polygon>
+<polygon points="240.64,591.76 240.64,512.24 241.76,512.24 241.76,591.76" fill="#8B69B3" stroke="#8B69B3"><title>ALIGNER_LEFT_BEAM_1 · 7um x 0.1um source; location inferred</title></polygon>
+<polygon points="237.34,505.89 281.71,518.46 278.66,529.23 234.29,516.66" fill="#8B69B3" stroke="#8B69B3"><title>ALIGNER_LEFT_FIXED_TRUSS_1 · 1um source width; inferred truss connection</title></polygon>
+<polygon points="234.29,587.34 278.66,574.77 281.71,585.54 237.34,598.11" fill="#8B69B3" stroke="#8B69B3"><title>ALIGNER_LEFT_MOBILE_TRUSS_1 · 1um source width; inferred truss connection</title></polygon>
+<polygon points="442.24,591.76 442.24,512.24 443.36,512.24 443.36,591.76" fill="#8B69B3" stroke="#8B69B3"><title>ALIGNER_RIGHT_BEAM_1 · 7um x 0.1um source; location inferred</title></polygon>
+<polygon points="449.71,516.66 405.34,529.23 402.29,518.46 446.66,505.89" fill="#8B69B3" stroke="#8B69B3"><title>ALIGNER_RIGHT_FIXED_TRUSS_1 · 1um source width; inferred truss connection</title></polygon>
+<polygon points="446.66,598.11 402.29,585.54 405.34,574.77 449.71,587.34" fill="#8B69B3" stroke="#8B69B3"><title>ALIGNER_RIGHT_MOBILE_TRUSS_1 · 1um source width; inferred truss connection</title></polygon>
 <polygon points="1070,328 1114.8,328 1114.8,216 1070,216" fill="#E5A33D" stroke="#E5A33D"><title>NORTH_CR_AU · Cr50nm+Au300nm-source;pad-boundary-inferred</title></polygon>
 <polygon points="1070,888 1114.8,888 1114.8,776 1070,776" fill="#E5A33D" stroke="#E5A33D"><title>SOUTH_CR_AU · Cr50nm+Au300nm-source;pad-boundary-inferred</title></polygon>
 </g>
 <circle cx="342" cy="552" r="112" fill="none" stroke="#BE4A3A" stroke-width="2.2" stroke-dasharray="9,7"/>
-<text x="93" y="1062" font-family="sans-serif" font-size="15" fill="#334155">Blue: fixed Si / BOX-supported anchors · Green: mobile suspended Si · Gold: Cr/Au electrodes</text>
+<text x="93" y="1062" font-family="sans-serif" font-size="15" fill="#334155">Blue: fixed Si/anchors · Green: mobile Si · Purple: aligner flexures · Gold: Cr/Au</text>
 <text x="93" y="1090" font-family="sans-serif" font-size="14" fill="#B45309">Scientific status: geometry proposal, NOT author GDS, NOT fabricated-mask verified, NOT native WaferCAD Chromium acceptance</text>
 </svg>
