@@ -415,8 +415,60 @@ function ownsMaterialInterface(current, other, layerOrder) {
   );
 }
 
+// Immutable input geometries are reused across the caps of one derived plan.
+// A per-call WeakMap avoids repeatedly scanning every vertex of those caps.
+// A negative result is only accepted if *every* pair of component bounding
+// boxes is separated by more than the same EPS used by polygon-clipping.
+function provablyDisjointCapComponents(a, b, boundsCache) {
+  if (!Array.isArray(a) || !Array.isArray(b)) return false;
+  if (a.length <= 1 && b.length <= 1) return false;
+  if (!a.length || !b.length || a.length * b.length > 2048) return false;
+  const componentBounds = (geom) => {
+    if (boundsCache.has(geom)) return boundsCache.get(geom);
+    const boxes = [];
+    for (const polygon of geom) {
+      if (!Array.isArray(polygon) || !polygon.length) return null;
+      let minX = Infinity,
+        minY = Infinity,
+        maxX = -Infinity,
+        maxY = -Infinity;
+      for (const ring of polygon) {
+        if (!Array.isArray(ring)) return null;
+        for (const point of ring) {
+          if (!Array.isArray(point) || !Number.isFinite(point[0]) || !Number.isFinite(point[1]))
+            return null;
+          minX = Math.min(minX, point[0]);
+          minY = Math.min(minY, point[1]);
+          maxX = Math.max(maxX, point[0]);
+          maxY = Math.max(maxY, point[1]);
+        }
+      }
+      if (!Number.isFinite(minX)) return null;
+      boxes.push({ minX, minY, maxX, maxY });
+    }
+    boundsCache.set(geom, boxes);
+    return boxes;
+  };
+  const left = componentBounds(a),
+    right = componentBounds(b);
+  if (!left || !right) return false;
+  for (const x of left) {
+    for (const y of right) {
+      if (
+        x.maxX >= y.minX - 1e-8 &&
+        y.maxX >= x.minX - 1e-8 &&
+        x.maxY >= y.minY - 1e-8 &&
+        y.maxY >= x.minY - 1e-8
+      )
+        return false;
+    }
+  }
+  return true;
+}
+
 function ownHorizontalMaterialCaps(rawCaps, layerOrder) {
   const owned = [];
+  const boundsCache = new WeakMap();
   for (let index = 0; index < rawCaps.length; index++) {
     const cap = rawCaps[index];
     let remaining = cap.polys;
@@ -428,6 +480,7 @@ function ownHorizontalMaterialCaps(rawCaps, layerOrder) {
       if (Math.abs(other.z - cap.z) > INTERFACE_EPSILON_UM) continue;
       if (other.normal !== -cap.normal) continue;
 
+      if (provablyDisjointCapComponents(remaining, other.polys, boundsCache)) continue;
       const overlap = intersection(remaining, other.polys);
       if (isEmpty(overlap)) continue;
       if (ownsMaterialInterface(cap, other, layerOrder)) {
