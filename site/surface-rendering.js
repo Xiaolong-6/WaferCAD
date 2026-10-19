@@ -30,7 +30,8 @@ export function roughFarFieldContrast(featurePixels, appearance) {
     !(feature > 0) ||
     !(height > 0) ||
     !(heightCv > 0)
-  ) return 0;
+  )
+    return 0;
   const slopeVariation = (height * heightCv) / feature,
     unresolved = 1 - smoothstep(0.75, 8, Math.max(0, Number(featurePixels) || 0));
   return 0.28 * (slopeVariation / (0.3 + slopeVariation)) * unresolved;
