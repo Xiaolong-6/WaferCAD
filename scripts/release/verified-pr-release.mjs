@@ -34,14 +34,14 @@ export function classifyRelease(paths) {
   return 'production';
 }
 
-export function evaluateRelease({ event, sha, parents, paths, pull, sameTree, checks, fullQuality }) {
+export function evaluateRelease({ event, sha, parents, paths, pull, sameTree, baseIsAncestor, checks, fullQuality }) {
   const fallback = (reason) => ({ fast: false, mode: 'full', reason });
   if (event !== 'push' || !/^[0-9a-f]{40}$/.test(sha || '') ||
       !Array.isArray(parents) || parents.length !== 2) return fallback('not an ordinary main merge');
   if (!pull || pull.merged !== true || pull.state !== 'closed' || pull.draft ||
       pull.merge_commit_sha !== sha || pull.head?.sha !== parents[1] ||
       pull.base?.ref !== 'main' || !pull.number) return fallback('missing exact PR provenance');
-  if (!sameTree) return fallback('PR merge tree does not match published tree');
+  if (!sameTree || !baseIsAncestor) return fallback('PR head did not contain final main base or matching tree');
   const mode = classifyRelease(paths);
   if (mode === 'full') return fallback('unsafe or mixed release configuration scope');
   if (!Array.isArray(checks) || checks.length < 2 ||
@@ -104,6 +104,17 @@ async function findRelease() {
     sameTree = false;
   }
   if (!sameTree) return { fast: false, mode: 'full', reason: 'merge tree mismatch' };
+  // A PR checked on an older base cannot authorize release of a newer main.
+  let baseIsAncestor = false;
+  try {
+    git('merge-base', '--is-ancestor', parents[0], parents[1]);
+    baseIsAncestor = true;
+  } catch {
+    baseIsAncestor = false;
+  }
+  if (!baseIsAncestor) {
+    return { fast: false, mode: 'full', reason: 'PR head lacks current main base' };
+  }
   const listing = await api('commits/' + parents[1] + '/check-runs?per_page=100');
   if (listing.total_count > 100 || !Array.isArray(listing.check_runs)) {
     return { fast: false, mode: 'full', reason: 'PR check listing unavailable or truncated' };
@@ -122,7 +133,7 @@ async function findRelease() {
     }
   }
   const verdict = evaluateRelease({
-    event, sha, parents, paths, pull, sameTree, checks, fullQuality,
+    event, sha, parents, paths, pull, sameTree, baseIsAncestor, checks, fullQuality,
   });
   if (!verdict.fast) return verdict;
   const required = verdict.mode === 'infra' ? ['quality', 'Release evidence contract'] : PRODUCTION_GATES;
@@ -132,9 +143,11 @@ async function findRelease() {
     if (!id) return { fast: false, mode: 'full', reason: 'missing workflow run ID: ' + name };
     if (seen.has(id)) continue;
     const run = await api('actions/runs/' + id);
+    // GitHub clears workflow_run.pull_requests after merge; persistent run
+    // fields still attest the event, branch, repository and reviewed head.
     if (run.head_sha !== parents[1] || run.event !== 'pull_request' ||
-        run.conclusion !== 'success' ||
-        !run.pull_requests?.some((p) => p.number === pull.number)) {
+        run.conclusion !== 'success' || run.head_branch !== pull.head.ref ||
+        run.head_repository?.full_name !== process.env.GITHUB_REPOSITORY) {
       return { fast: false, mode: 'full', reason: 'workflow provenance mismatch: ' + name };
     }
     seen.add(id);
