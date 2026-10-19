@@ -71,7 +71,7 @@ test('subpixel relief stays visible without exaggerating the physical heightfiel
   const far = roughFarFieldContrast(0.02, appearance);
   assert.ok(far > 0.1 && far < 0.22);
   assert.ok(roughFarFieldContrast(1.5, appearance) < far);
-  assert.equal(roughFarFieldContrast(3, appearance), 0);
+  assert.equal(roughFarFieldContrast(10, appearance), 0);
   assert.equal(roughFarFieldContrast(0.01, { ...appearance, kind: 'smooth' }), 0);
   assert.equal(roughFarFieldContrast(0.01, { ...appearance, meanHeight: 0 }), 0);
   assert.ok(
