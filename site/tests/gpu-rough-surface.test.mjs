@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 
 import {
   canUseGpuRoughPreview,
@@ -176,4 +177,22 @@ test('software roughness visibility shader changes only color, not displaced geo
   assert.equal(shader.uniforms.waferCadRoughFarFieldFeatureSize.value, 0.8);
   assert.equal(shader.uniforms.waferCadRoughFarFieldSeed.value, 0xba98);
   assert.equal(decorateRoughFarFieldMaterial({}, { ...appearance, kind: 'smooth' }), false);
+});
+
+test('native worker and synchronous rough-mesh paths both bind far-field material', () => {
+  const source = readFileSync(new URL('../three-view.js', import.meta.url), 'utf8'),
+    workerStart = source.indexOf('function applyRoughMeshResults('),
+    syncStart = source.indexOf('function rebuildAdaptiveRoughGeometrySync('),
+    workerPath = source.slice(workerStart, source.indexOf('function requestRoughGeometry(', workerStart)),
+    syncPath = source.slice(syncStart, source.indexOf('function init()', syncStart));
+
+  assert.ok(workerStart >= 0 && syncStart >= 0, 'both native rough assembly paths must exist');
+  for (const [name, code] of [['worker', workerPath], ['synchronous', syncPath]]) {
+    assert.match(code, /decorateRoughFarFieldMaterial\(material,/,
+      `${name} must decorate CPU rough surfaces`);
+    assert.match(code, /!cap\.buried && roughFarFieldContrast\(0, cap\.appearance\) > 0/,
+      `${name} should only decorate exposed stochastic caps`);
+    assert.match(code, /geometry\.userData\.roughGpuDisplacement && !task\.implant/,
+      `${name} must keep original GPU displacement eligibility`);
+  }
 });
