@@ -176,6 +176,9 @@ async function findRelease() {
   const event = process.env.GITHUB_EVENT_NAME;
   const sha = process.env.GITHUB_SHA;
   if (event !== 'push') return { fast: false, mode: 'full', reason: 'not a main push' };
+  const latestMain = await api('git/ref/heads/main');
+  if (latestMain.object?.sha !== sha)
+    return { fast: false, mode: 'superseded', reason: 'newer main superseded this revision' };
   const parents = git('rev-list', '--parents', '-n', '1', sha).split(/\s+/).slice(1);
   if (parents.length !== 2) return { fast: false, mode: 'full', reason: 'unverified parent count' };
   const paths = git('diff', '--name-only', parents[0], sha).split('\n').filter(Boolean);
@@ -246,7 +249,7 @@ async function findRelease() {
   const quality = checks.filter(c => c.name === 'quality' && c.conclusion === 'success');
   let fullQuality = false;
   if (quality.length === 1) {
-    const jobId = String(quality[0].details_url || '').match(/\\/job\\/(\\d+)/)?.[1];
+    const jobId = String(quality[0].details_url || '').split('/job/')[1]?.split('/')[0];
     if (jobId) {
       const job = await api('actions/jobs/' + jobId);
       fullQuality =
