@@ -83,11 +83,14 @@ export function buildSwxMaskLayout() {
   }
   // Teeth on two facing in-plane edges: 290 nm pitch, 300 nm lateral depth.
   // Their arbitrary count and starting phase are NOT reported by the paper.
+  // Extend the tooth ROOT 10nm inside its parent MMI, retaining the source
+  // 300nm in-plane protrusion and optical tip coordinate, to provide a
+  // finite-area, GDS-stable silicon attachment (not a 10nm gap change).
   const toothCount=26, pitch=.290, toothX0=-43.77;
   for(let i=0;i<toothCount;i++){
     const x=toothX0+i*pitch, half=.105;
-    put(`SWT_FIXED_${i}`,1,"fixed",[[x-half,.75],[x+half,.75],[x,.45]],"pitch-depth-source;count-phase-inferred");
-    put(`SWT_MOVABLE_${i}`,1,"moving",[[x-half,-.75],[x+half,-.75],[x,-.45]],"pitch-depth-source;count-phase-inferred");
+    put(`SWT_FIXED_${i}`,1,"fixed",[[x-half,.76],[x+half,.76],[x,.45]],"pitch-depth-source;count-phase-inferred");
+    put(`SWT_MOVABLE_${i}`,1,"moving",[[x-half,-.76],[x+half,-.76],[x,-.45]],"pitch-depth-source;count-phase-inferred");
   }
   // Explicit stop-pair tips at the reported OFF clearance. Contact under 885 nm
   // actuation defines a 15 nm final gap; lithographic stop profile is not reported.
