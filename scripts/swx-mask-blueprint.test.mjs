@@ -210,7 +210,10 @@ test('checked-in GDS matches generator after 0.1nm export quantization',()=>{
     assert.equal(a.points.length,b.points.length,'point count mismatch polygon '+i);
     for(let k=0;k<a.points.length;k++){
       for(let axis=0;axis<2;axis++){
-        const target=Math.round(a.points[k][axis]*1e4)/1e4;
+        // Match the production writer's Math.round(value / dbu) exactly.
+        // Multiplication by 1e4 differs at negative half-grid floating ties.
+        const dbu=reopened.units.dbuToMicron;
+        const target=Math.round(a.points[k][axis]/dbu)*dbu;
         assert.ok(Math.abs(target-b.points[k][axis])<1e-8,
           'stale GDS polygon '+i+' vertex '+k+' axis '+axis);
       }
