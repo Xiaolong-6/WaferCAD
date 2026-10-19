@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { parseGDS, flattenGDS } from '../site/gds.js';
 import { buildSwxS8SiliconMask, SWX_S8_PROVENANCE } from './swx-s8-primary-silicon.mjs';
 
 function overlap(A,B){
@@ -90,4 +92,29 @@ test('SWT: true tip clearance (0.9um), fabricated OFF only',()=>{
   assert.ok(Math.abs(tipFixed-tipMobile-.9)<1e-8);
   assert.equal(m.expectedTopology.opticalFront,'positive_Y');
   assert.equal(m.provenance.dimensionsFromPaperUm.onAirGap,.015);
+});
+
+test('checked-in S8 primary Si GDS roundtrips every polygon at native 0.1nm DBU',()=>{
+  const bytes=readFileSync(new URL('../examples/projects/swx-s8-primary-silicon-DRAFT.gds',
+    import.meta.url));
+  const raw=bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength);
+  const parsed=parseGDS(raw),reopened=flattenGDS(parsed,parsed.root),
+    source=buildSwxS8SiliconMask().elements;
+  assert.equal(reopened.units.hasPhysicalUnits,true);
+  assert.equal(reopened.units.dbuToMicron,.0001);
+  assert.equal(reopened.elements.length,source.length);
+  for(let i=0;i<source.length;i++){
+    const a=source[i],b=reopened.elements[i];
+    assert.equal(a.layer,b.layer,'polygon '+i+' layer');
+    assert.equal(a.datatype,b.datatype,'polygon '+i+' datatype');
+    assert.equal(a.points.length,b.points.length,'polygon '+i+' vertices');
+    for(let j=0;j<a.points.length;j++){
+      for(let k=0;k<2;k++){
+        const unit=reopened.units.dbuToMicron,
+          value=Math.round(a.points[j][k]/unit)*unit;
+        assert.ok(Math.abs(value-b.points[j][k])<1e-8,
+          'stale/incorrect GDS polygon '+i+' point '+j+' coordinate '+k);
+      }
+    }
+  }
 });
