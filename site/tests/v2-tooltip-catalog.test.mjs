@@ -13,6 +13,7 @@ const paths = [
   '../ui-v2/workstation-workflow.js',
   '../ui-v2/project-mask-panels.js',
   '../ui-v2/view-kit/floating-strip.js',
+  '../controllers/history-mutation-controller.js',
   '../controllers/project-controller.js',
   '../controllers/mask-browser-controller.js',
 ];
