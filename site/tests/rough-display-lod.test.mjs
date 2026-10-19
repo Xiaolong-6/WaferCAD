@@ -81,3 +81,21 @@ test('subpixel relief stays visible without exaggerating the physical heightfiel
   );
   assert.equal(JSON.stringify(appearance), original);
 });
+
+test('Photodetector stochastic morphology is visible at overview without changing geometry', () => {
+  const profiles = [
+    { ...appearance, featureSize: 0.3, meanHeight: 0.5, heightCv: 0.25, seed: 3668339987 },
+    { ...appearance, featureSize: 0.2, meanHeight: 0.7, heightCv: 0.25, seed: 3668339987 },
+  ];
+  const original = profiles.map((profile) => JSON.stringify(profile));
+  const far = profiles.map((profile) => roughFarFieldContrast(0.03, profile));
+  assert.ok(far[0] > 0.1 && far[0] < 0.28);
+  assert.ok(far[1] > far[0] && far[1] < 0.28);
+  for (let i = 0; i < profiles.length; i++) {
+    const profile = profiles[i];
+    const z = roughProfileOffsetAtPoint(0.125, -0.65, profile);
+    assert.equal(roughFarFieldContrast(12, profile), 0);
+    assert.equal(roughProfileOffsetAtPoint(0.125, -0.65, profile), z);
+    assert.equal(JSON.stringify(profile), original[i]);
+  }
+});
