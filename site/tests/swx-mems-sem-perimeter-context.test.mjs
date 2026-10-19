@@ -38,8 +38,5 @@ test('a study field is not a measured author switch footprint', () => {
   assert.deepEqual(SWX_PERIMETER_CONTEXT_PROCESS_PROFILE.fieldUm, [200, 280]);
   assert.equal(assumptions.studyFieldIsMeasuredDeviceFootprint, false);
   assert.equal(assumptions.contextIsPartOfPaperDeviceFootprint, false);
-  assert.equal(
-    SWX_PERIMETER_CONTEXT_PROCESS_PROFILE.geometryFactory,
-    createSwxSemPerimeterContext,
-  );
+  assert.equal(SWX_PERIMETER_CONTEXT_PROCESS_PROFILE.geometryFactory, createSwxSemPerimeterContext);
 });
