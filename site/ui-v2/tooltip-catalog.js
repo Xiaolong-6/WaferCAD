@@ -303,6 +303,34 @@
       'XYZ display units',
       'Change how physical coordinates are displayed; geometry is stored in canonical units.',
     ],
+    'history.edit.discard': [
+      'Replace and discard',
+      'Replace this Step and remove all following Steps in the current Variant. The Recovery checkpoint preserves the prior state.',
+    ],
+    'history.edit.replay': [
+      'Replace and replay',
+      'Apply the edited Step in this Variant, then recompute downstream Steps. Replay failure restores the original transaction.',
+    ],
+    'history.edit.branch.replay': [
+      'New Variant with later Steps',
+      'Preserve the source Variant. Create a new Variant with the edited Step and recompute later Steps.',
+    ],
+    'history.edit.branch.only': [
+      'New Variant with edited Step',
+      'Preserve the source Variant. The new Variant ends at the edited Step.',
+    ],
+    'history.insert.current': [
+      'Insert in current Variant',
+      'Insert the new Step before the selected Step and recompute the affected later Steps.',
+    ],
+    'history.insert.branch.replay': [
+      'Insert and carry in new Variant',
+      'Preserve the source Variant and recompute later Steps in a new Variant.',
+    ],
+    'history.insert.branch.start': [
+      'Insert and start new Variant',
+      'Start a separate Variant at the insertion point without copying later Steps.',
+    ],
     'history.undo': [
       'Undo process change',
       'Undo the most recent supported model change, not merely a form field edit.',
