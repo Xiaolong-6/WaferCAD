@@ -2531,7 +2531,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
             profileNormal: cap.profileNormal ?? cap.normal,
             normalStrength: mode === 'interactive' ? 0.82 : 1,
           });
-        } else {
+        } else if (roughFarFieldContrast(0, cap.appearance) > 0) {
           decorateRoughFarFieldMaterial(material, task.visualAppearance || cap.appearance);
         }
       }
