@@ -9,6 +9,11 @@ import { canRenderPlanarCapInSinglePass } from './transparent-pass-policy.js';
 import { disposeRendererSceneResources } from './renderer-v4-resource-lifetime.js';
 import { runTemporaryRendererCapture } from './renderer-capture-transaction.js';
 import { renderDepthAwareOutlines } from './three-outline-pass.js';
+import {
+  borderNeedsInternalGeometry,
+  borderContourPresentationPlan,
+  borderPresentationState,
+} from './border-inspector.js';
 import { shouldYieldDuringSceneAssembly } from './renderer-cooperative-assembly.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
@@ -24,9 +29,10 @@ import {
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
 import {
   ownedContourSegments,
+  borderInspectorContours,
+  unownedContourSegments,
   contoursToPositions,
   sectionCutContours,
-  unownedContourSegments,
 } from './three-outline-geometry.js';
 import { buildRenderSurfacePlanAsync } from './renderer-surface-plan-async.js';
 import { appendSidewallTriangle } from './renderer-sidewall-triangle.js';
@@ -801,7 +807,27 @@ export function createThreeView({
   }
 
   let completedFrameSerial = 0;
+  function updateBorderDashScale() {
+    if (!camera || !controls || !renderer) return;
+    const viewport = currentViewport();
+    const pixelsPerUnit = projectedPixelsPerUnit({
+      distance: camera.position.distanceTo(controls.target),
+      viewportHeight: viewport.height,
+      fovDegrees: camera.fov,
+      pixelRatio: viewport.pixelRatio,
+    });
+    // Keep dashes legible at the actual inspection zoom instead of sizing
+    // them as a fraction of full-wafer width (which hides tiny via dashes).
+    const dash = Math.max(1e-7, 6 / Math.max(1e-7, pixelsPerUnit));
+    for (const object of presentationObjects) {
+      if (!object?.isLineSegments || !object.material?.isLineDashedMaterial) continue;
+      object.material.dashSize = dash;
+      object.material.gapSize = dash * 0.65;
+    }
+  }
+
   function renderInspectionFrame(targetRenderer = renderer) {
+    updateBorderDashScale();
     const occluders = [],
       outlines = [];
     scene.traverseVisible((object) => {
@@ -1069,6 +1095,8 @@ export function createThreeView({
       clip: clip || null,
       zCollapse: getZCollapse?.() || null,
       layers,
+      // Border presentation is view-only. Internal contours are generated
+      // on demand within the current scene and do not invalidate its geometry.
       arrayPresentationLod: arrayViewLod(model, clip, inspection).tier,
     });
   }
@@ -1118,27 +1146,14 @@ export function createThreeView({
           transparentSort: true,
         };
       case 'border':
-        return {
-          visible: Boolean(inspection.borders),
-          materialState: {
-            opacity: transparent ? 0.85 : 1,
-            transparent,
-            depthTest: true,
-            depthWrite: false,
-          },
-          transparentSort: false,
-        };
+      case 'internal-border':
       case 'hidden-border':
-        return {
-          visible: transparent && Boolean(inspection.borders),
-          materialState: {
-            opacity: Math.min(0.34, 0.14 + (1 - opacity) * 0.24),
-            transparent: true,
-            depthTest: true,
-            depthWrite: false,
-          },
-          transparentSort: false,
-        };
+        return borderPresentationState(
+          descriptor,
+          inspection.borderSettings,
+          opacity,
+          inspection.borders,
+        );
       case 'implant-cut':
         return {
           visible: true,
@@ -1214,7 +1229,10 @@ export function createThreeView({
       materials = Array.isArray(object.material) ? object.material : [object.material];
     object.visible = Boolean(state.visible);
     for (const material of materials) applyMaterialPresentation(material, state.materialState);
-    if (object.isLineSegments && descriptor.kind === 'border') {
+    if (
+      object.isLineSegments &&
+      ['border', 'internal-border', 'hidden-border'].includes(descriptor.kind)
+    ) {
       object.renderOrder = object.userData?.waferCadBorderOrder ?? object.renderOrder;
     } else if (!state.transparentSort && !object.isLineSegments) object.renderOrder = 0;
     return object;
@@ -1362,7 +1380,10 @@ export function createThreeView({
         materials = Array.isArray(object.material) ? object.material : [object.material];
       object.visible = Boolean(state.visible);
       for (const material of materials) applyMaterialPresentation(material, state.materialState);
-      if (object.isLineSegments && descriptor.kind === 'border') {
+      if (
+        object.isLineSegments &&
+        ['border', 'internal-border', 'hidden-border'].includes(descriptor.kind)
+      ) {
         object.renderOrder = object.userData?.waferCadBorderOrder ?? object.renderOrder;
       } else if (!state.transparentSort && !object.isLineSegments) object.renderOrder = 0;
     }
@@ -1969,7 +1990,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       transparent: dashed || opacity < 0.999,
       opacity: dashed ? 0.25 : opacity < 0.999 ? 0.85 : 1,
       depthTest: true,
-      depthFunc: dashed ? THREE.GreaterDepth : THREE.LessEqualDepth,
+      depthFunc: presentation?.kind === 'hidden-border' ? THREE.GreaterDepth : THREE.LessEqualDepth,
       depthWrite: false,
     };
     const edgeMaterial = dashed
@@ -1983,7 +2004,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
     if (dashed) edges.computeLineDistances();
     edges.renderOrder = order;
     edges.userData.waferCadBorderOrder = order;
-    edges.userData.waferCadOutlineRole = dashed ? 'hidden' : 'visible';
+    edges.userData.waferCadOutlineRole =
+      presentation?.kind === 'hidden-border' ? 'hidden' : 'visible';
     edges.userData.waferCadPlanContours = planContours;
     group.add(edges);
     trackZDisplayObject(edges);
@@ -1991,16 +2013,101 @@ diffuseColor.a *= waferCadAlphaScale;`,
     if (adaptiveRough) roughOwnedObjects.add(edges);
     if (!dashed && includeHidden) {
       addBorderPositions(positions, {
+        order: order - 2,
+        opacity,
+        adaptiveRough,
+        planContours,
+        dashed: true,
+        dashSize,
+        includeHidden: false,
+        presentation: { ...presentation, lineStyle: 'dashed' },
+      });
+      addBorderPositions(positions, {
         order: order - 1,
         opacity,
         adaptiveRough,
         planContours,
         dashed: true,
         dashSize,
-        presentation: { kind: 'hidden-border' },
+        presentation: { kind: 'hidden-border', category: 'occluded', lineStyle: 'dashed' },
+      });
+      addBorderPositions(positions, {
+        order: order - 1,
+        opacity,
+        adaptiveRough,
+        planContours,
+        dashed: false,
+        includeHidden: false,
+        presentation: { kind: 'hidden-border', category: 'occluded', lineStyle: 'solid' },
       });
     }
     return edges;
+  }
+
+  // Add real, owned internal outlines lazily to an already-built scene.
+  // Keep per-group ownership so cached opaque/transparent variants can restore
+  // their own overlays without forcing another Process surface-plan build.
+  function ensureInternalBorderContours(plan = null, { refresh = false } = {}) {
+    if (!group) return false;
+    const activePlan = plan || group.userData.waferCadSurfacePlan || physicalSurfacePlan;
+    if (!activePlan) return false;
+    const inspection = getInspection() || {};
+    if (
+      !borderNeedsInternalGeometry(
+        inspection.borderSettings,
+        inspection.opacity,
+        inspection.borders,
+      )
+    )
+      return false;
+    if (group.userData.waferCadInternalContoursPrepared && !refresh) return false;
+
+    if (refresh) {
+      for (const object of [...presentationObjects]) {
+        if (!object.userData?.waferCadInternalContourOverlay) continue;
+        presentationObjects.delete(object);
+        zDisplayObjects.delete(object);
+        object.parent?.remove(object);
+        disposeObjectResources(object);
+      }
+    }
+    const profiles = group.userData.waferCadRoughBoundaryProfiles || null;
+    const scoped = borderContourPresentationPlan(activePlan, {
+      hasRoi: Boolean(getClipGeometry()),
+    });
+    // Explicitly expose overview LOD; selected ROIs retain exact internal lines.
+    host.dataset.internalBorderDetail = scoped.mode;
+    const contours = borderInspectorContours(scoped.plan, { boundaryProfiles: profiles });
+    const model = getModel();
+    const opacity = Number(inspection.opacity ?? 1);
+    for (const [category, lines] of [
+      ['interface', contours.interface],
+      ['buried', contours.buried],
+    ]) {
+      const positions = displayBorderPositions(contoursToPositions(lines));
+      for (const dashed of [false, true]) {
+        const edge = addBorderPositions(positions, {
+          order: 100006,
+          opacity,
+          dashed,
+          includeHidden: false,
+          dashSize: Math.max(
+            1e-5,
+            Math.min(Number(model.width) || 1, Number(model.height) || 1) * 0.006,
+          ),
+          presentation: {
+            kind: 'internal-border',
+            category,
+            lineStyle: dashed ? 'dashed' : 'solid',
+          },
+        });
+        if (edge) edge.userData.waferCadInternalContourOverlay = true;
+      }
+    }
+    group.userData.waferCadInternalContoursPrepared = true;
+    host.dataset.internalInterfaceBorderCount = String(contours.interface.length);
+    host.dataset.internalBuriedBorderCount = String(contours.buried.length);
+    return true;
   }
 
   function rebuildInspectionContours(
@@ -2047,17 +2154,21 @@ diffuseColor.a *= waferCadAlphaScale;`,
     host.dataset.hiddenBorderSegmentCount = String(exposedBorders.length + sectionLines.length);
     host.dataset.buriedContourSegmentCount = '0';
     host.dataset.sectionContourSegmentCount = String(sectionLines.length);
-    addBorderPositions(displayBorderPositions(contoursToPositions(sectionLines)), {
-      order: 100005,
-      opacity: Number(getInspection()?.opacity ?? 1),
-      dashSize: Math.max(
-        1e-5,
-        Math.min(Number(model.width) || 1, Number(model.height) || 1) * 0.006,
-      ),
-      planContours: true,
-      includeHidden: false,
-      presentation: { kind: 'border' },
-    });
+    const cutPositions = displayBorderPositions(contoursToPositions(sectionLines));
+    for (const dashed of [false, true]) {
+      addBorderPositions(cutPositions, {
+        order: 100005,
+        opacity: Number(getInspection()?.opacity ?? 1),
+        dashed,
+        dashSize: Math.max(
+          1e-5,
+          Math.min(Number(model.width) || 1, Number(model.height) || 1) * 0.006,
+        ),
+        planContours: true,
+        includeHidden: false,
+        presentation: { kind: 'border', category: 'roi', lineStyle: dashed ? 'dashed' : 'solid' },
+      });
+    }
   }
 
   function matchImplantCutToRoughCaps(implant, parts, profiles, appearances) {
@@ -2253,6 +2364,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
     host.dataset.roughImplantCutProfileMatches = String(matchedImplantCuts);
     host.dataset.roughBoundaryProfileCount = String(boundaryProfiles.size);
     host.dataset.roughBoundarySidewallObjects = String(rebuilt);
+    group.userData.waferCadRoughBoundaryProfiles = wallProfiles;
+    if (group.userData.waferCadInternalContoursPrepared) {
+      ensureInternalBorderContours(null, { refresh: true });
+    }
     rebuildInspectionContours(wallProfiles, appearanceByCapIndex, outlinedRoughCapIndices);
   }
 
@@ -3192,6 +3307,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         host.dataset.rendererUpdateKind = 'presentation';
         stats.textContent = 'updating 3D…';
         syncRenderPolicy();
+        ensureInternalBorderContours();
         applyPresentationState();
         return;
       }
@@ -3202,6 +3318,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         host.dataset.renderState = 'updating';
         stats.textContent = 'updating 3D…';
         syncRenderPolicy();
+        ensureInternalBorderContours();
         applyPresentationState({ updateKind: 'variant-swap' });
         return;
       }
@@ -3215,6 +3332,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         host.dataset.rendererUpdateKind = 'presentation';
         stats.textContent = 'updating 3D…';
         syncRenderPolicy();
+        ensureInternalBorderContours();
         applyPresentationState();
         return;
       }
@@ -3267,6 +3385,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         disposeGroup();
         physicalSurfacePlan = plan;
       }
+      group.userData.waferCadSurfacePlan = plan;
       applyZDisplayState(model);
       // Far-array presentation LOD is quantized by projected pixel footprint
       // and restored at zoom/ROI/Quality transitions. Physical geometry and
@@ -3676,8 +3795,16 @@ diffuseColor.a *= waferCadAlphaScale;`,
       addBorderPositions(displayBorderPositions(plan.borderLines.flat(2)), {
         order: 100000,
         opacity,
-        presentation: { kind: 'border' },
+        presentation: { kind: 'border', category: 'exterior' },
       });
+      // Internal outline geometry is a cached view overlay, not a new
+      // physical scene signature or a second Process ownership calculation.
+      group.userData.waferCadSurfacePlan = plan;
+      ensureInternalBorderContours(plan);
+      if (!group.userData.waferCadInternalContoursPrepared) {
+        host.dataset.internalInterfaceBorderCount = '0';
+        host.dataset.internalBuriedBorderCount = '0';
+      }
       host.dataset.hiddenBorderSegmentCount = '0';
       host.dataset.buriedContourSegmentCount = '0';
       host.dataset.sectionContourSegmentCount = '0';

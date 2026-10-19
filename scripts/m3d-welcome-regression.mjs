@@ -84,8 +84,22 @@ try {
     'Restored M3D Border toolbar reflects saved display state before interaction',
   );
   await border.click();
+  const inspector = page.locator('[data-border-inspector]');
+  await inspector.waitFor({ state: 'visible' });
+  assert.equal(
+    await border.getAttribute('aria-pressed'),
+    starting.pressed,
+    'Opening Border Inspector must not change the border display state',
+  );
+  const enabled = inspector.getByRole('button', { name: 'Show 3D borders' });
+  assert.equal(await enabled.getAttribute('aria-pressed'), starting.pressed);
+  await enabled.click();
   const toggled = await visualState();
-  assert.notEqual(toggled.pressed, starting.pressed, 'Border toggle changes pressed state');
+  assert.notEqual(
+    toggled.pressed,
+    starting.pressed,
+    'Inspector pressed button changes pressed state',
+  );
   assert.equal(
     toggled.pressed,
     String((await snapshot()).threeDisplay.borders),
@@ -97,7 +111,7 @@ try {
       toggled.outline !== starting.outline,
     'Border toggle changes its selected visual appearance',
   );
-  await border.click();
+  await enabled.click();
   const restored = await visualState();
   assert.equal(restored.pressed, starting.pressed, 'Border pressed state is reversible');
   assert.equal(restored.fill, starting.fill, 'Border selected fill is reversible');
