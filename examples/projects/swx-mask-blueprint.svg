@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1120" viewBox="0 0 1500 1120" role="img" aria-label="SWX 2x2 MEMS / source-constrained MASK DRAFT">
 <rect width="100%" height="100%" fill="#F8FAFC"/>
 <text x="64" y="53" fill="#10253B" font-size="30" font-family="sans-serif" font-weight="bold">SWX 2x2 MEMS / source-constrained MASK DRAFT</text>
-<text x="64" y="83" fill="#52657B" font-size="17" font-family="sans-serif">Local X is paper +Y actuation direction · coordinates in µm · OFF state mask, no post-release deformation</text>
+<text x="64" y="83" fill="#52657B" font-size="17" font-family="sans-serif">Local Y is paper +Y actuation direction · coordinates in µm · OFF state mask, no post-release deformation</text>
 <rect x="50" y="109" width="1400" height="921" fill="#FFFFFF" stroke="#CBD5E1" rx="14"/>
 <g stroke="#E2E8F0" stroke-width=".6">
 <line x1="118" y1="117" x2="118" y2="1028"/>
@@ -75,50 +75,50 @@
 <polygon points="379.8,543.6 382.15,543.6 380.98,546.96" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_25 · pitch-depth-source;count-phase-inferred</title></polygon>
 <polygon points="289.36,546.96 291.6,546.96 291.6,542.48 289.36,542.48" fill="#5689C6" stroke="#5689C6"><title>STOP_FIXED_0 · 15nm-ON-gap-source;shape-inferred</title></polygon>
 <polygon points="398,546.96 400.24,546.96 400.24,542.48 398,542.48" fill="#5689C6" stroke="#5689C6"><title>STOP_FIXED_1 · 15nm-ON-gap-source;shape-inferred</title></polygon>
-<polygon points="991.6,489.28 1058.8,489.28 1058.8,130.88 991.6,130.88" fill="#5689C6" stroke="#5689C6"><title>NORTH_STATIONARY_HANDLE · inferred</title></polygon>
-<polygon points="955.76,484.8 991.6,484.8 991.6,479.2 955.76,479.2" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_0 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,466.88 991.6,466.88 991.6,461.28 955.76,461.28" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_1 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,448.96 991.6,448.96 991.6,443.36 955.76,443.36" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_2 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,431.04 991.6,431.04 991.6,425.44 955.76,425.44" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_3 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,413.12 991.6,413.12 991.6,407.52 955.76,407.52" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_4 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,395.2 991.6,395.2 991.6,389.6 955.76,389.6" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_5 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,377.28 991.6,377.28 991.6,371.68 955.76,371.68" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_6 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,359.36 991.6,359.36 991.6,353.76 955.76,353.76" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_7 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,341.44 991.6,341.44 991.6,335.84 955.76,335.84" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_8 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,323.52 991.6,323.52 991.6,317.92 955.76,317.92" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_9 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,305.6 991.6,305.6 991.6,300 955.76,300" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_10 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,287.68 991.6,287.68 991.6,282.08 955.76,282.08" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_11 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,269.76 991.6,269.76 991.6,264.16 955.76,264.16" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_12 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,251.84 991.6,251.84 991.6,246.24 955.76,246.24" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_13 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,233.92 991.6,233.92 991.6,228.32 955.76,228.32" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_14 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,216 991.6,216 991.6,210.4 955.76,210.4" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_15 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,198.08 991.6,198.08 991.6,192.48 955.76,192.48" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_16 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,180.16 991.6,180.16 991.6,174.56 955.76,174.56" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_17 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,162.24 991.6,162.24 991.6,156.64 955.76,156.64" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_18 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,144.32 991.6,144.32 991.6,138.72 955.76,138.72" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_19 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="1058.8,339.2 1126,339.2 1126,204.8 1058.8,204.8" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_PAD · inferred</title></polygon>
-<polygon points="991.6,973.12 1058.8,973.12 1058.8,614.72 991.6,614.72" fill="#5689C6" stroke="#5689C6"><title>SOUTH_STATIONARY_HANDLE · inferred</title></polygon>
-<polygon points="955.76,624.8 991.6,624.8 991.6,619.2 955.76,619.2" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_0 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,642.72 991.6,642.72 991.6,637.12 955.76,637.12" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_1 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,660.64 991.6,660.64 991.6,655.04 955.76,655.04" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_2 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,678.56 991.6,678.56 991.6,672.96 955.76,672.96" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_3 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,696.48 991.6,696.48 991.6,690.88 955.76,690.88" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_4 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,714.4 991.6,714.4 991.6,708.8 955.76,708.8" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_5 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,732.32 991.6,732.32 991.6,726.72 955.76,726.72" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_6 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,750.24 991.6,750.24 991.6,744.64 955.76,744.64" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_7 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,768.16 991.6,768.16 991.6,762.56 955.76,762.56" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_8 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,786.08 991.6,786.08 991.6,780.48 955.76,780.48" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_9 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,804 991.6,804 991.6,798.4 955.76,798.4" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_10 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,821.92 991.6,821.92 991.6,816.32 955.76,816.32" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_11 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,839.84 991.6,839.84 991.6,834.24 955.76,834.24" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_12 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,857.76 991.6,857.76 991.6,852.16 955.76,852.16" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_13 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,875.68 991.6,875.68 991.6,870.08 955.76,870.08" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_14 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,893.6 991.6,893.6 991.6,888 955.76,888" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_15 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,911.52 991.6,911.52 991.6,905.92 955.76,905.92" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_16 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,929.44 991.6,929.44 991.6,923.84 955.76,923.84" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_17 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,947.36 991.6,947.36 991.6,941.76 955.76,941.76" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_18 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="955.76,965.28 991.6,965.28 991.6,959.68 955.76,959.68" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_19 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="1058.8,899.2 1126,899.2 1126,764.8 1058.8,764.8" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_PAD · inferred</title></polygon>
+<polygon points="734,351.52 1103.6,351.52 1103.6,283.2 734,283.2" fill="#5689C6" stroke="#5689C6"><title>NORTH_STATIONARY_HANDLE · inferred</title></polygon>
+<polygon points="745.2,386.24 750.8,386.24 750.8,350.4 745.2,350.4" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_0 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="763.12,386.24 768.72,386.24 768.72,350.4 763.12,350.4" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_1 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="781.04,386.24 786.64,386.24 786.64,350.4 781.04,350.4" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_2 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="798.96,386.24 804.56,386.24 804.56,350.4 798.96,350.4" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_3 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="816.88,386.24 822.48,386.24 822.48,350.4 816.88,350.4" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_4 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="834.8,386.24 840.4,386.24 840.4,350.4 834.8,350.4" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_5 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="852.72,386.24 858.32,386.24 858.32,350.4 852.72,350.4" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_6 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="870.64,386.24 876.24,386.24 876.24,350.4 870.64,350.4" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_7 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="888.56,386.24 894.16,386.24 894.16,350.4 888.56,350.4" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_8 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="906.48,386.24 912.08,386.24 912.08,350.4 906.48,350.4" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_9 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="924.4,386.24 930,386.24 930,350.4 924.4,350.4" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_10 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="942.32,386.24 947.92,386.24 947.92,350.4 942.32,350.4" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_11 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="960.24,386.24 965.84,386.24 965.84,350.4 960.24,350.4" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_12 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="978.16,386.24 983.76,386.24 983.76,350.4 978.16,350.4" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_13 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="996.08,386.24 1001.68,386.24 1001.68,350.4 996.08,350.4" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_14 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="1014,386.24 1019.6,386.24 1019.6,350.4 1014,350.4" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_15 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="1031.92,386.24 1037.52,386.24 1037.52,350.4 1031.92,350.4" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_16 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="1049.84,386.24 1055.44,386.24 1055.44,350.4 1049.84,350.4" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_17 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="1067.76,386.24 1073.36,386.24 1073.36,350.4 1067.76,350.4" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_18 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="1085.68,386.24 1091.28,386.24 1091.28,350.4 1085.68,350.4" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_19 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="655.6,351.52 734,351.52 734,283.2 655.6,283.2" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_PAD · BOX-supported pad placement inferred</title></polygon>
+<polygon points="734,709.92 1103.6,709.92 1103.6,641.6 734,641.6" fill="#5689C6" stroke="#5689C6"><title>SOUTH_STATIONARY_HANDLE · inferred</title></polygon>
+<polygon points="745.2,744.64 750.8,744.64 750.8,708.8 745.2,708.8" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_0 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="763.12,744.64 768.72,744.64 768.72,708.8 763.12,708.8" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_1 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="781.04,744.64 786.64,744.64 786.64,708.8 781.04,708.8" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_2 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="798.96,744.64 804.56,744.64 804.56,708.8 798.96,708.8" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_3 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="816.88,744.64 822.48,744.64 822.48,708.8 816.88,708.8" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_4 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="834.8,744.64 840.4,744.64 840.4,708.8 834.8,708.8" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_5 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="852.72,744.64 858.32,744.64 858.32,708.8 852.72,708.8" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_6 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="870.64,744.64 876.24,744.64 876.24,708.8 870.64,708.8" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_7 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="888.56,744.64 894.16,744.64 894.16,708.8 888.56,708.8" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_8 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="906.48,744.64 912.08,744.64 912.08,708.8 906.48,708.8" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_9 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="924.4,744.64 930,744.64 930,708.8 924.4,708.8" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_10 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="942.32,744.64 947.92,744.64 947.92,708.8 942.32,708.8" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_11 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="960.24,744.64 965.84,744.64 965.84,708.8 960.24,708.8" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_12 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="978.16,744.64 983.76,744.64 983.76,708.8 978.16,708.8" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_13 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="996.08,744.64 1001.68,744.64 1001.68,708.8 996.08,708.8" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_14 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="1014,744.64 1019.6,744.64 1019.6,708.8 1014,708.8" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_15 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="1031.92,744.64 1037.52,744.64 1037.52,708.8 1031.92,708.8" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_16 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="1049.84,744.64 1055.44,744.64 1055.44,708.8 1049.84,708.8" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_17 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="1067.76,744.64 1073.36,744.64 1073.36,708.8 1067.76,708.8" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_18 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="1085.68,744.64 1091.28,744.64 1091.28,708.8 1085.68,708.8" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_19 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="655.6,709.92 734,709.92 734,641.6 655.6,641.6" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_PAD · BOX-supported pad placement inferred</title></polygon>
 <polygon points="604.08,90.56 637.68,90.56 637.68,3.2 604.08,3.2" fill="#5689C6" stroke="#5689C6"><title>SPRING_ANCHOR_-14_N · anchor-body-inferred;BOX-support-required</title></polygon>
 <polygon points="604.08,1100.8 637.68,1100.8 637.68,1013.44 604.08,1013.44" fill="#5689C6" stroke="#5689C6"><title>SPRING_ANCHOR_-14_S · anchor-body-inferred;BOX-support-required</title></polygon>
 <polygon points="1175.28,90.56 1208.88,90.56 1208.88,3.2 1175.28,3.2" fill="#5689C6" stroke="#5689C6"><title>SPRING_ANCHOR_37_N · anchor-body-inferred;BOX-support-required</title></polygon>
@@ -299,52 +299,53 @@
 <polygon points="1206.51,580.72 1246.24,520.51 1250.45,523.28 1210.72,583.49" fill="#0D9488" stroke="#0D9488"><title>SHUTTLE_BRACE_37_1 · inferred</title></polygon>
 <polygon points="395.35,561.03 447.21,573.99 445.45,581.05 393.59,568.09" fill="#0D9488" stroke="#0D9488"><title>MOVING_SWX_TO_SHUTTLE_1 · inferred</title></polygon>
 <polygon points="439.16,573 489,573 489,580.28 439.16,580.28" fill="#0D9488" stroke="#0D9488"><title>MOVING_SWX_TO_SHUTTLE_2 · inferred</title></polygon>
-<polygon points="890.8,489.28 922.16,489.28 922.16,130.88 890.8,130.88" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_HANDLE · inferred</title></polygon>
-<polygon points="909.28,479.76 909.28,523.44 899.2,523.44 899.2,479.76" fill="#0D9488" stroke="#0D9488"><title>NORTH_SHUTTLE_LINK_1 · inferred</title></polygon>
-<polygon points="910.27,522.2 875.8,530.03 873.57,520.2 908.04,512.37" fill="#0D9488" stroke="#0D9488"><title>NORTH_SHUTTLE_LINK_2 · inferred</title></polygon>
-<polygon points="922.16,475.84 958,475.84 958,470.24 922.16,470.24" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_0 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,457.92 958,457.92 958,452.32 922.16,452.32" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_1 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,440 958,440 958,434.4 922.16,434.4" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_2 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,422.08 958,422.08 958,416.48 922.16,416.48" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_3 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,404.16 958,404.16 958,398.56 922.16,398.56" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_4 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,386.24 958,386.24 958,380.64 922.16,380.64" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_5 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,368.32 958,368.32 958,362.72 922.16,362.72" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_6 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,350.4 958,350.4 958,344.8 922.16,344.8" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_7 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,332.48 958,332.48 958,326.88 922.16,326.88" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_8 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,314.56 958,314.56 958,308.96 922.16,308.96" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_9 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,296.64 958,296.64 958,291.04 922.16,291.04" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_10 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,278.72 958,278.72 958,273.12 922.16,273.12" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_11 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,260.8 958,260.8 958,255.2 922.16,255.2" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_12 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,242.88 958,242.88 958,237.28 922.16,237.28" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_13 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,224.96 958,224.96 958,219.36 922.16,219.36" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_14 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,207.04 958,207.04 958,201.44 922.16,201.44" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_15 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,189.12 958,189.12 958,183.52 922.16,183.52" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_16 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,171.2 958,171.2 958,165.6 922.16,165.6" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_17 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,153.28 958,153.28 958,147.68 922.16,147.68" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_18 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,135.36 958,135.36 958,129.76 922.16,129.76" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_19 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="890.8,973.12 922.16,973.12 922.16,614.72 890.8,614.72" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_HANDLE · inferred</title></polygon>
-<polygon points="899.2,624.24 899.2,580.56 909.28,580.56 909.28,624.24" fill="#0D9488" stroke="#0D9488"><title>SOUTH_SHUTTLE_LINK_1 · inferred</title></polygon>
-<polygon points="908.04,591.63 873.57,583.8 875.8,573.97 910.27,581.8" fill="#0D9488" stroke="#0D9488"><title>SOUTH_SHUTTLE_LINK_2 · inferred</title></polygon>
-<polygon points="922.16,633.76 958,633.76 958,628.16 922.16,628.16" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_0 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,651.68 958,651.68 958,646.08 922.16,646.08" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_1 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,669.6 958,669.6 958,664 922.16,664" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_2 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,687.52 958,687.52 958,681.92 922.16,681.92" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_3 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,705.44 958,705.44 958,699.84 922.16,699.84" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_4 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,723.36 958,723.36 958,717.76 922.16,717.76" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_5 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,741.28 958,741.28 958,735.68 922.16,735.68" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_6 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,759.2 958,759.2 958,753.6 922.16,753.6" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_7 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,777.12 958,777.12 958,771.52 922.16,771.52" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_8 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,795.04 958,795.04 958,789.44 922.16,789.44" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_9 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,812.96 958,812.96 958,807.36 922.16,807.36" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_10 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,830.88 958,830.88 958,825.28 922.16,825.28" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_11 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,848.8 958,848.8 958,843.2 922.16,843.2" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_12 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,866.72 958,866.72 958,861.12 922.16,861.12" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_13 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,884.64 958,884.64 958,879.04 922.16,879.04" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_14 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,902.56 958,902.56 958,896.96 922.16,896.96" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_15 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,920.48 958,920.48 958,914.88 922.16,914.88" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_16 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,938.4 958,938.4 958,932.8 922.16,932.8" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_17 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,956.32 958,956.32 958,950.72 922.16,950.72" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_18 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
-<polygon points="922.16,974.24 958,974.24 958,968.64 922.16,968.64" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_19 · finger-3.2x0.5um-gap-0.3um-source;placement-inferred</title></polygon>
+<polygon points="734,451.2 1103.6,451.2 1103.6,418.72 734,418.72" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_HANDLE · inferred</title></polygon>
+<polygon points="754.16,419.84 759.76,419.84 759.76,384 754.16,384" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_0 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="772.08,419.84 777.68,419.84 777.68,384 772.08,384" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_1 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="790,419.84 795.6,419.84 795.6,384 790,384" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_2 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="807.92,419.84 813.52,419.84 813.52,384 807.92,384" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_3 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="825.84,419.84 831.44,419.84 831.44,384 825.84,384" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_4 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="843.76,419.84 849.36,419.84 849.36,384 843.76,384" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_5 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="861.68,419.84 867.28,419.84 867.28,384 861.68,384" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_6 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="879.6,419.84 885.2,419.84 885.2,384 879.6,384" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_7 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="897.52,419.84 903.12,419.84 903.12,384 897.52,384" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_8 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="915.44,419.84 921.04,419.84 921.04,384 915.44,384" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_9 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="933.36,419.84 938.96,419.84 938.96,384 933.36,384" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_10 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="951.28,419.84 956.88,419.84 956.88,384 951.28,384" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_11 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="969.2,419.84 974.8,419.84 974.8,384 969.2,384" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_12 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="987.12,419.84 992.72,419.84 992.72,384 987.12,384" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_13 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="1005.04,419.84 1010.64,419.84 1010.64,384 1005.04,384" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_14 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="1022.96,419.84 1028.56,419.84 1028.56,384 1022.96,384" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_15 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="1040.88,419.84 1046.48,419.84 1046.48,384 1040.88,384" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_16 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="1058.8,419.84 1064.4,419.84 1064.4,384 1058.8,384" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_17 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="1076.72,419.84 1082.32,419.84 1082.32,384 1076.72,384" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_18 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="1094.64,419.84 1100.24,419.84 1100.24,384 1094.64,384" fill="#0D9488" stroke="#0D9488"><title>NORTH_MOVING_FINGER_19 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="734,809.6 1103.6,809.6 1103.6,777.12 734,777.12" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_HANDLE · inferred</title></polygon>
+<polygon points="754.16,778.24 759.76,778.24 759.76,742.4 754.16,742.4" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_0 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="772.08,778.24 777.68,778.24 777.68,742.4 772.08,742.4" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_1 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="790,778.24 795.6,778.24 795.6,742.4 790,742.4" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_2 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="807.92,778.24 813.52,778.24 813.52,742.4 807.92,742.4" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_3 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="825.84,778.24 831.44,778.24 831.44,742.4 825.84,742.4" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_4 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="843.76,778.24 849.36,778.24 849.36,742.4 843.76,742.4" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_5 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="861.68,778.24 867.28,778.24 867.28,742.4 861.68,742.4" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_6 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="879.6,778.24 885.2,778.24 885.2,742.4 879.6,742.4" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_7 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="897.52,778.24 903.12,778.24 903.12,742.4 897.52,742.4" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_8 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="915.44,778.24 921.04,778.24 921.04,742.4 915.44,742.4" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_9 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="933.36,778.24 938.96,778.24 938.96,742.4 933.36,742.4" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_10 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="951.28,778.24 956.88,778.24 956.88,742.4 951.28,742.4" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_11 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="969.2,778.24 974.8,778.24 974.8,742.4 969.2,742.4" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_12 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="987.12,778.24 992.72,778.24 992.72,742.4 987.12,742.4" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_13 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="1005.04,778.24 1010.64,778.24 1010.64,742.4 1005.04,742.4" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_14 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="1022.96,778.24 1028.56,778.24 1028.56,742.4 1022.96,742.4" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_15 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="1040.88,778.24 1046.48,778.24 1046.48,742.4 1040.88,742.4" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_16 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="1058.8,778.24 1064.4,778.24 1064.4,742.4 1058.8,742.4" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_17 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="1076.72,778.24 1082.32,778.24 1082.32,742.4 1076.72,742.4" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_18 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="1094.64,778.24 1100.24,778.24 1100.24,742.4 1094.64,742.4" fill="#0D9488" stroke="#0D9488"><title>SOUTH_MOVING_FINGER_19 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
+<polygon points="1096.82,430.66 1130.86,436.58 1129.42,444.86 1095.38,438.94" fill="#0D9488" stroke="#0D9488"><title>NORTH_SHUTTLE_LINK_1 · inferred</title></polygon>
+<polygon points="1130.2,435.8 1130.2,526.52 1121.8,526.52 1121.8,435.8" fill="#0D9488" stroke="#0D9488"><title>NORTH_SHUTTLE_LINK_2 · inferred</title></polygon>
+<polygon points="1095.05,790.85 1139.15,770.81 1142.39,777.95 1098.29,797.99" fill="#0D9488" stroke="#0D9488"><title>SOUTH_SHUTTLE_LINK_1 · inferred</title></polygon>
+<polygon points="1133.28,779.92 1133.28,583.92 1141.12,583.92 1141.12,779.92" fill="#0D9488" stroke="#0D9488"><title>SOUTH_SHUTTLE_LINK_2 · inferred</title></polygon>
+<polygon points="1138.75,593.16 1120.68,583.23 1124.45,576.36 1142.52,586.29" fill="#0D9488" stroke="#0D9488"><title>SOUTH_SHUTTLE_LINK_3 · inferred</title></polygon>
 <polygon points="632.08,521.76 632.08,463.52 634.32,463.52 634.32,521.76" fill="#0D9488" stroke="#0D9488"><title>FOLDED_SPRING_-14_N_1 · inferred</title></polygon>
 <polygon points="634.32,465.76 587.28,465.76 587.28,463.52 634.32,463.52" fill="#0D9488" stroke="#0D9488"><title>FOLDED_SPRING_-14_N_2 · inferred</title></polygon>
 <polygon points="587.28,465.76 587.28,127.52 589.52,127.52 589.52,465.76" fill="#0D9488" stroke="#0D9488"><title>FOLDED_SPRING_-14_N_3 · inferred</title></polygon>
@@ -379,8 +380,8 @@
 <polygon points="442.24,591.76 442.24,512.24 443.36,512.24 443.36,591.76" fill="#8B69B3" stroke="#8B69B3"><title>ALIGNER_RIGHT_BEAM_1 · 7um x 0.1um source; location inferred</title></polygon>
 <polygon points="449.71,516.66 405.34,529.23 402.29,518.46 446.66,505.89" fill="#8B69B3" stroke="#8B69B3"><title>ALIGNER_RIGHT_FIXED_TRUSS_1 · 1um source width; inferred truss connection</title></polygon>
 <polygon points="446.66,598.11 402.29,585.54 405.34,574.77 449.71,587.34" fill="#8B69B3" stroke="#8B69B3"><title>ALIGNER_RIGHT_MOBILE_TRUSS_1 · 1um source width; inferred truss connection</title></polygon>
-<polygon points="1070,328 1114.8,328 1114.8,216 1070,216" fill="#E5A33D" stroke="#E5A33D"><title>NORTH_CR_AU · Cr50nm+Au300nm-source;pad-boundary-inferred</title></polygon>
-<polygon points="1070,888 1114.8,888 1114.8,776 1070,776" fill="#E5A33D" stroke="#E5A33D"><title>SOUTH_CR_AU · Cr50nm+Au300nm-source;pad-boundary-inferred</title></polygon>
+<polygon points="666.8,339.2 722.8,339.2 722.8,295.52 666.8,295.52" fill="#E5A33D" stroke="#E5A33D"><title>NORTH_CR_AU · 50nm Cr/300nm Au; pad shape inferred</title></polygon>
+<polygon points="666.8,697.6 722.8,697.6 722.8,653.92 666.8,653.92" fill="#E5A33D" stroke="#E5A33D"><title>SOUTH_CR_AU · 50nm Cr/300nm Au; pad shape inferred</title></polygon>
 </g>
 <circle cx="342" cy="552" r="112" fill="none" stroke="#BE4A3A" stroke-width="2.2" stroke-dasharray="9,7"/>
 <text x="93" y="1062" font-family="sans-serif" font-size="15" fill="#334155">Blue: fixed Si/anchors · Green: mobile Si · Purple: aligner flexures · Gold: Cr/Au</text>
