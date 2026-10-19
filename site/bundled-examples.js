@@ -220,7 +220,7 @@ export const BUNDLED_EXAMPLES = Object.freeze([
   },
   {
     id: 'tio2-metalens-four-unit',
-    title: 'TiO₂ achromatic metalens · 4,725-site array',
+    title: 'TiO₂ achromatic metalens · four meta-atoms',
     figure: 'Wang et al. · Fig. 2–3 / Supplementary Note 4',
     kind: 'project',
     level: 'Paper-derived nanophotonics',
