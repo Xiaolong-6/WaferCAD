@@ -16,7 +16,11 @@ export async function exportSwxDraft(outDir = 'test-results/swx-mask-draft') {
   }));
   assert.ok(polygons.length > 300);
   assert.equal(polygons.filter((p) => p.layer === 2).length, 0);
-  assert.equal(polygons.filter((p) => p.layer === 3).length, 2);
+  assert.equal(polygons.filter((p) => p.layer === 3).length, 17);
+  for (const name of ['GROUND_METAL_PAD','SIGNAL_METAL_PAD']) {
+    assert.equal(mask.elements.filter((p) => p.name === name && p.layer === 3).length, 1,
+      'missing source-labelled peripheral pad '+name);
+  }
   const raw = serializeGDS(polygons, { cellName: 'SWX_UNIT_MASK_V0' });
   const ab = raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength);
   const parsed = parseGDS(ab);
