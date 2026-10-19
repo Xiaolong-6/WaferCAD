@@ -15,12 +15,14 @@ A push to main enters the fast path only when:
   expected optional skips; cancelled, stale, or missing results fail closed.
 - The **full final Quality** job actually ran, not Draft-only lint checks.
 - Every mandatory science/Renderer/UI check succeeded, and each required
-  workflow run has the same PR number, head SHA and pull_request trigger.
+  workflow run retains the reviewed head SHA, branch, repository and
+  pull_request trigger; the merged PR is resolved separately by commit.
 
 Two allowlisted fast cases:
 
 1. **CI-only:** Changes are restricted to Pages routing, the focused verifier,
-   its independent five-minute contract workflow, tests and this document.
+   its independent five-minute contract workflow, focused release architecture
+   tests and this document.
    The PR must pass final Quality and Release evidence contract. No shipped
    application, model, Kernel, Renderer, project data, or examples are touched.
 2. **Production:** No CI or release routing files have changed. The full

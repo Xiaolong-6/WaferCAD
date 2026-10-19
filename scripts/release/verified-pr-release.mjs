@@ -24,6 +24,8 @@ export const INFRA_FILES = Object.freeze([
   '.github/workflows/release-evidence-contract.yml',
   'scripts/release/verified-pr-release.mjs',
   'site/tests/release-evidence.test.mjs',
+  'site/tests/ci-development-gates.test.mjs',
+  'site/tests/ci-workflow-architecture.test.mjs',
   'docs/operations/RELEASE_EVIDENCE.md',
   'docs/operations/README.md',
 ]);
