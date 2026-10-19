@@ -121,6 +121,13 @@ test('Draft and Ready PR checks use only the newest attempt without masking red 
     proof,
   ]);
   assert.equal(evaluateRelease({ ...seed(), checks: pending }).fast, false);
+  const queued = latestCheckRuns([
+    { ...draft, created_at: draft.started_at },
+    { ...ready, started_at: null, created_at: ready.started_at, status: 'queued', conclusion: null },
+    proof,
+  ]);
+  assert.equal(queued.find((item) => item.name === 'quality').status, 'queued');
+  assert.equal(evaluateRelease({ ...seed(), checks: queued }).fast, false);
   assert.equal(latestCheckRuns([draft, { ...draft }]), null);
   assert.equal(latestCheckRuns([{ ...ready, id: null }]), null);
   assert.equal(latestCheckRuns([{ ...draft, started_at: 'unparseable' }]), null);
