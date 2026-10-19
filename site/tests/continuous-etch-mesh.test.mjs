@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { edgeTable, triTable } from 'three/addons/objects/MarchingCubes.js';
 
 const vendor = { exports: {} };
 new Function(
@@ -109,6 +110,42 @@ test('Microdisk M07 continuous Si and oxide display meshes form closed surfaces'
   assert.ok(Math.abs(upper - 41.8) <= 0.1, `Oxide top drifted: ${upper}`);
 });
 
+test('Microdisk M07 cubic sampling yields consistently oriented closed Si and SiO2', () => {
+  const input = owner();
+  const original = JSON.stringify(input);
+  const cubes = buildContinuousMaterialSurfaceMesh(input, { cubeTables: { edgeTable, triTable } });
+  assert.ok(cubes.triangles > 10000 && cubes.triangles < 400000);
+  assert.deepEqual(
+    cubes.layers.map((p) => p.layerId),
+    ['base', 'layer-1'],
+  );
+  for (const layer of cubes.layers) {
+    assertClosed(layer);
+    assert.ok(layer.positions.every(Number.isFinite));
+    assert.ok(layer.normals.every(Number.isFinite));
+  }
+  const oxide = cubes.layers.find((p) => p.layerId === 'layer-1').positions;
+  let lower = Infinity,
+    upper = -Infinity;
+  for (let i = 2; i < oxide.length; i += 3) {
+    lower = Math.min(lower, oxide[i]);
+    upper = Math.max(upper, oxide[i]);
+  }
+  assert.ok(Math.abs(lower - 40) <= 0.1 && Math.abs(upper - 41.8) <= 0.1);
+  assert.equal(JSON.stringify(input), original);
+});
+
+test('Microdisk higher-quality cubic grid stays closed and within scientific budgets', () => {
+  const result = buildContinuousMaterialSurfaceMesh(owner(), {
+    cubeTables: { edgeTable, triTable },
+    xyStepUm: 1.75,
+  });
+  assert.ok(result.triangles <= 1500000);
+  assert.ok(result.grid.voxels <= 4000000);
+  assert.equal(result.layers.length, 2);
+  for (const layer of result.layers) assertClosed(layer);
+});
+
 test('budget guard rejects unbounded resolution without changing source', () => {
   const input = owner();
   const original = JSON.stringify(input);
@@ -152,4 +189,53 @@ test('adjacent same-material cells render identically to their single merged sol
   assert.deepEqual(divided.layers[0].positions, one.layers[0].positions);
   assert.deepEqual(divided.layers[0].normals, one.layers[0].normals);
   assertClosed(divided.layers[0]);
+});
+
+test('cubic surfaces preserve orientation and closure for circular, elliptic, vertical and opposing releases', () => {
+  const rect = (size) => [
+    [
+      [
+        [-size, -size],
+        [size, -size],
+        [size, size],
+        [-size, size],
+        [-size, -size],
+      ],
+    ],
+  ];
+  const sourceModel = {
+    revision: 3,
+    layers: [{ id: 'base' }],
+    regions: [{ id: 'base', geom: rect(9), stack: [{ layerId: 'base', z0: -6, z1: 6 }] }],
+  };
+  const seed = rect(2);
+  const front = (shape, lateralUm, verticalUm, face = 'front') => ({
+    kind: 'continuous-etch-front-v1',
+    seedGeom: seed,
+    layerId: 'base',
+    seedZ: face === 'front' ? 6 : -6,
+    face,
+    lateralUm,
+    verticalUm,
+    shape,
+  });
+  const cases = [
+    [front('circular', 5, 5)],
+    [front('elliptical', 6, 4)],
+    [front('vertical', 5, 3)],
+    [front('elliptical', 6, 5), front('elliptical', 6, 4, 'back')],
+  ];
+  for (const fronts of cases) {
+    const mesh = buildContinuousMaterialSurfaceMesh(
+      { sourceModel, fronts },
+      {
+        cubeTables: { edgeTable, triTable },
+        xyStepUm: 0.8,
+        zStepUm: 0.65,
+      },
+    );
+    assert.equal(mesh.layers.length, 1);
+    assertClosed(mesh.layers[0]);
+    assert.ok(mesh.triangles > 100);
+  }
 });

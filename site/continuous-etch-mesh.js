@@ -108,6 +108,50 @@ function emitTetra(position, value, out) {
   }
 }
 
+// Optional marching-cubes display path. The canonical material query stays
+// unchanged. Tables are loaded lazily by native ThreeView only for continuous
+// models; callers not supplying them retain the known-closed tetra extractor.
+const CUBE_EDGES = [
+  [0, 1],
+  [1, 2],
+  [2, 3],
+  [3, 0],
+  [4, 5],
+  [5, 6],
+  [6, 7],
+  [7, 4],
+  [0, 4],
+  [1, 5],
+  [2, 6],
+  [3, 7],
+];
+function emitMarchingCube(position, values, out, tables) {
+  let index = 0;
+  for (let i = 0; i < 8; i++) if (values[i] <= 0) index |= 1 << i;
+  const edges = tables.edgeTable[index];
+  if (!edges) return;
+  const edgePoints = new Array(12);
+  for (let i = 0; i < 12; i++) {
+    if (!(edges & (1 << i))) continue;
+    const [a, b] = CUBE_EDGES[i],
+      va = values[a],
+      vb = values[b];
+    const t = Math.max(0, Math.min(1, va / (va - vb)));
+    edgePoints[i] = [
+      position[a][0] + t * (position[b][0] - position[a][0]),
+      position[a][1] + t * (position[b][1] - position[a][1]),
+      position[a][2] + t * (position[b][2] - position[a][2]),
+    ];
+  }
+  const offset = index * 16;
+  for (let j = 0; j < 16 && tables.triTable[offset + j] !== -1; j += 3) {
+    const a = edgePoints[tables.triTable[offset + j]];
+    const b = edgePoints[tables.triTable[offset + j + 1]];
+    const c = edgePoints[tables.triTable[offset + j + 2]];
+    for (const p of [a, b, c]) out.push(...p);
+  }
+}
+
 function smoothNormals(vertices) {
   const normal = new Float32Array(vertices.length);
   // Numeric spatial hashes avoid allocating millions of string keys during
@@ -196,7 +240,13 @@ function footprintBounds(multi, box) {
 
 export function buildContinuousMaterialSurfaceMesh(
   owner,
-  { xyStepUm = 2.5, zStepUm = 1.25, maxVoxels = 4000000, maxTriangles = 1500000 } = {},
+  {
+    xyStepUm = 2.5,
+    zStepUm = 1.25,
+    maxVoxels = 4000000,
+    maxTriangles = 1500000,
+    cubeTables = null,
+  } = {},
 ) {
   if (!owner?.sourceModel?.regions || !Array.isArray(owner.fronts))
     throw new RangeError('Continuous release requires validated source and fronts');
@@ -346,13 +396,15 @@ export function buildContinuousMaterialSurfaceMesh(
             else haveOutside = true;
           }
           if (!haveInside || !haveOutside) continue;
-          for (const tet of TETS) {
-            emitTetra(
-              tet.map((i) => cubePositions[i]),
-              tet.map((i) => values[i]),
-              positions,
-            );
-          }
+          if (cubeTables) emitMarchingCube(cubePositions, values, positions, cubeTables);
+          else
+            for (const tet of TETS) {
+              emitTetra(
+                tet.map((i) => cubePositions[i]),
+                tet.map((i) => values[i]),
+                positions,
+              );
+            }
           if (positions.length / 9 + totalTriangles > maxTriangles)
             throw new RangeError('Continuous surface exceeds display triangle budget');
         }

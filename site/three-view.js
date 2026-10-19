@@ -3194,7 +3194,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
   // Experimental native ThreeView path for exact continuous material. The
   // displayed triangles are derived: the persisted owner remains analytic.
-  function renderContinuousEtch(model) {
+  async function renderContinuousEtch(model) {
     const clip = getClipGeometry();
     if (clip) throw new RangeError('Continuous Etch ROI 3D clipping is not yet supported');
     const owner = validateContinuousEtchModel(model);
@@ -3209,7 +3209,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
     }
 
     disposeGroup();
-    const data = buildContinuousMaterialSurfaceMesh(owner);
+    const { edgeTable, triTable } = await import('three/addons/objects/MarchingCubes.js');
+    const data = buildContinuousMaterialSurfaceMesh(owner, {
+      cubeTables: { edgeTable, triTable },
+      xyStepUm: 1.75,
+    });
     if (!data.layers.length) throw new RangeError('Continuous Etch has no visible solid');
     const exterior = { kind: 'material-exterior' };
     const materialState = presentationState(exterior, getInspection() || {}).materialState;
@@ -3269,7 +3273,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       model.continuousEtchOwner != null
     ) {
       try {
-        renderContinuousEtch(model);
+        await renderContinuousEtch(model);
       } catch (error) {
         disposeGroup();
         host.dataset.renderState = 'error';
