@@ -131,6 +131,29 @@ function smoothNormals(vertices) {
     const magnitude = Math.hypot(...n) || 1;
     for (let j = 0; j < 3; j++) normal[i + j] = n[j] / magnitude;
   }
+  // A planar extrusion has a Z-invariant wall normal. Marching-tetrahedron
+  // diagonals can otherwise create false horizontal shading bands on long
+  // vertical walls even though the canonical sidewall is exactly vertical.
+  const wallSums = new Map();
+  const wallKey = (index) =>
+    Math.round(vertices[index] * 5) + ',' + Math.round(vertices[index + 1] * 5);
+  for (let i = 0; i < vertices.length; i += 3) {
+    if (Math.abs(normal[i + 2]) > 0.18) continue;
+    const key = wallKey(i);
+    if (!wallSums.has(key)) wallSums.set(key, [0, 0]);
+    const summed = wallSums.get(key);
+    summed[0] += normal[i];
+    summed[1] += normal[i + 1];
+  }
+  for (let i = 0; i < vertices.length; i += 3) {
+    if (Math.abs(normal[i + 2]) > 0.18) continue;
+    const summed = wallSums.get(wallKey(i));
+    const magnitude = Math.hypot(...summed);
+    if (!(magnitude > 0)) continue;
+    normal[i] = summed[0] / magnitude;
+    normal[i + 1] = summed[1] / magnitude;
+    normal[i + 2] = 0;
+  }
   return normal;
 }
 
