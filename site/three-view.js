@@ -43,7 +43,7 @@ import {
   decorateGpuRoughMaterial,
   decorateRoughFarFieldMaterial,
   supportsPreciseGpuRoughDisplacement,
-} from './gpu-rough-surface.js?v=rough-line-v1';
+} from './gpu-rough-surface.js?v=rough-farfield-v1';
 import { triangulatePolygon } from './polygon-triangulation.js';
 import {
   spatialInstanceChunks,
