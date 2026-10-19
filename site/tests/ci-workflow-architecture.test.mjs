@@ -49,7 +49,7 @@ test('Pages cannot silently skip publishing after an upstream optional suite ski
   assert.ok(stage, 'production stage job must exist');
   assert.match(
     stage,
-    /if: \$\{\{ always\(\) && !cancelled\(\) && github\.ref == 'refs\/heads\/main' \}\}/,
+    /if: \$\{\{ always\(\) && !cancelled\(\) && github\.ref == 'refs\/heads\/main' && needs\.release-evidence\.outputs\.mode != 'superseded' \}\}/,
   );
   for (const gate of ['QUALITY', 'BROWSER', 'UI_V2', 'SCIENCE']) {
     assert.match(stage, new RegExp(`\\b${gate}_RESULT:\\s*\\$\\{\\{ needs\\.`));
@@ -88,7 +88,7 @@ test('Pages requires a real deploy and rejects false-green skipped publish jobs'
   );
   assert.ok(verdict.includes('STAGE_RESULT: ${{ needs.stage-pages.result }}'));
   assert.ok(verdict.includes('DEPLOY_RESULT: ${{ needs.deploy.result }}'));
-  assert.match(verdict, /if \[\[ "\$result" != success \]\]; then/);
+  assert.match(verdict, /"\$STAGE_RESULT" == success && "\$DEPLOY_RESULT" == success && "\$PUBLISHED" == true/);
   assert.match(verdict, /exit 1/);
 });
 
