@@ -5,54 +5,64 @@ import { buildCiTestPlan } from '../ci-test-plan.mjs';
 
 // Release evidence is evaluated exclusively on trusted main-push runners.
 // Missing data must cause a complete release gate, never a fast publication.
-// PR checks are selected by scripts/ci-test-plan.mjs. Requiring every
-// browser owner for every PR makes a normal targeted PR *ineligible* for
-// proven publication. Reuse precisely the owners selected by that planner,
-// while retaining a strict fallback for integrity-sensitive changes.
-const INTEGRITY_SENSITIVE_PATH = /^(?:site\/(?:project-|workspace-|history-|state-equality|model(?:\.|-)|process-|polygon-boolean|controllers\/(?:project-|history-|workspace-|process-)|ui-v2\/(?:workstation-(?:entry|runtime|workflow)|project-mask-panels))|scripts\/(?:release\/|build-pages-artifact|build-bundled-integrity|process-|project-io-|history-|persistence-)|\.github\/)/;
-// This is an explicit, audited fast-path subset. A newly added source path
-// does not silently gain permission to bypass Main science/Recovery checks.
-const AUDITED_PRODUCTION_PATH = /^(?:docs\/|README\.md$|site\/tests\/|site\/ui-v2\/|site\/three-[a-z0-9-]+\.js$|site\/gpu-rough-surface\.js$|site\/surface-rendering\.js$|site\/examples\/thumbnails\/.+\.(?:svg|webp)$)/;
-const PR_BROWSER_PATH = /^(?:site\/(?!tests\/)|examples\/|scripts\/(?:v2\/|array-|renderer-|pr250-|process-|project-|ui-smoke|workstation-|history-|persistence-|resilience-|interaction-|example-|product-|rough-))/;
+// PR checks are selected by scripts/ci-test-plan.mjs. A fixed list of all
+// browser owners makes targeted PRs ineligible for proven publication.
+// Integrity-sensitive or unclassified changes always use the full Main gate.
+const INTEGRITY_SENSITIVE_PATH =
+  /^(?:site\/(?:project-|workspace-|history-|state-equality|model(?:\.|-)|process-|polygon-boolean|controllers\/(?:project-|history-|workspace-|process-)|ui-v2\/(?:workstation-(?:entry|runtime|workflow)|project-mask-panels))|scripts\/(?:release\/|build-pages-artifact|build-bundled-integrity|process-|project-io-|history-|persistence-)|\.github\/)/;
+// New source files do not silently acquire permission to skip Main science.
+const AUDITED_PRODUCTION_PATH =
+  /^(?:docs\/|README\.md$|site\/tests\/|site\/ui-v2\/|site\/three-[a-z0-9-]+\.js$|site\/gpu-rough-surface\.js$|site\/surface-rendering\.js$|site\/examples\/thumbnails\/.+\.(?:svg|webp)$)/;
+const PR_BROWSER_PATH =
+  /^(?:site\/(?!tests\/)|examples\/|scripts\/(?:v2\/|array-|renderer-|pr250-|process-|project-|ui-smoke|workstation-|history-|persistence-|resilience-|interaction-|example-|product-|rough-))/;
 const STAGE_C_PATH = /^(?:site\/(?!tests\/)|scripts\/v2\/)/;
-const EXTENDED_OWNERS = Object.freeze(['workstation', 'interaction', 'examples', 'product_layout', 'renderer']);
+const EXTENDED_OWNERS = Object.freeze([
+  'workstation',
+  'interaction',
+  'examples',
+  'product_layout',
+  'renderer',
+]);
+
 export function targetedProductionGates(paths) {
-  if (!Array.isArray(paths) || !paths.length || paths.some(p => typeof p !== 'string'))
+  if (!Array.isArray(paths) || !paths.length || paths.some((p) => typeof p !== 'string'))
     return null;
   if (
     paths.some(
-      (p) =>
-        !AUDITED_PRODUCTION_PATH.test(p) ||
-        INTEGRITY_SENSITIVE_PATH.test(p) ||
-        p === 'site/ui-v2/three-view.js',
+      (path) =>
+        !AUDITED_PRODUCTION_PATH.test(path) ||
+        INTEGRITY_SENSITIVE_PATH.test(path) ||
+        path === 'site/ui-v2/three-view.js',
     )
   )
     return null;
+
   const plan = buildCiTestPlan(paths);
   if (plan.full || plan.release.klayout || plan.release.recipe) return null;
-  const names = ['quality'];
-  if (paths.some(p => PR_BROWSER_PATH.test(p))) {
-    names.push('Plan browser suites', 'Chromium targeted regression');
+  const required = ['quality'];
+  if (paths.some((path) => PR_BROWSER_PATH.test(path))) {
+    required.push('Plan browser suites', 'Chromium targeted regression');
     for (const owner of EXTENDED_OWNERS) {
-      if (plan.suites[owner]) names.push('Native v2 Release ' + owner);
+      if (plan.suites[owner]) required.push('Native v2 Release ' + owner);
     }
     if (plan.suites.renderer) {
-      names.push('625-site array renderer regression', '625-site edge-on exact-wall restoration');
+      required.push('625-site array renderer regression', '625-site edge-on exact-wall restoration');
     }
     if (plan.suites.process) {
-      for (const domain of ['process', 'io', 'array'])
-        names.push('Process geometry regression (' + domain + ')');
+      for (const domain of ['process', 'io', 'array']) {
+        required.push('Process geometry regression (' + domain + ')');
+      }
     }
-  } else if (Object.values(plan.suites).some(Boolean) && Object.entries(plan.suites).some(([name, active]) => active && name !== 'smoke')) {
-    // A selected scientific/browser owner without the corresponding PR
-    // workflow is missing evidence. Never classify it as a fast release.
+  } else if (Object.entries(plan.suites).some(([name, active]) => active && name !== 'smoke')) {
+    // Every selected owner needs a real PR check. Missing browser routing
+    // is not evidence that an expensive suite can safely be skipped.
     return null;
   }
-  if (paths.some(p => STAGE_C_PATH.test(p))) {
-    names.push('Stage C shared runtime and M4 real projects');
+  if (paths.some((path) => STAGE_C_PATH.test(path))) {
+    required.push('Stage C shared runtime and M4 real projects');
   }
-  if (plan.release.main_mask) names.push('Main and Mask browser gates');
-  return [...new Set(names)];
+  if (plan.release.main_mask) required.push('Main and Mask browser gates');
+  return [...new Set(required)];
 }
 
 export const INFRA_FILES = Object.freeze([
