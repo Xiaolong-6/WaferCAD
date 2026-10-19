@@ -118,3 +118,25 @@ test('checked-in S8 primary Si GDS roundtrips every polygon at native 0.1nm DBU'
     }
   }
 });
+
+test('S8 nominal +Y actuation increases BOTH left/right comb overlaps',()=>{
+  const m=buildSwxS8SiliconMask(),es=m.elements,
+    span=(name,axis)=>es.find(e=>e.name===name).points.map(p=>p[axis]),
+    intersect=(a,b)=>Math.max(0,Math.min(Math.max(...a),Math.max(...b))-
+      Math.max(Math.min(...a),Math.min(...b)));
+  for(const side of ['L','R']){
+    const fixed=span('FIXED_FINGER_'+side+'_0',1),
+      moving=span('MOVING_FINGER_'+side+'_0',1);
+    const off=intersect(fixed,moving),
+      on=intersect(fixed,moving.map(y=>y+.885));
+    assert.ok(Math.abs(off-.2)<1e-8,side+' OFF overlap');
+    assert.ok(Math.abs(on-1.085)<1e-8,side+' ON overlap');
+    const fx=span('FIXED_FINGER_'+side+'_0',0),
+      mx=span('MOVING_FINGER_'+side+'_0',0),
+      lateral=Math.min(...mx)-Math.max(...fx);
+    assert.ok(Math.abs(lateral-.3)<1e-8,side+' lateral gap');
+  }
+  const p=m.provenance.dimensionsFromPaperUm;
+  assert.ok(Math.abs(p.offAirGap-.885-p.onAirGap)<1e-8);
+  // Kinematic dimension check only: elastic deformation and FEM NOT tested.
+});
