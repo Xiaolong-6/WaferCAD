@@ -192,7 +192,7 @@
         const suffix = `?v=${encodeURIComponent(version)}`;
         const stylesheet = document.createElement('link');
         stylesheet.rel = 'stylesheet';
-        stylesheet.href = `./style.css${suffix}`;
+        stylesheet.href = `./welcome.css${suffix}`;
         document.head.append(stylesheet);
 
         await new Promise((resolve, reject) => {
