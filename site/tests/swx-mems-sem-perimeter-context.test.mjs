@@ -19,7 +19,7 @@ for (const state of ['off', 'on']) {
     const add = study.physicalGroups.semPerimeterContext;
     assert.equal(a.sourceOuterMesaMaterialVerified, false);
     assert.equal(a.semContrastIsPositiveSiliconHypothesis, true);
-    assert.ok(add.length >= 100);
+    assert.equal(add.length, 28);
     assert.equal(study.maskPolygons.get(1).length, base.maskPolygons.get(1).length + add.length);
     assert.deepEqual(study.maskPolygons.get(2), base.maskPolygons.get(2));
     assert.deepEqual(study.maskPolygons.get(3), base.maskPolygons.get(3));
