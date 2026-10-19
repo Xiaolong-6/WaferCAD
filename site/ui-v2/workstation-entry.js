@@ -244,6 +244,9 @@ try {
   };
   const workflow = createWorkstationWorkflow({ store, workstation, readOnly: readOnlyPreview });
   workstation.task = workflow.task;
+  workstation.hasProcessHistory = () =>
+    workflow.history.currentPosition().nodeId != null ||
+    workflow.history.activeBranch()?.headNodeId != null;
   workstation.changed = (key) => {
     store.changed(key);
     if (!readOnlyPreview) workflow.persistence.schedule();

@@ -87,6 +87,21 @@
           y = Math.max(edge, Math.min(rect.top, innerHeight - height - edge));
         }
       }
+      // In an active modal, prefer space beside the dialog so contextual help
+      // does not conceal the next confirmation choices. Keep the existing
+      // in-viewport fallback for phones where neither side has room.
+      const modal = !menu && anchor.closest('dialog:modal');
+      if (modal) {
+        const bounds = modal.getBoundingClientRect();
+        const clampedY = Math.max(edge, Math.min(rect.top, innerHeight - height - edge));
+        if (bounds.right + gap + width <= innerWidth - edge) {
+          x = bounds.right + gap;
+          y = clampedY;
+        } else if (bounds.left - gap - width >= edge) {
+          x = bounds.left - gap - width;
+          y = clampedY;
+        }
+      }
       if (y == null) {
         const below = rect.bottom + gap;
         y = below + height <= innerHeight - edge ? below : Math.max(edge, rect.top - height - gap);

@@ -728,8 +728,41 @@
 .p-history-toolbar .wc-button:hover:not(:disabled) {
   background: var(--wc-accent-tint);
 }
-.v2-workflow-dialog-actions {
-  flex-wrap: wrap;
+.v2-confirm-dialog {
+  min-width: 0;
+}
+.v2-confirm-dialog > p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.v2-confirm-dialog-choices {
+  display: grid;
+  min-width: 0;
+  gap: var(--wc-space-2);
+}
+.v2-confirm-dialog-option {
+  display: grid;
+  min-width: 0;
+}
+.v2-confirm-dialog-option > .wc-button {
+  justify-content: flex-start;
+  width: 100%;
+  min-width: 0;
+  min-height: var(--wc-control-md);
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  padding: var(--wc-space-2) var(--wc-space-3);
+}
+.v2-confirm-dialog-option > .wc-button[data-risk='danger'] {
+  border-color: var(--wc-danger);
+  color: var(--wc-danger);
+  background: var(--wc-danger-tint);
+}
+.v2-confirm-dialog-footer {
+  justify-content: flex-end;
+  padding-top: var(--wc-space-2);
+  border-top: 1px solid var(--wc-border);
 }
 .v2-mask-browser .cell-row {
   display: flex;
