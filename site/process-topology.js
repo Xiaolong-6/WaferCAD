@@ -230,12 +230,15 @@ export function materialSolidsFromTopology(model, clip = null) {
       // XY regions overlap; do not assume material disjointness or relax any
       // scientific tolerance. Every slab still receives its exact union.
       let polys = [];
+      const sourceItems = new Set();
       for (let index = levels.length - 2; index >= 0; index--) {
         const upper = levels[index + 1],
           added = events.get(upper).end;
-        if (added.length)
+        if (added.length) {
           polys = safeUnionGeometry([polys, ...added.map((item) => item.polys)], reuse);
-        slabs[index] = { z0: levels[index], z1: upper, polys };
+          for (const item of added) sourceItems.add(item);
+        }
+        slabs[index] = { z0: levels[index], z1: upper, polys, sourceItems: new Set(sourceItems) };
       }
     } else {
       const active = new Set();
@@ -249,7 +252,7 @@ export function materialSolidsFromTopology(model, clip = null) {
           [...active].map((item) => item.polys),
           reuse,
         );
-        slabs.push({ z0, z1, polys });
+        slabs.push({ z0, z1, polys, sourceItems: new Set(active) });
       }
     }
 
@@ -260,7 +263,14 @@ export function materialSolidsFromTopology(model, clip = null) {
         [slab.z0, -1, slabs[index - 1]],
         [slab.z1, 1, slabs[index + 1]],
       ]) {
-        const polys = difference(slab.polys, neighbor?.polys || []);
+        // When every contributing extrusion is still present in the neighbor,
+        // its union must contain this entire slab. There is no exposed cap.
+        // Uncertain relations retain the unmodified exact polygon difference.
+        const fullyCovered =
+          neighbor &&
+          slab.sourceItems.size <= neighbor.sourceItems.size &&
+          [...slab.sourceItems].every((item) => neighbor.sourceItems.has(item));
+        const polys = fullyCovered ? [] : difference(slab.polys, neighbor?.polys || []);
         if (!isEmpty(polys)) caps.push({ z, normal, polys });
       }
     }
@@ -270,7 +280,7 @@ export function materialSolidsFromTopology(model, clip = null) {
     reuse.components.clear();
     return {
       layerId,
-      slabs: slabs.filter((slab) => !isEmpty(slab.polys)),
+      slabs: slabs.filter((slab) => !isEmpty(slab.polys)).map(({ sourceItems, ...slab }) => slab),
       caps,
     };
   });
