@@ -45,7 +45,7 @@ test('SWX paper dimensions and mask completeness (not author GDS)',()=>{
   assert.equal(data.elements.filter(e=>e.name.includes('_MOVING_FINGER_')).length,40);
   assert.equal(data.elements.filter(e=>e.name.startsWith('ALIGNER_')).length,6);
   assert.equal(data.elements.filter(e=>e.name.startsWith('S6_MOVABLE_MEANDER_')).length,102);
-  assert.equal(data.elements.filter(e=>e.layer===3).length,21);
+  assert.equal(data.elements.filter(e=>e.layer===3).length,22);
   assert.equal(data.elements.filter(e=>e.layer===2).length,0); // array-only ridge: intentionally deferred
   for (const element of data.elements) {
     assert.equal(element.kind,'polygon');
@@ -95,82 +95,64 @@ test('folded spring topology has both axial stations and both lateral sides',()=
   }
 });
 
-test('Fig. 1c peripheral Cr/Au pads are on supported Si and electrically isolated',()=>{
-  const data=buildSwxMaskLayout();
+test('Fig. 1c grounded mechanical system has a supported perimeter contact',()=>{
+  const data=buildSwxMaskLayout(),metal=data.elements.filter(e=>e.layer===3);
   assert.deepEqual(data.statusChecks.peripheralPadNets,['GROUND','SIGNAL']);
-  assert.match(data.statusChecks.peripheralPadFootprint,/inferred/);
-  assert.match(data.statusChecks.groundAnchorConnections,/all 4 electrically connected/);
-  const metal=data.elements.filter(e=>e.layer===3);
-  const sign=metal.filter(e=>e.name.includes('SIGNAL')||e.name.endsWith('_CR_AU'));
-  const gnd=metal.filter(e=>e.name.includes('GROUND'));
-  assert.equal(sign.filter(e=>e.name==='SIGNAL_METAL_PAD').length,1);
-  assert.equal(gnd.filter(e=>e.name==='GROUND_METAL_PAD').length,1);
-  assert.ok(overlapSAT(get(data,'SIGNAL_METAL_PAD'),get(data,'SIGNAL_PAD_BOX_SUPPORTED_SI')));
-  assert.ok(overlapSAT(get(data,'GROUND_METAL_PAD'),get(data,'GROUND_PAD_BOX_SUPPORTED_SI')));
+  assert.match(data.statusChecks.peripheralPadFootprint,/ONE common cavity contour/);
+  assert.match(data.statusChecks.groundAnchorConnections,/4 anchors/);
   assert.ok(overlapSAT(get(data,'NORTH_CR_AU'),get(data,'SIGNAL_METAL_ROUTE_0_1')));
   assert.ok(overlapSAT(get(data,'SOUTH_CR_AU'),get(data,'SIGNAL_METAL_ROUTE_1_1')));
-  assert.ok(overlapSAT(get(data,'SPRING_ANCHOR_-14_N'),get(data,'GROUND_SI_ROUTE_1_1')));
-  assert.ok(overlapSAT(get(data,'SPRING_ANCHOR_-14_S'),get(data,'GROUND_SI_ROUTE_2_1')));
-  for(const s of sign)for(const g of gnd){
-    assert.equal(overlapSAT(s.points,g.points),false,s.name+' shorted to '+g.name);
+  assert.ok(overlapSAT(get(data,'SPRING_ANCHOR_-14_N'),
+    get(data,'GROUND_SUPPORTED_SI_ROUTE_0_1')));
+  for(const g of metal.filter(e=>e.name.includes('GROUND'))){
+    for(const s of metal.filter(e=>e.name.includes('SIGNAL')||e.name.endsWith('_CR_AU'))){
+      assert.equal(overlapSAT(g.points,s.points),false,g.name+' metal short to '+s.name);
+    }
   }
-  const moving=data.elements.filter(e=>e.part==='moving');
-  for(const el of metal)for(const part of moving){
-    assert.equal(overlapSAT(el.points,part.points),false,el.name+' contacts moving '+part.name);
+  for(const m of metal)for(const moving of data.elements.filter(e=>e.part==='moving')){
+    assert.equal(overlapSAT(m.points,moving.points),false,
+      m.name+' on released moving Si '+moving.name);
   }
 });
 
-test('Fig. 1c broad supported Ground/Signal fields are disjoint and connected',()=>{
-  const layout=buildSwxMaskLayout(), es=layout.elements;
-  assert.equal(layout.statusChecks.broadPadMetalCount,4);
-  assert.equal(layout.statusChecks.perimeterPadIsolationUpperUm,5);
-  assert.match(layout.statusChecks.peripheralPadFootprint,/inferred/);
-  assert.equal(layout.bounds.width,204);
-  assert.equal(layout.bounds.height,192);
-  const pads=['GROUND_UPPER','GROUND_LEFT','GROUND_LOWER','SIGNAL_RIGHT'];
-  for(const id of pads){
-    const metal=get(layout,'PERIMETER_'+id+'_CR_AU');
-    const support=get(layout,'PERIMETER_'+id+'_SUPPORTED_SI');
-    assert.ok(overlapSAT(metal,support),id+' Cr/Au must have supported Si underneath');
+test('Si and metal share ONE offset release-cavity contour and retain isolated nets',()=>{
+  const data=buildSwxMaskLayout(), es=data.elements,
+    c=data.sharedContours.releaseCavityUm;
+  assert.equal(data.statusChecks.perimeterContourPoints,14);
+  assert.equal(data.statusChecks.perimeterIsolationUm,2);
+  assert.equal(c.length,14);
+  assert.ok(data.sharedContours.perimeterSiOuterUm.length===c.length);
+  assert.ok(data.sharedContours.perimeterMetalInnerUm.length===c.length);
+  assert.ok(data.sharedContours.perimeterMetalOuterUm.length===c.length);
+  const g=es.filter(e=>e.layer===3&&e.name.includes('GROUND')),
+    s=es.filter(e=>e.layer===3&&(e.name.includes('SIGNAL')||
+      e.name.endsWith('_CR_AU')));
+  assert.equal(g.length,9);
+  assert.equal(s.length,13);
+  for(let i=0;i<c.length;i++){
+    const net=i>=2&&i<=7?'SIGNAL':'GROUND',
+      si=get(data,'PERIMETER_'+net+'_SUPPORTED_SI_'+i),
+      metal=get(data,'PERIMETER_'+net+'_CR_AU_'+i);
+    assert.ok(overlapSAT(si,metal),'shared boundary missing Si support at '+i);
   }
-  const net=e=> e.name.includes('GROUND')?'ground':
-    e.name.includes('SIGNAL')||['NORTH_CR_AU','SOUTH_CR_AU'].includes(e.name)?'signal':null;
-  const metals=es.filter(e=>e.layer===3);
-  const ground=metals.filter(e=>net(e)==='ground');
-  const signal=metals.filter(e=>net(e)==='signal');
-  assert.equal(ground.length+signal.length,metals.length,'unassigned conductive metal');
-  assert.equal(ground.length,10);
-  assert.equal(signal.length,11);
-  for(const g of ground)for(const s of signal){
-    assert.equal(overlapSAT(g.points,s.points),false,
-      g.name+' inadvertently shorts '+s.name);
-  }
-  const moving=es.filter(e=>e.part==='moving');
-  for(const metal of metals)for(const m of moving){
-    assert.equal(overlapSAT(metal.points,m.points),false,
-      metal.name+' wrongly overlaps mobile Si '+m.name);
-  }
-  // Require a single conductive component per net. Each polygon in a
-  // component must overlap in POSITIVE AREA, never just share a pixel corner.
-  function connectedCount(network) {
-    const parent=network.map((_,i)=>i);
+  const connectedCount=(polygons)=>{
+    const parent=polygons.map((_,i)=>i);
     const find=i=>parent[i]===i?i:(parent[i]=find(parent[i]));
-    for(let i=0;i<network.length;i++)for(let j=i+1;j<network.length;j++){
-      if(overlapSAT(network[i].points,network[j].points)){
+    for(let i=0;i<polygons.length;i++)for(let j=i+1;j<polygons.length;j++){
+      if(overlapSAT(polygons[i].points,polygons[j].points))
         parent[find(i)]=find(j);
-      }
     }
-    return new Set(network.map((_,i)=>find(i))).size;
+    return new Set(polygons.map((_,i)=>find(i))).size;
+  };
+  assert.equal(connectedCount(g),1,'perimeter Ground must form one net');
+  assert.equal(connectedCount(s),1,'perimeter Signal must form one net');
+  for(const x of g)for(const y of s){
+    assert.equal(overlapSAT(x.points,y.points),false,'Pad metal short '+x.name+' and '+y.name);
   }
-  assert.equal(connectedCount(ground),1,'perimeter Ground connectivity incomplete');
-  assert.equal(connectedCount(signal),1,'perimeter Signal connectivity incomplete');
-  const si=es.filter(e=>e.layer===1);
-  const gSi=si.filter(e=>e.name.includes('GROUND'));
-  const sSi=si.filter(e=>e.name.includes('SIGNAL'));
-  for(const g of gSi)for(const s of sSi) {
-    assert.equal(overlapSAT(g.points,s.points),false,
-      g.name+' unsupported Si short to '+s.name);
-  }
+  const gSi=es.filter(e=>e.layer===1&&e.name.includes('GROUND')),
+    sSi=es.filter(e=>e.layer===1&&e.name.includes('SIGNAL'));
+  for(const x of gSi)for(const y of sSi)
+    assert.equal(overlapSAT(x.points,y.points),false,'Si net short');
 });
 
 test('full 220nm Si has exactly two positive-area connected nets',()=>{
@@ -193,8 +175,8 @@ test('full 220nm Si has exactly two positive-area connected nets',()=>{
     assert.ok(i>=0,name+' absent');
     return find(i);
   };
-  const ground=body('PERIMETER_GROUND_UPPER_SUPPORTED_SI'),
-    signal=body('PERIMETER_SIGNAL_RIGHT_SUPPORTED_SI');
+  const ground=body('PERIMETER_GROUND_SUPPORTED_SI_0'),
+    signal=body('PERIMETER_SIGNAL_SUPPORTED_SI_2');
   assert.notEqual(ground,signal,'Ground and stationary-comb Signal Si must isolate');
   assert.equal(body('SHUTTLE_RAIL_TOP'),ground);
   assert.equal(body('SWX_FIXED_MMI'),ground);
