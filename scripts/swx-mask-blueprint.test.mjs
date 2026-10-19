@@ -43,7 +43,7 @@ test('SWX paper dimensions and mask completeness (not author GDS)',()=>{
   assert.equal(data.elements.filter(e=>e.name.includes('_MOVING_FINGER_')).length,40);
   assert.equal(data.elements.filter(e=>e.name.startsWith('ALIGNER_')).length,6);
   assert.equal(data.elements.filter(e=>e.name.startsWith('S6_MOVABLE_MEANDER_')).length,102);
-  assert.equal(data.elements.filter(e=>e.layer===3).length,2);
+  assert.equal(data.elements.filter(e=>e.layer===3).length,17);
   assert.equal(data.elements.filter(e=>e.layer===2).length,0); // array-only ridge: intentionally deferred
   for (const element of data.elements) {
     assert.equal(element.kind,'polygon');
@@ -90,5 +90,30 @@ test('folded spring topology has both axial stations and both lateral sides',()=
     const tag='FOLDED_SPRING_'+x+'_'+side+'_';
     assert.equal(data.elements.filter(e=>e.name.startsWith(tag)).length,7);
     assert.ok(data.elements.some(e=>e.name==='SPRING_ANCHOR_'+x+'_'+side));
+  }
+});
+
+test('Fig. 1c peripheral Cr/Au pads are on supported Si and electrically isolated',()=>{
+  const data=buildSwxMaskLayout();
+  assert.deepEqual(data.statusChecks.peripheralPadNets,['GROUND','SIGNAL']);
+  assert.match(data.statusChecks.peripheralPadFootprint,/inferred/);
+  assert.match(data.statusChecks.groundAnchorConnections,/2 of 4/);
+  const metal=data.elements.filter(e=>e.layer===3);
+  const sign=metal.filter(e=>e.name.includes('SIGNAL')||e.name.endsWith('_CR_AU'));
+  const gnd=metal.filter(e=>e.name.includes('GROUND'));
+  assert.equal(sign.filter(e=>e.name==='SIGNAL_METAL_PAD').length,1);
+  assert.equal(gnd.filter(e=>e.name==='GROUND_METAL_PAD').length,1);
+  assert.ok(overlapSAT(get(data,'SIGNAL_METAL_PAD'),get(data,'SIGNAL_PAD_BOX_SUPPORTED_SI')));
+  assert.ok(overlapSAT(get(data,'GROUND_METAL_PAD'),get(data,'GROUND_PAD_BOX_SUPPORTED_SI')));
+  assert.ok(overlapSAT(get(data,'NORTH_CR_AU'),get(data,'SIGNAL_METAL_ROUTE_0_1')));
+  assert.ok(overlapSAT(get(data,'SOUTH_CR_AU'),get(data,'SIGNAL_METAL_ROUTE_1_1')));
+  assert.ok(overlapSAT(get(data,'SPRING_ANCHOR_-14_N'),get(data,'GROUND_SI_ROUTE_1_1')));
+  assert.ok(overlapSAT(get(data,'SPRING_ANCHOR_-14_S'),get(data,'GROUND_SI_ROUTE_2_1')));
+  for(const s of sign)for(const g of gnd){
+    assert.equal(overlapSAT(s.points,g.points),false,s.name+' shorted to '+g.name);
+  }
+  const moving=data.elements.filter(e=>e.part==='moving');
+  for(const el of metal)for(const part of moving){
+    assert.equal(overlapSAT(el.points,part.points),false,el.name+' contacts moving '+part.name);
   }
 });
