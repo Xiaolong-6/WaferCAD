@@ -144,17 +144,11 @@ rejects unsupported array/rough owners, and requires exact model-revision
 parity for material queries. Section curves may be sampled at an arbitrary
 display resolution; those samples never become canonical material geometry.
 
-**Integration is not yet complete.** Existing `site/model.js` still mutates
-2.5D region stacks for normal isotropic Process. The analytic front is not
-persisted in v14 project state and is not yet consumed by the native Section,
-3D, Conformal, follow-on Etch, History/Recovery or GLB exporters. Therefore
-no new production UI mode or published Microdisk replacement is enabled, and
-all existing 8/72-band history remains unchanged. Promotion requires an
-atomic canonical material owner accepted by all downstream consumers,
-transactional save/replay and recovery, real native Chromium 3D/Section
-inspection, and scientific volume, mask, multi-seed and post-release process
-invariants. Never render a continuous shell over a stepped stored material
-model and claim geometry parity.
+**Integration is partial.** Legacy `model.js` still performs 8-band or
+adaptive-band isotropic Process for existing projects. New continuous models
+are opt-in and remain isolated until native Section/3D and follow-on Process
+can consume their true canonical material occupancy. Existing Microdisk and
+all legacy History states remain unchanged.
 
 The additional `site/continuous-material-owner.js` is a **separate,
 losslessly JSON-serializable scientific owner**. It deep-clones the original
@@ -166,27 +160,44 @@ remaining material **Z intervals**, subtracting unions of curved release
 volumes and preserving non-target layers. Read-only Section point samples
 query the same exact material intervals regardless of display resolution.
 
-This is **not** a native `.wafercad` project codec, nor a supported new
-`model.kernel` value. Its JSON round-trip establishes a narrow scientific
-data contract only. The native workstation still cannot save/reload,
-replay, render, or apply follow-on Process steps to this owner; any such
-claim is out of scope until those paths are explicitly wired to canonical
-continuous material occupancy. Large arrays and physical facets remain
-unsupported rather than silently falling back to old 2.5D geometry.
+## Opt-in native model envelope and fail-closed storage gate (2026-10-19)
 
-Owning focused Node tests on this branch:
+`site/continuous-etch-model.js` now attaches one analytic release to a
+dedicated `vector-continuous-etch-v1` model. The original 2.5D regions are
+retained only as the release predecessor; they are **not** the post-etch
+material. The owner's analytical front, source Model and operation form a
+versioned immutable reference. Validation checks exposed seed geometry,
+selectivity, all original material fields, exact source/release revision and
+canonical model-kind parity. Importing a modified front or replacing the source
+model without rebuilding the continuous operation is rejected.
 
-- `site/tests/continuous-etch-geometry.test.mjs`
-- `site/tests/continuous-etch-topology.test.mjs`
-- `site/tests/continuous-etch-microdisk.test.mjs`
-- `site/tests/continuous-material-owner.test.mjs`
-- `site/tests/continuous-material-microdisk.test.mjs`
+`site/project-schema.js` recognizes this model kind. The lossless
+`.wafercad` codec preserves its exact source+front geometry and can restore
+it with an **explicit read-only opt-in**. Normal Workstation Open rejects
+the experimental continuous model before display, avoiding stale flat
+geometry. `visibleMaterialModel()` and ThreeView refuse to use the
+unetched reference for native rendering; follow-on Process rejects mutation.
+A saved Microdisk M07 single-release model passes lossless read/write and
+physical pedestal/undercut/SiO2 material queries. This is a limited persistence
+and scientific-ownership contract, **not** general project UI readiness.
 
-The 2026-10-19 local test fixture used a verified source-only Artifact
-at `9c19c0d9` with these branch modules overlaid. Five focused test
-files ran with 22/22 passing, alongside local formatting and lint checks.
-That is an **older-source compatibility check**, not exact-branch-HEAD
-native Chromium / Worker / History / Recovery acceptance. The production
-kernel, native view consumers, project schema and release gates are still
-outstanding. No scientific tolerance, older History or approved visual
-baseline was changed.
+Do not treat a successful scientific Section column query as an accepted native
+Section/3D visualization. Remaining gates: physically correct continuous
+Section contours, watertight multi-material 3D mesh, Mask/ROI/GLB semantics,
+sequential Conformal and Etch, array topology, History/Recovery transactions,
+normal-origin real Chromium and full release Quality. Isolated GPU-null-origin
+capture cannot establish these.
+
+Focused source-overlay verification on the `9c19c0d9` source-only Artifact
+plus continuous-etch branch files:
+
+- 93/93 targeted Node tests: project files, existing selective isotropic
+  science/topology, continuous material owner, Microdisk M07 and project codec.
+- ESLint 10.11.0 and Prettier 3.9.9 targeted checks passed.
+- Headed Chromium 144 / SwiftShader / pinned Three.js 0.179.1 isolated
+  native 3D baseline captured successfully, with zero page errors.
+- **Exact GitHub branch-HEAD reconstruction and native continuous front
+  visualization are not yet verified.** Old-source overlay tests are not
+  release acceptance and cannot prove current integrated HEAD.
+
+No scientific tolerance was relaxed. No approved visual baseline was replaced.
