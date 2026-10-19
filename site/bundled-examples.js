@@ -267,7 +267,7 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     preview: {
       path: './examples/thumbnails/tcmos-ternary-inverter-130nm-three.webp',
       view: 'three',
-      alt: 'Actual WaferCAD 3D render of the reconstructed T-CMOS inverter',
+      alt: 'Illustrative T-CMOS reconstruction shown in an actual WaferCAD 3D renderer screenshot',
       label: 'Real WaferCAD 3D render · inferred routing retained',
     },
     summary:

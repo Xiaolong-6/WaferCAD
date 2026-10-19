@@ -131,7 +131,11 @@ test('staging copies production files without altering source or shipping tests'
   await writeFile(join(source, 'tests', 'example.test.mjs'), 'test');
   await writeFile(join(source, 'examples', 'live.wafercad'), 'project');
 
-  await stagePagesAssets({ source, destination });
+  // This tiny fixture contains only a placeholder .wafercad and cannot mint a
+  // production integrity receipt. The default production path must fail closed.
+  await assert.rejects(stagePagesAssets({ source, destination }), /ENOENT/);
+  await stagePagesAssets({ source, destination, attestBundledExamples: false });
+  await assert.rejects(access(join(destination, 'examples', 'bundled-integrity.json')));
   assert.equal(await readFile(join(destination, 'app.html'), 'utf8'), 'production');
   const redirect = await readFile(join(destination, 'app-legacy.html'), 'utf8');
   assert.match(redirect, /location\.replace\('\.\/app\.html'/);
