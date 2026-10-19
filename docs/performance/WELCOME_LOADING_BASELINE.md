@@ -20,7 +20,11 @@ node scripts/summarize-welcome-loading.mjs test-results/welcome-load-baseline
 ```
 
 The benchmark leaves the original T-CMOS-compatible no-argument mode intact.
-For parallel CI, set `WAFERCAD_PERF_SHARD_INDEX` to 0, 1, or 2 and
+The expensive full 27-browser workflow is **manual-only**: open GitHub Actions →
+**All Welcome Examples loading baseline** → **Run workflow**. It is not part of
+routine PR Quality, because its three headed-Chromium shards can be costly.
+
+For an explicitly requested parallel baseline, set `WAFERCAD_PERF_SHARD_INDEX` to 0, 1, or 2 and
 `WAFERCAD_PERF_SHARD_COUNT=3`; merge the resulting shard JSON files in one
 folder before summarizing. Do not independently merge results from different
 source SHAs or different Welcome catalogs.
