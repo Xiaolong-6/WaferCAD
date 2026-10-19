@@ -1,0 +1,200 @@
+// Hu et al. Nature Communications (2025) 16:331, DOI 10.1038/s41467-024-55528-9
+// Source-constrained, intentionally PROVISIONAL parametric OFF-mask geometry.
+// The old 2026-10-14 branch is reference only. No original GDS is claimed.
+// Positive mask layer 1 retains Si. Layer 2 is reserved for later array ridge links.
+
+export function buildSwxMaskLayout() {
+  const doi = "10.1038/s41467-024-55528-9";
+  const layers = Object.freeze({
+    SI_220_KEEP: 1,
+    RIDGE_150_ETCH: 2,
+    CR_AU_ELECTRODE: 3,
+    BOX_RELEASE_GUIDE_NONFAB: 90
+  });
+  const elements = [];
+  const annotations = [];
+  const put = (name,layer,part,points,evidence="inferred") => {
+    if(points.length<3 || points.some(p=>p.length!==2||p.some(n=>!Number.isFinite(n)))) throw Error("Invalid mask "+name);
+    elements.push({kind:"polygon",sourceCell:"SWX_UNIT_MASK_V0",layer,datatype:0,points:points.map(p=>p.map(n=>+n.toFixed(6))),name,part,evidence});
+  };
+  const rect=(x,y,w,h)=>[[x,y],[x+w,y],[x+w,y+h],[x,y+h]];
+  const path=(pts,w,name,part,layer=1,evidence="inferred")=>{
+    for(let i=1;i<pts.length;i++){
+      const [a,b]=[pts[i-1],pts[i]], dx=b[0]-a[0],dy=b[1]-a[1],len=Math.hypot(dx,dy);
+      if(len<.0001)throw Error("Zero-length segment");
+      const nx=-dy*w/(2*len),ny=dx*w/(2*len);
+      const ext=.5*w/len;
+      put(`${name}_${i}`,layer,part,[
+        [a[0]-dx*ext+nx,a[1]-dy*ext+ny],
+        [b[0]+dx*ext+nx,b[1]+dy*ext+ny],
+        [b[0]+dx*ext-nx,b[1]+dy*ext-ny],
+        [a[0]-dx*ext-nx,a[1]-dy*ext-ny]
+      ],evidence);
+    }
+  };
+  const addRect=(name,layer,part,x,y,w,h,ev="inferred")=>put(name,layer,part,rect(x,y,w,h),ev);
+  // Local X is the mechanical travel axis (the paper's +Y). Z is out of plane.
+  // The OFF tooth-tip gap is 0.900 um. ON is a separate post-release pose, NOT another mask.
+  put("SWX_FIXED_MMI",1,"fixed",[
+    [-44,0.75],[-36,0.75],[-34.2,3.0],[-45.8,3.0]
+  ]);
+  put("SWX_MOVABLE_MMI",1,"moving",[
+    [-44,-0.75],[-36,-0.75],[-34.2,-3.0],[-45.8,-3.0]
+  ]);
+  // Two V waveguide halves; terminal placement interpolated from Fig. 1c/3a, not author GDS.
+  for(const s of [1,-1]) {
+    const part=s>0?"fixed":"moving", c=[-40,s*2.0];
+    path([[-60,s*15],[-54,s*13],c],0.4,`OPTICAL_${part}_LEFT`,part);
+    path([c,[-26,s*13],[-21,s*15]],0.4,`OPTICAL_${part}_RIGHT`,part);
+    // Taper to MMI along both arms: illustrative polygon envelopes.
+    put(`TAPER_${part}_LEFT`,1,part,[
+      [-52,s*12.15],[-51.65,s*12.5],[-42.7,s*2.4],[-44.5,s*2.4]
+    ]);
+    put(`TAPER_${part}_RIGHT`,1,part,[
+      [-37,s*2.4],[-35.4,s*2.4],[-27.85,s*12.5],[-28.2,s*12.15]
+    ]);
+  }
+  // Teeth on two facing in-plane edges: 290 nm pitch, 300 nm lateral depth.
+  // Their arbitrary count and starting phase are NOT reported by the paper.
+  const toothCount=26, pitch=.290, toothX0=-43.77;
+  for(let i=0;i<toothCount;i++){
+    const x=toothX0+i*pitch, half=.105;
+    put(`SWT_FIXED_${i}`,1,"fixed",[[x-half,.75],[x+half,.75],[x,.45]],"pitch-depth-source;count-phase-inferred");
+    put(`SWT_MOVABLE_${i}`,1,"moving",[[x-half,-.75],[x+half,-.75],[x,-.45]],"pitch-depth-source;count-phase-inferred");
+  }
+  // Explicit stop-pair tips at the reported OFF clearance. Contact under 885 nm
+  // actuation defines a 15 nm final gap; lithographic stop profile is not reported.
+  for(const [i,x] of [-44.7,-35.0].entries()){
+    addRect(`STOP_FIXED_${i}`,1,"fixed",x,.45,.2,.30,"15nm-ON-gap-source;shape-inferred");
+    addRect(`STOP_MOVING_${i}`,1,"moving",x,-.75,.2,.30,"15nm-ON-gap-source;shape-inferred");
+  }
+  // Shuttle, 6 um envelope. Open triangular pockets are formed by rails,
+  // crossbars and diagonal braces (not filled solid).
+  const beamA=-27,beamB=44,beamHalf=3;
+  addRect("SHUTTLE_RAIL_TOP",1,"moving",beamA,2.55,beamB-beamA,.45);
+  addRect("SHUTTLE_RAIL_BOTTOM",1,"moving",beamA,-3,beamB-beamA,.45);
+  for(let x=beamA;x<=beamB+.0001;x+=4){
+    addRect(`SHUTTLE_CROSSBAR_${Math.round(x-beamA)}`,1,"moving",x,-2.55,.45,5.1);
+  }
+  for(let x=beamA;x<beamB-4;x+=4){
+    const flip=(Math.round((x-beamA)/4)%2===0);
+    path([[x+.5,flip?-2.5:2.5],[x+3.8,flip?2.5:-2.5]],.45,`SHUTTLE_BRACE_${x}`,"moving");
+  }
+  // Physical bridging from mobile reflector to shuttle. Top/fixed MMI is isolated.
+  path([[-35,-1.2],[-31,-2.2],[-27.2,-2.2]],.65,"MOVING_SWX_TO_SHUTTLE","moving");
+  // Two opposed, axially co-registered comb banks (20 stationary/movable pairs each).
+  // Moving fingers translate in +X; an OFF 200nm overlap becomes 1085nm after +885nm.
+  const pairsPerBank=20,combPitch=1.6,fingerWidth=.5,firstY=6;
+  for(const sign of [1,-1]){
+    const bank=sign>0?"NORTH":"SOUTH";
+    const yc=sign>0?firstY:-firstY;
+    addRect(`${bank}_MOVING_HANDLE`,1,"moving",9,sign>0?5.6:-37.6,2.8,32.0);
+    addRect(`${bank}_STATIONARY_HANDLE`,1,"fixed",18,sign>0?5.6:-37.6,6,32.0);
+    path([[10.2,sign*6],[10.2,sign*3],[8,sign*2.5]],.9,`${bank}_SHUTTLE_LINK`,"moving");
+    for(let i=0;i<pairsPerBank;i++){
+      const fy=yc+sign*(i*combPitch);
+      const my=fy+sign*.8;
+      const fs=sign>0?fy:fy-fingerWidth, ms=sign>0?my:my-fingerWidth;
+      addRect(`${bank}_FIXED_FINGER_${i}`,1,"fixed",14.8,fs,3.2,fingerWidth,
+        "finger-3.2x0.5um-gap-0.3um-source;placement-inferred");
+      addRect(`${bank}_MOVING_FINGER_${i}`,1,"moving",11.8,ms,3.2,fingerWidth,
+        "finger-3.2x0.5um-gap-0.3um-source;placement-inferred");
+    }
+    // Wide stationary comb handle needs to retain BOX support after selective release.
+    addRect(`${bank}_FIXED_PAD`,1,"fixed",24,sign>0?19:-31,6,12);
+    addRect(`${bank}_CR_AU`,3,"metal",25,sign>0?20:-30,4,10,
+      "Cr50nm+Au300nm-source;pad-boundary-inferred");
+  }
+  // Two spring stations straddle the combs along the travel axis. Each station
+  // has a top/bottom folded member. Vertical 30/22um runs, 0.2um beam width,
+  // 1.5um clearance; exact attachment routing and anchors inferred.
+  for(const axialX of [-14,37]){
+    for(const sign of [1,-1]){
+      const side=sign>0?"N":"S",stem=axialX;
+      const S=p=>p.map(([x,y])=>[x,sign*y]);
+      const pts=S([
+        [stem,2.8],[stem,7.8],[stem-4,7.8],[stem-4,37.8],
+        [stem-2.3,37.8],[stem-2.3,15.8],
+        [stem-.6,15.8],[stem-.6,41.2]
+      ]);
+      path(pts,.2,`FOLDED_SPRING_${axialX}_${side}`,"moving");
+      addRect(`SPRING_ANCHOR_${axialX}_${side}`,1,"fixed",
+        stem-2.6,sign>0?41.2:-49,3.0,7.8,
+        "anchor-body-inferred;BOX-support-required");
+      annotations.push({kind:"joint",x:stem-.6,y:sign*41.2,
+        note:"Compliant spring fixed endpoint: requires connectivity/undercut check"});
+    }
+  }
+  // Ridge 150nm process is confined to array shuffles; no fabricated array
+  // routing is asserted here. Layer 2 intentionally empty in this unit mask.
+  annotations.push({kind:"source",x:-40,y:0,note:"Fig.1c/3a & Supp. Figs S2,S6-S9"});
+  const required=["SI_220_KEEP","RIDGE_150_ETCH","CR_AU_ELECTRODE"];
+  const fingerFixed=elements.filter(e=>/_FIXED_FINGER_/.test(e.name));
+  const fingerMoving=elements.filter(e=>/_MOVING_FINGER_/.test(e.name));
+  if(fingerFixed.length!==40||fingerMoving.length!==40)throw Error("40 comb pairs not formed");
+  if(toothCount*pitch>8)throw Error("SWT facet overflow");
+  const bounds=elements.reduce((b,e)=>{
+    for(const [x,y] of e.points){b[0]=Math.min(b[0],x);b[1]=Math.min(b[1],y);b[2]=Math.max(b[2],x);b[3]=Math.max(b[3],y);}
+    return b;
+  },[Infinity,Infinity,-Infinity,-Infinity]);
+  return {
+    name:"Hu 2025 SWX / first-pass OFF-state mask blueprint (not author GDS)",
+    root:"SWX_UNIT_MASK_V0",
+    units:{xy:"µm",dbuToMicron:1,hasPhysicalUnits:true},
+    layoutStatus:"DRAFT_REQUIRES_SCIENCE_AND_CHROMIUM_ACCEPTANCE",
+    paper:{doi,figureBasis:["Fig. 1c","Fig. 3a-b","Supplementary Figs. S2","S6","S7","S8","S9"]},
+    masks:required.map(name=>({name,layer:layers[name],polarity:name==="SI_220_KEEP"?"positive-silicon-retain":name==="RIDGE_150_ETCH"?"openings-to-etch-150nm":"Cr50-Au300-liftoff"})),
+    parametersUm:{topSi:.220,box:2,ridgeEtch:.150,fullEtch:.220,
+      swxFootprint:[23,23],offToothTipGap:.900,onGap:.015,actuatorTravel:.885,
+      swtPeriod:pitch,swtLateralDepth:.300,
+      combFingerLength:3.2,combFingerWidth:.5,combLateralClearance:.3,combOffOverlap:.2,
+      combPairsPerBank:pairsPerBank,foldedBeamWidth:.2,foldedLong:30,foldedShort:22},
+    elements,annotations,
+    combos:required.map(name=>({key:`SWX_UNIT_MASK_V0|${layers[name]}|0`,cell:"SWX_UNIT_MASK_V0",layer:layers[name],datatype:0,
+      count:elements.filter(e=>e.layer===layers[name]).length})),
+    bounds:{minX:bounds[0],minY:bounds[1],maxX:bounds[2],maxY:bounds[3],
+      width:bounds[2]-bounds[0],height:bounds[3]-bounds[1]},
+    statusChecks:{
+      nominalOFFGapUm:.900,
+      inferredONTranslationUm:.885,
+      inferredONGapUm:.015,
+      combCellPairs:40,axialCombRegistration:true,springStations:[-14,37],
+      lithographicUnknowns:"SWT count/phase; waveguide contour; pad boundaries; actual release undercut; exact full-unit footprint",
+      boxRelease:"not generated as a photomask; requires selective HF undercut Kernel stage",
+      realBrowserVerified:false,mechanicalFEMVerified:false,authorGdsMatched:false
+    }
+  };
+}
+
+export function renderSwxMaskSvg(layout){
+  const [w,h]=[1500,1120],sx=11.2,originX=790,originY=552;
+  const plot=([x,y])=>[+(originX+x*sx).toFixed(2),+(originY-y*sx).toFixed(2)];
+  const fillBy={fixed:"#5689C6",moving:"#0D9488",metal:"#E5A33D"};
+  const title="SWX 2x2 MEMS / source-constrained MASK DRAFT";
+  const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
+  const out=[`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="${title}">`,
+    `<rect width="100%" height="100%" fill="#F8FAFC"/>`,
+    `<text x="64" y="53" fill="#10253B" font-size="30" font-family="sans-serif" font-weight="bold">${title}</text>`,
+    `<text x="64" y="83" fill="#52657B" font-size="17" font-family="sans-serif">Local X is paper +Y actuation direction · coordinates in µm · OFF state mask, no post-release deformation</text>`,
+    `<rect x="50" y="109" width="1400" height="921" fill="#FFFFFF" stroke="#CBD5E1" rx="14"/>`,
+    `<g stroke="#E2E8F0" stroke-width=".6">`];
+  for(let x=-60;x<=50;x+=10) {
+    const [px]=plot([x,0]);out.push(`<line x1="${px}" y1="117" x2="${px}" y2="1028"/>`);
+    out.push(`<text x="${px+3}" y="1023" font-size="10" fill="#8091A7" stroke="none">${x}</text>`);
+  }
+  for(let y=-50;y<=50;y+=10){
+    const [,py]=plot([0,y]);out.push(`<line x1="55" y1="${py}" x2="1440" y2="${py}"/>`);
+  }
+  out.push(`</g><g fill-opacity=".77" stroke-opacity=".8" stroke-linejoin="round" stroke-width=".65">`);
+  const ord={fixed:0,moving:1,metal:2};
+  for(const e of [...layout.elements].sort((a,b)=>(ord[a.part]??10)-(ord[b.part]??10))){
+    const pts=e.points.map(p=>plot(p).join(",")).join(" ");
+    out.push(`<polygon points="${pts}" fill="${fillBy[e.part]||"#888"}" stroke="${fillBy[e.part]||"#888"}"><title>${esc(e.name)} · ${esc(e.evidence)}</title></polygon>`);
+  }
+  out.push(`</g>`);
+  const [cx,cy]=plot([-40,0]);out.push(`<circle cx="${cx}" cy="${cy}" r="112" fill="none" stroke="#BE4A3A" stroke-width="2.2" stroke-dasharray="9,7"/>`);
+  out.push(`<text x="93" y="1062" font-family="sans-serif" font-size="15" fill="#334155">Blue: fixed Si / BOX-supported anchors · Green: mobile suspended Si · Gold: Cr/Au electrodes</text>`);
+  out.push(`<text x="93" y="1090" font-family="sans-serif" font-size="14" fill="#B45309">Scientific status: geometry proposal, NOT author GDS, NOT fabricated-mask verified, NOT native WaferCAD Chromium acceptance</text>`);
+  out.push(`</svg>`);
+  return out.join("\n");
+}
