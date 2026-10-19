@@ -1,4 +1,4 @@
-const GPU_ROUGH_PROGRAM_VERSION = 'wafercad-gpu-rough-v6';
+const GPU_ROUGH_PROGRAM_VERSION = 'wafercad-gpu-rough-v7';
 
 function finitePositive(value, fallback) {
   const number = Number(value);
@@ -44,6 +44,8 @@ export function gpuRoughAppearanceUniforms(
       value: Math.max(0, Math.min(2, Number(normalStrength) || 0)),
     },
     waferCadRoughFarFieldContrast: { value: 0 },
+    waferCadRoughFarFieldFeatureSize: { value: featureSize },
+    waferCadRoughFarFieldSeed: { value: seed & 0xffff },
   };
 }
 
@@ -102,7 +104,6 @@ uniform float waferCadRoughMorphology;
 uniform float waferCadRoughPolarityNormal;
 uniform float waferCadRoughProfileNormal;
 uniform float waferCadRoughNormalStrength;
-uniform float waferCadRoughFarFieldContrast;
 
 uint waferCadRoughSeed() {
   return uint(waferCadRoughSeedLow + 0.5) | (uint(waferCadRoughSeedHigh + 0.5) << 16u);
@@ -244,6 +245,48 @@ float waferCadRoughProfile(vec2 absolutePoint) {
 }
 `;
 
+// The display texture is derived from spatially coherent noise at a scale
+// selected from the pixel footprint. It never displaces physical geometry.
+const ROUGH_FAR_FIELD_GLSL = \`
+uniform float waferCadRoughFarFieldContrast;
+uniform float waferCadRoughFarFieldFeatureSize;
+uniform float waferCadRoughFarFieldSeed;
+
+float waferCadFarHash(vec2 cell) {
+  vec3 p = fract(vec3(cell.xyx) * 0.1031 + waferCadRoughFarFieldSeed * 0.00017);
+  p += dot(p, p.yzx + 33.33);
+  return fract((p.x + p.y) * p.z);
+}
+
+float waferCadFarValueNoise(vec2 location) {
+  vec2 cell = floor(location);
+  vec2 blend = fract(location);
+  blend = blend * blend * (3.0 - 2.0 * blend);
+  float lower = mix(
+    waferCadFarHash(cell),
+    waferCadFarHash(cell + vec2(1.0, 0.0)),
+    blend.x
+  );
+  float upper = mix(
+    waferCadFarHash(cell + vec2(0.0, 1.0)),
+    waferCadFarHash(cell + vec2(1.0, 1.0)),
+    blend.x
+  );
+  return mix(lower, upper, blend.y);
+}
+
+float waferCadFarFieldShade(vec2 xy) {
+  // At least five pixels per cell prevents subpixel shimmer.
+  float footprint = max(length(dFdx(xy)), length(dFdy(xy)));
+  float displayCell = max(
+    max(1e-6, waferCadRoughFarFieldFeatureSize) * 8.0,
+    footprint * 5.0
+  );
+  float visual = waferCadFarValueNoise(xy / displayCell);
+  return 1.0 - waferCadRoughFarFieldContrast * (0.25 + 1.05 * visual);
+}
+\`;
+
 function injectAfter(source, token, code) {
   return source.includes(token) ? source.replace(token, `${token}\n${code}`) : source;
 }
@@ -301,12 +344,13 @@ if (waferCadGpuDisplace > 0.5) {
       '#include <common>',
       `varying vec2 vWaferCadRoughXY;
 varying float vWaferCadRoughSurface;
-${ROUGH_PROFILE_GLSL}`,
+${ROUGH_PROFILE_GLSL}
+${ROUGH_FAR_FIELD_GLSL}`,
     );
     shader.fragmentShader = injectAfter(
       shader.fragmentShader,
       '#include <color_fragment>',
-      'diffuseColor.rgb *= 1.0 - waferCadRoughFarFieldContrast * step(0.5, vWaferCadRoughSurface);',
+      'diffuseColor.rgb *= mix(1.0, waferCadFarFieldShade(vWaferCadRoughXY), step(0.5, vWaferCadRoughSurface));',
     );
     shader.fragmentShader = injectAfter(
       shader.fragmentShader,
@@ -356,7 +400,11 @@ ${ROUGH_PROFILE_GLSL}`,
 // subpixel visibility response without requiring GPU vertex displacement.
 export function decorateRoughFarFieldMaterial(material, appearance) {
   if (!material || !canUseGpuRoughPreview(appearance)) return false;
-  const uniforms = { waferCadRoughFarFieldContrast: { value: 0 } },
+  const uniforms = {
+      waferCadRoughFarFieldContrast: { value: 0 },
+      waferCadRoughFarFieldFeatureSize: { value: finitePositive(appearance?.featureSize, 1) },
+      waferCadRoughFarFieldSeed: { value: (Number(appearance?.seed) >>> 0) & 0xffff },
+    },
     previousCompile = material.onBeforeCompile,
     previousProgramKey = material.customProgramCacheKey?.bind(material);
   material.userData ||= {};
@@ -366,15 +414,25 @@ export function decorateRoughFarFieldMaterial(material, appearance) {
   material.onBeforeCompile = (shader, renderer) => {
     previousCompile?.(shader, renderer);
     Object.assign(shader.uniforms, uniforms);
+    shader.vertexShader = injectAfter(
+      shader.vertexShader,
+      '#include <common>',
+      'varying vec2 vWaferCadFarXY;\\nvarying float vWaferCadFarTop;',
+    );
+    shader.vertexShader = injectAfter(
+      shader.vertexShader,
+      '#include <begin_vertex>',
+      'vWaferCadFarXY = position.xy;\\nvWaferCadFarTop = smoothstep(0.25, 0.85, abs(normal.z));',
+    );
     shader.fragmentShader = injectAfter(
       shader.fragmentShader,
       '#include <common>',
-      'uniform float waferCadRoughFarFieldContrast;',
+      `varying vec2 vWaferCadFarXY;\nvarying float vWaferCadFarTop;\n${ROUGH_FAR_FIELD_GLSL}`,
     );
     shader.fragmentShader = injectAfter(
       shader.fragmentShader,
       '#include <color_fragment>',
-      'diffuseColor.rgb *= 1.0 - waferCadRoughFarFieldContrast;',
+      'diffuseColor.rgb *= mix(1.0, waferCadFarFieldShade(vWaferCadFarXY), vWaferCadFarTop);',
     );
   };
   material.needsUpdate = true;
