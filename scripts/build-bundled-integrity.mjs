@@ -9,7 +9,10 @@ import { readProjectFile } from '../site/project-io.js';
 import { CURRENT_PROJECT_VERSION } from '../site/project-schema.js';
 import { loadGeometryKernel } from './process-benchmarks.mjs';
 
-export async function buildBundledIntegrity({ source = resolve('site'), destination = source } = {}) {
+export async function buildBundledIntegrity({
+  source = resolve('site'),
+  destination = source,
+} = {}) {
   await loadGeometryKernel();
   const entries = {};
   for (const example of BUNDLED_EXAMPLES) {
@@ -32,8 +35,10 @@ export async function buildBundledIntegrity({ source = resolve('site'), destinat
     }
   }
   const manifest = { format: 'wafercad-validated-bundled-v1', entries };
-  await writeFile(join(destination, 'examples/bundled-integrity.json'),
-    JSON.stringify(manifest, null, 2) + '\n');
+  await writeFile(
+    join(destination, 'examples/bundled-integrity.json'),
+    JSON.stringify(manifest, null, 2) + '\n',
+  );
   return manifest;
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url))

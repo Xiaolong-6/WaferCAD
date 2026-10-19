@@ -130,7 +130,9 @@ export async function loadBundledProject(
   let integrity = null;
   if (!strict) {
     try {
-      const proof = await fetch(versionedExampleAssetPath('./examples/bundled-integrity.json', version));
+      const proof = await fetch(
+        versionedExampleAssetPath('./examples/bundled-integrity.json', version),
+      );
       if (proof.ok) {
         const receipt = await proof.json();
         if (receipt?.format === 'wafercad-validated-bundled-v1')
@@ -143,11 +145,13 @@ export async function loadBundledProject(
   const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
     .map((value) => value.toString(16).padStart(2, '0'))
     .join('');
-  if (integrity && (
-    integrity.path !== asset.path ||
-    integrity.bytes !== bytes.byteLength ||
-    integrity.sha256 !== hash
-  )) throw Error(`Bundled example integrity mismatch: ${example.id}`);
+  if (
+    integrity &&
+    (integrity.path !== asset.path ||
+      integrity.bytes !== bytes.byteLength ||
+      integrity.sha256 !== hash)
+  )
+    throw Error(`Bundled example integrity mismatch: ${example.id}`);
   const data = await readProject(
     bufferBackedProjectFile(bytes, asset.filename),
     integrity ? { trustedBundledExample: { sha256: integrity.sha256 } } : {},

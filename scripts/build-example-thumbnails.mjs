@@ -54,9 +54,11 @@ try {
     const page = await context.newPage(),
       errors = observePageErrors(page);
     await page.goto(
-      baseUrl + (fullCover
-        ? '/app.html?start=example&example=' + example.id
-        : '/app.html?preview=1&example=' + example.id + '&view=three'), {
+      baseUrl +
+        (fullCover
+          ? '/app.html?start=example&example=' + example.id
+          : '/app.html?preview=1&example=' + example.id + '&view=three'),
+      {
         waitUntil: 'domcontentloaded',
       },
     );

@@ -817,15 +817,18 @@ export async function readProjectFile(
   // actual bytes at this boundary before skipping redundant validation.
   if (trustedBundledExample) {
     const expected = trustedBundledExample.sha256;
-    if (!/^[a-f0-9]{64}$/.test(expected || ''))
-      throw Error('Invalid bundled integrity receipt.');
+    if (!/^[a-f0-9]{64}$/.test(expected || '')) throw Error('Invalid bundled integrity receipt.');
     const bytes = await file.arrayBuffer();
     const digest = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
       .map((value) => value.toString(16).padStart(2, '0'))
       .join('');
     if (digest !== expected) throw Error('Bundled project integrity verification failed.');
-    if (parsed?.format !== 'WaferCAD-vector' || !Number.isInteger(parsed.version) ||
-        !parsed.model || !parsed.layout)
+    if (
+      parsed?.format !== 'WaferCAD-vector' ||
+      !Number.isInteger(parsed.version) ||
+      !parsed.model ||
+      !parsed.layout
+    )
       throw Error('Invalid bundled project header.');
   }
   expandProjectStorage(parsed);
