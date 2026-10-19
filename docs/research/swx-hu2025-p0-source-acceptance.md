@@ -32,6 +32,12 @@ The live independent results are retained in the [SEM-v2 exact-head workflow art
 
 The retained BOX underneath the experimentally routed **122 µm external Signal bus** and the unverified right-hand Ground anchor must not be hidden under the old report's hardcoded `extraneousSourceUnverifiedBOXSupportedRails: 0`. The revised actual-post-HF audit records **two examined, source-unverified retained-BOX features** for OFF and ON: Signal bus (122 µm supported centerline) and right Ground anchor (approximately 4.126708 µm). This is deliberately a **non-exhaustive** inventory: it does not certify every other Si/BOX interface, pad or trench. The author-layout and mechanical acceptance flags remain false.
 
+### 2026-10-19: Original SEM Fig. 3a visual rejection of the fabricated four-sided perimeter
+
+Direct review of the original article **Fig. 3a SEM**, compared with the paper's Fig. 1c schematic, Fig. 4b switch-cell micrograph and Supplementary S6–S9, rejects the previous **four-sided 200 × 280 µm bulk-Si rectangular ring with a 164 × 113 µm closed cavity**. That outline is not demonstrated in any of those images, and its continuous top/bottom BOX-backed wafer slabs visually dwarf the reported **95 × 100 µm** switching cell. Those figures are neither author-mask coordinates nor reliable Si/BOX depth segmentation.
+
+The isolated experimental perimeter study now uses **two deliberately disconnected open context flanks**, with no enclosing top or bottom bridge. This is a narrower hypothesis for physical field-edge Si, **still not an authenticated SEM contour, verified SOI material assignment or valid 95 × 100 µm device footprint**. The process study field remains 200 × 280 µm because its saved mask includes external test ports; that field must never be equated with the switch's measured footprint. The camera-specific `sem-context` diagnostic crops to the useful switch region. Compare those real native Chromium images against Fig. 3a before accepting any further outer contour work. No perimeter should be promoted as source-faithful without the original full-resolution mask or sufficient registered SEM evidence.
+
 ## Immediate P0 decisions
 
 1. **Keep both geometry variants experimental.** Do not register either as the official Example or silently use the two rails as the paper's peripheral mask. The 64 × 64 physical array stays stopped.

@@ -163,10 +163,17 @@ try {
             region.stack.filter((seg) => seg.layerId === layer.id).map((seg) => seg.z1),
           ),
         ) * zScale;
-      for (const [name, targetY, cameraHeight, fov] of [
+      const diagnosticCameras = [
         ['swx-optical', -47, 66, 28],
         ['actuator-springs', -82, 130, 48],
-      ]) {
+      ];
+      if (exportPrefix === 'sem-perimeter') {
+        // SEM Fig. 3a is a close device image, not a 200x280um process-field
+        // overview. Use a matched top-down camera to inspect its peripheral
+        // footprint instead of hiding the switch at the center of empty field.
+        diagnosticCameras.push(['sem-context', -65, 175, 50]);
+      }
+      for (const [name, targetY, cameraHeight, fov] of diagnosticCameras) {
         const camera = {
           target: [0, targetY, topZ],
           position: [1, targetY, topZ + cameraHeight],

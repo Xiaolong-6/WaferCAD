@@ -17,7 +17,7 @@ import {
   SWX_GROUND_RETURN_PROCESS_PROFILE,
 } from './swx-mems-sem-ground-return-candidate.mjs';
 
- export const SWX_PERIMETER_CONTEXT_ASSUMPTIONS = Object.freeze({
+export const SWX_PERIMETER_CONTEXT_ASSUMPTIONS = Object.freeze({
   sourceAuthorGdsAvailable: false,
   perimeterDimensionsSourceVerified: false,
   actualIsolationTrenchSourceVerified: false,
@@ -35,6 +35,7 @@ import {
 
 export function createSwxSemPerimeterContext(state = 'off') {
   const original = createSwxSemGroundReturnCandidate(state);
+  const o = SWX_PERIMETER_CONTEXT_ASSUMPTIONS.outerUm;
   // Restricted field-edge context only. NO top/bottom closing rectangles:
   // those broad continuous silicon walls were invented by the previous
   // candidate, not present as justified device outlines in Fig. 3a.
