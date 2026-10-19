@@ -97,7 +97,7 @@ test('Fig. 1c peripheral Cr/Au pads are on supported Si and electrically isolate
   const data=buildSwxMaskLayout();
   assert.deepEqual(data.statusChecks.peripheralPadNets,['GROUND','SIGNAL']);
   assert.match(data.statusChecks.peripheralPadFootprint,/inferred/);
-  assert.match(data.statusChecks.groundAnchorConnections,/2 of 4/);
+  assert.match(data.statusChecks.groundAnchorConnections,/all 4 electrically connected/);
   const metal=data.elements.filter(e=>e.layer===3);
   const sign=metal.filter(e=>e.name.includes('SIGNAL')||e.name.endsWith('_CR_AU'));
   const gnd=metal.filter(e=>e.name.includes('GROUND'));
@@ -168,5 +168,44 @@ test('Fig. 1c broad supported Ground/Signal fields are disjoint and connected',(
   for(const g of gSi)for(const s of sSi) {
     assert.equal(overlapSAT(g.points,s.points),false,
       g.name+' unsupported Si short to '+s.name);
+  }
+});
+
+test('full 220nm Si has exactly two positive-area connected nets',()=>{
+  const layout=buildSwxMaskLayout(),es=layout.elements.filter(e=>e.layer===1);
+  const boxes=es.map(e=>e.points.reduce((b,[x,y])=>[
+    Math.min(b[0],x),Math.min(b[1],y),Math.max(b[2],x),Math.max(b[3],y)
+  ],[Infinity,Infinity,-Infinity,-Infinity]));
+  const parent=es.map((_,i)=>i);
+  const find=i=>parent[i]===i?i:(parent[i]=find(parent[i]));
+  for(let i=0;i<es.length;i++)for(let j=i+1;j<es.length;j++){
+    const a=boxes[i],b=boxes[j];
+    if(a[0]>=b[2]||b[0]>=a[2]||a[1]>=b[3]||b[1]>=a[3])continue;
+    if(overlapSAT(es[i].points,es[j].points))parent[find(i)]=find(j);
+  }
+  const roots=new Set(es.map((_,i)=>find(i)));
+  assert.equal(roots.size,2,
+    'Silicon island or undesired short in the full mask (including all 52 SWT teeth)');
+  const body=name=>{
+    const i=es.findIndex(e=>e.name===name);
+    assert.ok(i>=0,name+' absent');
+    return find(i);
+  };
+  const ground=body('PERIMETER_GROUND_UPPER_SUPPORTED_SI'),
+    signal=body('PERIMETER_SIGNAL_RIGHT_SUPPORTED_SI');
+  assert.notEqual(ground,signal,'Ground and stationary-comb Signal Si must isolate');
+  assert.equal(body('SHUTTLE_RAIL_TOP'),ground);
+  assert.equal(body('SWX_FIXED_MMI'),ground);
+  assert.equal(body('SWX_MOVABLE_MMI'),ground);
+  for(const name of ['NORTH_STATIONARY_HANDLE','SOUTH_STATIONARY_HANDLE']){
+    assert.equal(body(name),signal,name+' not connected to Signal');
+  }
+  for(const name of ['SPRING_ANCHOR_-14_N','SPRING_ANCHOR_-14_S',
+    'SPRING_ANCHOR_37_N','SPRING_ANCHOR_37_S']){
+    assert.equal(body(name),ground,name+' must share grounded mobile/spring Si net');
+  }
+  for(let i=0;i<26;i++){
+    assert.equal(body('SWT_FIXED_'+i),ground);
+    assert.equal(body('SWT_MOVABLE_'+i),ground);
   }
 });
