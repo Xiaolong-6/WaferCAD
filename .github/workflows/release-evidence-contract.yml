@@ -1,0 +1,27 @@
+name: Release evidence contract
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - '.github/workflows/pages.yml'
+      - '.github/workflows/release-evidence-contract.yml'
+      - 'scripts/release/verified-pr-release.mjs'
+      - 'site/tests/release-evidence.test.mjs'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    name: Release evidence contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Verify routing, evidence and failure contracts
+        run: node --test site/tests/release-evidence.test.mjs
