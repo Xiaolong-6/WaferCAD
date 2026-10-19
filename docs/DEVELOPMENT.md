@@ -147,6 +147,13 @@ continues to use the original Worker/History path. The
 `scripts/example-open-benchmark.mjs` baseline defaults to strict; use
 `--fast` to measure the attested production path separately.
 
+The suspended-silica microdisk cover is a cropped Chromium 3D screenshot
+of the exact saved adaptive 72-band Variant, derived from the native Workstation
+acceptance evidence. Its source hash tracks the full adaptive project, while
+the on-demand interactive four-view preview intentionally keeps the validated
+original lightweight model; the card explicitly distinguishes them. Regenerate
+the cover and manifest together if the adaptive source geometry changes.
+
 The TiO₂ metalens Welcome cover is a Chromium 3D render of the complete
 4,725-site illustrative array, and is content-addressed to the full bundled
 file. Its interactive four-view preview remains the four-unit representation,

@@ -103,8 +103,8 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     variants: ['Original paper-derived release', 'Adaptive 72-band release · illustrative'],
     path: './examples/suspended-silica-microdisks-adaptive.wafercad',
     filename: 'suspended-silica-microdisks-adaptive.wafercad',
-    // Deliberately keep the verified fast cover from the original source.
-    // Its simplified 3D is not a screenshot of the 72-band active Variant.
+    // The interactive preview stays lightweight; the static cover now comes
+    // from the saved adaptive 72-band project shown when the user opens it.
     previewSourcePath: './examples/suspended-silica-microdisks.wafercad',
     previewProject: {
       path: './examples/previews/suspended-silica-microdisk.wafercad',
@@ -113,11 +113,12 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     preview: {
       path: './examples/thumbnails/suspended-silica-microdisk-three.webp',
       view: 'three',
-      alt: 'Simplified original microdisk 3D preview; full 72-band adaptive release opens separately',
-      label: 'Lightweight original preview · open for full 72-band model',
+      coverSource: 'full',
+      alt: 'Real WaferCAD 3D render of the saved adaptive 72-band silica microdisk release',
+      label: '72-band adaptive 3D · interactive preview uses original lightweight geometry',
     },
     summary:
-      'Paper-derived 148/82 µm spoked silica disk with 1.8 µm oxide. Opens the saved 72-band adaptive undercut Variant (36 µm assumed XeF₂ release), plus its original History branch; preview intentionally shows the lightweight original.',
+      'Paper-derived 148/82 µm spoked silica disk with 1.8 µm oxide. Opens the saved 72-band adaptive undercut Variant (36 µm assumed XeF₂ release), plus its original History branch; the 3D cover shows the 72-band release, while the interactive preview uses the original lightweight geometry.',
     sources: [
       {
         citation:
