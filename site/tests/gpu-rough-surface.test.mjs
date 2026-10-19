@@ -119,6 +119,7 @@ test('GPU rough decorator chains existing material shader hooks', () => {
   assert.match(shader.fragmentShader, /waferCadScreenDx/);
   assert.match(shader.fragmentShader, /waferCadFarFieldShade\(vWaferCadRoughXY\)/);
   assert.match(shader.fragmentShader, /waferCadFarValueNoise/);
+  assert.match(shader.fragmentShader, /unresolved = 1\.0 - smoothstep\(0\.75, 8\.0, featurePixels\)/);
   assert.match(shader.fragmentShader, /waferCadMicroNormalWeight = smoothstep\(1\.5, 3\.0/);
   assert.match(shader.fragmentShader, /waferCadRoughNormalStrength \* waferCadMicroNormalWeight/);
   assert.match(shader.vertexShader, /vWaferCadRoughSurface = step\(0\.0, waferCadGpuDisplace\)/);
@@ -169,6 +170,7 @@ test('software roughness visibility shader changes only color, not displaced geo
   assert.doesNotMatch(shader.vertexShader, /transformed.z/);
   assert.match(shader.fragmentShader, /waferCadFarFieldShade\(vWaferCadFarXY\)/);
   assert.match(shader.fragmentShader, /waferCadFarValueNoise/);
+  assert.match(shader.fragmentShader, /unresolved = 1\.0 - smoothstep\(0\.75, 8\.0, featurePixels\)/);
   assert.match(material.customProgramCacheKey(), /wafercad-rough-farfield-v1/);
   assert.equal(shader.uniforms.waferCadRoughFarFieldContrast.value, 0);
   assert.equal(shader.uniforms.waferCadRoughFarFieldFeatureSize.value, 0.8);
