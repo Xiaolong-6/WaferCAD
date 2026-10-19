@@ -6,6 +6,9 @@ import {
   remainingMaterialAt,
 } from './continuous-etch-geometry.js';
 
+// Plans are transient: separate History/Recovery states can share a revision number.
+const continuousPlanOwners = new WeakMap();
+
 export function planContinuousEtchFromTopology({
   model,
   face,
@@ -60,7 +63,7 @@ export function planContinuousEtchFromTopology({
       shape,
     });
   });
-  return {
+  const plan = {
     kind: 'canonical-exposed-continuous-etch-plan-v1',
     modelRevision: model.revision,
     targetLayerIds: selected,
@@ -68,6 +71,8 @@ export function planContinuousEtchFromTopology({
     fronts,
     mutatesModel: false,
   };
+  continuousPlanOwners.set(plan, model);
+  return plan;
 }
 
 // Reject stale views rather than silently applying a frozen etch footprint
@@ -76,7 +81,7 @@ export function remainingMaterialInContinuousPlan(model, plan, point) {
   if (
     !plan ||
     plan.kind !== 'canonical-exposed-continuous-etch-plan-v1' ||
-    model?.revision !== plan.modelRevision
+    (model?.revision !== plan.modelRevision || continuousPlanOwners.get(plan) !== model)
   ) {
     throw new RangeError('Continuous release plan is stale or incompatible with Model revision');
   }
