@@ -16,10 +16,14 @@ export async function exportSwxDraft(outDir = 'test-results/swx-mask-draft') {
   }));
   assert.ok(polygons.length > 300);
   assert.equal(polygons.filter((p) => p.layer === 2).length, 0);
-  assert.equal(polygons.filter((p) => p.layer === 3).length, 17);
+  assert.equal(polygons.filter((p) => p.layer === 3).length, 21);
   for (const name of ['GROUND_METAL_PAD','SIGNAL_METAL_PAD']) {
     assert.equal(mask.elements.filter((p) => p.name === name && p.layer === 3).length, 1,
       'missing source-labelled peripheral pad '+name);
+  }
+  for (const id of ['GROUND_UPPER','GROUND_LEFT','GROUND_LOWER','SIGNAL_RIGHT']) {
+    assert.equal(mask.elements.filter(e => e.name === 'PERIMETER_'+id+'_CR_AU' &&
+      e.layer === 3).length, 1, 'missing broad supported pad '+id);
   }
   const raw = serializeGDS(polygons, { cellName: 'SWX_UNIT_MASK_V0' });
   const ab = raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength);
