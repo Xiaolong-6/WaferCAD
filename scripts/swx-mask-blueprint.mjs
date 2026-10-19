@@ -129,7 +129,7 @@ export function buildSwxMaskLayout() {
         fingerWidth,3.2,
         "3.2um length, 0.5um width, 0.3um side gap; XY placement inferred");
     }
-    addRect(`${bank}_FIXED_PAD`,1,"fixed",-12,fBusY,7,6.1,
+    addRect(`${bank}_FIXED_PAD`,1,"fixed",-12,fBusY,7.15,6.1,
       "BOX-supported pad placement inferred");
     addRect(`${bank}_CR_AU`,3,"metal",-11,fBusY+1.1,5,3.9,
       "50nm Cr/300nm Au; pad shape inferred");
