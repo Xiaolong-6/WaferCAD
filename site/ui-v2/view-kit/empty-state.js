@@ -19,11 +19,13 @@ export function shouldShowEmptyProcessHint(model, hasProcessHistory = false) {
   return isBaseOnlyModel(model) && !hasProcessHistory;
 }
 
-export function isEmptyActiveMask(state) {
+export function isMaskContentEmpty(state) {
   if (!state) return false;
-  return state.maskSourceMode === 'draw'
-    ? (state.drawMask?.shapes?.length ?? 0) === 0
-    : (state.layout?.elements?.length ?? 0) === 0;
+  return !(
+    (state.layout?.elements?.length ?? 0) > 0 ||
+    (state.layout?.linework?.length ?? 0) > 0 ||
+    (state.drawMask?.shapes?.length ?? 0) > 0
+  );
 }
 
 export function createEmptyHint({ label, parts }) {
