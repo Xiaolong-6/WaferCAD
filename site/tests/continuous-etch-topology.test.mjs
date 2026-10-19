@@ -2,14 +2,18 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-const vendorSource = readFileSync(new URL('../vendor/polygon-clipping.umd.js', import.meta.url), 'utf8');
+const vendorSource = readFileSync(
+  new URL('../vendor/polygon-clipping.umd.js', import.meta.url),
+  'utf8',
+);
 const vendor = { exports: {} };
 new Function('module', 'exports', vendorSource)(vendor, vendor.exports);
 globalThis.polygonClipping = vendor.exports;
 
 const { createModel } = await import('../model.js');
 const { rectMulti } = await import('../vector-geometry.js');
-const { planContinuousEtchFromTopology, remainingMaterialInContinuousPlan } = await import('../continuous-etch-topology.js');
+const { planContinuousEtchFromTopology, remainingMaterialInContinuousPlan } =
+  await import('../continuous-etch-topology.js');
 const { remainingMaterialAt, continuousDepthAtXY } = await import('../continuous-etch-geometry.js');
 
 function coatedFixture() {
@@ -77,22 +81,37 @@ test('no partial source mutation for invalid targets, arrays, masks or shape', (
     { lateralUm: 0 },
     { verticalUm: Number.NaN },
     { lateralUm: 5 },
-  ]) assert.throws(() => plan(model, opts), RangeError);
+  ])
+    assert.throws(() => plan(model, opts), RangeError);
   assert.throws(() => plan({ ...model, array: { instances: [] } }), /non-array/);
   assert.equal(JSON.stringify(model), before);
 });
 
 test('continuous occupancy rejects a stale material revision', () => {
   const model = coatedFixture();
-  const plan = planContinuousEtchFromTopology({ model, face: 'front', targetLayerIds: ['oxide'], lateralUm: 3, verticalUm: 3, shape: 'circular' });
-  assert.equal(remainingMaterialInContinuousPlan(model, plan, [0, 0, 2.5]), null);
+  const planned = planContinuousEtchFromTopology({
+    model,
+    face: 'front',
+    targetLayerIds: ['oxide'],
+    lateralUm: 3,
+    verticalUm: 3,
+    shape: 'circular',
+  });
+  assert.equal(remainingMaterialInContinuousPlan(model, planned, [0, 0, 2.5]), null);
   model.revision++;
-  assert.throws(() => remainingMaterialInContinuousPlan(model, plan, [0, 0, 2.5]), /stale/);
+  assert.throws(() => remainingMaterialInContinuousPlan(model, planned, [0, 0, 2.5]), /stale/);
 });
 
 test('equal revisions cannot authorize a different History or Recovery material owner', () => {
   const source = coatedFixture();
-  const plan = planContinuousEtchFromTopology({ model: source, face: 'front', targetLayerIds: ['oxide'], lateralUm: 3, verticalUm: 3, shape: 'circular' });
+  const plan = planContinuousEtchFromTopology({
+    model: source,
+    face: 'front',
+    targetLayerIds: ['oxide'],
+    lateralUm: 3,
+    verticalUm: 3,
+    shape: 'circular',
+  });
   const clone = structuredClone(source);
   assert.equal(clone.revision, source.revision);
   assert.throws(() => remainingMaterialInContinuousPlan(clone, plan, [0, 0, 2.5]), /stale/);
