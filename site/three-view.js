@@ -722,8 +722,8 @@ export function createThreeView({
         lod = roughLod(featurePixels),
         gpuRough = entry.material.userData?.waferCadGpuRough;
       entry.material.roughness = 0.82 + 0.12 * lod.detail;
-      const farField = entry.material.userData?.waferCadRoughFarField?.uniforms
-        ?.waferCadRoughFarFieldContrast;
+      const farField =
+        entry.material.userData?.waferCadRoughFarField?.uniforms?.waferCadRoughFarFieldContrast;
       // Pixel derivatives choose the actual per-fragment LOD. Supply only
       // material-wide statistical strength so instanced meshes may share it.
       if (farField) farField.value = roughFarFieldContrast(0, entry.appearance);
