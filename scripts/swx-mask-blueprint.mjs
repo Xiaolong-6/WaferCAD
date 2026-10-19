@@ -1,3 +1,5 @@
+import { buildSwxConformalPerimeter } from './swx-perimeter-contour.mjs';
+
 // Hu et al. Nature Communications (2025) 16:331, DOI 10.1038/s41467-024-55528-9
 // Source-constrained, intentionally PROVISIONAL parametric OFF-mask geometry.
 // The old 2026-10-14 branch is reference only. No original GDS is claimed.
@@ -163,63 +165,16 @@ export function buildSwxMaskLayout() {
     }
   }
 
-  // Contact pad topology from Fig. 1c: the outer two metal lands are SIGNAL
-  // and GROUND, NOT one shared electrode. The reported material is Cr 50nm
-  // + Au 300nm. Absolute pad size/placement and lead paths are NOT disclosed.
-  // These polygons are therefore provisional electrical-access Mask context.
-  const pads={
-    groundSupport:[72,65,24,23], signalSupport:[72,-88,24,23],
-    groundAuCr:[75,68,18,17], signalAuCr:[75,-85,18,17],
-    siRouteWidth:1.2, electrodeRouteWidth:.6
-  };
-  const inferredSi="Fig.1c electrical net inferred; must retain BOX under pad/lead";
-  const inferredMetal="Cr=50nm Au=300nm (Methods); XY/width inferred from Fig.1c";
-  addRect("GROUND_PAD_BOX_SUPPORTED_SI",1,"fixed",...pads.groundSupport,inferredSi);
-  addRect("SIGNAL_PAD_BOX_SUPPORTED_SI",1,"fixed",...pads.signalSupport,inferredSi);
-  // Place the GND return outside the suspended Si envelope. Only the
-  // two left-side spring anchors are linked at this stage. The right
-  // two spring-anchor GND links remain open design requirements.
-  const gndRoutes=[
-    [[78,69],[78,62],[-81,62],[-81,-62],[-15,-62]],
-    [[-15,62],[-15,48]],
-    [[-15,-62],[-15,-48]]
-  ];
-  for(let i=0;i<gndRoutes.length;i++){
-    path(gndRoutes[i],pads.siRouteWidth,`GROUND_SI_ROUTE_${i}`,"fixed",1,inferredSi);
-    path(gndRoutes[i],pads.electrodeRouteWidth,`GROUND_METAL_ROUTE_${i}`,"metal",3,inferredMetal);
-  }
-  // Signal drives both stationary comb buses while avoiding the moving
-  // shuttle/springs and remaining electrically separate from GND.
-  const sigRoutes=[
-    [[-9,21],[-9,55],[58,55],[58,-55],[78,-55],[78,-69]],
-    [[-9,-11],[-9,-55],[58,-55]]
-  ];
-  for(let i=0;i<sigRoutes.length;i++){
-    path(sigRoutes[i],pads.siRouteWidth,`SIGNAL_SI_ROUTE_${i}`,"fixed",1,inferredSi);
-    path(sigRoutes[i],pads.electrodeRouteWidth,`SIGNAL_METAL_ROUTE_${i}`,"metal",3,inferredMetal);
-  }
-  addRect("GROUND_METAL_PAD",3,"metal",...pads.groundAuCr,inferredMetal);
-  addRect("SIGNAL_METAL_PAD",3,"metal",...pads.signalAuCr,inferredMetal);
-  // Broad yellow Fig.1c perimeter is TWO independently patterned electrode
-  // regions on BOX-supported Si, not one continuous yellow metal film.
-  // Dimensions/contours are engineering inferences; paper names Ground and
-  // Signal pads but does not publish lithographic boundaries or pad XY size.
-  // GROUND: top, left and bottom-left frame. SIGNAL: right/lower panel.
-  // Preserve an insulating slot between both metal AND Si supported regions.
-  const broadPads=[
-    {id:"GROUND_UPPER",net:"GROUND",si:[-92,60,204,37],metal:[-91,61,201,35]},
-    {id:"GROUND_LEFT",net:"GROUND",si:[-92,-95,14,192],metal:[-91,-94,12,190]},
-    {id:"GROUND_LOWER",net:"GROUND",si:[-92,-95,79,31],metal:[-91,-94,77,29]},
-    {id:"SIGNAL_RIGHT",net:"SIGNAL",si:[57,-92,50,149],metal:[58,-90,47,146]}
-  ];
-  for(const pad of broadPads){
-    addRect(`PERIMETER_${pad.id}_SUPPORTED_SI`,1,"fixed",...pad.si,
-      "BOX-supported peripheral Si contact foundation; bounds inferred Fig.1c");
-    addRect(`PERIMETER_${pad.id}_CR_AU`,3,"metal",...pad.metal,
-      "Fig.1c yellow field represents distinct pads; Cr50/Au300 source, XY inferred");
-  }
-  annotations.push({kind:"pad-isolation",netA:"GROUND",netB:"SIGNAL",
-    note:"Upper metal gap nominal 5um, Si gap 3um: both INFERRED, not paper dimensions"});
+  // Si rim, patterned Cr/Au and future release moat share ONE contour.
+  // Planar shared-boundary offsets do not imply conformal metal deposition.
+  const perimeter=buildSwxConformalPerimeter({
+    addPolygon: ({name,layer,part,points,evidence})=>
+      put(name,layer,part,points,evidence),
+    addPath: ({name,layer,part,points,width,evidence})=>
+      path(points,width,name,part,layer,evidence)
+  });
+  annotations.push({kind:"shared-perimeter-contour",...perimeter,
+    note:"Common cavity geometry; Cr/Au via evaporation + lift-off, not conformal coating."});
   // Ridge 150nm process is confined to array shuffles; no fabricated array
   // routing is asserted here. Layer 2 intentionally empty in this unit mask.
   annotations.push({kind:"source",x:-40,y:0,note:"Fig.1c/3a & Supp. Figs S2,S6-S9"});
@@ -245,6 +200,8 @@ export function buildSwxMaskLayout() {
       combFingerLength:3.2,combFingerWidth:.5,combLateralClearance:.3,combOffOverlap:.2,
       combPairsPerBank:pairsPerBank,foldedBeamWidth:.2,foldedLong:30,foldedShort:22},
     elements,annotations,
+    sharedContours:{releaseCavityUm:perimeter.cavityContour,perimeterSiOuterUm:perimeter.siliconOuter,
+      perimeterMetalInnerUm:perimeter.metalInner,perimeterMetalOuterUm:perimeter.metalOuter},
     combos:required.map(name=>({key:`SWX_UNIT_MASK_V0|${layers[name]}|0`,cell:"SWX_UNIT_MASK_V0",layer:layers[name],datatype:0,
       count:elements.filter(e=>e.layer===layers[name]).length})),
     bounds:{minX:bounds[0],minY:bounds[1],maxX:bounds[2],maxY:bounds[3],
@@ -255,10 +212,11 @@ export function buildSwxMaskLayout() {
       inferredONGapUm:.015,
       combCellPairs:40,axialCombRegistration:true,springStations:[-14,37],
       peripheralPadNets:["GROUND","SIGNAL"],
-      peripheralPadFootprint:"four large-area perimeter polygons inferred from Fig.1c; NOT author GDS",
-      broadPadMetalCount:4,perimeterPadIsolationUpperUm:5,
-      broadPadMaterial:"Cr 50nm / Au 300nm on BOX-supported Si",
-      groundAnchorConnections:"2 of 4 directly routed to Ground Si; all 4 electrically connected through compliant Si/shuttle (Mask-level only)",
+      peripheralPadFootprint:"Si/metal derived from ONE common cavity contour; XY inferred",
+      perimeterContourPoints:perimeter.cavityContour.length,
+      perimeterSiOffsetUm:20,perimeterMetalInsetUm:1,perimeterIsolationUm:2,
+      broadPadMaterial:"Cr 50nm / Au 300nm evaporation + lift-off; not conformal coating",
+      groundAnchorConnections:"4 anchors in common grounded silicon; 1 direct supported perimeter lead",
       lithographicUnknowns:"SWT count/phase; waveguide contour; pad boundaries; actual release undercut; exact full-unit footprint",
       boxRelease:"not generated as a photomask; requires selective HF undercut Kernel stage",
       realBrowserVerified:false,mechanicalFEMVerified:false,authorGdsMatched:false
