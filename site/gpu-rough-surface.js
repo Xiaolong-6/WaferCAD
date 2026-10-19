@@ -1,4 +1,4 @@
-const GPU_ROUGH_PROGRAM_VERSION = 'wafercad-gpu-rough-v5';
+const GPU_ROUGH_PROGRAM_VERSION = 'wafercad-gpu-rough-v6';
 
 function finitePositive(value, fallback) {
   const number = Number(value);
@@ -43,6 +43,7 @@ export function gpuRoughAppearanceUniforms(
     waferCadRoughNormalStrength: {
       value: Math.max(0, Math.min(2, Number(normalStrength) || 0)),
     },
+    waferCadRoughFarFieldContrast: { value: 0 },
   };
 }
 
@@ -101,6 +102,7 @@ uniform float waferCadRoughMorphology;
 uniform float waferCadRoughPolarityNormal;
 uniform float waferCadRoughProfileNormal;
 uniform float waferCadRoughNormalStrength;
+uniform float waferCadRoughFarFieldContrast;
 
 uint waferCadRoughSeed() {
   return uint(waferCadRoughSeedLow + 0.5) | (uint(waferCadRoughSeedHigh + 0.5) << 16u);
@@ -264,6 +266,7 @@ export function decorateGpuRoughMaterial(
     normalStrengthBase: uniforms.waferCadRoughNormalStrength.value,
     uniforms,
   };
+  material.userData.waferCadRoughFarField = { uniforms };
 
   material.customProgramCacheKey = () =>
     `${previousProgramKey ? previousProgramKey() : ''}|${GPU_ROUGH_PROGRAM_VERSION}`;
@@ -299,6 +302,11 @@ if (waferCadGpuDisplace > 0.5) {
       `varying vec2 vWaferCadRoughXY;
 varying float vWaferCadRoughSurface;
 ${ROUGH_PROFILE_GLSL}`,
+    );
+    shader.fragmentShader = injectAfter(
+      shader.fragmentShader,
+      '#include <color_fragment>',
+      'diffuseColor.rgb *= 1.0 - waferCadRoughFarFieldContrast * step(0.5, vWaferCadRoughSurface);',
     );
     shader.fragmentShader = injectAfter(
       shader.fragmentShader,
@@ -340,6 +348,35 @@ ${ROUGH_PROFILE_GLSL}`,
     );
   };
 
+  material.needsUpdate = true;
+  return true;
+}
+
+// Software-WebGL and Z-scaled CPU meshes can use the same constant-time
+// subpixel visibility response without requiring GPU vertex displacement.
+export function decorateRoughFarFieldMaterial(material, appearance) {
+  if (!material || !canUseGpuRoughPreview(appearance)) return false;
+  const uniforms = { waferCadRoughFarFieldContrast: { value: 0 } },
+    previousCompile = material.onBeforeCompile,
+    previousProgramKey = material.customProgramCacheKey?.bind(material);
+  material.userData ||= {};
+  material.userData.waferCadRoughFarField = { uniforms };
+  material.customProgramCacheKey = () =>
+    `${previousProgramKey ? previousProgramKey() : ''}|wafercad-rough-farfield-v1`;
+  material.onBeforeCompile = (shader, renderer) => {
+    previousCompile?.(shader, renderer);
+    Object.assign(shader.uniforms, uniforms);
+    shader.fragmentShader = injectAfter(
+      shader.fragmentShader,
+      '#include <common>',
+      'uniform float waferCadRoughFarFieldContrast;',
+    );
+    shader.fragmentShader = injectAfter(
+      shader.fragmentShader,
+      '#include <color_fragment>',
+      'diffuseColor.rgb *= 1.0 - waferCadRoughFarFieldContrast;',
+    );
+  };
   material.needsUpdate = true;
   return true;
 }
