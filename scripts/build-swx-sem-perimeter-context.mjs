@@ -1,4 +1,4 @@
-/** Real Kernel/Recipe OFF/ON process for the isolated experimental bulk-Si field. */
+/** Genuine OFF/ON Process and History verification without invented outer Si. */
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -15,36 +15,28 @@ const { project, json, validation } = await buildSwxMemsUnified(
 const source = createSwxSemPerimeterContext('off');
 assert.deepEqual(project.layout.elements, source.layout.elements);
 assert.equal(project.snapshotBranches.branches.length, 2);
-// Verify post-HF material columns from the REAL Kernel output for each pose,
-// not from the original positive-Si mask or a renderer-only illustration.
 const v = await import('../site/vector-geometry.js');
 const contains = (model, point) => {
   const regions = model.regions.filter((region) => v.pointInMulti(point, region.geom));
   return new Set(regions.flatMap((region) => region.stack.map((layer) => layer.layerId)));
 };
-const perimeterPoints = [
+// The former full Si ring and two broad flanks were fabricated by earlier
+// iterations: there is no author evidence for device Si at these positions.
+// Check the actual final OFF/ON material stack, not just the input Mask.
+const unverifiedExterior = [
   [-90, -50],
   [90, -50],
   [-95, -95],
   [95, -95],
-];
-const cavityPoints = [
-  [-81, -50],
-  [81, -50],
-  [0, -9],
-  [0, -120],
+  [0, 25],
+  [0, -130],
 ];
 for (const branch of project.snapshotBranches.branches) {
   const model = branch.headState.model;
-  for (const point of perimeterPoints) {
+  for (const point of unverifiedExterior) {
     const layers = contains(model, point);
-    assert.ok(layers.has('layer-2'), 'Outside perimeter missing real device Si');
-    assert.ok(layers.has('layer-1'), 'Outside perimeter missing real BOX support');
-  }
-  for (const point of cavityPoints) {
-    const layers = contains(model, point);
-    assert.ok(!layers.has('layer-2'), 'Isolation trench contains device Si');
-    assert.ok(!layers.has('layer-1'), 'Isolation trench contains residual BOX');
+    assert.ok(!layers.has('layer-2'), 'Source-unverified exterior device Si fabricated');
+    assert.ok(!layers.has('layer-1'), 'Exterior mask unexpectedly retains BOX');
   }
   const comb = contains(model, [-25, -78]);
   assert.ok(comb.has('layer-1') && comb.has('layer-2'), 'Fixed comb lost BOX support');
@@ -60,13 +52,11 @@ await writeFile(
   JSON.stringify(
     {
       ...validation,
-      comparisonRole: 'real process geometry for open context flanks, not original SEM mask',
+      comparisonRole: 'paper SEM source review without invented peripheral silicon',
       perimeter: SWX_PERIMETER_CONTEXT_ASSUMPTIONS,
-      realPostHFPerimeterSiAndBoxColumnsVerified: true,
-      realPostHFIsolationCavityOpen: true,
-      sourceClosedPerimeterTrenchRejected: true,
-      experimentallyInferredFlankSiSourceVerified: false,
+      realPostHFUnverifiedExteriorSiIsAbsent: true,
       realPostHFFixedCombSupportedAndMovingSWXSuspended: true,
+      sourceClosedPerimeterTrenchRejected: true,
       sourceAuthorPerimeterGdsAccepted: false,
       sourceIsolationTrenchAccepted: false,
       paperDeviceFootprintAccepted: false,
@@ -79,4 +69,4 @@ await writeFile(
     2,
   ) + '\n',
 );
-console.log('Real OFF/ON process+History built with experimental external Si field');
+console.log('SEM Fig. 3a study: real OFF/ON Process, no invented outer Si');
