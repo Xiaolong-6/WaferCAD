@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   roughDisplayHeightBlend,
+  roughFarFieldContrast,
   roughDisplayProfileOffsetAtPoint,
   roughProfileOffsetAtPoint,
 } from '../surface-rendering.js';
@@ -63,4 +64,18 @@ test('display height is deterministic and preserves front/back physical profile 
     }
   }
   assert.equal(JSON.stringify(appearance), before);
+});
+
+test('subpixel relief stays visible without exaggerating the physical heightfield', () => {
+  const original = JSON.stringify(appearance);
+  const far = roughFarFieldContrast(0.02, appearance);
+  assert.ok(far > 0.1 && far < 0.22);
+  assert.ok(roughFarFieldContrast(1.5, appearance) < far);
+  assert.equal(roughFarFieldContrast(3, appearance), 0);
+  assert.equal(roughFarFieldContrast(0.01, { ...appearance, kind: 'smooth' }), 0);
+  assert.equal(roughFarFieldContrast(0.01, { ...appearance, meanHeight: 0 }), 0);
+  assert.ok(
+    roughFarFieldContrast(0.02, { ...appearance, meanHeight: 0.01 }) < far,
+  );
+  assert.equal(JSON.stringify(appearance), original);
 });
