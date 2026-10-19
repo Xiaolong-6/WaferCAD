@@ -2,6 +2,7 @@
 // Source-constrained, intentionally PROVISIONAL parametric OFF-mask geometry.
 // The old 2026-10-14 branch is reference only. No original GDS is claimed.
 // Positive mask layer 1 retains Si. Layer 2 is reserved for later array ridge links.
+// S6 U-bends and S7 aligners included. R1 optical transition still missing.
 
 export function buildSwxMaskLayout() {
   const doi = "10.1038/s41467-024-55528-9";
@@ -36,10 +37,10 @@ export function buildSwxMaskLayout() {
   // Local X is the mechanical travel axis (the paper's +Y). Z is out of plane.
   // The OFF tooth-tip gap is 0.900 um. ON is a separate post-release pose, NOT another mask.
   put("SWX_FIXED_MMI",1,"fixed",[
-    [-44,0.75],[-36,0.75],[-34.2,3.0],[-45.8,3.0]
+    [-46,0.75],[-34,0.75],[-32.2,3.0],[-47.8,3.0]
   ]);
   put("SWX_MOVABLE_MMI",1,"moving",[
-    [-44,-0.75],[-36,-0.75],[-34.2,-3.0],[-45.8,-3.0]
+    [-46,-0.75],[-34,-0.75],[-32.2,-3.0],[-47.8,-3.0]
   ]);
   // Two V waveguide halves; terminal placement interpolated from Fig. 1c/3a, not author GDS.
   for(const s of [1,-1]) {
@@ -54,6 +55,32 @@ export function buildSwxMaskLayout() {
       [-37,s*2.4],[-35.4,s*2.4],[-27.85,s*12.5],[-28.2,s*12.15]
     ]);
   }
+  // Flexible waveguides: two true-3um-radius 180-degree bends per side (S6).
+  // R1=5um near-reflector transition, actual converter positions and routing
+  // remain unverified; do not mistake this drawing for the author's GDS.
+  const arc=(cx,cy,r,a,b,n=24)=>Array.from({length:n+1},(_,i)=>{
+    const t=a+(b-a)*i/n;return [cx+r*Math.cos(t),cy+r*Math.sin(t)];
+  });
+  path([
+    [-60,-15],[-66,-15],...arc(-66,-18,3,Math.PI/2,3*Math.PI/2).slice(1),
+    [-54,-21],...arc(-54,-24,3,Math.PI/2,-Math.PI/2).slice(1),[-69,-27]
+  ],.4,"S6_MOVABLE_MEANDER_LEFT","moving",1,
+    "R2=3um 180-degree bends, L=15um; inferred XY positions");
+  path([
+    [-21,-15],[-24,-15],...arc(-24,-18,3,Math.PI/2,3*Math.PI/2).slice(1),
+    [-38,-21],...arc(-38,-24,3,Math.PI/2,3*Math.PI/2).slice(1),[-23,-27]
+  ],.4,"S6_MOVABLE_MEANDER_RIGHT","moving",1,
+    "R2=3um 180-degree bends, L=15um; inferred XY positions");
+  // Structural aligner pair (S7). One thin 7um x 0.1um flexure each, with
+  // 1um truss ends. The optical facets themselves do not contact.
+  for(const [side,x,inset] of [["LEFT",-49,-46],["RIGHT",-31,-34]]){
+    path([[x,-3.5],[x,3.5]],.1,`ALIGNER_${side}_BEAM`,"compliant",1,
+      "7um x 0.1um source; location inferred");
+    path([[x,3.5],[inset,2.65]],1,`ALIGNER_${side}_FIXED_TRUSS`,"compliant",1,
+      "1um source width; inferred truss connection");
+    path([[x,-3.5],[inset,-2.65]],1,`ALIGNER_${side}_MOBILE_TRUSS`,"compliant",1,
+      "1um source width; inferred truss connection");
+  }
   // Teeth on two facing in-plane edges: 290 nm pitch, 300 nm lateral depth.
   // Their arbitrary count and starting phase are NOT reported by the paper.
   const toothCount=26, pitch=.290, toothX0=-43.77;
@@ -65,8 +92,8 @@ export function buildSwxMaskLayout() {
   // Explicit stop-pair tips at the reported OFF clearance. Contact under 885 nm
   // actuation defines a 15 nm final gap; lithographic stop profile is not reported.
   for(const [i,x] of [-44.7,-35.0].entries()){
-    addRect(`STOP_FIXED_${i}`,1,"fixed",x,.45,.2,.30,"15nm-ON-gap-source;shape-inferred");
-    addRect(`STOP_MOVING_${i}`,1,"moving",x,-.75,.2,.30,"15nm-ON-gap-source;shape-inferred");
+    addRect(`STOP_FIXED_${i}`,1,"fixed",x,.45,.2,.40,"15nm-ON-gap-source;shape-inferred");
+    addRect(`STOP_MOVING_${i}`,1,"moving",x,-.85,.2,.40,"15nm-ON-gap-source;shape-inferred");
   }
   // Shuttle, 6 um envelope. Open triangular pockets are formed by rails,
   // crossbars and diagonal braces (not filled solid).
@@ -169,7 +196,7 @@ export function buildSwxMaskLayout() {
 export function renderSwxMaskSvg(layout){
   const [w,h]=[1500,1120],sx=11.2,originX=790,originY=552;
   const plot=([x,y])=>[+(originX+x*sx).toFixed(2),+(originY-y*sx).toFixed(2)];
-  const fillBy={fixed:"#5689C6",moving:"#0D9488",metal:"#E5A33D"};
+  const fillBy={fixed:"#5689C6",moving:"#0D9488",compliant:"#8B69B3",metal:"#E5A33D"};
   const title="SWX 2x2 MEMS / source-constrained MASK DRAFT";
   const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
   const out=[`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="${title}">`,
@@ -186,14 +213,14 @@ export function renderSwxMaskSvg(layout){
     const [,py]=plot([0,y]);out.push(`<line x1="55" y1="${py}" x2="1440" y2="${py}"/>`);
   }
   out.push(`</g><g fill-opacity=".77" stroke-opacity=".8" stroke-linejoin="round" stroke-width=".65">`);
-  const ord={fixed:0,moving:1,metal:2};
+  const ord={fixed:0,moving:1,compliant:2,metal:3};
   for(const e of [...layout.elements].sort((a,b)=>(ord[a.part]??10)-(ord[b.part]??10))){
     const pts=e.points.map(p=>plot(p).join(",")).join(" ");
     out.push(`<polygon points="${pts}" fill="${fillBy[e.part]||"#888"}" stroke="${fillBy[e.part]||"#888"}"><title>${esc(e.name)} · ${esc(e.evidence)}</title></polygon>`);
   }
   out.push(`</g>`);
   const [cx,cy]=plot([-40,0]);out.push(`<circle cx="${cx}" cy="${cy}" r="112" fill="none" stroke="#BE4A3A" stroke-width="2.2" stroke-dasharray="9,7"/>`);
-  out.push(`<text x="93" y="1062" font-family="sans-serif" font-size="15" fill="#334155">Blue: fixed Si / BOX-supported anchors · Green: mobile suspended Si · Gold: Cr/Au electrodes</text>`);
+  out.push(`<text x="93" y="1062" font-family="sans-serif" font-size="15" fill="#334155">Blue: fixed Si/anchors · Green: mobile Si · Purple: aligner flexures · Gold: Cr/Au</text>`);
   out.push(`<text x="93" y="1090" font-family="sans-serif" font-size="14" fill="#B45309">Scientific status: geometry proposal, NOT author GDS, NOT fabricated-mask verified, NOT native WaferCAD Chromium acceptance</text>`);
   out.push(`</svg>`);
   return out.join("\n");
