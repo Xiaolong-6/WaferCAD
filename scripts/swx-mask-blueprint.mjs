@@ -258,7 +258,7 @@ export function buildSwxMaskLayout() {
       peripheralPadFootprint:"four large-area perimeter polygons inferred from Fig.1c; NOT author GDS",
       broadPadMetalCount:4,perimeterPadIsolationUpperUm:5,
       broadPadMaterial:"Cr 50nm / Au 300nm on BOX-supported Si",
-      groundAnchorConnections:"2 of 4 spring anchors routed; other 2 require topology redesign",
+      groundAnchorConnections:"2 of 4 directly routed to Ground Si; all 4 electrically connected through compliant Si/shuttle (Mask-level only)",
       lithographicUnknowns:"SWT count/phase; waveguide contour; pad boundaries; actual release undercut; exact full-unit footprint",
       boxRelease:"not generated as a photomask; requires selective HF undercut Kernel stage",
       realBrowserVerified:false,mechanicalFEMVerified:false,authorGdsMatched:false
