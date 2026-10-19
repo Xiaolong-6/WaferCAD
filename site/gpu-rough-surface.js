@@ -417,12 +417,12 @@ export function decorateRoughFarFieldMaterial(material, appearance) {
     shader.vertexShader = injectAfter(
       shader.vertexShader,
       '#include <common>',
-      'varying vec2 vWaferCadFarXY;\\nvarying float vWaferCadFarTop;',
+      'varying vec2 vWaferCadFarXY;\nvarying float vWaferCadFarTop;',
     );
     shader.vertexShader = injectAfter(
       shader.vertexShader,
       '#include <begin_vertex>',
-      'vWaferCadFarXY = position.xy;\\nvWaferCadFarTop = smoothstep(0.25, 0.85, abs(normal.z));',
+      'vWaferCadFarXY = position.xy;\nvWaferCadFarTop = smoothstep(0.25, 0.85, abs(normal.z));',
     );
     shader.fragmentShader = injectAfter(
       shader.fragmentShader,
