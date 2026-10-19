@@ -5,6 +5,7 @@ import {
   canUseGpuRoughPreview,
   canUseGpuRoughTask,
   decorateGpuRoughMaterial,
+  decorateRoughFarFieldMaterial,
   decorateGpuRoughLineMaterial,
   gpuRoughAppearanceUniforms,
   supportsPreciseGpuRoughDisplacement,
@@ -38,6 +39,7 @@ test('GPU rough uniforms preserve deterministic appearance identity', () => {
   assert.equal(uniforms.waferCadRoughSampleOriginY.value, -7.25);
   assert.equal(uniforms.waferCadRoughProfileNormal.value, -1);
   assert.equal(uniforms.waferCadRoughNormalStrength.value, 0.75);
+  assert.equal(uniforms.waferCadRoughFarFieldContrast.value, 0);
   assert.equal(uniforms.waferCadRoughVisualBlend.value, 1);
   const filtered = gpuRoughAppearanceUniforms({ ...appearance, displayRoughBlend: 0.12 });
   assert.equal(filtered.waferCadRoughVisualBlend.value, 0.12);
@@ -95,7 +97,7 @@ test('GPU rough decorator chains existing material shader hooks', () => {
     uniforms: {},
     vertexShader: '#include <common>\nvoid main() {\n#include <begin_vertex>\n}',
     fragmentShader:
-      '#include <common>\nvarying vec3 vViewPosition;\nvoid main() {\nvec3 normal = vec3(0.0,0.0,1.0);\n#include <normal_fragment_maps>\n}',
+      '#include <common>\nvarying vec3 vViewPosition;\nvoid main() {\nvec3 normal = vec3(0.0,0.0,1.0);\n#include <color_fragment>\n#include <normal_fragment_maps>\n}',
   };
 
   assert.equal(decorateGpuRoughMaterial(material, appearance), true);
@@ -104,7 +106,7 @@ test('GPU rough decorator chains existing material shader hooks', () => {
   assert.equal(priorCompileCalls, 1);
   assert.equal(material.needsUpdate, true);
   assert.equal(material.userData.waferCadGpuRough.normalStrengthBase, 1);
-  assert.match(material.customProgramCacheKey(), /wafercad-gpu-rough-v5/);
+  assert.match(material.customProgramCacheKey(), /wafercad-gpu-rough-v6/);
   assert.match(shader.vertexShader, /waferCadGpuDisplace/);
   assert.doesNotMatch(shader.vertexShader, /instanceMatrix\[3\]\.xy/);
   assert.match(shader.vertexShader, /transformed\.z \+= waferCadRoughProfileNormal/);
@@ -113,6 +115,7 @@ test('GPU rough decorator chains existing material shader hooks', () => {
   assert.match(shader.vertexShader, /waferCadRoughVisualBlend/);
   assert.match(shader.vertexShader, /return mix\(center, raw, waferCadRoughVisualBlend\)/);
   assert.match(shader.fragmentShader, /waferCadScreenDx/);
+  assert.match(shader.fragmentShader, /waferCadRoughFarFieldContrast \* step/);
   assert.match(shader.fragmentShader, /waferCadMicroNormalWeight = smoothstep\(1\.5, 3\.0/);
   assert.match(shader.fragmentShader, /waferCadRoughNormalStrength \* waferCadMicroNormalWeight/);
   assert.match(shader.vertexShader, /vWaferCadRoughSurface = step\(0\.0, waferCadGpuDisplace\)/);
@@ -145,4 +148,22 @@ test('GPU rough outline shader shares cap vertex-height profile without normal-f
   assert.doesNotMatch(shader.fragmentShader, /waferCadGaussianHash/);
   assert.equal(shader.uniforms.waferCadRoughProfileNormal.value, -1);
   assert.equal(shader.uniforms.waferCadRoughSampleOriginX.value, 12.5);
+});
+
+test('software roughness visibility shader changes only color, not displaced geometry', () => {
+  const material = { userData: {}, customProgramCacheKey: () => 'base' };
+  const sourceVertex = '#include <common>\\nvoid main() {\\n#include <begin_vertex>\\n}';
+  const shader = {
+    uniforms: {},
+    vertexShader: sourceVertex,
+    fragmentShader:
+      '#include <common>\\nvoid main() {\\n#include <color_fragment>\\n}',
+  };
+  assert.equal(decorateRoughFarFieldMaterial(material, appearance), true);
+  material.onBeforeCompile(shader, {});
+  assert.equal(shader.vertexShader, sourceVertex);
+  assert.match(shader.fragmentShader, /diffuseColor.rgb \*= 1.0 - waferCadRoughFarFieldContrast/);
+  assert.match(material.customProgramCacheKey(), /wafercad-rough-farfield-v1/);
+  assert.equal(shader.uniforms.waferCadRoughFarFieldContrast.value, 0);
+  assert.equal(decorateRoughFarFieldMaterial({}, { ...appearance, kind: 'smooth' }), false);
 });
