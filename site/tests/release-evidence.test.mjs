@@ -109,16 +109,17 @@ test('Photodetector Renderer changes require focused science and real browser ow
     '625-site array renderer regression',
     '625-site edge-on exact-wall restoration',
     'Stage C shared runtime and M4 real projects',
-  ]) assert.ok(required.includes(name), name);
-  const snapshot = { ...seed(), paths, checks: required.map(name => check(name)) };
+  ])
+    assert.ok(required.includes(name), name);
+  const snapshot = { ...seed(), paths, checks: required.map((name) => check(name)) };
   assert.equal(evaluateRelease(snapshot).fast, true);
   for (const name of required) {
-    const without = snapshot.checks.filter(c => c.name !== name);
+    const without = snapshot.checks.filter((c) => c.name !== name);
     assert.equal(evaluateRelease({ ...snapshot, checks: without }).fast, false, name);
     assert.equal(
       evaluateRelease({
         ...snapshot,
-        checks: snapshot.checks.map(c => c.name === name ? check(name, 'skipped') : c),
+        checks: snapshot.checks.map((c) => (c.name === name ? check(name, 'skipped') : c)),
       }).fast,
       false,
       name,
@@ -133,12 +134,12 @@ test('Mask onboarding PR requires its shared UI and Main/Mask browser gates', ()
   assert.ok(required.includes('Main and Mask browser gates'));
   assert.ok(required.includes('Stage C shared runtime and M4 real projects'));
   assert.ok(!required.includes('625-site array renderer regression'));
-  const snapshot = { ...seed(), paths, checks: required.map(name => check(name)) };
+  const snapshot = { ...seed(), paths, checks: required.map((name) => check(name)) };
   assert.equal(evaluateRelease(snapshot).fast, true);
   assert.equal(
     evaluateRelease({
       ...snapshot,
-      checks: snapshot.checks.filter(c => c.name !== 'Main and Mask browser gates'),
+      checks: snapshot.checks.filter((c) => c.name !== 'Main and Mask browser gates'),
     }).fast,
     false,
   );
@@ -162,15 +163,21 @@ test('bundled Project IO, recovery, scientific and unknown scopes remain full re
       evaluateRelease({
         ...seed(),
         paths: [path],
-        checks: ['quality', ...targetedProductionGates(['site/three-view.js'])].map(name => check(name)),
+        checks: ['quality', ...targetedProductionGates(['site/three-view.js'])].map((name) =>
+          check(name),
+        ),
       }).fast,
       false,
       path,
     );
   }
-  assert.equal(targetedProductionGates(['docs/science/ROUGHNESS_MORPHOLOGY.md']).join(','), 'quality');
   assert.equal(
-    evaluateRelease({ ...seed(), paths: ['site/three-view.js', '.github/workflows/pages.yml'] }).fast,
+    targetedProductionGates(['docs/science/ROUGHNESS_MORPHOLOGY.md']).join(','),
+    'quality',
+  );
+  assert.equal(
+    evaluateRelease({ ...seed(), paths: ['site/three-view.js', '.github/workflows/pages.yml'] })
+      .fast,
     false,
   );
 });
