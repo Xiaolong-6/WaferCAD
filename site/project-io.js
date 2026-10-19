@@ -827,7 +827,10 @@ export async function readProjectFile(
 
   expandProjectStorage(parsed);
   const project = validateProjectFile(migrateProjectFile(parsed));
-  if (project.model.kernel === CONTINUOUS_ETCH_MODEL_KERNEL && !experimentalContinuousEtchReadOnly) {
+  if (
+    project.model.kernel === CONTINUOUS_ETCH_MODEL_KERNEL &&
+    !experimentalContinuousEtchReadOnly
+  ) {
     throw new Error(
       'Continuous Etch is not yet supported by the production Workstation; no flat import is permitted.',
     );

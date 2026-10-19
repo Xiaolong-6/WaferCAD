@@ -3197,7 +3197,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
     }
     const model = getModel();
     if (!model) return;
-    if (model.kernel === CONTINUOUS_ETCH_MODEL_KERNEL || model.continuousEtchOwner != null) {
+    if (
+      model.kernel === CONTINUOUS_ETCH_MODEL_KERNEL ||
+      model.continuousEtchOwner != null
+    ) {
       // The old 2.5D geometry is only an unetched reference, not the final solid.
       disposeGroup();
       host.dataset.renderState = 'error';

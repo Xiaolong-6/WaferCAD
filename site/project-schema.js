@@ -604,7 +604,10 @@ function validateModel(model, budget, geometryCache) {
     if (region.stack.length === 0) fail(`${path}.stack`, 'must not be empty.');
   });
 
-  if (model.kernel === CONTINUOUS_ETCH_MODEL_KERNEL || Object.hasOwn(model, 'continuousEtchOwner')) {
+  if (
+    model.kernel === CONTINUOUS_ETCH_MODEL_KERNEL ||
+    Object.hasOwn(model, 'continuousEtchOwner')
+  ) {
     try {
       validateContinuousEtchModel(model);
     } catch (error) {
