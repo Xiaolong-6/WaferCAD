@@ -25,16 +25,17 @@ on:
 permissions:
   contents: read
 
-# A publishing run is never cancelled after it passes its expensive gates.
+# Validate each Main SHA independently. Only the final publishing step is
+# serialized; never cancel a deployment that is already in progress.
 concurrency:
-  group: pages
+  group: pages-validation-${{ github.sha }}
   cancel-in-progress: false
 
 jobs:
   release-evidence:
     name: Select proven PR evidence or full release
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 65
     permissions:
       contents: read
       checks: read
@@ -58,7 +59,7 @@ jobs:
   release-quality:
     name: Release lint, format, docs and Node tests
     needs: release-evidence
-    if: ${{ needs.release-evidence.outputs.fast != 'true' }}
+    if: ${{ needs.release-evidence.outputs.fast != 'true' && needs.release-evidence.outputs.mode != 'superseded' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -73,7 +74,7 @@ jobs:
   release-browser:
     name: Release targeted browser regression
     needs: release-evidence
-    if: ${{ needs.release-evidence.outputs.fast != 'true' }}
+    if: ${{ needs.release-evidence.outputs.fast != 'true' && needs.release-evidence.outputs.mode != 'superseded' }}
     uses: ./.github/workflows/browser-regression.yml
     with:
       skip_node_gate: true
@@ -83,7 +84,7 @@ jobs:
   release-ui-v2:
     name: Release real UI v2 acceptance
     needs: release-evidence
-    if: ${{ needs.release-evidence.outputs.fast != 'true' }}
+    if: ${{ needs.release-evidence.outputs.fast != 'true' && needs.release-evidence.outputs.mode != 'superseded' }}
     uses: ./.github/workflows/ui-v2-stage-c-m4.yml
     permissions:
       contents: read
@@ -91,7 +92,7 @@ jobs:
   release-impact:
     name: Select scientific release gates
     needs: release-evidence
-    if: ${{ needs.release-evidence.outputs.fast != 'true' }}
+    if: ${{ needs.release-evidence.outputs.fast != 'true' && needs.release-evidence.outputs.mode != 'superseded' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -122,7 +123,7 @@ jobs:
   release-main-mask:
     name: Real Main/Mask/Section acceptance
     needs: [release-evidence, release-impact]
-    if: ${{ needs.release-evidence.outputs.fast != 'true' && needs.release-impact.outputs.main_mask == 'true' }}
+    if: ${{ needs.release-evidence.outputs.fast != 'true' && needs.release-evidence.outputs.mode != 'superseded' && needs.release-impact.outputs.main_mask == 'true' }}
     uses: ./.github/workflows/ui-v2-main-mask.yml
     permissions:
       contents: read
@@ -130,7 +131,7 @@ jobs:
   release-klayout:
     name: KLayout interchange compatibility
     needs: [release-evidence, release-impact]
-    if: ${{ needs.release-evidence.outputs.fast != 'true' && needs.release-impact.outputs.klayout == 'true' }}
+    if: ${{ needs.release-evidence.outputs.fast != 'true' && needs.release-evidence.outputs.mode != 'superseded' && needs.release-impact.outputs.klayout == 'true' }}
     uses: ./.github/workflows/klayout-compat.yml
     with:
       scope: all
@@ -140,14 +141,14 @@ jobs:
   release-recipe:
     name: Recipe safety acceptance
     needs: [release-evidence, release-impact]
-    if: ${{ needs.release-evidence.outputs.fast != 'true' && needs.release-impact.outputs.recipe == 'true' }}
+    if: ${{ needs.release-evidence.outputs.fast != 'true' && needs.release-evidence.outputs.mode != 'superseded' && needs.release-impact.outputs.recipe == 'true' }}
     uses: ./.github/workflows/process-recipe-safety.yml
     permissions:
       contents: read
 
   release-science:
     name: Scientific release aggregate
-    if: ${{ always() && needs.release-evidence.outputs.fast != 'true' }}
+    if: ${{ always() && needs.release-evidence.outputs.fast != 'true' && needs.release-evidence.outputs.mode != 'superseded' }}
     needs: [release-evidence, release-impact, release-main-mask, release-klayout, release-recipe]
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -184,7 +185,7 @@ jobs:
     needs: [release-evidence, release-quality, release-browser, release-ui-v2, release-science]
     # Without an explicit status function, any intentionally skipped upstream
     # job can silently skip both staging and deployment while leaving CI green.
-    if: ${{ always() && !cancelled() && github.ref == 'refs/heads/main' }}
+    if: ${{ always() && !cancelled() && github.ref == 'refs/heads/main' && needs.release-evidence.outputs.mode != 'superseded' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -248,10 +249,11 @@ jobs:
   deploy:
     name: Publish verified main
     needs: [stage-pages]
-    # A skipped transitive release suite can suppress deploy via GitHub's
-    # implicit success() even when stage-pages has successfully completed.
-    # Explicitly evaluate this job and require the tested artifact stage.
+    # Serialize only publication; verify the Main ref after obtaining the lock.
     if: ${{ always() && !cancelled() && github.ref == 'refs/heads/main' && needs.stage-pages.result == 'success' }}
+    concurrency:
+      group: pages-publication
+      cancel-in-progress: false
     permissions:
       contents: read
       pages: write
@@ -261,32 +263,56 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      published: ${{ steps.deployment.outcome == 'success' }}
+      superseded: ${{ steps.latest.outputs.current == 'false' }}
     steps:
+      - name: Verify current Main under the publication lock
+        id: latest
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const ref = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: 'heads/main',
+            });
+            const current = ref.data.object.sha === context.sha;
+            core.setOutput('current', String(current));
+            core.info(current ? 'Publishing current Main.' : 'Superseded Main: omit publication.');
       - uses: actions/configure-pages@v5
+        if: ${{ steps.latest.outputs.current == 'true' }}
       - name: Deploy the already-tested artifact
         id: deployment
+        if: ${{ steps.latest.outputs.current == 'true' }}
         uses: actions/deploy-pages@v4
 
   release-verdict:
     name: Verify Pages deployment actually happened
-    needs: [stage-pages, deploy]
-    # Even when GitHub Actions reports a green workflow, an implicitly skipped
-    # deployment must be treated as a release failure.
+    needs: [release-evidence, stage-pages, deploy]
+    # An older SHA may be superseded, but cannot masquerade as a deployment.
     if: ${{ always() && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Require successful staging and publishing
+      - name: Require publish or attested supersession
         shell: bash
         env:
+          RELEASE_MODE: ${{ needs.release-evidence.outputs.mode }}
           STAGE_RESULT: ${{ needs.stage-pages.result }}
           DEPLOY_RESULT: ${{ needs.deploy.result }}
+          PUBLISHED: ${{ needs.deploy.outputs.published }}
+          SUPERSEDED: ${{ needs.deploy.outputs.superseded }}
         run: |
-          for gate in STAGE DEPLOY; do
-            result_var="${gate}_RESULT"
-            result="${!result_var}"
-            if [[ "$result" != success ]]; then
-              echo "::error::Pages $gate is $result; release is incomplete."
-              exit 1
-            fi
-          done
+          if [[ "$RELEASE_MODE" == superseded ]]; then
+            test "$STAGE_RESULT" = skipped
+            test "$DEPLOY_RESULT" = skipped
+            echo "Superseded Main did not publish; latest Main owns deployment."
+          elif [[ "$STAGE_RESULT" == success && "$DEPLOY_RESULT" == success && "$PUBLISHED" == true ]]; then
+            echo "The verified current Main artifact was published."
+          elif [[ "$STAGE_RESULT" == success && "$DEPLOY_RESULT" == success && "$SUPERSEDED" == true && "$PUBLISHED" != true ]]; then
+            echo "Main advanced in the publication queue; safely omitted stale publication."
+          else
+            echo "::error::Pages release incomplete: stage=$STAGE_RESULT deploy=$DEPLOY_RESULT published=$PUBLISHED superseded=$SUPERSEDED"
+            exit 1
+          fi
