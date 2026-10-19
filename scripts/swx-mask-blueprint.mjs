@@ -241,7 +241,12 @@ export function buildSwxMaskLayout() {
 }
 
 export function renderSwxMaskSvg(layout){
-  const [w,h]=[1500,1120],sx=8.8,originX=850,originY=570;
+  const [w,h]=[1500,1120];
+  // Fit the complete mask, including external electrical pads; no clipping.
+  const b=layout.bounds;
+  const sx=Math.min(1320/Math.max(1,b.width),850/Math.max(1,b.height));
+  const originX=750-sx*(b.minX+b.maxX)/2,
+        originY=565+sx*(b.minY+b.maxY)/2;
   const plot=([x,y])=>[+(originX+x*sx).toFixed(2),+(originY-y*sx).toFixed(2)];
   const fillBy={fixed:"#5689C6",moving:"#0D9488",compliant:"#8B69B3",metal:"#E5A33D"};
   const title="SWX 2x2 MEMS / source-constrained MASK DRAFT";
@@ -266,8 +271,8 @@ export function renderSwxMaskSvg(layout){
     out.push(`<polygon points="${pts}" fill="${fillBy[e.part]||"#888"}" stroke="${fillBy[e.part]||"#888"}"><title>${esc(e.name)} · ${esc(e.evidence)}</title></polygon>`);
   }
   out.push(`</g>`);
-  const [cx,cy]=plot([-40,0]);out.push(`<circle cx="${cx}" cy="${cy}" r="112" fill="none" stroke="#BE4A3A" stroke-width="2.2" stroke-dasharray="9,7"/>`);
-  out.push(`<text x="93" y="1062" font-family="sans-serif" font-size="15" fill="#334155">Blue: fixed Si/anchors · Green: mobile Si · Purple: aligner flexures · Gold: Cr/Au</text>`);
+  const [cx,cy]=plot([-40,0]);out.push(`<circle cx="${cx}" cy="${cy}" r="${(12.5*sx).toFixed(2)}" fill="none" stroke="#BE4A3A" stroke-width="2.2" stroke-dasharray="9,7"/>`);
+  out.push(`<text x="93" y="1062" font-family="sans-serif" font-size="15" fill="#334155">Blue: supported/fixed Si · Green: movable Si · Purple: aligners · Gold: Signal/Ground Cr/Au</text>`);
   out.push(`<text x="93" y="1090" font-family="sans-serif" font-size="14" fill="#B45309">Scientific status: geometry proposal, NOT author GDS, NOT fabricated-mask verified, NOT native WaferCAD Chromium acceptance</text>`);
   out.push(`</svg>`);
   return out.join("\n");
