@@ -14,8 +14,11 @@ test('production Pages requires quality, browser and UI acceptance before publis
   assert.match(pages, /  stage-pages:\n/);
   assert.match(
     pages,
-    /needs: \[release-quality, release-browser, release-ui-v2, release-science\]/,
+    /needs: \[release-evidence, release-quality, release-browser, release-ui-v2, release-science\]/,
   );
+  assert.match(pages, /  release-evidence:\n/);
+  assert.ok(pages.includes('run: node --test site/tests/release-evidence.test.mjs'));
+  assert.match(pages, /if: .*needs.release-evidence.outputs.fast != 'true'/);
   assert.match(pages, /needs: \[stage-pages\]/);
   assert.match(pages, /run: npm run check/);
   assert.match(pages, /uses: \.\/\.github\/workflows\/browser-regression\.yml/);
@@ -51,10 +54,15 @@ test('Pages cannot silently skip publishing after an upstream optional suite ski
   for (const gate of ['QUALITY', 'BROWSER', 'UI_V2', 'SCIENCE']) {
     assert.match(stage, new RegExp(`\\b${gate}_RESULT:\\s*\\$\\{\\{ needs\\.`));
   }
-  assert.match(stage, /if \[\[ "\$result" != success \]\]; then/);
+  assert.match(stage, /test "\$EVIDENCE_RESULT" = success/);
+  assert.match(stage, /if \[\[ "\$FAST" == true \]\]; then/);
+  assert.match(stage, /expected=skipped/);
+  assert.match(stage, /elif \[\[ "\$FAST" == false \]\]; then/);
+  assert.match(stage, /expected=success/);
+  assert.match(stage, /if \[\[ "\$result" != "\$expected" \]\]; then/);
   assert.match(stage, /exit 1/);
   assert.ok(
-    stage.indexOf('Require successful same-revision release gates') <
+    stage.indexOf('Require proven fast release or successful full release gates') <
       stage.indexOf('Checkout verified revision'),
     'fail-closed release gate must precede artifact construction',
   );
@@ -93,9 +101,12 @@ test('Pages scientific gate requires routed Main/Mask, KLayout and Recipe outcom
   assert.match(pages, /  release-science:\n/);
   assert.match(
     pages,
-    /needs: \[release-impact, release-main-mask, release-klayout, release-recipe\]/,
+    /needs: \[release-evidence, release-impact, release-main-mask, release-klayout, release-recipe\]/,
   );
-  assert.match(pages, /if: \$\{\{ always\(\) \}\}/);
+  assert.match(
+    pages,
+    /if: \$\{\{ always\(\) && needs\.release-evidence\.outputs\.fast != 'true' \}\}/,
+  );
   assert.match(pages, /test "\$result" = success/);
   assert.match(pages, /test "\$result" = skipped/);
   for (const [job, path] of [
