@@ -17,7 +17,7 @@ test('production Pages requires quality, browser and UI acceptance before publis
     /needs: \[release-evidence, release-quality, release-browser, release-ui-v2, release-science\]/,
   );
   assert.match(pages, /  release-evidence:\n/);
-  assert.match(pages, /run: node --test site/tests/release-evidence.test.mjs/);
+  assert.ok(pages.includes('run: node --test site/tests/release-evidence.test.mjs'));
   assert.match(pages, /if: .*needs.release-evidence.outputs.fast != 'true'/);
   assert.match(pages, /needs: \[stage-pages\]/);
   assert.match(pages, /run: npm run check/);

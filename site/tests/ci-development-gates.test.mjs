@@ -44,7 +44,7 @@ test('draft deferral never disables reusable production release acceptance', () 
   );
   assert.match(release, /release-evidence:/);
   assert.match(release, /if: .*needs.release-evidence.outputs.fast != 'true'/);
-  assert.match(release, /run: node scripts/release/verified-pr-release.mjs/);
+  assert.ok(release.includes('run: node scripts/release/verified-pr-release.mjs'));
 });
 
 test('Draft browser baseline retains UI smoke and scientific process gate', () => {
