@@ -36,6 +36,7 @@ const seed = () => ({
 
 test('an infra-only change is not a change to shipped geometry or processes', () => {
   assert.equal(classifyRelease(seed().paths), 'infra');
+  assert.equal(classifyRelease([...seed().paths, 'docs/operations/README.md']), 'infra');
   assert.equal(classifyRelease(['site/three-view.js']), 'production');
   assert.equal(classifyRelease(['site/model.js']), 'production');
   assert.equal(classifyRelease(['.github/workflows/browser-regression.yml']), 'full');

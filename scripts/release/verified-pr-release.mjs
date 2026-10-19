@@ -25,6 +25,7 @@ export const INFRA_FILES = Object.freeze([
   'scripts/release/verified-pr-release.mjs',
   'site/tests/release-evidence.test.mjs',
   'docs/operations/RELEASE_EVIDENCE.md',
+  'docs/operations/README.md',
 ]);
 
 export function classifyRelease(paths) {
@@ -71,7 +72,7 @@ async function api(path) {
       Accept: 'application/vnd.github+json',
       'X-GitHub-Api-Version': '2022-11-28',
     },
-    signal: AbortSignal.timeout(15000),
+    signal: globalThis.AbortSignal.timeout(15000),
   });
   if (!response.ok) throw Error('GitHub API ' + response.status + ' for ' + path);
   return response.json();
