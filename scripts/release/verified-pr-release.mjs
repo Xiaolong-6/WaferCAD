@@ -46,7 +46,10 @@ export function targetedProductionGates(paths) {
       if (plan.suites[owner]) required.push('Native v2 Release ' + owner);
     }
     if (plan.suites.renderer) {
-      required.push('625-site array renderer regression', '625-site edge-on exact-wall restoration');
+      required.push(
+        '625-site array renderer regression',
+        '625-site edge-on exact-wall restoration',
+      );
     }
     if (plan.suites.process) {
       for (const domain of ['process', 'io', 'array']) {
@@ -217,17 +220,18 @@ async function findRelease() {
       reason: 'PR head lacks current main base',
     };
   }
-  const required = mode === 'infra'
-    ? ['quality', 'Release evidence contract']
-    : targetedProductionGates(paths);
-  if (!required) return { fast: false, mode: 'full', reason: 'integrity-sensitive production scope' };
+  const required =
+    mode === 'infra' ? ['quality', 'Release evidence contract'] : targetedProductionGates(paths);
+  if (!required)
+    return { fast: false, mode: 'full', reason: 'integrity-sensitive production scope' };
 
   // The owner may approve a merge while its PR jobs are still running.
   // Wait for already-running proof instead of immediately repeating every
   // expensive browser/science suite on main. Polling is bounded and never
   // permits a failed, cancelled, skipped-required, or missing job to pass.
   const waitUntil = Date.now() + 55 * 60 * 1000;
-  let checks = [], complete = false;
+  let checks = [],
+    complete = false;
   while (true) {
     const latest = await api('git/ref/heads/main');
     if (latest.object?.sha !== sha)
@@ -236,38 +240,50 @@ async function findRelease() {
     if (listing.total_count > 100 || !Array.isArray(listing.check_runs))
       return { fast: false, mode: 'full', reason: 'PR check listing unavailable or truncated' };
     checks = listing.check_runs;
-    const pending = checks.some(c => c.status !== 'completed');
-    const missing = required.some(name => checks.filter(c => c.name === name).length !== 1);
+    const pending = checks.some((c) => c.status !== 'completed');
+    const missing = required.some((name) => checks.filter((c) => c.name === name).length !== 1);
     complete = !pending && !missing;
     if (complete || Date.now() >= waitUntil) break;
     // Absent jobs may still be queued at the start of a PR's workflows.
     // If no jobs are running and the mandatory list is incomplete, the
     // routing is not proven; avoid sleeping for the full timeout.
     if (!pending && Date.now() < waitUntil - 53 * 60 * 1000) {
-      await new Promise(resolve => setTimeout(resolve, 30000));
+      await new Promise((resolve) => setTimeout(resolve, 30000));
       continue;
     }
     if (!pending) break;
-    await new Promise(resolve => setTimeout(resolve, 30000));
+    await new Promise((resolve) => setTimeout(resolve, 30000));
   }
-  if (!complete) return { fast: false, mode: 'full', reason: 'required PR evidence did not complete in time' };
-  const quality = checks.filter(c => c.name === 'quality' && c.conclusion === 'success');
+  if (!complete)
+    return { fast: false, mode: 'full', reason: 'required PR evidence did not complete in time' };
+  const quality = checks.filter((c) => c.name === 'quality' && c.conclusion === 'success');
   let fullQuality = false;
   if (quality.length === 1) {
-    const jobId = String(quality[0].details_url || '').split('/job/')[1]?.split('/')[0];
+    const jobId = String(quality[0].details_url || '')
+      .split('/job/')[1]
+      ?.split('/')[0];
     if (jobId) {
       const job = await api('actions/jobs/' + jobId);
       fullQuality =
         job.head_sha === parents[1] &&
         job.conclusion === 'success' &&
         job.steps?.some(
-          s => s.name === 'Final lint, formatting, generated documentation and Node tests'
-            && s.conclusion === 'success',
+          (s) =>
+            s.name === 'Final lint, formatting, generated documentation and Node tests' &&
+            s.conclusion === 'success',
         );
     }
   }
   const verdict = evaluateRelease({
-    event, sha, parents, paths, pull, sameTree, baseIsAncestor, checks, fullQuality,
+    event,
+    sha,
+    parents,
+    paths,
+    pull,
+    sameTree,
+    baseIsAncestor,
+    checks,
+    fullQuality,
   });
   if (!verdict.fast) return verdict;
   const seen = new Set();
