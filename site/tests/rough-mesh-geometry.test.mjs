@@ -412,7 +412,11 @@ test('buried rough interfaces do not generate ideal-plane closure skirts', () =>
       closeToIdeal: false,
     });
 
-  assert.equal(exposed.roughBorderPositions.length, 0, 'a cosmetic rough patch has no structural border');
+  assert.equal(
+    exposed.roughBorderPositions.length,
+    0,
+    'a cosmetic rough patch has no structural border',
+  );
   assert.ok(exposed.roughBoundaryPositions.length > 0, 'mesh boundary profiles remain available');
   assert.equal(buried.roughBorderPositions.length, 0);
   assert.ok(exposed.positions.length > buried.positions.length);

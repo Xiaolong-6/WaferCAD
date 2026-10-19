@@ -82,8 +82,8 @@ export async function createMainView({ project, sharedState, workstation, render
     emptyHint.update(
       Boolean(
         workstation &&
-          !workstation.readOnlyPreview &&
-          shouldShowEmptyProcessHint(state?.model, workstation.hasProcessHistory?.() === true),
+        !workstation.readOnlyPreview &&
+        shouldShowEmptyProcessHint(state?.model, workstation.hasProcessHistory?.() === true),
       ),
     );
   const caption = () =>

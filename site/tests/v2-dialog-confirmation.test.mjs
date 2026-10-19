@@ -3,7 +3,9 @@ import test from 'node:test';
 import { createDialogConfirmation } from '../ui-v2/view-kit/confirmation-dialog.js';
 
 function harness() {
-  let opened, focused = null, closeCount = 0;
+  let opened,
+    focused = null,
+    closeCount = 0;
   const el = (tag, attrs = {}, ...children) => ({
     tag, attrs, children: children.flat().filter((item) => item != null),
   });
@@ -11,7 +13,9 @@ function harness() {
     tag: 'button',
     label,
     attrs,
-    focus() { focused = label; },
+    focus() {
+      focused = label;
+    },
   });
   const overlays = {
     mount(type, options) {
@@ -47,10 +51,19 @@ test('History edit actions are vertical with a distinct Cancel footer', async ()
     detail: '8 later Steps follow',
     actions: [
       { value: 'cancel', label: 'Cancel' },
-      { value: 'replace-discard', label: 'Replace & discard later Steps',
-        kind: 'danger', helpKey: 'history.edit.discard', description: 'Remove 8 later Steps' },
-      { value: 'replace-replay', label: 'Replace & replay later Steps',
-        helpKey: 'history.edit.replay', description: 'Replay 8 later Steps' },
+      {
+        value: 'replace-discard',
+        label: 'Replace & discard later Steps',
+        kind: 'danger',
+        helpKey: 'history.edit.discard',
+        description: 'Remove 8 later Steps',
+      },
+      {
+        value: 'replace-replay',
+        label: 'Replace & replay later Steps',
+        helpKey: 'history.edit.replay',
+        description: 'Replay 8 later Steps',
+      },
       { value: 'branch-edit-replay', label: 'New Variant · Carry later Steps' },
       { value: 'branch-edit', label: 'New Variant · Edited Step only' },
     ],
@@ -65,12 +78,14 @@ test('History edit actions are vertical with a distinct Cancel footer', async ()
   assert.equal(h.buttons().length, 5);
   assert.equal(h.buttons()[0].attrs['data-risk'], 'danger');
   assert.equal(h.buttons()[0].attrs['data-help'], 'history.edit.discard');
-  const choices = h.opened().content.children.find(
-    (entry) => entry?.attrs?.class === 'v2-confirm-dialog-choices',
-  );
+  const choices = h
+    .opened()
+    .content.children.find((entry) => entry?.attrs?.class === 'v2-confirm-dialog-choices');
   assert.ok(choices);
   assert.ok(
-    choices.children.every((entry) => entry.children.length === 1 && entry.children[0].tag === 'button'),
+    choices.children.every(
+      (entry) => entry.children.length === 1 && entry.children[0].tag === 'button',
+    ),
     'Choice labels are buttons only: detail belongs to the shared hover tooltip',
   );
   assert.equal(h.focused(), 'Cancel', 'Dangerous options must not autofocus');
@@ -84,7 +99,10 @@ test('Escape and backdrop return cancellation without applying a choice', async 
   const pending = h.dialog.ask({
     title: 'Insert before Step',
     message: 'Insert?',
-    actions: [{ value: 'cancel', label: 'Cancel' }, { value: 'branch-start', label: 'Start' }],
+    actions: [
+      { value: 'cancel', label: 'Cancel' },
+      { value: 'branch-start', label: 'Start' },
+    ],
   });
   h.opened().onClose('escape');
   assert.equal(await pending, 'cancel');

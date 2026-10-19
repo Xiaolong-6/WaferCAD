@@ -20,11 +20,7 @@ export function createDialogConfirmation({ overlays, el, button }) {
           'data-risk': action.kind === 'danger' ? 'danger' : null,
         });
         control.onclick = () => finish(action.value);
-        return el(
-          'div',
-          { class: 'v2-confirm-dialog-option' },
-          control,
-        );
+        return el('div', { class: 'v2-confirm-dialog-option' }, control);
       });
       const content = el(
         'div',
@@ -32,7 +28,11 @@ export function createDialogConfirmation({ overlays, el, button }) {
         el('strong', {}, title),
         el('p', {}, message),
         detail ? el('p', { class: 'p-aux' }, detail) : null,
-        el('div', { class: 'v2-confirm-dialog-choices', role: 'group', 'aria-label': 'Available actions' }, choices),
+        el(
+          'div',
+          { class: 'v2-confirm-dialog-choices', role: 'group', 'aria-label': 'Available actions' },
+          choices,
+        ),
         el('div', { class: 'p-actions v2-confirm-dialog-footer' }, cancel),
       );
       overlays.mount('dialog', {
@@ -53,7 +53,11 @@ export function createDialogConfirmation({ overlays, el, button }) {
       ...options,
       actions: [
         { value: false, label: 'Cancel' },
-        { value: true, label: options.confirmLabel || 'Continue', kind: options.danger ? 'danger' : 'primary' },
+        {
+          value: true,
+          label: options.confirmLabel || 'Continue',
+          kind: options.danger ? 'danger' : 'primary',
+        },
       ],
       cancelValue: false,
     });
