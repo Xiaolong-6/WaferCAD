@@ -47,8 +47,9 @@ import {
 import {
   canUseGpuRoughTask,
   decorateGpuRoughMaterial,
+  decorateRoughFarFieldMaterial,
   supportsPreciseGpuRoughDisplacement,
-} from './gpu-rough-surface.js?v=rough-line-v1';
+} from './gpu-rough-surface.js?v=rough-farfield-v1';
 import { triangulatePolygon } from './polygon-triangulation.js';
 import {
   spatialInstanceChunks,
@@ -67,6 +68,7 @@ import { buildRoughSpatialZones, prepareMorphologyExportTasks } from './morpholo
 import {
   adaptiveRoughMeshLod,
   roughDisplayHeightBlend,
+  roughFarFieldContrast,
   allocateRoughTriangleBudgets,
   projectedPixelsPerUnit,
   roughDisplayProfileOffsetAtPoint,
@@ -724,6 +726,11 @@ export function createThreeView({
         lod = roughLod(featurePixels),
         gpuRough = entry.material.userData?.waferCadGpuRough;
       entry.material.roughness = 0.82 + 0.12 * lod.detail;
+      const farField =
+        entry.material.userData?.waferCadRoughFarField?.uniforms?.waferCadRoughFarFieldContrast;
+      // Pixel derivatives choose the actual per-fragment LOD. Supply only
+      // material-wide statistical strength so instanced meshes may share it.
+      if (farField) farField.value = roughFarFieldContrast(0, entry.appearance);
       if (gpuRough?.uniforms?.waferCadRoughNormalStrength) {
         gpuRough.uniforms.waferCadRoughNormalStrength.value =
           (Number(gpuRough.normalStrengthBase) || 0) * lod.micro;
@@ -2581,6 +2588,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
           profileNormal: cap.profileNormal ?? cap.normal,
           normalStrength: mode === 'interactive' ? 0.82 : 1,
         });
+      } else if (!task.implant && !cap.buried && roughFarFieldContrast(0, cap.appearance) > 0) {
+        decorateRoughFarFieldMaterial(material, task.visualAppearance || cap.appearance);
       }
       if (task.polygonOffset) {
         material.polygonOffset = true;
@@ -2905,6 +2914,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
             profileNormal: cap.profileNormal ?? cap.normal,
             normalStrength: interactive ? 0.82 : 1,
           });
+        } else if (!task.implant && !cap.buried && roughFarFieldContrast(0, cap.appearance) > 0) {
+          decorateRoughFarFieldMaterial(material, task.visualAppearance || cap.appearance);
         }
         if (task.polygonOffset) {
           material.polygonOffset = true;

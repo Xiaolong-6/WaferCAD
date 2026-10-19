@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   createEmptyHint,
   isBaseOnlyModel,
-  isEmptyActiveMask,
+  isMaskContentEmpty,
   shouldShowEmptyProcessHint,
 } from '../ui-v2/view-kit/empty-state.js';
 
@@ -35,20 +35,37 @@ test('History edit of a Base-only predecessor does not show new-project instruct
   assert.equal(shouldShowEmptyProcessHint({ ...base(), processRevision: 1 }, false), false);
 });
 
-test('Mask hint uses active source and ignores inactive shapes', () => {
+test('Mask onboarding hint appears only when both File and Draw sources are empty', () => {
   const state = {
     maskSourceMode: 'file',
-    layout: { elements: [] },
-    drawMask: { shapes: [{ id: 1 }] },
+    layout: { elements: [], linework: [] },
+    drawMask: { shapes: [] },
   };
-  assert.equal(isEmptyActiveMask(state), true);
-  state.layout.elements.push({ id: 1 });
-  assert.equal(isEmptyActiveMask(state), false);
+  assert.equal(isMaskContentEmpty(state), true);
+  state.layout.elements.push({ id: 'imported-GDS-rectangle' });
+  assert.equal(isMaskContentEmpty(state), false);
   state.maskSourceMode = 'draw';
-  assert.equal(isEmptyActiveMask(state), false);
+  assert.equal(
+    isMaskContentEmpty(state),
+    false,
+    'Switching to empty Draw cannot restore onboarding',
+  );
+  state.layout.elements = [];
+  assert.equal(isMaskContentEmpty(state), true);
+  state.layout.linework.push({ id: 'imported-GDS-path' });
+  assert.equal(isMaskContentEmpty(state), false, 'File linework is Mask content');
+  state.layout.linework = [];
+  state.drawMask.shapes.push({ id: 'drawn-rectangle' });
+  assert.equal(isMaskContentEmpty(state), false);
+  state.maskSourceMode = 'file';
+  assert.equal(
+    isMaskContentEmpty(state),
+    false,
+    'Switching to empty File cannot restore onboarding',
+  );
   state.drawMask.shapes = [];
-  assert.equal(isEmptyActiveMask(state), true);
-  assert.equal(isEmptyActiveMask(null), false);
+  assert.equal(isMaskContentEmpty(state), true);
+  assert.equal(isMaskContentEmpty(null), false);
 });
 
 test('Hint actions are inline buttons and hidden visibility is reversible', () => {
