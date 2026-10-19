@@ -201,3 +201,56 @@ plus continuous-etch branch files:
   release acceptance and cannot prove current integrated HEAD.
 
 No scientific tolerance was relaxed. No approved visual baseline was replaced.
+
+## Native 3D continuous material display prototype (2026-10-19)
+
+`site/continuous-etch-mesh.js` produces surface triangles from the
+existing analytic material owner. It evaluates signed source-material
+footprints and the exact XY-dependent release depth, then samples a
+closed isosurface for each material. Triangle vertices, normals and
+grid resolution are **derived display data**; the Model, History and
+saved continuous front never contain a fixed 8/72-band approximation.
+
+An explicit `vector-continuous-etch-v1` branch in native
+`site/three-view.js` draws those surfaces with the existing material
+presentation and Z display path; it does not use the pre-release
+2.5D Renderer surface plan. Unsupported ROI clipping fails closed.
+The mesh builder imposes voxel and triangle budgets, uses a material-
+thickness-sensitive Z sampling interval, and adds a 0.0001 µm
+**display-only** iso-offset to avoid singular tetrahedra on exact grid
+vertices. This offset does not change stored geometry or science
+tolerances.
+
+Focused evidence on the existing verified `9c19c0d9` source bundle,
+with branch-specific renderer code overlaid:
+
+- Native headed Chromium + Xvfb + SwiftShader rendered the actual
+  published Microdisk M07 predecessor and a 36 µm continuous circular
+  Si release using the real `createThreeView()`. A low-angle view
+  exposes the suspended disk, retained Si pedestal and open undercut.
+- Microdisk display meshes for both Si and SiO2 had exactly two
+  triangles sharing every tested edge (manifold watertight
+  connectivity), with no nonfinite positions/normals.
+- The 1.8 µm SiO2 surface interface and top stayed within
+  0.1 µm of the source endpoints at this **display** resolution.
+- Local scientific owner and mesh input remained unchanged.
+- The local sampled 3D mesh generation took approximately three to
+  four seconds on a software environment; its synchronous first
+  build is **not yet an acceptable interactive latency contract**.
+- `site/tests/continuous-etch-mesh.test.mjs`: 2/2 passed; the
+  mesh module and test passed pinned Prettier 3.9.9 and ESLint 10.11.0
+  targeted checks after restoring user-supplied offline dependencies.
+
+**Acceptance limits:** The screenshot uses the repository's
+`offline-native-app-capture.py` on a prior source-only Artifact plus
+branch edits, under `about:blank` null-origin fallback. This is
+actual production Three.js rendering of source-backed geometry, but
+it does not prove the exact integrated branch HEAD, normal-origin
+Workstation Open, multi-panel state, History/Recovery or renderer
+interaction. Native 3D still needs ROI and selection clipping,
+cancellation/background meshing for large examples, performance
+budgets, visibility/presentation mode regression, GLB export
+parity and ordinary browser acceptance. The current surface shows
+visible tessellation/shading artifacts at the disk rim and substrate
+side; visual release acceptance remains pending. Do not replace
+the released 72-band Microdisk or merge on this evidence.
