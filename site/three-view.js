@@ -10,7 +10,11 @@ import { disposeRendererSceneResources } from './renderer-v4-resource-lifetime.j
 import { runTemporaryRendererCapture } from './renderer-capture-transaction.js';
 import { renderDepthAwareOutlines } from './three-outline-pass.js';
 import { shouldYieldDuringSceneAssembly } from './renderer-cooperative-assembly.js';
-import { CONTINUOUS_ETCH_MODEL_KERNEL } from './continuous-etch-model.js';
+import { buildContinuousMaterialSurfaceMesh } from './continuous-etch-mesh.js';
+import {
+  CONTINUOUS_ETCH_MODEL_KERNEL,
+  validateContinuousEtchModel,
+} from './continuous-etch-model.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
   annotationInspectionCutSegments,
@@ -3188,6 +3192,69 @@ diffuseColor.a *= waferCadAlphaScale;`,
       : 'physical Si (experimental)';
   }
 
+  // Experimental native ThreeView path for exact continuous material. The
+  // displayed triangles are derived: the persisted owner remains analytic.
+  function renderContinuousEtch(model) {
+    const clip = getClipGeometry();
+    if (clip) throw new RangeError('Continuous Etch ROI 3D clipping is not yet supported');
+    const owner = validateContinuousEtchModel(model);
+    if (!owner) throw new RangeError('Missing or invalid continuous material owner');
+    if (
+      physicalSceneModel === model &&
+      physicalSceneSignature === 'continuous-etch-v1' &&
+      presentationObjects.size
+    ) {
+      applyPresentationState();
+      return;
+    }
+
+    disposeGroup();
+    const data = buildContinuousMaterialSurfaceMesh(owner);
+    if (!data.layers.length) throw new RangeError('Continuous Etch has no visible solid');
+    const exterior = { kind: 'material-exterior' };
+    const materialState = presentationState(exterior, getInspection() || {}).materialState;
+    for (const part of data.layers) {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.BufferAttribute(part.positions, 3));
+      geometry.setAttribute('normal', new THREE.BufferAttribute(part.normals, 3));
+      const material = createSurfaceMaterial(
+        layerById(model, part.layerId),
+        materialState,
+        null,
+        exterior,
+      );
+      const mesh = addSurfaceMesh(
+        geometry,
+        material,
+        materialState,
+        null,
+        0,
+        false,
+        null,
+        exterior,
+      );
+      if (mesh) mesh.name = 'continuous-etch-' + part.layerId;
+    }
+    physicalSceneModel = model;
+    physicalSceneSignature = 'continuous-etch-v1';
+    activeSceneVariant = null;
+    physicalSurfacePlan = null;
+    host.dataset.continuousEtchTriangles = String(data.triangles);
+    host.dataset.continuousEtchLayers = String(data.layers.length);
+    host.dataset.rendererUpdateKind = 'continuous-etch-surface';
+    host.dataset.surfaceTopology = JSON.stringify({
+      continuousTriangles: data.triangles,
+      sourceRevision: data.sourceRevision,
+    });
+    delete host.dataset.rendererBuildFailure;
+    applyZDisplayState(model);
+    applyPresentationState({ profile: false, settle: true });
+    host.dataset.renderState = 'ready';
+    stats.textContent = 'Continuous Etch · analytic material, sampled display mesh';
+    fit({ notify: false });
+    scheduleFrame();
+  }
+
   async function render() {
     if (!ready) return;
     if (rendering) {
@@ -3201,12 +3268,16 @@ diffuseColor.a *= waferCadAlphaScale;`,
       model.kernel === CONTINUOUS_ETCH_MODEL_KERNEL ||
       model.continuousEtchOwner != null
     ) {
-      // The old 2.5D geometry is only an unetched reference, not the final solid.
-      disposeGroup();
-      host.dataset.renderState = 'error';
-      host.dataset.renderPhase = 'build-failed';
-      host.dataset.rendererBuildFailure = 'Continuous etch 3D mesh is not implemented';
-      stats.textContent = 'Continuous etch 3D unavailable';
+      try {
+        renderContinuousEtch(model);
+      } catch (error) {
+        disposeGroup();
+        host.dataset.renderState = 'error';
+        host.dataset.renderPhase = 'build-failed';
+        host.dataset.rendererBuildFailure = error?.message || String(error);
+        stats.textContent = 'Continuous Etch 3D unavailable';
+        console.error('Continuous Etch native 3D build failed:', error);
+      }
       return;
     }
     if (model.kernel === PHYSICAL_FACET_MODEL_KERNEL) {
