@@ -187,7 +187,8 @@ export function latestCheckRuns(checks) {
   if (!Array.isArray(checks)) return null;
   const latest = new Map();
   for (const check of checks) {
-    const started = Date.parse(check?.started_at || '');
+    // Queued check runs have a creation time but may not have started yet.
+    const started = Date.parse(check?.created_at || check?.started_at || '');
     if (!check?.name || !Number.isSafeInteger(check.id) || !Number.isFinite(started)) return null;
     const previous = latest.get(check.name);
     if (
