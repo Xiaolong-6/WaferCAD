@@ -9,7 +9,7 @@ globalThis.polygonClipping = vendor.exports;
 
 const { createModel } = await import('../model.js');
 const { rectMulti } = await import('../vector-geometry.js');
-const { planContinuousEtchFromTopology } = await import('../continuous-etch-topology.js');
+const { planContinuousEtchFromTopology, remainingMaterialInContinuousPlan } = await import('../continuous-etch-topology.js');
 const { remainingMaterialAt, continuousDepthAtXY } = await import('../continuous-etch-geometry.js');
 
 function coatedFixture() {
@@ -80,4 +80,12 @@ test('no partial source mutation for invalid targets, arrays, masks or shape', (
   ]) assert.throws(() => plan(model, opts), RangeError);
   assert.throws(() => plan({ ...model, array: { instances: [] } }), /non-array/);
   assert.equal(JSON.stringify(model), before);
+});
+
+test('continuous occupancy rejects a stale material revision', () => {
+  const model = coatedFixture();
+  const plan = planContinuousEtchFromTopology({ model, face: 'front', targetLayerIds: ['oxide'], lateralUm: 3, verticalUm: 3, shape: 'circular' });
+  assert.equal(remainingMaterialInContinuousPlan(model, plan, [0, 0, 2.5]), null);
+  model.revision++;
+  assert.throws(() => remainingMaterialInContinuousPlan(model, plan, [0, 0, 2.5]), /stale/);
 });
