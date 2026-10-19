@@ -76,9 +76,7 @@ test('subpixel relief stays visible without exaggerating the physical heightfiel
   assert.equal(roughFarFieldContrast(0.01, { ...appearance, meanHeight: 0 }), 0);
   assert.equal(roughFarFieldContrast(0.01, { ...appearance, heightCv: 0 }), 0);
   assert.equal(roughFarFieldContrast(0.01, { ...appearance, morphology: 'pyramid' }), 0);
-  assert.ok(
-    roughFarFieldContrast(0.02, { ...appearance, meanHeight: 0.01 }) < far,
-  );
+  assert.ok(roughFarFieldContrast(0.02, { ...appearance, meanHeight: 0.01 }) < far);
   assert.equal(JSON.stringify(appearance), original);
 });
 
