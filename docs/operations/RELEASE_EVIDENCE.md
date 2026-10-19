@@ -7,6 +7,7 @@ and deploy the **actual main SHA**.
 ## Release evidence
 
 A push to main enters the fast path only when:
+
 - An ordinary two-parent merge is associated with exactly one merged PR.
 - The reviewed PR head is the merge's second parent.
 - Deterministic merge tree equals the main commit's actual tree.
@@ -17,6 +18,7 @@ A push to main enters the fast path only when:
   workflow run has the same PR number, head SHA and pull_request trigger.
 
 Two allowlisted fast cases:
+
 1. **CI-only:** Changes are restricted to Pages routing, the focused verifier,
    its independent five-minute contract workflow, tests and this document.
    The PR must pass final Quality and Release evidence contract. No shipped

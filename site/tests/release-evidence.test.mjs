@@ -1,14 +1,19 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  classifyRelease, evaluateRelease, PRODUCTION_GATES,
+  classifyRelease,
+  evaluateRelease,
+  PRODUCTION_GATES,
 } from '../../scripts/release/verified-pr-release.mjs';
 
 const sha = 'a'.repeat(40);
 const base = 'b'.repeat(40);
 const head = 'c'.repeat(40);
 const check = (name, conclusion = 'success') => ({
-  name, status: 'completed', conclusion, app: { slug: 'github-actions' },
+  name,
+  status: 'completed',
+  conclusion,
+  app: { slug: 'github-actions' },
 });
 const pull = {
   number: 17,
@@ -23,10 +28,7 @@ const seed = () => ({
   event: 'push',
   sha,
   parents: [base, head],
-  paths: [
-    '.github/workflows/pages.yml',
-    'scripts/release/verified-pr-release.mjs',
-  ],
+  paths: ['.github/workflows/pages.yml', 'scripts/release/verified-pr-release.mjs'],
   pull,
   sameTree: true,
   baseIsAncestor: true,
@@ -98,13 +100,20 @@ test('production code requires every mandatory science, renderer and UI owner', 
     const without = snapshot.checks.filter((c) => c.name !== name);
     assert.equal(evaluateRelease({ ...snapshot, checks: without }).fast, false, name);
   }
-  assert.equal(evaluateRelease({
-    ...snapshot, paths: ['site/three-view.js', '.github/workflows/pages.yml'],
-  }).fast, false);
+  assert.equal(
+    evaluateRelease({
+      ...snapshot,
+      paths: ['site/three-view.js', '.github/workflows/pages.yml'],
+    }).fast,
+    false,
+  );
 });
 
 test('unselected optional suites may skip, but mandatory suites cannot skip', () => {
-  const snapshot = { ...seed(), checks: [...seed().checks, check('Optional visual evidence', 'skipped')] };
+  const snapshot = {
+    ...seed(),
+    checks: [...seed().checks, check('Optional visual evidence', 'skipped')],
+  };
   assert.equal(evaluateRelease(snapshot).fast, true);
   snapshot.checks = [check('quality', 'skipped'), check('Release evidence contract')];
   assert.equal(evaluateRelease(snapshot).fast, false);

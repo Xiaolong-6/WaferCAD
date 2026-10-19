@@ -29,25 +29,59 @@ export const INFRA_FILES = Object.freeze([
 ]);
 
 export function classifyRelease(paths) {
-  if (!Array.isArray(paths) || !paths.length || paths.some((p) => typeof p !== 'string')) return 'full';
+  if (!Array.isArray(paths) || !paths.length || paths.some((p) => typeof p !== 'string'))
+    return 'full';
   if (paths.every((p) => INFRA_FILES.includes(p))) return 'infra';
-  if (paths.some((p) => p.startsWith('.github/') || p.startsWith('scripts/release/'))) return 'full';
+  if (paths.some((p) => p.startsWith('.github/') || p.startsWith('scripts/release/')))
+    return 'full';
   return 'production';
 }
 
-export function evaluateRelease({ event, sha, parents, paths, pull, sameTree, baseIsAncestor, checks, fullQuality }) {
+export function evaluateRelease({
+  event,
+  sha,
+  parents,
+  paths,
+  pull,
+  sameTree,
+  baseIsAncestor,
+  checks,
+  fullQuality,
+}) {
   const fallback = (reason) => ({ fast: false, mode: 'full', reason });
-  if (event !== 'push' || !/^[0-9a-f]{40}$/.test(sha || '') ||
-      !Array.isArray(parents) || parents.length !== 2) return fallback('not an ordinary main merge');
-  if (!pull || pull.merged !== true || pull.state !== 'closed' || pull.draft ||
-      pull.merge_commit_sha !== sha || pull.head?.sha !== parents[1] ||
-      pull.base?.ref !== 'main' || !pull.number) return fallback('missing exact PR provenance');
-  if (!sameTree || !baseIsAncestor) return fallback('PR head did not contain final main base or matching tree');
+  if (
+    event !== 'push' ||
+    !/^[0-9a-f]{40}$/.test(sha || '') ||
+    !Array.isArray(parents) ||
+    parents.length !== 2
+  )
+    return fallback('not an ordinary main merge');
+  if (
+    !pull ||
+    pull.merged !== true ||
+    pull.state !== 'closed' ||
+    pull.draft ||
+    pull.merge_commit_sha !== sha ||
+    pull.head?.sha !== parents[1] ||
+    pull.base?.ref !== 'main' ||
+    !pull.number
+  )
+    return fallback('missing exact PR provenance');
+  if (!sameTree || !baseIsAncestor)
+    return fallback('PR head did not contain final main base or matching tree');
   const mode = classifyRelease(paths);
   if (mode === 'full') return fallback('unsafe or mixed release configuration scope');
-  if (!Array.isArray(checks) || checks.length < 2 ||
-      checks.some((c) => !c || c.app?.slug !== 'github-actions' ||
-        c.status !== 'completed' || !['success', 'skipped'].includes(c.conclusion))) {
+  if (
+    !Array.isArray(checks) ||
+    checks.length < 2 ||
+    checks.some(
+      (c) =>
+        !c ||
+        c.app?.slug !== 'github-actions' ||
+        c.status !== 'completed' ||
+        !['success', 'skipped'].includes(c.conclusion),
+    )
+  ) {
     return fallback('PR checks missing, incomplete or failed');
   }
   const required = mode === 'infra' ? ['quality', 'Release evidence contract'] : PRODUCTION_GATES;
@@ -58,28 +92,38 @@ export function evaluateRelease({ event, sha, parents, paths, pull, sameTree, ba
     }
   }
   if (!fullQuality) return fallback('draft-only Quality cannot authorize production');
-  return { fast: true, mode, reason: 'exact tree and complete verified PR checks' };
+  return {
+    fast: true,
+    mode,
+    reason: 'exact tree and complete verified PR checks',
+  };
 }
 
 function git(...args) {
-  return execFileSync('git', args, { encoding: 'utf8', maxBuffer: 4 * 1024 * 1024 }).trim();
+  return execFileSync('git', args, {
+    encoding: 'utf8',
+    maxBuffer: 4 * 1024 * 1024,
+  }).trim();
 }
 
 async function api(path) {
-  const response = await fetch('https://api.github.com/repos/' + process.env.GITHUB_REPOSITORY + '/' + path, {
-    headers: {
-      Authorization: 'Bearer ' + process.env.GITHUB_TOKEN,
-      Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28',
+  const response = await fetch(
+    'https://api.github.com/repos/' + process.env.GITHUB_REPOSITORY + '/' + path,
+    {
+      headers: {
+        Authorization: 'Bearer ' + process.env.GITHUB_TOKEN,
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+      signal: globalThis.AbortSignal.timeout(15000),
     },
-    signal: globalThis.AbortSignal.timeout(15000),
-  });
+  );
   if (!response.ok) throw Error('GitHub API ' + response.status + ' for ' + path);
   return response.json();
 }
 
 function runId(check) {
-  const parts = String(check?.details_url || '').match(/\/actions\/runs\/(\d+)\/job\/\d+/);
+  const parts = String(check?.details_url || '').match(/\/actions\/runs\/(\d+)\/job\/(\d+)/);
   return parts ? Number(parts[1]) : 0;
 }
 
@@ -99,8 +143,8 @@ async function findRelease() {
   let sameTree = false;
   try {
     const candidateTree = git('merge-tree', '--write-tree', parents[0], parents[1]).split('\n')[0];
-    sameTree = /^[0-9a-f]{40}$/.test(candidateTree) &&
-      candidateTree === git('rev-parse', sha + '^{tree}');
+    sameTree =
+      /^[0-9a-f]{40}$/.test(candidateTree) && candidateTree === git('rev-parse', sha + '^{tree}');
   } catch {
     sameTree = false;
   }
@@ -114,11 +158,19 @@ async function findRelease() {
     baseIsAncestor = false;
   }
   if (!baseIsAncestor) {
-    return { fast: false, mode: 'full', reason: 'PR head lacks current main base' };
+    return {
+      fast: false,
+      mode: 'full',
+      reason: 'PR head lacks current main base',
+    };
   }
   const listing = await api('commits/' + parents[1] + '/check-runs?per_page=100');
   if (listing.total_count > 100 || !Array.isArray(listing.check_runs)) {
-    return { fast: false, mode: 'full', reason: 'PR check listing unavailable or truncated' };
+    return {
+      fast: false,
+      mode: 'full',
+      reason: 'PR check listing unavailable or truncated',
+    };
   }
   const checks = listing.check_runs;
   const quality = checks.filter((c) => c.name === 'quality' && c.conclusion === 'success');
@@ -127,29 +179,55 @@ async function findRelease() {
     const jobId = String(quality[0].details_url || '').match(/\/job\/(\d+)/)?.[1];
     if (jobId) {
       const job = await api('actions/jobs/' + jobId);
-      fullQuality = job.head_sha === parents[1] && job.conclusion === 'success' &&
-        job.steps?.some((s) => s.name ===
-          'Final lint, formatting, generated documentation and Node tests' &&
-          s.conclusion === 'success');
+      fullQuality =
+        job.head_sha === parents[1] &&
+        job.conclusion === 'success' &&
+        job.steps?.some(
+          (s) =>
+            s.name === 'Final lint, formatting, generated documentation and Node tests' &&
+            s.conclusion === 'success',
+        );
     }
   }
   const verdict = evaluateRelease({
-    event, sha, parents, paths, pull, sameTree, baseIsAncestor, checks, fullQuality,
+    event,
+    sha,
+    parents,
+    paths,
+    pull,
+    sameTree,
+    baseIsAncestor,
+    checks,
+    fullQuality,
   });
   if (!verdict.fast) return verdict;
-  const required = verdict.mode === 'infra' ? ['quality', 'Release evidence contract'] : PRODUCTION_GATES;
+  const required =
+    verdict.mode === 'infra' ? ['quality', 'Release evidence contract'] : PRODUCTION_GATES;
   const seen = new Set();
   for (const name of required) {
     const id = runId(checks.find((c) => c.name === name));
-    if (!id) return { fast: false, mode: 'full', reason: 'missing workflow run ID: ' + name };
+    if (!id)
+      return {
+        fast: false,
+        mode: 'full',
+        reason: 'missing workflow run ID: ' + name,
+      };
     if (seen.has(id)) continue;
     const run = await api('actions/runs/' + id);
     // GitHub clears workflow_run.pull_requests after merge; persistent run
     // fields still attest the event, branch, repository and reviewed head.
-    if (run.head_sha !== parents[1] || run.event !== 'pull_request' ||
-        run.conclusion !== 'success' || run.head_branch !== pull.head.ref ||
-        run.head_repository?.full_name !== process.env.GITHUB_REPOSITORY) {
-      return { fast: false, mode: 'full', reason: 'workflow provenance mismatch: ' + name };
+    if (
+      run.head_sha !== parents[1] ||
+      run.event !== 'pull_request' ||
+      run.conclusion !== 'success' ||
+      run.head_branch !== pull.head.ref ||
+      run.head_repository?.full_name !== process.env.GITHUB_REPOSITORY
+    ) {
+      return {
+        fast: false,
+        mode: 'full',
+        reason: 'workflow provenance mismatch: ' + name,
+      };
     }
     seen.add(id);
   }
@@ -164,12 +242,18 @@ async function main() {
     }
     result = await findRelease();
   } catch (error) {
-    result = { fast: false, mode: 'full', reason: 'fail closed: ' + error.message };
+    result = {
+      fast: false,
+      mode: 'full',
+      reason: 'fail closed: ' + error.message,
+    };
   }
   process.stdout.write(JSON.stringify(result) + '\n');
   if (process.env.GITHUB_OUTPUT) {
-    await appendFile(process.env.GITHUB_OUTPUT,
-      'fast=' + result.fast + '\nmode=' + result.mode + '\n');
+    await appendFile(
+      process.env.GITHUB_OUTPUT,
+      'fast=' + result.fast + '\nmode=' + result.mode + '\n',
+    );
   }
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main();
