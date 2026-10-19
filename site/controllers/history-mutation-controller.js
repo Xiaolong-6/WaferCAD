@@ -167,6 +167,7 @@ export function createHistoryMutationController({
         value: 'current-replay',
         label: 'Update current Variant',
         kind: 'primary',
+        helpKey: 'history.insert.current',
         default: true,
       });
     }
@@ -175,6 +176,7 @@ export function createHistoryMutationController({
         value: 'branch-replay',
         label: 'New Variant · Carry later Steps',
         kind: canCurrentReplay ? undefined : 'primary',
+        helpKey: 'history.insert.branch.replay',
         default: !canCurrentReplay,
       });
     }
@@ -183,6 +185,7 @@ export function createHistoryMutationController({
         value: 'branch-start',
         label: 'New Variant · Start from here',
         kind: !canCurrentReplay && !canBranchReplay ? 'primary' : undefined,
+        helpKey: 'history.insert.branch.start',
         default: !canCurrentReplay && !canBranchReplay,
       });
     }
@@ -493,12 +496,14 @@ export function createHistoryMutationController({
             value: 'replace-discard',
             label: edit.downstreamCount ? 'Replace & discard later Steps' : 'Replace Step',
             kind: edit.downstreamCount ? 'danger' : 'primary',
+            helpKey: 'history.edit.discard',
             default: true,
           });
           if (edit.downstreamCount && edit.downstreamReplayable) {
             actions.push({
               value: 'replace-replay',
               label: 'Replace & replay later Steps',
+              helpKey: 'history.edit.replay',
             });
           }
         }
@@ -514,6 +519,7 @@ export function createHistoryMutationController({
             value: 'branch-edit-replay',
             label: 'New Variant · Edit & carry later Steps',
             kind: edit.canReplaceCurrentVariant ? undefined : 'primary',
+            helpKey: 'history.edit.branch.replay',
             default: !edit.canReplaceCurrentVariant,
           });
         }
@@ -524,6 +530,7 @@ export function createHistoryMutationController({
               ? 'New Variant · Edited Step only'
               : 'Save as copy-on-write Variant',
             kind: !edit.canReplaceCurrentVariant && !canBranchReplay ? 'primary' : undefined,
+            helpKey: 'history.edit.branch.only',
             default: !edit.canReplaceCurrentVariant && !canBranchReplay,
           });
         }

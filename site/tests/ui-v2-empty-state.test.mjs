@@ -4,6 +4,7 @@ import {
   createEmptyHint,
   isBaseOnlyModel,
   isEmptyActiveMask,
+  shouldShowEmptyProcessHint,
 } from '../ui-v2/view-kit/empty-state.js';
 
 const base = () => ({
@@ -26,6 +27,12 @@ test('Main hint detects only pristine base-only models', () => {
   assert.equal(isBaseOnlyModel({ ...base(), electricalRegions: [{ id: 1 }] }), false);
   assert.equal(isBaseOnlyModel({ ...base(), array: { instances: [{ x: 0, y: 0 }] } }), false);
   assert.equal(isBaseOnlyModel(null), false);
+});
+
+test('History edit of a Base-only predecessor does not show new-project instruction', () => {
+  assert.equal(shouldShowEmptyProcessHint(base(), false), true);
+  assert.equal(shouldShowEmptyProcessHint(base(), true), false);
+  assert.equal(shouldShowEmptyProcessHint({ ...base(), processRevision: 1 }, false), false);
 });
 
 test('Mask hint uses active source and ignores inactive shapes', () => {

@@ -13,6 +13,7 @@ const paths = [
   '../ui-v2/workstation-workflow.js',
   '../ui-v2/project-mask-panels.js',
   '../ui-v2/view-kit/floating-strip.js',
+  '../controllers/history-mutation-controller.js',
   '../controllers/project-controller.js',
   '../controllers/mask-browser-controller.js',
 ];
@@ -63,6 +64,7 @@ test('tooltip service keeps native canvas event and model code untouched', () =>
     'utf8',
   );
   assert.match(controller, /pointerover/);
+  assert.match(controller, /dialog:modal/, 'Tooltip must avoid covering modal action rows');
   assert.match(controller, /focusin/);
   assert.doesNotMatch(controller, /preventDefault|stopPropagation/);
   assert.doesNotMatch(controller, /innerHTML|requestAnimationFrame|setInterval/);

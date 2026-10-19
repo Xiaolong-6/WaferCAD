@@ -40,7 +40,8 @@
       }
       close(type, 'replaced');
       const node = document.createElement(type === 'dialog' ? 'dialog' : 'div');
-      node.className = className || `v2-${type}`;
+      node.className =
+        type === 'dialog' ? `p-dialog ${className || 'v2-dialog'}` : className || `v2-${type}`;
       if (id) node.id = id;
       if (label) node.setAttribute('aria-label', label);
       if (type === 'popover') {

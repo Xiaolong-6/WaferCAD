@@ -130,7 +130,7 @@ try {
         inert: button.closest('[inert]')?.className || '',
         centerTarget: document.elementFromPoint(x, y)?.outerHTML?.slice(0, 300),
         status: document.querySelector('[data-slot="status.message"]')?.textContent || '',
-        dialogs: [...document.querySelectorAll('.v2-workflow-dialog-actions button')].map((item) =>
+        dialogs: [...document.querySelectorAll('.v2-confirm-dialog button')].map((item) =>
           item.textContent?.trim(),
         ),
       };
