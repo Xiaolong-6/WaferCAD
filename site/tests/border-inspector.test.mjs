@@ -282,20 +282,24 @@ test('dense array contour LOD retains canonical ownership and exact ROI', () => 
   assert.equal(borderContourPresentationPlan({ ...original, arrayInstances: 1 }).mode, 'exact');
 });
 
-test('Border Inspector and ROI Cutaway coexist after independent feature integration', async () => {
-  const [ui, renderer, tooltip] = await Promise.all([
+test('Border Inspector stays functional without retired Cutaway behavior', async () => {
+  const [ui, renderer, tooltip, project, schema, entry] = await Promise.all([
     readFile(new URL('../ui-v2/three-view.js', import.meta.url), 'utf8'),
     readFile(new URL('../three-view.js', import.meta.url), 'utf8'),
     readFile(new URL('../ui-v2/tooltip-catalog.js', import.meta.url), 'utf8'),
+    readFile(new URL('../controllers/project-state-controller.js', import.meta.url), 'utf8'),
+    readFile(new URL('../project-schema.js', import.meta.url), 'utf8'),
+    readFile(new URL('../ui-v2/workstation-entry.js', import.meta.url), 'utf8'),
   ]);
   assert.match(ui, /data-border-inspector/);
   assert.match(ui, /updateBorderControls\(\)/);
-  assert.match(ui, /'cutaway:three'/);
   assert.match(ui, /borderSettings: local\.borderSettings/);
-  assert.match(ui, /cutaway: Boolean\(state\.threeCutaway && state\.roi\)/);
   assert.match(renderer, /ensureInternalBorderContours\(/);
   assert.match(renderer, /borderPresentationState\(/);
-  assert.match(renderer, /case 'implant-outline':/);
-  assert.match(renderer, /flatDepth: Boolean\(clip && inspection\.cutaway\)/);
-  assert.match(tooltip, /'three\.cutaway'/);
+  assert.doesNotMatch(ui, /cutaway:three|threeCutaway/);
+  assert.doesNotMatch(renderer, /roiCutaway|addAnnotationCutOutline|flatDepth|inspection\.cutaway/);
+  assert.doesNotMatch(tooltip, /'three\.cutaway'/);
+  assert.doesNotMatch(project, /threeCutaway/);
+  assert.doesNotMatch(schema, /threeCutaway/);
+  assert.doesNotMatch(entry, /threeCutaway/);
 });

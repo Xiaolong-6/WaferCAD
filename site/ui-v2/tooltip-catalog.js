@@ -140,10 +140,6 @@
       'Line strength',
       'Adjust visible border contrast. Auto enables internal geometry in transparent inspection; Solid and Dashed override the default line style. These settings affect presentation only.',
     ],
-    'three.cutaway': [
-      '3D cutaway',
-      'With a selected ROI, expand the cut display for closer inspection. Physical geometry is unchanged.',
-    ],
     'three.export.glb': ['Export physical GLB', 'Download the 3D structure in physical metres.'],
     'three.export.png': ['Capture 3D PNG', 'Export a 3× raster image of the current 3D view.'],
     'section.zbreak': [
