@@ -139,8 +139,17 @@ function normalizeMask(mask) {
     : Array.isArray(mask.layerKeys)
       ? mask.layerKeys.map(normalizeRecipeLayerKey)
       : [];
+  const processGridUm = mask.processGridUm;
+  if (processGridUm !== undefined && (sourceMode !== 'file' || processGridUm !== 0.0001)) {
+    throw new Error('File Mask processGridUm only supports the existing 0.0001 µm grid.');
+  }
+  if (mask.arrayRepeat != null && (sourceMode !== 'draw' || mask.arrayRepeat !== true)) {
+    throw new Error('arrayRepeat requires a captured Draw Mask.');
+  }
   return {
     sourceMode,
+    ...(mask.arrayRepeat === true ? { arrayRepeat: true } : {}),
+    ...(processGridUm == null ? {} : { processGridUm }),
     ...(mask.cell ? { cell: String(mask.cell) } : {}),
     layerKeys,
     ...(mask.transform && typeof mask.transform === 'object'
@@ -275,14 +284,36 @@ function normalizeStep(command, input, index = 0) {
       ? Number(params.depthUm)
       : recipeLengthUm(params.depth ?? params.thickness, 'implant.depth');
     if (!(params.depthUm > 0)) throw new Error('implant.depth must be greater than zero.');
+    // Preserve the historic Recipe storage contract: a surface-start Implant
+    // has no startDepthUm key. Only explicitly buried intervals need one.
+    const startDepthUm = recipeLengthUm(
+      params.startDepthUm ?? params.startDepth ?? 0,
+      'implant.startDepth',
+    );
+    if (!(startDepthUm >= 0 && startDepthUm < params.depthUm)) {
+      throw new Error('implant.startDepth must be nonnegative and less than total implant.depth.');
+    }
+    if (startDepthUm > 0) params.startDepthUm = startDepthUm;
+    else delete params.startDepthUm;
     params.tilt = Number(params.tilt ?? 0);
     if (!Number.isFinite(params.tilt) || params.tilt < -80 || params.tilt > 80) {
       throw new Error('implant.tilt must be between -80 and 80 degrees.');
+    }
+    if (params.dopantPolarity != null) {
+      if (!['donor', 'acceptor'].includes(params.dopantPolarity)) {
+        throw new Error('implant.dopantPolarity must be donor or acceptor.');
+      }
+      if (!['well', 'body', 'source-drain', 'channel', 'contact'].includes(params.dopantRole)) {
+        throw new Error('implant.dopantRole must identify a qualitative region.');
+      }
+      params.dopantHostLayerId = cleanText(params.dopantHostLayerId, 'base');
+      params.dopantProvenance = cleanText(params.dopantProvenance, 'illustrative');
     }
     params.area = normalizeArea(params.area);
     params.face = normalizeProcessFace(params.face);
     delete params.depth;
     delete params.thickness;
+    delete params.startDepth;
   } else if (command === 'electrical') {
     params.name = cleanText(params.name, 'Electrical Region');
     params.depthUm = Number.isFinite(Number(params.depthUm))
@@ -607,8 +638,10 @@ function serializeMask(mask, indent = '  ') {
   if (mask.cell) fields.push(`cell: ${quote(mask.cell)}`);
   if (mask.layerKeys?.length) fields.push(`layers: ${JSON.stringify(mask.layerKeys)}`);
   if (mask.transform) fields.push(`transform: ${JSON.stringify(mask.transform)}`);
+  if (mask.processGridUm != null) fields.push(`processGridUm: ${mask.processGridUm}`);
   if (Object.hasOwn(mask, 'roi')) fields.push(`roi: ${JSON.stringify(mask.roi)}`);
   if (source === 'draw' && mask.drawMask) fields.push(`drawMask: ${JSON.stringify(mask.drawMask)}`);
+  if (source === 'draw' && mask.arrayRepeat) fields.push('arrayRepeat: true');
   return `{ ${fields.join(', ')} }`;
 }
 
@@ -660,7 +693,14 @@ export function serializeProcessRecipe(recipeValue) {
       } else if (step.command === 'implant') {
         add('name', p.name);
         add('depth', displayLength(p.depthUm));
+        if (p.startDepthUm > 0) add('startDepth', displayLength(p.startDepthUm));
         if (p.tilt) lines.push(`  tilt: ${p.tilt}`);
+        if (p.dopantPolarity) {
+          add('dopantPolarity', p.dopantPolarity);
+          add('dopantRole', p.dopantRole);
+          add('dopantHostLayerId', p.dopantHostLayerId);
+          add('dopantProvenance', p.dopantProvenance);
+        }
       } else if (step.command === 'electrical') {
         add('name', p.name);
         add('depth', displayLength(p.depthUm));

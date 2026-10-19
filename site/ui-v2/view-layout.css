@@ -11,15 +11,6 @@
     .p-view[hidden] {
     display: none;
   }
-  body[data-workstation]:not([data-preview-mode]) .p-desktop-dock-actions {
-    display: flex;
-    align-items: center;
-    min-width: 0;
-    gap: var(--wc-space-1);
-    overflow-x: auto;
-    white-space: nowrap;
-    scrollbar-width: thin;
-  }
   body[data-workstation]:not([data-preview-mode]) .p-view .v2-view-actions {
     display: flex;
     flex: 1 1 auto;

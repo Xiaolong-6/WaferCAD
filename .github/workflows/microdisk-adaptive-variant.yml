@@ -9,6 +9,8 @@ on:
       - 'site/experimental/microdisk/check-microdisk-adaptive-persisted-workstation.mjs'
       - '.github/workflows/microdisk-adaptive-variant.yml'
       - 'site/model.js'
+      - 'site/process-topology.js'
+      - 'site/tests/process-topology.test.mjs'
       - 'site/examples/suspended-silica-microdisks.wafercad'
       - 'site/experimental/microdisk/suspended-silica-microdisks-adaptive.wafercad'
   workflow_dispatch:
@@ -32,11 +34,11 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Assert immutable published adaptive Variant matches reviewed bytes
         run: |
-          test "$(git hash-object site/experimental/microdisk/suspended-silica-microdisks-adaptive.wafercad)" = '89f3f2b1f32593e32e7bdc1f6df712ac87d8df62'
+          test "$(git hash-object site/experimental/microdisk/suspended-silica-microdisks-adaptive.wafercad)" = '6b8cbbfd9b6b573dde5168ca2b19ca4beeafd001'
       - name: Build separate saved adaptive M07 Variant
         run: |
           node site/experimental/microdisk/generate-microdisk-adaptive-variant.mjs
-          test "$(git hash-object site/experimental/microdisk/suspended-silica-microdisks-adaptive.wafercad)" = '89f3f2b1f32593e32e7bdc1f6df712ac87d8df62'
+          test "$(git hash-object site/experimental/microdisk/suspended-silica-microdisks-adaptive.wafercad)" = '6b8cbbfd9b6b573dde5168ca2b19ca4beeafd001'
       - name: Verify native source, export/reopen, History and legacy parity
         run: node --test site/experimental/microdisk/microdisk-adaptive-persisted-variant.test.mjs
       - run: npx playwright install --with-deps chromium

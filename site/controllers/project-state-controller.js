@@ -87,22 +87,35 @@ export function createProjectStateController({
     // Deduplicate by object identity only; distinct but equal states remain
     // independently copied and checked for later mutation.
     const uniqueStates = [...new Set(states)];
+    // Shared-assets projects reuse the exact same model across bookmarks,
+    // process nodes and branch heads. Keep those states together when making
+    // detached attestation copies: structuredClone then copies that model only
+    // once per batch instead of repeatedly across unrelated History batches.
+    // This reorders PRIVATE staging only; the saved History order is unchanged.
+    const statesByModel = new Map();
+    for (const state of uniqueStates) {
+      const key = state.model && typeof state.model === 'object' ? state.model : state;
+      const group = statesByModel.get(key);
+      if (group) group.push(state);
+      else statesByModel.set(key, [state]);
+    }
+    const copyOrder = [...statesByModel.values()].flat();
     const started = performance.now();
     let activeCloneMs = 0;
     // Clone adjacent unique states as one graph to preserve aliasing within
     // each batch. No staged attestation is published until every batch succeeds.
     const batchSize = 4;
-    for (let start = 0; start < uniqueStates.length; start += batchSize) {
+    for (let start = 0; start < copyOrder.length; start += batchSize) {
       if (generation !== attestationGeneration) {
         throw new DOMException('Superseded History attestation', 'AbortError');
       }
       const began = performance.now();
-      const batch = structuredClone(uniqueStates.slice(start, start + batchSize));
+      const batch = structuredClone(copyOrder.slice(start, start + batchSize));
       activeCloneMs += performance.now() - began;
       for (let index = 0; index < batch.length; index++) {
-        staged.set(uniqueStates[start + index], batch[index]);
+        staged.set(copyOrder[start + index], batch[index]);
       }
-      if (start + batchSize < uniqueStates.length) await yieldHistoryAttestation();
+      if (start + batchSize < copyOrder.length) await yieldHistoryAttestation();
     }
     if (generation !== attestationGeneration) {
       throw new DOMException('Superseded History attestation', 'AbortError');
@@ -113,6 +126,7 @@ export function createProjectStateController({
       detail: {
         states: states.length,
         uniqueStates: uniqueStates.length,
+        sharedModelGroups: statesByModel.size,
         reusedReferences: states.length - uniqueStates.length,
         batches: Math.ceil(uniqueStates.length / batchSize),
         activeCloneMs,
@@ -178,6 +192,7 @@ export function createProjectStateController({
         maskOpacity: state.maskOpacity,
         threeOpacity: state.threeOpacity,
         threeShowBorders: state.threeShowBorders,
+        ...(state.threeCutaway ? { threeCutaway: true } : {}),
         threeFastMode: state.threeFastMode !== false,
         threeCamera: state.threeCamera,
         sectionScaleMode: state.sectionScaleMode,
@@ -231,6 +246,7 @@ export function createProjectStateController({
       ),
       threeOpacity = Math.max(0.1, Math.min(1, Number(project.display?.threeOpacity) || 1)),
       threeShowBorders = Boolean(project.display?.threeShowBorders),
+      threeCutaway = Boolean(project.display?.threeCutaway),
       threeCamera =
         project.display?.threeCamera && typeof project.display.threeCamera === 'object'
           ? structuredClone(project.display.threeCamera)
@@ -285,6 +301,7 @@ export function createProjectStateController({
       maskOpacity,
       threeOpacity,
       threeShowBorders,
+      threeCutaway,
       threeFastMode: project.display?.threeFastMode !== false,
       threeCamera,
       sectionScaleMode,
@@ -333,6 +350,7 @@ export function createProjectStateController({
       maskOpacity: previous.maskOpacity,
       threeOpacity: previous.threeOpacity,
       threeShowBorders: previous.threeShowBorders,
+      threeCutaway: false,
       threeFastMode: previous.threeFastMode !== false,
       threeCamera: null,
       planViews: {

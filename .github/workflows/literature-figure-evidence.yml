@@ -88,7 +88,7 @@ jobs:
           path: test-results/literature-figure-cuts/native-v2-m3d/
           if-no-files-found: warn
   evidence:
-    name: Native v2 eight-family Section and selected 3D figure cuts
+    name: Native v2 nine-family Section and selected 3D figure cuts
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
@@ -119,6 +119,6 @@ jobs:
         if: always()
         with:
           name: literature-section-mask-3d-paper-cut-evidence
-          path: test-results/literature-figure-cuts/native-v2-eight-family/
+          path: test-results/literature-figure-cuts/native-v2-nine-family/
           if-no-files-found: warn
           retention-days: 14

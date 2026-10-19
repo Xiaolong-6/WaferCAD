@@ -151,7 +151,12 @@ function slabFallbackTriangles(THREE, rings, expectedArea) {
     maxX = Math.max(...xs),
     span = Math.max(1, maxX - minX),
     margin = span * 1e-6 + 1e-6,
-    subject = [rings.map(closeRing)],
+    exterior = closeRing(rings[0]),
+    holes = rings.slice(1).map((ring) => ({
+      closed: closeRing(ring),
+      minY: Math.min(...ring.map((point) => point[1])),
+      maxY: Math.max(...ring.map((point) => point[1])),
+    })),
     triangles = [];
 
   for (let index = 1; index < ys.length; index++) {
@@ -173,7 +178,13 @@ function slabFallbackTriangles(THREE, rings, expectedArea) {
 
     let clipped;
     try {
-      clipped = kernel.intersection(subject, slab);
+      // A hole whose Y envelope misses this slab cannot change the clipped
+      // polygon. Keep touching holes and use the exact kernel for all others.
+      const intersectingHoles = holes.filter((hole) => hole.maxY >= y0 && hole.minY <= y1);
+      clipped = kernel.intersection(
+        [[exterior, ...intersectingHoles.map((hole) => hole.closed)]],
+        slab,
+      );
     } catch {
       return null;
     }

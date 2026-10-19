@@ -40,6 +40,7 @@ export function createWorkstationThreeView({ store, workstation }) {
         icon('Render mode', 'quality:three', 'quality'),
         icon('Opacity', 'opacity:three', 'eye'),
         icon('Borders', 'borders:three', 'rectangle'),
+        icon('Cutaway', 'cutaway:three', 'section'),
       ],
     ],
     [button('Export', 'three-export-menu', 'export', { 'data-help': 'view.export' })],
@@ -77,6 +78,7 @@ export function createWorkstationThreeView({ store, workstation }) {
     getInspection: () => ({
       opacity: state.threeOpacity,
       borders: state.threeShowBorders,
+      cutaway: Boolean(state.threeCutaway && state.roi),
       fast: startupPreview || state.threeFastMode,
     }),
     getZCollapse: () => state.sectionCollapse,
@@ -273,6 +275,9 @@ export function createWorkstationThreeView({ store, workstation }) {
       .querySelector('use')
       .setAttribute('href', `#p-icon-${state.threeFastMode ? 'fast' : 'quality'}`);
     quality.setAttribute('aria-pressed', String(state.threeFastMode === false));
+    const cutawayButton = panel.querySelector('[data-action="cutaway:three"]');
+    cutawayButton.setAttribute('aria-pressed', String(Boolean(state.threeCutaway && state.roi)));
+    cutawayButton.disabled = !state.roi;
     host.dataset.v2Gesture = local.mode;
     host.dataset.wheelZoom = String(local.zoomEnabled);
     panel
@@ -305,6 +310,12 @@ export function createWorkstationThreeView({ store, workstation }) {
       });
     } else if (action === 'borders:three') {
       state.threeShowBorders = !state.threeShowBorders;
+      sync();
+      requestRender();
+    } else if (action === 'cutaway:three') {
+      if (!state.roi) return;
+      state.threeCutaway = !state.threeCutaway;
+      workstation.changed('three');
       sync();
       requestRender();
     } else if (action === 'three-export-menu') {

@@ -120,7 +120,10 @@ test('Mask ROI documentation agrees with Whole face worker clipping', async () =
   assert.match(masks, /even \*\*Whole face\*\*/);
   assert.match(gettingStarted, /including Whole face/);
   assert.match(worker, /return limiter \? vectorApi\.intersection\(area, limiter\) : area/);
-  assert.match(worker, /deferredArrayMaskArea\([\s\S]*?limiter \},[\s\S]*?vectorApi/);
+  assert.match(
+    worker,
+    /deferredArrayMaskArea\([\s\S]*?boundary: model\.boundary,[\s\S]*?limiter,[\s\S]*?processGridUm:[\s\S]*?\},[\s\S]*?vectorApi/,
+  );
   const selection = await readFile(new URL('../../selection-geometry.js', import.meta.url), 'utf8');
   assert.match(
     selection,

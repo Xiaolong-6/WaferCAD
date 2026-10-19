@@ -35,6 +35,7 @@ const LIMITS = {
   drawMaskShapes: 10000,
   implants: 10000,
   implantPatches: 200000,
+  dopantRegions: 10000,
   electricalRegions: 10000,
   electricalRegionPatches: 200000,
   recipeSteps: 1000,
@@ -323,11 +324,101 @@ function geometryComponents(geometry, cache) {
   return cache.components.get(geometry);
 }
 
+// A radial interval from any reference point encloses the distance to every
+// point of a polygon. Disjoint intervals at *one* point prove no XY overlap;
+// this is an early reject only, never a replacement for robustIntersection.
+function pointInProofRing([x, y], ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i],
+      [xj, yj] = ring[j];
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+function pointInProofPolygon(center, polygon) {
+  if (!polygon.length || !pointInProofRing(center, polygon[0])) return false;
+  return !polygon.slice(1).some((ring) => pointInProofRing(center, ring));
+}
+
+function polygonRadialEnvelope(polygon, center) {
+  const [cx, cy] = center;
+  let minRadius2 = Infinity,
+    maxRadius2 = 0;
+  for (const ring of polygon) {
+    for (let index = 0; index < ring.length; index++) {
+      const p = ring[index],
+        q = ring[(index + 1) % ring.length],
+        px = p[0] - cx,
+        py = p[1] - cy,
+        dx = q[0] - p[0],
+        dy = q[1] - p[1],
+        len2 = dx * dx + dy * dy,
+        t = len2 > 0 ? Math.max(0, Math.min(1, -(px * dx + py * dy) / len2)) : 0,
+        x = px + t * dx,
+        y = py + t * dy;
+      minRadius2 = Math.min(minRadius2, x * x + y * y);
+      maxRadius2 = Math.max(maxRadius2, px * px + py * py);
+    }
+  }
+  if (pointInProofPolygon(center, polygon)) minRadius2 = 0;
+  return { minRadius2, maxRadius2 };
+}
+
+function radialProofForModel(entries, boundaryBounds, cache) {
+  // Amortize polygon preparation only on dense non-array models. Nine centers
+  // (including four outside the bounding box) catch concentric/hollow shapes.
+  if (entries.length < 24) return null;
+  const cx = (boundaryBounds.minX + boundaryBounds.maxX) / 2,
+    cy = (boundaryBounds.minY + boundaryBounds.maxY) / 2,
+    dx = (boundaryBounds.maxX - boundaryBounds.minX) * (2 / 3),
+    dy = (boundaryBounds.maxY - boundaryBounds.minY) * (2 / 3),
+    centers = [
+      [cx, cy],
+      [cx + dx, cy],
+      [cx - dx, cy],
+      [cx, cy + dy],
+      [cx, cy - dy],
+      [cx + dx, cy + dy],
+      [cx - dx, cy + dy],
+      [cx + dx, cy - dy],
+      [cx - dx, cy - dy],
+    ],
+    proof = new WeakMap();
+  for (const { region } of entries) {
+    const geom = canonicalGeometry(region.geom, cache);
+    if (!proof.has(geom)) {
+      proof.set(
+        geom,
+        geom.map((polygon) => centers.map((center) => polygonRadialEnvelope(polygon, center))),
+      );
+    }
+  }
+  return proof;
+}
+
+function provablyRadiallySeparated(a, b) {
+  if (!a || !b) return false;
+  for (let index = 0; index < a.length; index++) {
+    const left = a[index],
+      right = b[index],
+      radiusMargin = Math.max(1e-9, Math.max(left.maxRadius2, right.maxRadius2) * 1e-12);
+    if (
+      left.minRadius2 > right.maxRadius2 + radiusMargin ||
+      right.minRadius2 > left.maxRadius2 + radiusMargin
+    )
+      return true;
+  }
+  return false;
+}
+
 // Discard only polygons whose bounds cannot have a positive-area intersection
 // with any component on the other side. Intersect the remaining sets together,
 // preserving the original aggregate area tolerance and polygon order.
-function intersectionCandidates(left, right, cache) {
-  const sides = [geometryComponents(left, cache), geometryComponents(right, cache)];
+function intersectionCandidates(left, right, cache, radialProof = null) {
+  const sides = [geometryComponents(left, cache), geometryComponents(right, cache)],
+    radial = radialProof ? [radialProof.get(left), radialProof.get(right)] : null;
   const active = [[], []],
     selected = [new Set(), new Set()];
   const cursor = [0, 0];
@@ -347,6 +438,11 @@ function intersectionCandidates(left, right, cache) {
         current.bounds.maxY <= previous.bounds.minY
       )
         continue;
+      if (
+        radial &&
+        provablyRadiallySeparated(radial[side]?.[current.index], radial[other]?.[previous.index])
+      )
+        continue;
       selected[side].add(current.index);
       selected[other].add(previous.index);
     }
@@ -356,7 +452,7 @@ function intersectionCandidates(left, right, cache) {
   return [left.filter((_, i) => selected[0].has(i)), right.filter((_, i) => selected[1].has(i))];
 }
 
-function cachedGeometryArea(left, right, geometryCache, kind, operation) {
+function cachedGeometryArea(left, right, geometryCache, kind, operation, radialProof = null) {
   left = canonicalGeometry(left, geometryCache);
   right = canonicalGeometry(right, geometryCache);
   const cache = geometryCache[kind];
@@ -367,7 +463,9 @@ function cachedGeometryArea(left, right, geometryCache, kind, operation) {
   }
   if (!results.has(right)) {
     const candidates =
-      kind === 'intersections' ? intersectionCandidates(left, right, geometryCache) : [left, right];
+      kind === 'intersections'
+        ? intersectionCandidates(left, right, geometryCache, radialProof)
+        : [left, right];
     const area = candidates ? multiArea(operation(...candidates)) : 0;
     results.set(right, area);
     if (kind === 'intersections') {
@@ -401,7 +499,8 @@ function validateModelGeometry(model, cache) {
   const entries = model.regions
     .map((region, index) => ({ region, index, bounds: cachedGeometryBounds(region.geom, cache) }))
     .sort((a, b) => a.bounds.minX - b.bounds.minX);
-  const active = [];
+  const active = [],
+    radialProof = radialProofForModel(entries, boundaryBounds, cache);
 
   try {
     for (const current of entries) {
@@ -441,6 +540,7 @@ function validateModelGeometry(model, cache) {
           cache,
           'intersections',
           robustIntersection,
+          radialProof,
         );
         if (overlapArea > areaTolerance) {
           fail(
@@ -528,6 +628,12 @@ function validateModel(model, budget, geometryCache) {
         fail(`${path}.face`, 'must be front or back.');
       }
       assertLength(implant.thickness, `${path}.thickness`, { min: 1e-12 });
+      if (implant.depthStart != null) {
+        assertFinite(implant.depthStart, `${path}.depthStart`, { min: 0 });
+        if (!(implant.depthStart < implant.thickness)) {
+          fail(`${path}.depthStart`, 'must be less than implant thickness (total depth).');
+        }
+      }
       assertFinite(implant.tilt, `${path}.tilt`, { min: -80, max: 80 });
       if (implant.depthProfile != null && !['follow', 'smooth'].includes(implant.depthProfile)) {
         fail(`${path}.depthProfile`, 'must be follow or smooth.');
@@ -552,6 +658,47 @@ function validateModel(model, budget, geometryCache) {
           validateSurfaceAppearance(patch.surfaceAppearance, `${patchPath}.surfaceAppearance`);
         }
       });
+    });
+  }
+
+  if (model.dopantRegions != null) {
+    const dopants = assertArray(model.dopantRegions, 'model.dopantRegions', LIMITS.dopantRegions);
+    const ids = new Set();
+    const polarities = new Set(['donor', 'acceptor']);
+    const roles = new Set(['well', 'body', 'source-drain', 'channel', 'contact']);
+    dopants.forEach((dopant, index) => {
+      const path = `model.dopantRegions[${index}]`;
+      assertObject(dopant, path);
+      const id = assertString(dopant.id, `${path}.id`, { max: 128 });
+      if (ids.has(id)) fail(`${path}.id`, 'must be unique.');
+      ids.add(id);
+      assertString(dopant.name, `${path}.name`, { max: 256 });
+      if (!polarities.has(dopant.polarity)) fail(`${path}.polarity`, 'is not supported.');
+      if (!roles.has(dopant.role)) fail(`${path}.role`, 'is not supported.');
+      if (!['front', 'back'].includes(dopant.face)) fail(`${path}.face`, 'must be front or back.');
+      const host = assertString(dopant.hostLayerId, `${path}.hostLayerId`, { max: 128 });
+      if (!layerIds.has(host)) fail(`${path}.hostLayerId`, 'references an unknown material.');
+      validateMultiPolygon(dopant.area, `${path}.area`, budget);
+      if (!dopant.area.length) fail(`${path}.area`, 'must not be empty.');
+      assertCoordinate(dopant.sourceZ, `${path}.sourceZ`);
+      assertFinite(dopant.depthStartUm, `${path}.depthStartUm`, { min: 0 });
+      assertLength(dopant.depthEndUm, `${path}.depthEndUm`, { min: 1e-12 });
+      if (!(dopant.depthStartUm < dopant.depthEndUm)) {
+        fail(path, 'requires depthStartUm < depthEndUm.');
+      }
+      assertObject(dopant.profile, `${path}.profile`);
+      if (dopant.profile.kind !== 'qualitative-interval') {
+        fail(
+          `${path}.profile.kind`,
+          'must be qualitative-interval; concentrations are not supported.',
+        );
+      }
+      if (dopant.sourceImplantId != null) {
+        assertString(dopant.sourceImplantId, `${path}.sourceImplantId`, { max: 128 });
+      }
+      if (dopant.provenance != null) {
+        assertString(dopant.provenance, `${path}.provenance`, { max: 256 });
+      }
     });
   }
 
@@ -809,6 +956,37 @@ function validateLayout(layout, budget) {
     assertInteger(combo.count, `${path}.count`, { min: 0 });
   });
 
+  if (layout.maskPresentation != null) {
+    const presentation = assertObject(layout.maskPresentation, 'layout.maskPresentation');
+    if (presentation.version !== 1) fail('layout.maskPresentation.version', 'must be 1.');
+    if (!/^#[0-9a-fA-F]{6}$/.test(presentation.background)) {
+      fail('layout.maskPresentation.background', 'must be a six-digit hex color.');
+    }
+    for (const key of ['showStructure', 'showUnselected']) {
+      if (typeof presentation[key] !== 'boolean') {
+        fail('layout.maskPresentation.' + key, 'must be boolean.');
+      }
+    }
+    const styles = assertArray(presentation.layers, 'layout.maskPresentation.layers', 32);
+    const identifiers = new Set();
+    for (const [index, style] of styles.entries()) {
+      const path = 'layout.maskPresentation.layers[' + index + ']';
+      assertObject(style, path);
+      assertInteger(style.layer, path + '.layer');
+      assertInteger(style.datatype, path + '.datatype');
+      const identifier = style.layer + '|' + style.datatype;
+      if (identifiers.has(identifier)) fail(path, 'contains duplicate layer and datatype.');
+      identifiers.add(identifier);
+      if (!/^#[0-9a-fA-F]{6}$/.test(style.color)) {
+        fail(path + '.color', 'must be a six-digit hex color.');
+      }
+      if (!['fill', 'outline', 'hatch', 'cross'].includes(style.mode)) {
+        fail(path + '.mode', 'must be fill, outline, hatch, or cross.');
+      }
+      assertFinite(style.opacity, path + '.opacity', { min: 0, max: 1 });
+    }
+  }
+
   const hierarchy = assertObject(layout.hierarchy, 'layout.hierarchy');
   const entries = Object.entries(hierarchy);
   if (entries.length > LIMITS.hierarchyCells) fail('layout.hierarchy', 'contains too many cells.');
@@ -982,6 +1160,9 @@ function validateDisplay(display) {
   }
   if (display.threeShowBorders != null && typeof display.threeShowBorders !== 'boolean') {
     fail('display.threeShowBorders', 'must be boolean.');
+  }
+  if (display.threeCutaway != null && typeof display.threeCutaway !== 'boolean') {
+    fail('display.threeCutaway', 'must be boolean.');
   }
   if (display.threeCamera != null) {
     const view = assertObject(display.threeCamera, 'display.threeCamera'),

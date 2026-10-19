@@ -5,12 +5,10 @@ on:
     paths:
       - 'site/bundled-examples.js'
       - 'site/examples/tio2-metalens-full-array.wafercad'
-      - 'scripts/tio2-metalens-ui-regression.mjs'
-      - 'scripts/v2/check-metalens-recipe-science.mjs'
+      - 'scripts/tio2-metalens-v2-browser-acceptance.mjs'
       - 'scripts/build-tio2-metalens-example.mjs'
       - 'site/tests/tio2-metalens-reconstruction.test.mjs'
       - 'scripts/tio2-metalens-array-scale.mjs'
-      - 'scripts/tio2-metalens-grid-browser.mjs'
       - 'site/process-recipe-preflight.js'
       - 'site/process-recipe.js'
       - 'site/controllers/base-controls-controller.js'
@@ -28,7 +26,7 @@ concurrency:
 jobs:
   reconstruct:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -49,23 +47,23 @@ jobs:
         run: node scripts/build-tio2-metalens-example.mjs
       - name: Install Chromium for real Recipe Run All
         run: npx playwright install --with-deps chromium
-      - name: Start real production v2 Workstation
+      - name: Start WaferCAD
         run: |
-          node scripts/v2/serve-v2.mjs > serve-v2.log 2>&1 &
-          for i in {1..60}; do
-            if curl --fail --silent --output /dev/null http://127.0.0.1:4182/app.html; then exit 0; fi
+          python3 -m http.server 4173 --directory site > /tmp/wafercad-metalens-http.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4173/app.html > /dev/null; then exit 0; fi
             sleep 1
           done
-          cat serve-v2.log
+          cat /tmp/wafercad-metalens-http.log
           exit 1
-      # #290 retired the Legacy editor. The canonical v2 oracle exercises
-      # all 4,725 device sites, 9 Recipe steps, each intermediate History
-      # model, full Mask geometry, project Export/Reopen and real Main/Mask.
-      - name: Real v2 4725-site nine-Step science and visual acceptance
-        timeout-minutes: 25
+      # The separate full-grid-replay job owns complete 4725-site v2 Recipe
+      # Run All; this job independently checks published app visual IO.
+      # The retired Legacy UI cannot be a release gate after source sunset.
+      - name: Open 4725-site project in real v2 Main, 3D and Section
+        timeout-minutes: 8
         env:
           WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
-        run: node scripts/v2/check-metalens-recipe-science.mjs
+        run: node scripts/tio2-metalens-v2-browser-acceptance.mjs
       - name: Build exact production Welcome preview
         run: |
           node scripts/build-example-previews.mjs --write --id=tio2-metalens-four-unit
@@ -75,9 +73,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: tio2-metalens-source-derived-${{ github.sha }}
-          path: |
-            test-results/metalens
-            test-results/v2-metalens-science
+          path: test-results/metalens
           retention-days: 21
           if-no-files-found: warn
 

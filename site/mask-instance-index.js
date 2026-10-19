@@ -105,14 +105,20 @@ export function attachArrayMaskQuery(area, query) {
 // localGeometry() resolves the actual mask/inverse mask inside each cell.
 // Keep an empty selected mask empty (including inverse selection), and clip
 // the envelope by Mask ROI before the worker receives it.
-export function deferredArrayMaskArea({ boundary, index = null, mode, limiter = null }, vectorApi) {
+export function deferredArrayMaskArea(
+  { boundary, index = null, mode, limiter = null, processGridUm = null },
+  vectorApi,
+) {
+  if (processGridUm != null && processGridUm !== 0.0001) {
+    throw new Error('Array File Mask process grid must be the existing 0.0001 µm.');
+  }
   if (mode !== 'full' && !index?.instances?.length) return [];
   // The original boundary is authoritative project geometry. Never attach
   // per-request metadata to it: a second Process operation must not inherit
   // the preceding query or fail on its non-configurable arrayMaskQuery field.
   const envelope = limiter ? vectorApi.intersection(boundary, limiter) : structuredClone(boundary);
   if (vectorApi.isEmpty(envelope)) return [];
-  return attachArrayMaskQuery(envelope, { index, mode, limiter, boundary });
+  return attachArrayMaskQuery(envelope, { index, mode, limiter, boundary, processGridUm });
 }
 
 function withMaskSpatialIndex(index) {

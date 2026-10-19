@@ -1,4 +1,6 @@
-# Using WaferCAD with AI: A Practical Guide
+# Using WaferCAD with AI
+
+> Developing the WaferCAD source with AI? See [Develop WaferCAD with AI](Develop-WaferCAD-with-AI) for acceptance contracts, Kernel/App ownership, browser bypass limits and common traps.: A Practical Guide
 
 [Home](Home) · [Getting Started](Getting-Started) · [Masks and ROI](Masks-and-ROI) · [Recipe Code Tutorial](Recipe-Code-Tutorial)
 

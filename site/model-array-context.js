@@ -29,12 +29,15 @@ export function neighborhoodKey(part, parts) {
 const maskTemplateGeometries = new WeakMap();
 export function localGeometry(geometry, part, domain, polygonBoundsCache = new WeakMap()) {
   if (geometry.arrayMaskQuery) {
-    const { index, mode, limiter, boundary } = geometry.arrayMaskQuery;
+    const { index, mode, limiter, boundary, processGridUm, templateGeometry } =
+      geometry.arrayMaskQuery;
     const worldDomain = intersection(domain, boundary),
       bounds = geometryBounds(worldDomain);
     const localDomain = translateGeometry(worldDomain, -part.x, -part.y);
     let selected = [];
-    if (index) {
+    if (templateGeometry) {
+      selected = part.role === 'background' ? [] : intersection(templateGeometry, localDomain);
+    } else if (index) {
       const geoms = [];
       for (const instance of queryMaskInstances(index, bounds)) {
         const template = index.templates[instance.templateId];
@@ -51,7 +54,18 @@ export function localGeometry(geometry, part, domain, polygonBoundsCache = new W
           -part.x,
           -part.y,
         )[0][0][0];
-        geoms.push(translateGeometry(geom, dx, dy));
+        const local = translateGeometry(geom, dx, dy);
+        // Optional Recipe-only process capture, AFTER instance translation.
+        // Do not mutate indexed SVG source vertices or exported File Mask.
+        geoms.push(
+          processGridUm == null
+            ? local
+            : local.map((polygon) =>
+                polygon.map((ring) =>
+                  ring.map(([x, y]) => [Number(x.toFixed(4)), Number(y.toFixed(4))]),
+                ),
+              ),
+        );
       }
       selected = unionGeometries(geoms);
     }
@@ -100,6 +114,10 @@ export function arrayContext(model, part, parts, { annotations = true, clipBound
   };
   const out = {
     ...model,
+    // Each working set must own its prospective dopant records. A shallow
+    // copy would mutate the persisted array root before the transaction
+    // succeeds, violating rollback semantics.
+    dopantRegions: structuredClone(model.dopantRegions || []),
     kernel: 'vector-2.5d-v1',
     shape: 'rect',
     layers: structuredClone(model.layers),

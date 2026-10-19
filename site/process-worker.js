@@ -99,6 +99,10 @@ function processArea(
 ) {
   const mode = request?.mode || 'full';
   const fileArray = arrayApi.isArrayModel(model) && request?.maskSourceMode === 'file';
+  const repeatedDraw =
+    arrayApi.isArrayModel(model) &&
+    request?.maskSourceMode === 'draw' &&
+    request?.arrayRepeatDrawMask === true;
   const roiTransform =
       request?.maskSourceMode === 'draw'
         ? { x: 0, y: 0, scale: 1, rotation: 0 }
@@ -106,6 +110,24 @@ function processArea(
     limiter = request?.maskRoi
       ? maskRoiApi.maskRoiWorldGeometry(request.maskRoi, roiTransform, 96)
       : null;
+
+  // Reuse the exact single-cell Draw Mask within each physical array
+  // instance, avoiding both redundant geometry and File Mask re-rounding.
+  if (repeatedDraw && mode !== 'full') {
+    const templateGeometry = drawApi.drawMaskGeometry(request.drawMask);
+    if (vectorApi.isEmpty(templateGeometry)) return [];
+    const envelope = limiter
+      ? vectorApi.intersection(model.boundary, limiter)
+      : structuredClone(model.boundary);
+    if (vectorApi.isEmpty(envelope)) return [];
+    return maskIndexApi.attachArrayMaskQuery(envelope, {
+      index: null,
+      mode,
+      boundary: model.boundary,
+      limiter,
+      templateGeometry,
+    });
+  }
 
   // Array + file Mask is resolved per cell through the spatial instance index.
   // Global union/difference of a 60k-polygon lens can stall the process worker
@@ -117,7 +139,13 @@ function processArea(
         : request.maskIndex ||
           maskIndexApi.compileMaskInstanceIndex(request.elements || [], request.maskTransform);
     return maskIndexApi.deferredArrayMaskArea(
-      { boundary: model.boundary, index, mode, limiter },
+      {
+        boundary: model.boundary,
+        index,
+        mode,
+        limiter,
+        processGridUm: request.processGridUm ?? null,
+      },
       vectorApi,
     );
   }
