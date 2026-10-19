@@ -41,6 +41,7 @@ import {
 import {
   canUseGpuRoughTask,
   decorateGpuRoughMaterial,
+  decorateRoughFarFieldMaterial,
   supportsPreciseGpuRoughDisplacement,
 } from './gpu-rough-surface.js?v=rough-line-v1';
 import { triangulatePolygon } from './polygon-triangulation.js';
@@ -61,6 +62,7 @@ import { buildRoughSpatialZones, prepareMorphologyExportTasks } from './morpholo
 import {
   adaptiveRoughMeshLod,
   roughDisplayHeightBlend,
+  roughFarFieldContrast,
   allocateRoughTriangleBudgets,
   projectedPixelsPerUnit,
   roughDisplayProfileOffsetAtPoint,
@@ -720,6 +722,9 @@ export function createThreeView({
         lod = roughLod(featurePixels),
         gpuRough = entry.material.userData?.waferCadGpuRough;
       entry.material.roughness = 0.82 + 0.12 * lod.detail;
+      const farField = entry.material.userData?.waferCadRoughFarField?.uniforms
+        ?.waferCadRoughFarFieldContrast;
+      if (farField) farField.value = roughFarFieldContrast(featurePixels, entry.appearance);
       if (gpuRough?.uniforms?.waferCadRoughNormalStrength) {
         gpuRough.uniforms.waferCadRoughNormalStrength.value =
           (Number(gpuRough.normalStrengthBase) || 0) * lod.micro;
@@ -2518,11 +2523,15 @@ diffuseColor.a *= waferCadAlphaScale;`,
             roughness: cap.appearance ? 0.84 : 0.72,
           })
         : createSurfaceMaterial(task.layer, task.state, task.visualAppearance || cap.appearance);
-      if (geometry.userData.roughGpuDisplacement && !task.implant) {
-        decorateGpuRoughMaterial(material, task.visualAppearance || cap.appearance, {
-          profileNormal: cap.profileNormal ?? cap.normal,
-          normalStrength: mode === 'interactive' ? 0.82 : 1,
-        });
+      if (!task.implant && !cap.buried) {
+        if (geometry.userData.roughGpuDisplacement) {
+          decorateGpuRoughMaterial(material, task.visualAppearance || cap.appearance, {
+            profileNormal: cap.profileNormal ?? cap.normal,
+            normalStrength: mode === 'interactive' ? 0.82 : 1,
+          });
+        } else {
+          decorateRoughFarFieldMaterial(material, task.visualAppearance || cap.appearance);
+        }
       }
       if (task.polygonOffset) {
         material.polygonOffset = true;
