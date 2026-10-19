@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   classifyRelease,
   evaluateRelease,
+  latestCheckRuns,
   targetedProductionGates,
 } from '../../scripts/release/verified-pr-release.mjs';
 
@@ -91,6 +92,39 @@ test('unknown, missing, stale, duplicated, skipped, and failed PR checks fail cl
   for (const checks of candidates) {
     assert.equal(evaluateRelease({ ...seed(), checks }).fast, false);
   }
+});
+
+test('Draft and Ready PR checks use only the newest attempt without masking red or pending', () => {
+  const draft = {
+    ...check('quality'),
+    id: 100,
+    started_at: '2026-10-19T14:00:00Z',
+  };
+  const ready = {
+    ...check('quality'),
+    id: 101,
+    started_at: '2026-10-19T14:02:00Z',
+  };
+  const proof = { ...check('Release evidence contract'), id: 102, started_at: ready.started_at };
+  const latest = latestCheckRuns([ready, draft, proof]);
+  assert.equal(latest.length, 2);
+  assert.equal(latest.find((item) => item.name === 'quality').id, ready.id);
+  assert.equal(evaluateRelease({ ...seed(), checks: latest }).fast, true);
+
+  for (const conclusion of ['failure', 'cancelled', 'skipped']) {
+    const selected = latestCheckRuns([draft, { ...ready, conclusion }, proof]);
+    assert.equal(evaluateRelease({ ...seed(), checks: selected }).fast, false, conclusion);
+  }
+  const pending = latestCheckRuns([
+    draft,
+    { ...ready, status: 'in_progress', conclusion: null },
+    proof,
+  ]);
+  assert.equal(evaluateRelease({ ...seed(), checks: pending }).fast, false);
+  assert.equal(latestCheckRuns([draft, { ...draft }]), null);
+  assert.equal(latestCheckRuns([{ ...ready, id: null }]), null);
+  assert.equal(latestCheckRuns([{ ...draft, started_at: 'unparseable' }]), null);
+  assert.equal(latestCheckRuns([ready, { ...draft, conclusion: 'failure' }])[0].id, ready.id);
 });
 
 test('Photodetector Renderer changes require focused science and real browser owners', () => {
