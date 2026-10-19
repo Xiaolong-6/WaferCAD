@@ -475,7 +475,6 @@ try {
         threeDisplay: {
           opacity: store.state.threeOpacity,
           borders: store.state.threeShowBorders,
-          cutaway: Boolean(store.state.threeCutaway && store.state.roi),
           fast: store.state.threeFastMode,
         },
         workflow: workflow.snapshot(),
