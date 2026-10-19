@@ -90,7 +90,7 @@ export function buildSwxS8SiliconMask(){
   for(const side of [-1,1]){
     const label=side<0?'L':'R',x=side*6.3;
     route('ALIGNER_'+label,'aligner',[[x,40.1],[x+side*1.0,39.3],
-      [x+side*1.0,35.8],[x,35.0]],.1,'S7: flexure width 100nm, 7um length');
+      [x+side*1.0,35.8],[x,34.4]],.1,'S7: flexure width 100nm, 7um length');
   }
 
   // S8a: LONGITUDINAL PERFORATED SHUTTLE down the center, width 6um.
@@ -129,7 +129,7 @@ export function buildSwxS8SiliconMask(){
     const label=side<0?'L':'R', x0=side<0?-39:8;
     const xs=i=>x0+i*period;
     rect('MOVING_COMB_HANDLE_'+label,'movableComb',x0-.3,-23.8,30.8,1.7);
-    rect('FIXED_COMB_HANDLE_'+label,'fixedComb',x0-.3,-15.5,30.8,1.7);
+    rect('FIXED_COMB_HANDLE_'+label,'fixedComb',x0-.3,-16.7,30.8,1.7);
     for(let i=0;i<20;i++){
       const x=xs(i);
       rect('MOVING_FINGER_'+label+'_'+i,'movableComb',x+.8,-22.4,.5,3.2,
