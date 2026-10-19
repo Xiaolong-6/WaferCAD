@@ -89,3 +89,13 @@ test('continuous occupancy rejects a stale material revision', () => {
   model.revision++;
   assert.throws(() => remainingMaterialInContinuousPlan(model, plan, [0, 0, 2.5]), /stale/);
 });
+
+test('equal revisions cannot authorize a different History or Recovery material owner', () => {
+  const source = coatedFixture();
+  const plan = planContinuousEtchFromTopology({ model: source, face: 'front', targetLayerIds: ['oxide'], lateralUm: 3, verticalUm: 3, shape: 'circular' });
+  const clone = structuredClone(source);
+  assert.equal(clone.revision, source.revision);
+  assert.throws(() => remainingMaterialInContinuousPlan(clone, plan, [0, 0, 2.5]), /stale/);
+  const serialized = JSON.parse(JSON.stringify(plan));
+  assert.throws(() => remainingMaterialInContinuousPlan(source, serialized, [0, 0, 2.5]), /stale/);
+});
