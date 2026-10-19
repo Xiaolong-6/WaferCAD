@@ -940,6 +940,7 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
           const bundled = await loadBundledProject(
             params.get('example') || 'photodetector-literature',
             domain.bindings.readProjectFileTask,
+            { strict: params.get('validation') === 'strict' },
           );
           await history.importRecordsAsync(
             bundled.data.snapshots || [],
@@ -983,6 +984,7 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
         const url = new URL(globalThis.location.href);
         url.searchParams.delete('start');
         url.searchParams.delete('example');
+        url.searchParams.delete('validation');
         globalThis.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
         status(
           staged

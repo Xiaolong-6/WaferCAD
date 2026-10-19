@@ -1,6 +1,7 @@
 import { cp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { buildBundledIntegrity } from './build-bundled-integrity.mjs';
 
 // Developer fixtures are versioned in Git but are not part of the public application.
 const excludedDirectories = [
@@ -57,6 +58,7 @@ export function shouldPublishSitePath(siteRelativePath) {
 export async function stagePagesAssets({
   source = resolve('site'),
   destination = resolve('build/pages'),
+  attestBundledExamples = true,
 } = {}) {
   const sourceRoot = resolve(source);
   const destinationRoot = resolve(destination);
@@ -71,6 +73,12 @@ export async function stagePagesAssets({
     recursive: true,
     filter: (path) => shouldPublishSitePath(relative(sourceRoot, path)),
   });
+  // Production staging must validate every bundled asset before publishing.
+  // The isolated copy/filter fixture may explicitly disable attestation,
+  // but normal staging always fails closed when assets are missing or invalid.
+  if (attestBundledExamples) {
+    await buildBundledIntegrity({ source: sourceRoot, destination: destinationRoot });
+  }
   // Keep historical bookmarks working without shipping an executable Legacy UI.
   // Preserve the same-origin query string for old Example/Open links, but never
   // instantiate the old editor or touch saved Workspace/Recovery data here.
