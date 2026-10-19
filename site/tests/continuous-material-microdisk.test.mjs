@@ -46,7 +46,11 @@ test('real Microdisk M07 continuous owner preserves pedestal, undercut, silica a
   const restored = restoreContinuousMaterialOwner(JSON.parse(JSON.stringify(owner)));
   const center = continuousOwnerColumnAtXY(restored, [0, 0]);
   assert.deepEqual(center, continuousOwnerColumnAtXY(owner, [0, 0]));
-  const positions = [[0, 0], [50, 0], [145, 0]];
+  const positions = [
+    [0, 0],
+    [50, 0],
+    [145, 0],
+  ];
   for (const xy of positions) {
     assert.deepEqual(continuousOwnerColumnAtXY(restored, xy), continuousOwnerColumnAtXY(owner, xy));
   }
