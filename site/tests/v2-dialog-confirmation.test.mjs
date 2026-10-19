@@ -7,7 +7,9 @@ function harness() {
     focused = null,
     closeCount = 0;
   const el = (tag, attrs = {}, ...children) => ({
-    tag, attrs, children: children.flat().filter((item) => item != null),
+    tag,
+    attrs,
+    children: children.flat().filter((item) => item != null),
   });
   const button = (label, _action, _glyph, attrs = {}) => ({
     tag: 'button',

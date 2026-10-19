@@ -44,8 +44,7 @@ export function createDialogConfirmation({ overlays, el, button }) {
           resolve(cancelValue);
         },
       });
-      if (options.some((action) => action.kind === 'danger'))
-        cancel.focus({ preventScroll: true });
+      if (options.some((action) => action.kind === 'danger')) cancel.focus({ preventScroll: true });
     });
   }
   function confirm(options) {
