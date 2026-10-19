@@ -47,32 +47,32 @@
 <polygon points="589.47,511.38 613.25,501.87 613.91,503.51 590.13,513.03" fill="#5689C6" stroke="#5689C6"><title>OPTICAL_fixed_RIGHT_2 · inferred</title></polygon>
 <polygon points="475.52,515.64 477.07,514.09 516.69,558.8 508.72,558.8" fill="#5689C6" stroke="#5689C6"><title>TAPER_fixed_LEFT · inferred</title></polygon>
 <polygon points="541.93,558.8 549.01,558.8 582.43,514.09 580.89,515.64" fill="#5689C6" stroke="#5689C6"><title>TAPER_fixed_RIGHT · inferred</title></polygon>
-<polygon points="511.49,566.11 512.42,566.11 511.96,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_0 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="512.77,566.11 513.7,566.11 513.24,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_1 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="514.06,566.11 514.99,566.11 514.52,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_2 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="515.34,566.11 516.27,566.11 515.81,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_3 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="516.63,566.11 517.56,566.11 517.09,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_4 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="517.91,566.11 518.84,566.11 518.38,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_5 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="519.19,566.11 520.12,566.11 519.66,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_6 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="520.48,566.11 521.41,566.11 520.94,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_7 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="521.76,566.11 522.69,566.11 522.23,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_8 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="523.05,566.11 523.98,566.11 523.51,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_9 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="524.33,566.11 525.26,566.11 524.79,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_10 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="525.61,566.11 526.54,566.11 526.08,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_11 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="526.9,566.11 527.83,566.11 527.36,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_12 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="528.18,566.11 529.11,566.11 528.65,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_13 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="529.46,566.11 530.39,566.11 529.93,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_14 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="530.75,566.11 531.68,566.11 531.21,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_15 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="532.03,566.11 532.96,566.11 532.5,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_16 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="533.32,566.11 534.25,566.11 533.78,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_17 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="534.6,566.11 535.53,566.11 535.07,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_18 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="535.88,566.11 536.81,566.11 536.35,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_19 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="537.17,566.11 538.1,566.11 537.63,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_20 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="538.45,566.11 539.38,566.11 538.92,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_21 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="539.74,566.11 540.67,566.11 540.2,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_22 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="541.02,566.11 541.95,566.11 541.48,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_23 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="542.3,566.11 543.23,566.11 542.77,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_24 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="543.59,566.11 544.52,566.11 544.05,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_25 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="511.49,566.06 512.42,566.06 511.96,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_0 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="512.77,566.06 513.7,566.06 513.24,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_1 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="514.06,566.06 514.99,566.06 514.52,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_2 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="515.34,566.06 516.27,566.06 515.81,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_3 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="516.63,566.06 517.56,566.06 517.09,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_4 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="517.91,566.06 518.84,566.06 518.38,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_5 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="519.19,566.06 520.12,566.06 519.66,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_6 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="520.48,566.06 521.41,566.06 520.94,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_7 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="521.76,566.06 522.69,566.06 522.23,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_8 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="523.05,566.06 523.98,566.06 523.51,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_9 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="524.33,566.06 525.26,566.06 524.79,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_10 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="525.61,566.06 526.54,566.06 526.08,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_11 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="526.9,566.06 527.83,566.06 527.36,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_12 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="528.18,566.06 529.11,566.06 528.65,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_13 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="529.46,566.06 530.39,566.06 529.93,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_14 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="530.75,566.06 531.68,566.06 531.21,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_15 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="532.03,566.06 532.96,566.06 532.5,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_16 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="533.32,566.06 534.25,566.06 533.78,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_17 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="534.6,566.06 535.53,566.06 535.07,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_18 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="535.88,566.06 536.81,566.06 536.35,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_19 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="537.17,566.06 538.1,566.06 537.63,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_20 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="538.45,566.06 539.38,566.06 538.92,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_21 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="539.74,566.06 540.67,566.06 540.2,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_22 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="541.02,566.06 541.95,566.06 541.48,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_23 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="542.3,566.06 543.23,566.06 542.77,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_24 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="543.59,566.06 544.52,566.06 544.05,567.43" fill="#5689C6" stroke="#5689C6"><title>SWT_FIXED_25 · pitch-depth-source;count-phase-inferred</title></polygon>
 <polygon points="507.84,567.43 508.72,567.43 508.72,565.66 507.84,565.66" fill="#5689C6" stroke="#5689C6"><title>STOP_FIXED_0 · 15nm-ON-gap-source;shape-inferred</title></polygon>
 <polygon points="550.78,567.43 551.67,567.43 551.67,565.66 550.78,565.66" fill="#5689C6" stroke="#5689C6"><title>STOP_FIXED_1 · 15nm-ON-gap-source;shape-inferred</title></polygon>
 <polygon points="683.59,490.18 829.69,490.18 829.69,463.18 683.59,463.18" fill="#5689C6" stroke="#5689C6"><title>NORTH_STATIONARY_HANDLE · inferred</title></polygon>
@@ -251,32 +251,32 @@
 <polygon points="533.37,687.46 536.81,688.15 536.46,689.89 533.02,689.2" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_49 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
 <polygon points="534.94,687.9 538.44,688.13 538.33,689.9 534.83,689.67" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_50 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
 <polygon points="536.61,688.07 604.79,688.07 604.79,689.84 536.61,689.84" fill="#0D9488" stroke="#0D9488"><title>S6_MOVABLE_MEANDER_RIGHT_51 · R2=3um 180-degree bends, L=15um; inferred XY positions</title></polygon>
-<polygon points="511.49,572.75 512.42,572.75 511.96,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_0 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="512.77,572.75 513.7,572.75 513.24,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_1 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="514.06,572.75 514.99,572.75 514.52,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_2 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="515.34,572.75 516.27,572.75 515.81,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_3 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="516.63,572.75 517.56,572.75 517.09,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_4 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="517.91,572.75 518.84,572.75 518.38,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_5 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="519.19,572.75 520.12,572.75 519.66,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_6 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="520.48,572.75 521.41,572.75 520.94,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_7 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="521.76,572.75 522.69,572.75 522.23,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_8 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="523.05,572.75 523.98,572.75 523.51,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_9 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="524.33,572.75 525.26,572.75 524.79,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_10 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="525.61,572.75 526.54,572.75 526.08,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_11 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="526.9,572.75 527.83,572.75 527.36,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_12 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="528.18,572.75 529.11,572.75 528.65,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_13 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="529.46,572.75 530.39,572.75 529.93,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_14 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="530.75,572.75 531.68,572.75 531.21,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_15 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="532.03,572.75 532.96,572.75 532.5,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_16 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="533.32,572.75 534.25,572.75 533.78,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_17 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="534.6,572.75 535.53,572.75 535.07,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_18 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="535.88,572.75 536.81,572.75 536.35,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_19 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="537.17,572.75 538.1,572.75 537.63,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_20 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="538.45,572.75 539.38,572.75 538.92,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_21 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="539.74,572.75 540.67,572.75 540.2,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_22 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="541.02,572.75 541.95,572.75 541.48,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_23 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="542.3,572.75 543.23,572.75 542.77,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_24 · pitch-depth-source;count-phase-inferred</title></polygon>
-<polygon points="543.59,572.75 544.52,572.75 544.05,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_25 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="511.49,572.79 512.42,572.79 511.96,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_0 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="512.77,572.79 513.7,572.79 513.24,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_1 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="514.06,572.79 514.99,572.79 514.52,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_2 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="515.34,572.79 516.27,572.79 515.81,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_3 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="516.63,572.79 517.56,572.79 517.09,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_4 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="517.91,572.79 518.84,572.79 518.38,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_5 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="519.19,572.79 520.12,572.79 519.66,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_6 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="520.48,572.79 521.41,572.79 520.94,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_7 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="521.76,572.79 522.69,572.79 522.23,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_8 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="523.05,572.79 523.98,572.79 523.51,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_9 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="524.33,572.79 525.26,572.79 524.79,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_10 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="525.61,572.79 526.54,572.79 526.08,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_11 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="526.9,572.79 527.83,572.79 527.36,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_12 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="528.18,572.79 529.11,572.79 528.65,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_13 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="529.46,572.79 530.39,572.79 529.93,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_14 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="530.75,572.79 531.68,572.79 531.21,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_15 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="532.03,572.79 532.96,572.79 532.5,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_16 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="533.32,572.79 534.25,572.79 533.78,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_17 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="534.6,572.79 535.53,572.79 535.07,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_18 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="535.88,572.79 536.81,572.79 536.35,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_19 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="537.17,572.79 538.1,572.79 537.63,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_20 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="538.45,572.79 539.38,572.79 538.92,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_21 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="539.74,572.79 540.67,572.79 540.2,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_22 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="541.02,572.79 541.95,572.79 541.48,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_23 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="542.3,572.79 543.23,572.79 542.77,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_24 · pitch-depth-source;count-phase-inferred</title></polygon>
+<polygon points="543.59,572.79 544.52,572.79 544.05,571.42" fill="#0D9488" stroke="#0D9488"><title>SWT_MOVABLE_25 · pitch-depth-source;count-phase-inferred</title></polygon>
 <polygon points="507.84,573.19 508.72,573.19 508.72,571.42 507.84,571.42" fill="#0D9488" stroke="#0D9488"><title>STOP_MOVING_0 · 15nm-ON-gap-source;shape-inferred</title></polygon>
 <polygon points="550.78,573.19 551.67,573.19 551.67,571.42 550.78,571.42" fill="#0D9488" stroke="#0D9488"><title>STOP_MOVING_1 · 15nm-ON-gap-source;shape-inferred</title></polygon>
 <polygon points="586.2,558.14 900.52,558.14 900.52,556.15 586.2,556.15" fill="#0D9488" stroke="#0D9488"><title>SHUTTLE_RAIL_TOP · inferred</title></polygon>
