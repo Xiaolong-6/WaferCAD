@@ -152,22 +152,46 @@ function sampleContinuousSection(front, a, b, steps = 128) {
   });
 }
 
+// Return exact physical Z intervals at one XY location. Curves are evaluated
+// analytically; these intervals are not the storage format and no depth bands
+// are ever introduced. Multiple same-material release fronts form a union.
+function continuousMaterialColumn(model, fronts, point) {
+  finite('x', point?.[0]);
+  finite('y', point?.[1]);
+  if (!Array.isArray(fronts)) throw new TypeError('Fronts must be an array');
+  const region = (model?.regions || []).find((r) => inMulti(point, r.geom));
+  if (!region) return [];
+  const columns = [];
+  for (const part of region.stack || []) {
+    let intervals = [{ z0: part.z0, z1: part.z1 }];
+    for (const front of fronts) {
+      if (front.layerId !== part.layerId) continue;
+      const depth = continuousDepthAtXY(front, point);
+      if (!(depth > 0)) continue;
+      const cut0 = front.face === 'front' ? front.seedZ - depth : front.seedZ;
+      const cut1 = front.face === 'front' ? front.seedZ : front.seedZ + depth;
+      intervals = intervals.flatMap(({ z0, z1 }) => {
+        if (cut1 <= z0 || cut0 >= z1) return [{ z0, z1 }];
+        const remain = [];
+        if (z0 < cut0) remain.push({ z0, z1: Math.min(z1, cut0) });
+        if (cut1 < z1) remain.push({ z0: Math.max(z0, cut1), z1 });
+        return remain;
+      });
+    }
+    for (const interval of intervals) columns.push({ layerId: part.layerId, ...interval });
+  }
+  return columns.sort((a, b) => a.z0 - b.z0 || a.z1 - b.z1);
+}
+
 function remainingMaterialAt(model, fronts, point) {
   const [x, y, z] = point;
   finite('x', x);
   finite('y', y);
   finite('z', z);
-  if (!Array.isArray(fronts)) throw new TypeError('Fronts must be an array');
-  for (const region of model?.regions || []) {
-    if (!inMulti([x, y], region.geom)) continue;
-    for (const part of region.stack || []) {
-      if (z >= part.z0 && z < part.z1)
-        return fronts.some((f) => continuousReleaseRemoves(f, point, part.layerId))
-          ? null
-          : part.layerId;
-    }
-  }
-  return null;
+  return (
+    continuousMaterialColumn(model, fronts, [x, y]).find(({ z0, z1 }) => z >= z0 && z < z1)
+      ?.layerId ?? null
+  );
 }
 
 export {
@@ -178,5 +202,6 @@ export {
   continuousFrontZ,
   continuousReleaseRemoves,
   sampleContinuousSection,
+  continuousMaterialColumn,
   remainingMaterialAt,
 };
