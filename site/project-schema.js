@@ -329,27 +329,70 @@ function contourEdgeBoxes(ring) {
   return boxes.sort((a, b) => a.minX - b.minX);
 }
 
+function buildEdgeTree(edges, start = 0, end = edges.length) {
+  if (end - start <= 12) {
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
+    for (let i = start; i < end; i++) {
+      const e = edges[i];
+      minX = Math.min(minX, e.minX);
+      minY = Math.min(minY, e.minY);
+      maxX = Math.max(maxX, e.maxX);
+      maxY = Math.max(maxY, e.maxY);
+    }
+    return { minX, minY, maxX, maxY, start, end };
+  }
+  const mid = start + Math.floor((end - start) / 2);
+  const left = buildEdgeTree(edges, start, mid),
+    right = buildEdgeTree(edges, mid, end);
+  return {
+    minX: Math.min(left.minX, right.minX),
+    minY: Math.min(left.minY, right.minY),
+    maxX: Math.max(left.maxX, right.maxX),
+    maxY: Math.max(left.maxY, right.maxY),
+    left,
+    right,
+    start,
+    end,
+  };
+}
+
+function edgesMayTouch(a, treeA, b, treeB) {
+  const margin = 1e-9;
+  if (
+    treeA.minX > treeB.maxX + margin ||
+    treeB.minX > treeA.maxX + margin ||
+    treeA.minY > treeB.maxY + margin ||
+    treeB.minY > treeA.maxY + margin
+  )
+    return false;
+  if (treeA.left) {
+    return edgesMayTouch(a, treeA.left, b, treeB) || edgesMayTouch(a, treeA.right, b, treeB);
+  }
+  if (treeB.left) {
+    return edgesMayTouch(a, treeA, b, treeB.left) || edgesMayTouch(a, treeA, b, treeB.right);
+  }
+  for (let i = treeA.start; i < treeA.end; i++) {
+    for (let j = treeB.start; j < treeB.end; j++) {
+      const x = a[i],
+        y = b[j];
+      if (
+        x.minX <= y.maxX + margin &&
+        y.minX <= x.maxX + margin &&
+        x.minY <= y.maxY + margin &&
+        y.minY <= x.maxY + margin
+      )
+        return true;
+    }
+  }
+  return false;
+}
+
 function provablySeparatedContours(left, right) {
   if (!left.outline || !right.outline) return false;
-  const sides = [left.edges, right.edges],
-    cursor = [0, 0],
-    active = [[], []];
-  const margin = 1e-9;
-  while (cursor[0] < sides[0].length || cursor[1] < sides[1].length) {
-    const side =
-      cursor[1] >= sides[1].length ||
-      (cursor[0] < sides[0].length && sides[0][cursor[0]].minX <= sides[1][cursor[1]].minX)
-        ? 0
-        : 1;
-    const current = sides[side][cursor[side]++],
-      other = 1 - side;
-    active[other] = active[other].filter((edge) => edge.maxX >= current.minX - margin);
-    for (const previous of active[other]) {
-      if (previous.maxY >= current.minY - margin && current.maxY >= previous.minY - margin)
-        return false;
-    }
-    active[side].push(current);
-  }
+  if (edgesMayTouch(left.edges, left.edgeTree, right.edges, right.edgeTree)) return false;
   return (
     !pointInProofRing(left.outline[0], right.outline) &&
     !pointInProofRing(right.outline[0], left.outline)
@@ -368,6 +411,46 @@ function cachedContourSeparation(a, b, cache) {
   return separated;
 }
 
+// Projections provide a cheap sufficient separation proof for angled shapes.
+// The tested axes do not approximate the geometry: only disjoint intervals
+// can reject a pair, and all other cases retain the exact Boolean check.
+function polygonDiagonalBounds(polygon) {
+  let loSum = Infinity,
+    hiSum = -Infinity,
+    loDiff = Infinity,
+    hiDiff = -Infinity;
+  for (const ring of polygon)
+    for (const [x, y] of ring) {
+      const sum = x + y,
+        diff = x - y;
+      if (sum < loSum) loSum = sum;
+      if (sum > hiSum) hiSum = sum;
+      if (diff < loDiff) loDiff = diff;
+      if (diff > hiDiff) hiDiff = diff;
+    }
+  return [
+    loSum,
+    hiSum,
+    loDiff,
+    hiDiff,
+    Math.max(
+      1e-9,
+      Math.max(Math.abs(loSum), Math.abs(hiSum), Math.abs(loDiff), Math.abs(hiDiff)) * 1e-12,
+    ),
+  ];
+}
+
+function provablyDiagonalSeparated(a, b) {
+  const x = a.diagonal,
+    y = b.diagonal;
+  // Scale the rejection margin well beyond IEEE-754 addition error at large
+  // (up to 1e9 µm) coordinates. Uncertain near-touching pairs use Boolean.
+  const margin = Math.max(x[4], y[4]);
+  return (
+    x[0] > y[1] + margin || y[0] > x[1] + margin || x[2] > y[3] + margin || y[2] > x[3] + margin
+  );
+}
+
 function geometryComponents(geometry, cache) {
   if (!cache.components.has(geometry)) {
     cache.components.set(
@@ -375,11 +458,14 @@ function geometryComponents(geometry, cache) {
       geometry
         .map((polygon, index) => {
           const outline = polygon[0] || null;
+          const edges = outline ? contourEdgeBoxes(outline) : null;
           return {
             index,
             bounds: geometryBounds([polygon]),
             outline,
-            edges: outline ? contourEdgeBoxes(outline) : null,
+            edges,
+            diagonal: polygonDiagonalBounds(polygon),
+            edgeTree: edges ? buildEdgeTree(edges) : null,
           };
         })
         .sort((a, b) => a.bounds.minX - b.bounds.minX),
@@ -502,6 +588,7 @@ function intersectionCandidates(left, right, cache, radialProof = null) {
         current.bounds.maxY <= previous.bounds.minY
       )
         continue;
+      if (provablyDiagonalSeparated(current, previous)) continue;
       if (cachedContourSeparation(current, previous, cache)) continue;
       if (
         radial &&

@@ -63,3 +63,22 @@ test('fully contained regions are rejected even when no contour edges cross', ()
     /overlaps model\.regions/,
   );
 });
+
+// Their XY bounds overlap, but x+y projections are separated. A real
+// positive-area overlap must remain rejected by the unchanged Boolean path.
+test('45-degree conservative interval proof distinguishes separated and overlapping diamonds', () => {
+  const diamond = (cx, cy, radius) =>
+    polygon([
+      [cx - radius, cy],
+      [cx, cy - radius],
+      [cx + radius, cy],
+      [cx, cy + radius],
+    ]);
+  assert.doesNotThrow(() =>
+    validateProcessModel(modelWithRegionPairs(diamond(0, 0, 5), diamond(5, 5, 2))),
+  );
+  assert.throws(
+    () => validateProcessModel(modelWithRegionPairs(diamond(0, 0, 5), diamond(3, 3, 2))),
+    /overlaps model\.regions/,
+  );
+});
