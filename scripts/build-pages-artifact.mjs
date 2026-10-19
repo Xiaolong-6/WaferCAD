@@ -1,6 +1,7 @@
 import { cp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { buildBundledIntegrity } from './build-bundled-integrity.mjs';
 
 // Developer fixtures are versioned in Git but are not part of the public application.
 const excludedDirectories = [
@@ -71,6 +72,8 @@ export async function stagePagesAssets({
     recursive: true,
     filter: (path) => shouldPublishSitePath(relative(sourceRoot, path)),
   });
+  // Strictly validate every bundled file before minting the release receipt.
+  await buildBundledIntegrity({ source: sourceRoot, destination: destinationRoot });
   // Keep historical bookmarks working without shipping an executable Legacy UI.
   // Preserve the same-origin query string for old Example/Open links, but never
   // instantiate the old editor or touch saved Workspace/Recovery data here.

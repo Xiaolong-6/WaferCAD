@@ -10,6 +10,8 @@ import { gotoWelcome } from './test-helpers/ui.mjs';
 const id = process.argv[2] || 'three-tier-silicon-jlfets';
 const repeat = Number(process.argv[3] || 3);
 const headless = process.argv.includes('--headless');
+// Preserve the original strict-loader performance baseline by default.
+const strict = !process.argv.includes('--fast');
 const example = BUNDLED_EXAMPLES.find((item) => item.id === id);
 assert.ok(example, 'Unknown bundled example: ' + id);
 assert.ok(Number.isInteger(repeat) && repeat > 0 && repeat <= 20, 'Repeat must be 1–20');
@@ -75,7 +77,14 @@ try {
       }
       const started = performance.now();
       // Direct activation avoids accidentally triggering a cold-case hover prefetch.
-      await link.evaluate((element) => element.click());
+      await link.evaluate((element, strictMode) => {
+        if (strictMode) {
+          const url = new URL(element.href);
+          url.searchParams.set('validation', 'strict');
+          element.href = url.href;
+        }
+        element.click();
+      }, strict);
       await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
         timeout: 180000,
       });
@@ -125,6 +134,7 @@ try {
       }
       rows.push({
         id,
+        validation: strict ? 'strict' : 'attested',
         warmed,
         run: i + 1,
         openedMs,

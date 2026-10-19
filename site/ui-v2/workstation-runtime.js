@@ -99,7 +99,7 @@ export async function loadExperimentalPhysicalFacetPreview({ coated = false } = 
 export async function loadBundledProject(
   id,
   readProject = readProjectFile,
-  { preview = false } = {},
+  { preview = false, strict = false } = {},
 ) {
   const aliases = {
     m3d: 'm3d-selfpowered-heterogeneous-ic',
@@ -125,10 +125,33 @@ export async function loadBundledProject(
   });
   if (!response.ok) throw Error(`Project: HTTP ${response.status}`);
   const bytes = await response.arrayBuffer();
+  // A release receipt exists only for strictly validated, immutable bundled
+  // files; missing receipts preserve the normal strict import path.
+  let integrity = null;
+  if (!strict) {
+    try {
+      const proof = await fetch(versionedExampleAssetPath('./examples/bundled-integrity.json', version));
+      if (proof.ok) {
+        const receipt = await proof.json();
+        if (receipt?.format === 'wafercad-validated-bundled-v1')
+          integrity = receipt.entries?.[example.id]?.[preview ? 'preview' : 'full'];
+      }
+    } catch {
+      // A source checkout need not carry a publication receipt.
+    }
+  }
   const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
     .map((value) => value.toString(16).padStart(2, '0'))
     .join('');
-  const data = await readProject(bufferBackedProjectFile(bytes, asset.filename));
+  if (integrity && (
+    integrity.path !== asset.path ||
+    integrity.bytes !== bytes.byteLength ||
+    integrity.sha256 !== hash
+  )) throw Error(`Bundled example integrity mismatch: ${example.id}`);
+  const data = await readProject(
+    bufferBackedProjectFile(bytes, asset.filename),
+    integrity ? { trustedBundledExample: { sha256: integrity.sha256 } } : {},
+  );
   if (!data) throw Error('The example project was not imported.');
   return { source: path, hash, data };
 }

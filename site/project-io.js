@@ -794,7 +794,10 @@ export function downloadProject(project, filename = 'wafercad-project.wafercad')
   return { requested: true, filename, bytes: blob.size, mode };
 }
 
-export async function readProjectFile(file, { experimentalPhysicalFacetReadOnly = false } = {}) {
+export async function readProjectFile(
+  file,
+  { experimentalPhysicalFacetReadOnly = false, trustedBundledExample = null } = {},
+) {
   if (!file) throw new Error('No project file selected.');
   if (file.size > MAX_PROJECT_FILE_BYTES) {
     throw new Error(
@@ -809,8 +812,26 @@ export async function readProjectFile(file, { experimentalPhysicalFacetReadOnly 
     throw new Error('Project file is not valid JSON.');
   }
 
+  // Release staging strictly validates the exact full file and all History
+  // states before publishing its content-addressed receipt. Recheck the
+  // actual bytes at this boundary before skipping redundant validation.
+  if (trustedBundledExample) {
+    const expected = trustedBundledExample.sha256;
+    if (!/^[a-f0-9]{64}$/.test(expected || ''))
+      throw Error('Invalid bundled integrity receipt.');
+    const bytes = await file.arrayBuffer();
+    const digest = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
+      .map((value) => value.toString(16).padStart(2, '0'))
+      .join('');
+    if (digest !== expected) throw Error('Bundled project integrity verification failed.');
+    if (parsed?.format !== 'WaferCAD-vector' || !Number.isInteger(parsed.version) ||
+        !parsed.model || !parsed.layout)
+      throw Error('Invalid bundled project header.');
+  }
   expandProjectStorage(parsed);
-  const project = validateProjectFile(migrateProjectFile(parsed));
+  const project = trustedBundledExample
+    ? migrateProjectFile(parsed)
+    : validateProjectFile(migrateProjectFile(parsed));
   // The opt-in owner is persisted and strictly validated, but the default
   // Workstation must not draw its physical material as a flat surrogate.
   if (

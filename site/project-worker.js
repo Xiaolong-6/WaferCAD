@@ -19,13 +19,31 @@ function modules() {
 }
 
 self.onmessage = async (event) => {
-  const { id, arrayBuffer } = event.data || {};
+  const { id, arrayBuffer, trustedBundledExample } = event.data || {};
   if (!id) return;
   try {
     const startedAt = performance.now();
     self.postMessage({ id, type: 'progress', stage: 'Parsing project JSON…' });
     const [projectIo, projectSchema] = await modules();
     const modulesReadyAt = performance.now();
+    if (trustedBundledExample) {
+      self.postMessage({ id, type: 'progress', stage: 'Verifying bundled integrity…' });
+      const project = await projectIo.readProjectFile({
+        name: 'bundled-example.wafercad',
+        size: arrayBuffer.byteLength,
+        text: async () => new TextDecoder().decode(arrayBuffer),
+        arrayBuffer: async () => arrayBuffer,
+      }, { trustedBundledExample });
+      const completedAt = performance.now();
+      self.postMessage({ id, type: 'done', project, timingsMs: {
+        moduleLoad: modulesReadyAt - startedAt,
+        parse: completedAt - modulesReadyAt,
+        expand: 0,
+        migrationAndValidation: 0,
+        workerTotalBeforeSend: completedAt - startedAt,
+      } });
+      return;
+    }
     let parsed;
     try {
       parsed = JSON.parse(new TextDecoder().decode(new Uint8Array(arrayBuffer)));
