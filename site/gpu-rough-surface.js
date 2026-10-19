@@ -276,15 +276,17 @@ float waferCadFarValueNoise(vec2 location) {
 }
 
 float waferCadFarFieldShade(vec2 xy) {
-  // At least five pixels per cell prevents subpixel shimmer.
+  if (waferCadRoughFarFieldContrast <= 0.0) return 1.0;
   float footprint = max(length(dFdx(xy)), length(dFdy(xy)));
+  float featurePixels = waferCadRoughFarFieldFeatureSize / max(1e-9, footprint);
+  float unresolved = 1.0 - smoothstep(0.75, 8.0, featurePixels);
+  if (unresolved <= 0.0) return 1.0;
+  // At least five pixels per cell prevents subpixel shimmer.
   float displayCell = max(
     max(1e-6, waferCadRoughFarFieldFeatureSize) * 8.0,
     footprint * 5.0
   );
   float visual = waferCadFarValueNoise(xy / displayCell);
-  float featurePixels = waferCadRoughFarFieldFeatureSize / max(1e-9, footprint);
-  float unresolved = 1.0 - smoothstep(0.75, 8.0, featurePixels);
   return 1.0 - waferCadRoughFarFieldContrast * unresolved * (0.25 + 1.05 * visual);
 }
 `;
