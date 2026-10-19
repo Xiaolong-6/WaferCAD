@@ -15,6 +15,10 @@ export function isBaseOnlyModel(model) {
   return stack?.length === 1 && stack[0]?.layerId === 'base';
 }
 
+export function shouldShowEmptyProcessHint(model, hasProcessHistory = false) {
+  return isBaseOnlyModel(model) && !hasProcessHistory;
+}
+
 export function isEmptyActiveMask(state) {
   if (!state) return false;
   return state.maskSourceMode === 'draw'

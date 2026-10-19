@@ -8,7 +8,7 @@ import { createFloatingStrip } from './view-kit/floating-strip.js';
 import { createInspectionFields } from './view-kit/inspection-fields.js';
 import { mountToolPopover } from './view-kit/tool-popover.js';
 import { modelInventoryCount } from './view-kit/model-inventory.js';
-import { createEmptyHint, isBaseOnlyModel } from './view-kit/empty-state.js';
+import { createEmptyHint, shouldShowEmptyProcessHint } from './view-kit/empty-state.js';
 
 export async function createMainView({ project, sharedState, workstation, renderModel } = {}) {
   const { el, button, toolbar, panelHeader } = window.WaferCadV2Components;
@@ -80,7 +80,11 @@ export async function createMainView({ project, sharedState, workstation, render
   // Only the full editable workstation has a Process workflow to open.
   const updateEmptyHint = () =>
     emptyHint.update(
-      Boolean(workstation && !workstation.readOnlyPreview && isBaseOnlyModel(state?.model)),
+      Boolean(
+        workstation &&
+          !workstation.readOnlyPreview &&
+          shouldShowEmptyProcessHint(state?.model, workstation.hasProcessHistory?.() === true),
+      ),
     );
   const caption = () =>
     `${state.model.layers.length} layers · ${modelInventoryCount(state.model)} · ${units.label()}`;
