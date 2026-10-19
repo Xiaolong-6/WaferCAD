@@ -1,10 +1,7 @@
 // Read-only bridge from physical exposed-material topology to exact release surfaces.
 // No Process mutation, project migration, or visual-only replacement occurs here.
 import { exposedSurfaceGroups } from './process-topology.js';
-import {
-  createContinuousEtchFront,
-  remainingMaterialAt,
-} from './continuous-etch-geometry.js';
+import { createContinuousEtchFront, remainingMaterialAt } from './continuous-etch-geometry.js';
 
 // Plans are transient: separate History/Recovery states can share a revision number.
 const continuousPlanOwners = new WeakMap();
@@ -81,7 +78,8 @@ export function remainingMaterialInContinuousPlan(model, plan, point) {
   if (
     !plan ||
     plan.kind !== 'canonical-exposed-continuous-etch-plan-v1' ||
-    (model?.revision !== plan.modelRevision || continuousPlanOwners.get(plan) !== model)
+    model?.revision !== plan.modelRevision ||
+    continuousPlanOwners.get(plan) !== model
   ) {
     throw new RangeError('Continuous release plan is stale or incompatible with Model revision');
   }
