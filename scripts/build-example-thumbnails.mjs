@@ -67,7 +67,15 @@ try {
       null,
       { timeout: 120000 },
     );
-    if (fullCover) await page.locator('[data-action="view:three"]').click();
+    if (fullCover && !(await page.locator('#threeHost').isVisible())) {
+      // A real full-project cover may open in mobile single-view or desktop
+      // docking; select 3D only when it is not already shown.
+      const dockToggle = page.locator('button[data-action="dock:view:three"]');
+      const singleToggle = page.locator('button[data-action="view:three"]');
+      if (await dockToggle.isVisible()) await dockToggle.click();
+      else if (await singleToggle.isVisible()) await singleToggle.click();
+      else throw Error(`Cannot open the 3D view for ${example.id}`);
+    }
     await page.waitForFunction(
       () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
       null,
