@@ -197,6 +197,26 @@ export function buildSwxMaskLayout() {
   }
   addRect("GROUND_METAL_PAD",3,"metal",...pads.groundAuCr,inferredMetal);
   addRect("SIGNAL_METAL_PAD",3,"metal",...pads.signalAuCr,inferredMetal);
+  // Broad yellow Fig.1c perimeter is TWO independently patterned electrode
+  // regions on BOX-supported Si, not one continuous yellow metal film.
+  // Dimensions/contours are engineering inferences; paper names Ground and
+  // Signal pads but does not publish lithographic boundaries or pad XY size.
+  // GROUND: top, left and bottom-left frame. SIGNAL: right/lower panel.
+  // Preserve an insulating slot between both metal AND Si supported regions.
+  const broadPads=[
+    {id:"GROUND_UPPER",net:"GROUND",si:[-92,60,204,37],metal:[-91,61,201,35]},
+    {id:"GROUND_LEFT",net:"GROUND",si:[-92,-95,14,192],metal:[-91,-94,12,190]},
+    {id:"GROUND_LOWER",net:"GROUND",si:[-92,-95,79,31],metal:[-91,-94,77,29]},
+    {id:"SIGNAL_RIGHT",net:"SIGNAL",si:[57,-92,50,149],metal:[58,-90,47,146]}
+  ];
+  for(const pad of broadPads){
+    addRect(`PERIMETER_${pad.id}_SUPPORTED_SI`,1,"fixed",...pad.si,
+      "BOX-supported peripheral Si contact foundation; bounds inferred Fig.1c");
+    addRect(`PERIMETER_${pad.id}_CR_AU`,3,"metal",...pad.metal,
+      "Fig.1c yellow field represents distinct pads; Cr50/Au300 source, XY inferred");
+  }
+  annotations.push({kind:"pad-isolation",netA:"GROUND",netB:"SIGNAL",
+    note:"Upper metal gap nominal 5um, Si gap 3um: both INFERRED, not paper dimensions"});
   // Ridge 150nm process is confined to array shuffles; no fabricated array
   // routing is asserted here. Layer 2 intentionally empty in this unit mask.
   annotations.push({kind:"source",x:-40,y:0,note:"Fig.1c/3a & Supp. Figs S2,S6-S9"});
@@ -231,7 +251,10 @@ export function buildSwxMaskLayout() {
       inferredONTranslationUm:.885,
       inferredONGapUm:.015,
       combCellPairs:40,axialCombRegistration:true,springStations:[-14,37],
-      peripheralPadNets:["GROUND","SIGNAL"],peripheralPadFootprint:"inferred; NOT author GDS",
+      peripheralPadNets:["GROUND","SIGNAL"],
+      peripheralPadFootprint:"four large-area perimeter polygons inferred from Fig.1c; NOT author GDS",
+      broadPadMetalCount:4,perimeterPadIsolationUpperUm:5,
+      broadPadMaterial:"Cr 50nm / Au 300nm on BOX-supported Si",
       groundAnchorConnections:"2 of 4 spring anchors routed; other 2 require topology redesign",
       lithographicUnknowns:"SWT count/phase; waveguide contour; pad boundaries; actual release undercut; exact full-unit footprint",
       boxRelease:"not generated as a photomask; requires selective HF undercut Kernel stage",
