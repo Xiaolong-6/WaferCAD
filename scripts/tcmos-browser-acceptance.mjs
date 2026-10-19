@@ -477,11 +477,8 @@ try {
       '130 nm foundry node reported; the approved SVG POLY stripe is 38.5/80=0.48125 illustrative µm, not a measured gate length',
     physicalGateLengthReportedInSource: false,
   }));
-  // Inspect a physical local 3D cutaway using the existing Main ROI clipping
-  // contract. The full 2 µm illustrative substrate previously compressed the
-  // buried 80–240 nm annotations to only a few display pixels. Use the same
-  // documented display-only Z break as Section to magnify the near-surface
-  // device while retaining original physical coordinates and model bytes.
+  // Inspect the actual local 3D ROI using native Main ROI clipping and
+  // the independent Section Z break, preserving geometry and Process state.
   // The SVG-aligned Y=-1.2 ROI intersects the actual gate and S/D silicon.
   report.localThreeD = [];
   for (const local of localSections) {
@@ -496,7 +493,6 @@ try {
     inspection.section = { a: [local.ax, deviceY], b: [local.bx, deviceY] };
     inspection.display.threeOpacity = 0.5;
     inspection.display.threeShowBorders = true;
-    inspection.display.threeCutaway = true;
     inspection.display.sectionCollapse = {
       enabled: true,
       top: 0.68,
@@ -534,7 +530,6 @@ try {
     await writeFile(inspectionPath, JSON.stringify(inspection));
     const validated = await readProjectFile(new Blob([await readFile(inspectionPath)]));
     assert.deepEqual(validated.roi, roi);
-    assert.equal(validated.display.threeCutaway, true);
     assert.deepEqual(validated.display.sectionCollapse, inspection.display.sectionCollapse);
     assert.deepEqual(validated.model, expected.model, 'Inspection copy altered material model');
     await panel('project');
@@ -566,23 +561,16 @@ try {
     await waitForPaint(page);
     const framing = await snap();
     assert.deepEqual(framing.roi, roi, '3D ROI clip must use exact local coordinates');
-    assert.equal(framing.threeDisplay.borders, true, 'Local cutaway should display borders');
-    assert.equal(framing.threeDisplay.cutaway, true, 'Local 3D cutaway mode must be active');
-    assert.equal(
-      await page.locator('#threePanel [data-action="cutaway:three"]').getAttribute('aria-pressed'),
-      'true',
-    );
+    assert.equal(framing.threeDisplay.borders, true, 'Local ROI inspection should display borders');
     assert.equal(
       framing.sectionCollapse.enabled,
       true,
-      'Local cutaway must use display-only Z break',
+      'ROI inspection keeps the independent Section Z break',
     );
     assert.equal(framing.sectionCollapse.top, 0.68);
     assert.equal(framing.sectionCollapse.bottom, -0.8);
     await page.waitForFunction(
-      () =>
-        Number(document.querySelector('#threeHost')?.dataset.implantCutBuiltCount) > 0 &&
-        Number(document.querySelector('#threeHost')?.dataset.implantOutlineBuiltCount) > 0,
+      () => Number(document.querySelector('#threeHost')?.dataset.implantCutBuiltCount) > 0,
       null,
       { timeout: 45000 },
     );
@@ -623,20 +611,16 @@ try {
       'Local 3D camera must keep a low side elevation',
     );
     await page.locator('#threePanel').screenshot({
-      path: resolve(dir, 'tcmos-fig1a-' + local.device + '-local-3d-cutaway.png'),
+      path: resolve(dir, 'tcmos-fig1a-' + local.device + '-local-3d-roi.png'),
     });
     report.localThreeD.push({
       device: local.device,
       sourceSupported: false,
-      role: 'display-Z-break ROI cutaway; not calibrated dopant, junction thickness or BTBT physics',
+      role: 'native ROI 3D inspection; not calibrated dopant, junction thickness or BTBT physics',
       roiUm: roi,
       displayOnlyZBreak: inspection.display.sectionCollapse,
-      threeCutaway: true,
       physicalZExaggeration: false,
       buriedImplantCutFragments: roiCut.length,
-      annotationOutlineMeshes: Number(
-        await page.locator('#threeHost').getAttribute('data-implant-outline-built-count'),
-      ),
       rendererImplantCutMeshes: Number(
         await page.locator('#threeHost').getAttribute('data-implant-cut-built-count'),
       ),
@@ -679,9 +663,7 @@ try {
     await waitForPaint(page);
     const isolatedThreeExpanded = await requireLargeView('three');
     await page.waitForFunction(
-      () =>
-        Number(document.querySelector('#threeHost')?.dataset.implantCutBuiltCount) > 0 &&
-        Number(document.querySelector('#threeHost')?.dataset.implantOutlineBuiltCount) > 0,
+      () => Number(document.querySelector('#threeHost')?.dataset.implantCutBuiltCount) > 0,
       null,
       { timeout: 45000 },
     );
