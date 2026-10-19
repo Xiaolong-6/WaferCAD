@@ -161,8 +161,7 @@ test('software roughness visibility shader changes only color, not displaced geo
   const shader = {
     uniforms: {},
     vertexShader: sourceVertex,
-    fragmentShader:
-      '#include <common>\\nvoid main() {\\n#include <color_fragment>\\n}',
+    fragmentShader: '#include <common>\\nvoid main() {\\n#include <color_fragment>\\n}',
   };
   assert.equal(decorateRoughFarFieldMaterial(material, appearance), true);
   material.onBeforeCompile(shader, {});
