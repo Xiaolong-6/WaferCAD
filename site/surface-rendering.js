@@ -23,7 +23,7 @@ export function roughFarFieldContrast(featurePixels, appearance) {
     height = Math.max(0, Number(appearance?.meanHeight ?? appearance?.amplitude) || 0);
   if (appearance?.kind !== 'rough' || !(feature > 0) || !(height > 0)) return 0;
   const slope = height / feature;
-  const unresolved = 1 - smoothstep(0.65, 2.75, Math.max(0, Number(featurePixels) || 0));
+  const unresolved = 1 - smoothstep(0.75, 8, Math.max(0, Number(featurePixels) || 0));
   return 0.22 * (slope / (0.45 + slope)) * unresolved;
 }
 
