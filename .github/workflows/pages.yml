@@ -13,6 +13,7 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/pages.yml'
+      - '.github/workflows/release-evidence-contract.yml'
       - '.github/workflows/browser-regression.yml'
       - '.github/workflows/ui-v2-stage-c-m4.yml'
       - '.github/workflows/quality.yml'
@@ -30,8 +31,34 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  release-evidence:
+    name: Select proven PR evidence or full release
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      checks: read
+      pull-requests: read
+      actions: read
+    outputs:
+      fast: ${{ steps.verify.outputs.fast }}
+      mode: ${{ steps.verify.outputs.mode }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Require fail-closed release contract tests
+        run: node --test site/tests/release-evidence.test.mjs
+      - name: Inspect exact merge tree and reviewed PR checks
+        id: verify
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/release/verified-pr-release.mjs
+
   release-quality:
     name: Release lint, format, docs and Node tests
+    needs: release-evidence
+    if: ${{ needs.release-evidence.outputs.fast != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -45,6 +72,8 @@ jobs:
 
   release-browser:
     name: Release targeted browser regression
+    needs: release-evidence
+    if: ${{ needs.release-evidence.outputs.fast != 'true' }}
     uses: ./.github/workflows/browser-regression.yml
     with:
       skip_node_gate: true
@@ -53,12 +82,16 @@ jobs:
 
   release-ui-v2:
     name: Release real UI v2 acceptance
+    needs: release-evidence
+    if: ${{ needs.release-evidence.outputs.fast != 'true' }}
     uses: ./.github/workflows/ui-v2-stage-c-m4.yml
     permissions:
       contents: read
 
   release-impact:
     name: Select scientific release gates
+    needs: release-evidence
+    if: ${{ needs.release-evidence.outputs.fast != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -88,16 +121,16 @@ jobs:
 
   release-main-mask:
     name: Real Main/Mask/Section acceptance
-    needs: release-impact
-    if: ${{ needs.release-impact.outputs.main_mask == 'true' }}
+    needs: [release-evidence, release-impact]
+    if: ${{ needs.release-evidence.outputs.fast != 'true' && needs.release-impact.outputs.main_mask == 'true' }}
     uses: ./.github/workflows/ui-v2-main-mask.yml
     permissions:
       contents: read
 
   release-klayout:
     name: KLayout interchange compatibility
-    needs: release-impact
-    if: ${{ needs.release-impact.outputs.klayout == 'true' }}
+    needs: [release-evidence, release-impact]
+    if: ${{ needs.release-evidence.outputs.fast != 'true' && needs.release-impact.outputs.klayout == 'true' }}
     uses: ./.github/workflows/klayout-compat.yml
     with:
       scope: all
@@ -106,16 +139,16 @@ jobs:
 
   release-recipe:
     name: Recipe safety acceptance
-    needs: release-impact
-    if: ${{ needs.release-impact.outputs.recipe == 'true' }}
+    needs: [release-evidence, release-impact]
+    if: ${{ needs.release-evidence.outputs.fast != 'true' && needs.release-impact.outputs.recipe == 'true' }}
     uses: ./.github/workflows/process-recipe-safety.yml
     permissions:
       contents: read
 
   release-science:
     name: Scientific release aggregate
-    if: ${{ always() }}
-    needs: [release-impact, release-main-mask, release-klayout, release-recipe]
+    if: ${{ always() && needs.release-evidence.outputs.fast != 'true' }}
+    needs: [release-evidence, release-impact, release-main-mask, release-klayout, release-recipe]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -148,7 +181,7 @@ jobs:
 
   stage-pages:
     name: Build and smoke production Pages artifact
-    needs: [release-quality, release-browser, release-ui-v2, release-science]
+    needs: [release-evidence, release-quality, release-browser, release-ui-v2, release-science]
     # Without an explicit status function, any intentionally skipped upstream
     # job can silently skip both staging and deployment while leaving CI green.
     if: ${{ always() && !cancelled() && github.ref == 'refs/heads/main' }}
@@ -157,19 +190,34 @@ jobs:
     env:
       WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
     steps:
-      - name: Require successful same-revision release gates
+      - name: Require proven fast release or successful full release gates
         shell: bash
         env:
+          EVIDENCE_RESULT: ${{ needs.release-evidence.result }}
+          FAST: ${{ needs.release-evidence.outputs.fast }}
           QUALITY_RESULT: ${{ needs.release-quality.result }}
           BROWSER_RESULT: ${{ needs.release-browser.result }}
           UI_V2_RESULT: ${{ needs.release-ui-v2.result }}
           SCIENCE_RESULT: ${{ needs.release-science.result }}
         run: |
+          test "$EVIDENCE_RESULT" = success || {
+            echo "::error::Release evidence gate was not successful"; exit 1;
+          }
+          if [[ "$FAST" == true ]]; then
+            # A trusted, exact-tree PR review replaces only redundant checks.
+            # Failed or accidentally running/skipped gates cannot be hidden.
+            expected=skipped
+          elif [[ "$FAST" == false ]]; then
+            expected=success
+          else
+            echo "::error::Release verification route was not established"
+            exit 1
+          fi
           for gate in QUALITY BROWSER UI_V2 SCIENCE; do
             result_var="${gate}_RESULT"
             result="${!result_var}"
-            if [[ "$result" != success ]]; then
-              echo "::error::Release $gate gate is $result (expected success); refusing to publish."
+            if [[ "$result" != "$expected" ]]; then
+              echo "::error::Release $gate gate is $result, expected $expected"
               exit 1
             fi
           done
