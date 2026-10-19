@@ -175,7 +175,12 @@ test('Photodetector Renderer changes require focused science and real browser ow
 });
 
 test('Mask onboarding PR requires its shared UI and Main/Mask browser gates', () => {
-  const paths = ['site/ui-v2/mask-view.js', 'site/ui-v2/view-kit/empty-state.js'];
+  const paths = [
+    'scripts/v2/check-empty-canvas-hints.mjs',
+    'site/tests/ui-v2-empty-state.test.mjs',
+    'site/ui-v2/mask-view.js',
+    'site/ui-v2/view-kit/empty-state.js',
+  ];
   const required = targetedProductionGates(paths);
   assert.ok(required.includes('Native v2 Release workstation'));
   assert.ok(required.includes('Main and Mask browser gates'));
