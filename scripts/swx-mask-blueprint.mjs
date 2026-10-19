@@ -159,6 +159,44 @@ export function buildSwxMaskLayout() {
         note:"Compliant spring fixed endpoint: requires connectivity/undercut check"});
     }
   }
+
+  // Contact pad topology from Fig. 1c: the outer two metal lands are SIGNAL
+  // and GROUND, NOT one shared electrode. The reported material is Cr 50nm
+  // + Au 300nm. Absolute pad size/placement and lead paths are NOT disclosed.
+  // These polygons are therefore provisional electrical-access Mask context.
+  const pads={
+    groundSupport:[72,65,24,23], signalSupport:[72,-88,24,23],
+    groundAuCr:[75,68,18,17], signalAuCr:[75,-85,18,17],
+    siRouteWidth:1.2, electrodeRouteWidth:.6
+  };
+  const inferredSi="Fig.1c electrical net inferred; must retain BOX under pad/lead";
+  const inferredMetal="Cr=50nm Au=300nm (Methods); XY/width inferred from Fig.1c";
+  addRect("GROUND_PAD_BOX_SUPPORTED_SI",1,"fixed",...pads.groundSupport,inferredSi);
+  addRect("SIGNAL_PAD_BOX_SUPPORTED_SI",1,"fixed",...pads.signalSupport,inferredSi);
+  // Place the GND return outside the suspended Si envelope. Only the
+  // two left-side spring anchors are linked at this stage. The right
+  // two spring-anchor GND links remain open design requirements.
+  const gndRoutes=[
+    [[78,69],[78,62],[-81,62],[-81,-62],[-15,-62]],
+    [[-15,62],[-15,48]],
+    [[-15,-62],[-15,-48]]
+  ];
+  for(let i=0;i<gndRoutes.length;i++){
+    path(gndRoutes[i],pads.siRouteWidth,`GROUND_SI_ROUTE_${i}`,"fixed",1,inferredSi);
+    path(gndRoutes[i],pads.electrodeRouteWidth,`GROUND_METAL_ROUTE_${i}`,"metal",3,inferredMetal);
+  }
+  // Signal drives both stationary comb buses while avoiding the moving
+  // shuttle/springs and remaining electrically separate from GND.
+  const sigRoutes=[
+    [[-9,21],[-9,55],[58,55],[58,-55],[78,-55],[78,-69]],
+    [[-9,-11],[-9,-55],[58,-55]]
+  ];
+  for(let i=0;i<sigRoutes.length;i++){
+    path(sigRoutes[i],pads.siRouteWidth,`SIGNAL_SI_ROUTE_${i}`,"fixed",1,inferredSi);
+    path(sigRoutes[i],pads.electrodeRouteWidth,`SIGNAL_METAL_ROUTE_${i}`,"metal",3,inferredMetal);
+  }
+  addRect("GROUND_METAL_PAD",3,"metal",...pads.groundAuCr,inferredMetal);
+  addRect("SIGNAL_METAL_PAD",3,"metal",...pads.signalAuCr,inferredMetal);
   // Ridge 150nm process is confined to array shuffles; no fabricated array
   // routing is asserted here. Layer 2 intentionally empty in this unit mask.
   annotations.push({kind:"source",x:-40,y:0,note:"Fig.1c/3a & Supp. Figs S2,S6-S9"});
@@ -193,6 +231,8 @@ export function buildSwxMaskLayout() {
       inferredONTranslationUm:.885,
       inferredONGapUm:.015,
       combCellPairs:40,axialCombRegistration:true,springStations:[-14,37],
+      peripheralPadNets:["GROUND","SIGNAL"],peripheralPadFootprint:"inferred; NOT author GDS",
+      groundAnchorConnections:"2 of 4 spring anchors routed; other 2 require topology redesign",
       lithographicUnknowns:"SWT count/phase; waveguide contour; pad boundaries; actual release undercut; exact full-unit footprint",
       boxRelease:"not generated as a photomask; requires selective HF undercut Kernel stage",
       realBrowserVerified:false,mechanicalFEMVerified:false,authorGdsMatched:false
