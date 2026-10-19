@@ -1,7 +1,10 @@
 // Read-only bridge from physical exposed-material topology to exact release surfaces.
 // No Process mutation, project migration, or visual-only replacement occurs here.
 import { exposedSurfaceGroups } from './process-topology.js';
-import { createContinuousEtchFront } from './continuous-etch-geometry.js';
+import {
+  createContinuousEtchFront,
+  remainingMaterialAt,
+} from './continuous-etch-geometry.js';
 
 export function planContinuousEtchFromTopology({
   model,
@@ -65,4 +68,17 @@ export function planContinuousEtchFromTopology({
     fronts,
     mutatesModel: false,
   };
+}
+
+// Reject stale views rather than silently applying a frozen etch footprint
+// to a later canonical Model or a restored different History revision.
+export function remainingMaterialInContinuousPlan(model, plan, point) {
+  if (
+    !plan ||
+    plan.kind !== 'canonical-exposed-continuous-etch-plan-v1' ||
+    model?.revision !== plan.modelRevision
+  ) {
+    throw new RangeError('Continuous release plan is stale or incompatible with Model revision');
+  }
+  return remainingMaterialAt(model, plan.fronts, point);
 }
