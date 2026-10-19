@@ -255,7 +255,7 @@ test('Border Inspector uses native v2 pressed buttons rather than a small checkb
 
 test('dense array contour LOD retains canonical ownership and exact ROI', () => {
   const translations = Array.from({ length: 625 }, (_, i) => [
-    (i % 25 - 12) * 1600,
+    ((i % 25) - 12) * 1600,
     (Math.floor(i / 25) - 12) * 1600,
   ]);
   const cap = { buried: true, interfaceLayerId: 'oxide', instanceTranslations: translations };
@@ -265,10 +265,7 @@ test('dense array contour LOD retains canonical ownership and exact ROI', () => 
   assert.equal(view.mode, 'array-overview-preview');
   assert.notEqual(view.plan, original);
   assert.equal(view.plan.caps.length, original.caps.length, 'keep canonical cap indices');
-  assert.equal(
-    view.plan.caps[0].instanceTranslations.length,
-    DENSE_ARRAY_BORDER_PREVIEW_SITES,
-  );
+  assert.equal(view.plan.caps[0].instanceTranslations.length, DENSE_ARRAY_BORDER_PREVIEW_SITES);
   assert.equal(
     view.plan.sidewalls[0].instanceTranslations.length,
     DENSE_ARRAY_BORDER_PREVIEW_SITES,
