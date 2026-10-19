@@ -168,7 +168,6 @@ export function createHistoryMutationController({
         label: 'Update current Variant',
         kind: 'primary',
         helpKey: 'history.insert.current',
-        description: `Recompute ${context.laterStepCount} existing Steps in this Variant.`,
         default: true,
       });
     }
@@ -178,7 +177,6 @@ export function createHistoryMutationController({
         label: 'New Variant · Carry later Steps',
         kind: canCurrentReplay ? undefined : 'primary',
         helpKey: 'history.insert.branch.replay',
-        description: 'Preserve this Variant and recompute later Steps in a new one.',
         default: !canCurrentReplay,
       });
     }
@@ -188,7 +186,6 @@ export function createHistoryMutationController({
         label: 'New Variant · Start from here',
         kind: !canCurrentReplay && !canBranchReplay ? 'primary' : undefined,
         helpKey: 'history.insert.branch.start',
-        description: 'Start a new Variant without carrying later Steps.',
         default: !canCurrentReplay && !canBranchReplay,
       });
     }
@@ -500,9 +497,6 @@ export function createHistoryMutationController({
             label: edit.downstreamCount ? 'Replace & discard later Steps' : 'Replace Step',
             kind: edit.downstreamCount ? 'danger' : 'primary',
             helpKey: 'history.edit.discard',
-            description: edit.downstreamCount
-              ? `Discard ${edit.downstreamCount} later Steps from this Variant.`
-              : 'Replace the current HEAD Step.',
             default: true,
           });
           if (edit.downstreamCount && edit.downstreamReplayable) {
@@ -510,7 +504,6 @@ export function createHistoryMutationController({
               value: 'replace-replay',
               label: 'Replace & replay later Steps',
               helpKey: 'history.edit.replay',
-              description: `Recompute ${edit.downstreamCount} later Steps in this Variant.`,
             });
           }
         }
@@ -527,7 +520,6 @@ export function createHistoryMutationController({
             label: 'New Variant · Edit & carry later Steps',
             kind: edit.canReplaceCurrentVariant ? undefined : 'primary',
             helpKey: 'history.edit.branch.replay',
-            description: 'Keep the source Variant and replay later Steps in a new Variant.',
             default: !edit.canReplaceCurrentVariant,
           });
         }
@@ -539,7 +531,6 @@ export function createHistoryMutationController({
               : 'Save as copy-on-write Variant',
             kind: !edit.canReplaceCurrentVariant && !canBranchReplay ? 'primary' : undefined,
             helpKey: 'history.edit.branch.only',
-            description: 'Preserve the original Variant; the new Variant ends at this Step.',
             default: !edit.canReplaceCurrentVariant && !canBranchReplay,
           });
         }

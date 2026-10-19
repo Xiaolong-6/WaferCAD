@@ -24,7 +24,6 @@ export function createDialogConfirmation({ overlays, el, button }) {
           'div',
           { class: 'v2-confirm-dialog-option' },
           control,
-          action.description ? el('p', { class: 'p-aux' }, action.description) : null,
         );
       });
       const content = el(

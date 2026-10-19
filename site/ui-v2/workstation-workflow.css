@@ -742,7 +742,6 @@
 }
 .v2-confirm-dialog-option {
   display: grid;
-  gap: var(--wc-space-1);
   min-width: 0;
 }
 .v2-confirm-dialog-option > .wc-button {
@@ -759,11 +758,6 @@
   border-color: var(--wc-danger);
   color: var(--wc-danger);
   background: var(--wc-danger-tint);
-}
-.v2-confirm-dialog-option > .p-aux {
-  margin: 0;
-  color: var(--wc-muted);
-  overflow-wrap: anywhere;
 }
 .v2-confirm-dialog-footer {
   justify-content: flex-end;

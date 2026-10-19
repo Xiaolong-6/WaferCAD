@@ -65,6 +65,14 @@ test('History edit actions are vertical with a distinct Cancel footer', async ()
   assert.equal(h.buttons().length, 5);
   assert.equal(h.buttons()[0].attrs['data-risk'], 'danger');
   assert.equal(h.buttons()[0].attrs['data-help'], 'history.edit.discard');
+  const choices = h.opened().content.children.find(
+    (entry) => entry?.attrs?.class === 'v2-confirm-dialog-choices',
+  );
+  assert.ok(choices);
+  assert.ok(
+    choices.children.every((entry) => entry.children.length === 1 && entry.children[0].tag === 'button'),
+    'Choice labels are buttons only: detail belongs to the shared hover tooltip',
+  );
   assert.equal(h.focused(), 'Cancel', 'Dangerous options must not autofocus');
   h.buttons()[1].onclick();
   assert.equal(await pending, 'replace-replay');
