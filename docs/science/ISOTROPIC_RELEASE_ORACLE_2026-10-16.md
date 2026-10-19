@@ -156,11 +156,37 @@ inspection, and scientific volume, mask, multi-seed and post-release process
 invariants. Never render a continuous shell over a stepped stored material
 model and claim geometry parity.
 
-Owning checks introduced on the branch:
+The additional `site/continuous-material-owner.js` is a **separate,
+losslessly JSON-serializable scientific owner**. It deep-clones the original
+release-predecessor Model and the precise operation parameters; restoration
+recomputes exposed seed surfaces from the stored source Model and rejects a
+mismatched analytical front. The validated owner is recursively immutable
+to avoid post-validation state mutation. Its physical XY queries return
+remaining material **Z intervals**, subtracting unions of curved release
+volumes and preserving non-target layers. Read-only Section point samples
+query the same exact material intervals regardless of display resolution.
 
-- `node --test site/tests/continuous-etch-geometry.test.mjs`
-- `node --test site/tests/continuous-etch-topology.test.mjs`
+This is **not** a native `.wafercad` project codec, nor a supported new
+`model.kernel` value. Its JSON round-trip establishes a narrow scientific
+data contract only. The native workstation still cannot save/reload,
+replay, render, or apply follow-on Process steps to this owner; any such
+claim is out of scope until those paths are explicitly wired to canonical
+continuous material occupancy. Large arrays and physical facets remain
+unsupported rather than silently falling back to old 2.5D geometry.
 
-The current development environment has no complete local checkout; these
-Node files and native Chromium output are **not yet accepted** merely by
-having their code committed. No old test tolerance or baseline was changed.
+Owning focused Node tests on this branch:
+
+- `site/tests/continuous-etch-geometry.test.mjs`
+- `site/tests/continuous-etch-topology.test.mjs`
+- `site/tests/continuous-etch-microdisk.test.mjs`
+- `site/tests/continuous-material-owner.test.mjs`
+- `site/tests/continuous-material-microdisk.test.mjs`
+
+The 2026-10-19 local test fixture used a verified source-only Artifact
+at `9c19c0d9` with these branch modules overlaid. Five focused test
+files ran with 22/22 passing, alongside local formatting and lint checks.
+That is an **older-source compatibility check**, not exact-branch-HEAD
+native Chromium / Worker / History / Recovery acceptance. The production
+kernel, native view consumers, project schema and release gates are still
+outstanding. No scientific tolerance, older History or approved visual
+baseline was changed.
