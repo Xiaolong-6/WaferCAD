@@ -19,6 +19,7 @@ import {
 import { visibleMaterialModel } from './model.js';
 import { validateExperimentalPhysicalFacetModel } from './experimental/physical-facets/physical-facet-model.js';
 import { physicalPyramidSection } from './experimental/physical-facets/physical-facet-surface.js';
+import { continuousSectionContours } from './continuous-etch-section.js';
 import { createPhysicalFacetShellQuery } from './experimental/physical-facets/physical-facet-shell-owner.js';
 import {
   appearanceSurfaceGroupsFromTopology,
@@ -107,6 +108,8 @@ export function appearanceSurfaceGroups(model, clip = null) {
 }
 
 export function sectionContours(model, a, b) {
+  if (model?.kernel === 'vector-continuous-etch-v1')
+    return continuousSectionContours(model, a, b);
   const owner = validateExperimentalPhysicalFacetModel(model);
   if (owner) {
     // One true physical solid, directly from its shared 3D triangle owner.

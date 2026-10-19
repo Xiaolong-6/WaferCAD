@@ -774,7 +774,8 @@ export function createPlanRenderers({
       }
     }
 
-    const roughColumns = physicalOwner ? [] : sectionColumns(model, section.a, section.b),
+    const continuous = model?.kernel === 'vector-continuous-etch-v1',
+      roughColumns = physicalOwner || continuous ? [] : sectionColumns(model, section.a, section.b),
       sidewallProfiles = new Map(),
       sectionDx = section.b[0] - section.a[0],
       sectionDy = section.b[1] - section.a[1],
@@ -939,7 +940,7 @@ export function createPlanRenderers({
       });
     }
 
-    for (const electrical of physicalOwner
+    for (const electrical of physicalOwner || continuous
       ? []
       : electricalRegionSectionBands(model, section.a, section.b)) {
       const appearance = electrical.surfaceAppearance,
@@ -989,7 +990,9 @@ export function createPlanRenderers({
     }
 
     const implantBorderPolygons = new Map();
-    for (const implant of physicalOwner ? [] : implantSectionBands(model, section.a, section.b)) {
+    for (const implant of physicalOwner || continuous
+      ? []
+      : implantSectionBands(model, section.a, section.b)) {
       const appearance = implant.surfaceAppearance,
         faceDirection = implant.face === 'back' ? -1 : 1,
         times =
@@ -1151,7 +1154,9 @@ export function createPlanRenderers({
 
     // Auto mode keeps sub-pixel physical sidewalls legible. Draw this last so the
     // visibility aid cannot be erased by rough-surface compositing.
-    for (const slice of physicalOwner ? [] : sectionSlices(model, section.a, section.b)) {
+    for (const slice of physicalOwner || continuous
+      ? []
+      : sectionSlices(model, section.a, section.b)) {
       if (slice.role !== 'conformal-sidewall') continue;
       const layer = layerById(model, slice.layerId);
       if (!layer) continue;
