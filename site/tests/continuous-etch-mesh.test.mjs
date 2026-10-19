@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { buildContinuousMaterialSurfaceMesh } from '../continuous-etch-mesh.js';
 
 const vendor = { exports: {} };
 new Function(
@@ -10,6 +9,7 @@ new Function(
   readFileSync(new URL('../vendor/polygon-clipping.umd.js', import.meta.url), 'utf8'),
 )(vendor, vendor.exports);
 globalThis.polygonClipping = vendor.exports;
+const { buildContinuousMaterialSurfaceMesh } = await import('../continuous-etch-mesh.js');
 const { expandProjectStorage } = await import('../project-io.js');
 const { exposedSurfaceGroups } = await import('../process-topology.js');
 const project = expandProjectStorage(
@@ -54,14 +54,21 @@ function assertClosed(mesh) {
       label(mesh.positions, i + 6),
     ];
     for (let j = 0; j < 3; j++) {
-      const key = [labels[j], labels[(j + 1) % 3]].sort().join('/');
-      counts.set(key, (counts.get(key) || 0) + 1);
+      const first = labels[j];
+      const second = labels[(j + 1) % 3];
+      const key = [first, second].sort().join('/');
+      const value = counts.get(key) || { total: 0, winding: 0 };
+      value.total++;
+      value.winding += first < second ? 1 : -1;
+      counts.set(key, value);
     }
   }
   assert.ok(counts.size, 'Expected at least one physical surface edge');
-  const bad = [...counts].filter(([, count]) => count !== 2);
+  const bad = [...counts].filter(([, edge]) => edge.total !== 2 || edge.winding !== 0);
   const countsByDegree = {};
-  for (const count of counts.values()) countsByDegree[count] = (countsByDegree[count] || 0) + 1;
+  for (const edge of counts.values())
+    countsByDegree[edge.total + '/' + edge.winding] =
+      (countsByDegree[edge.total + '/' + edge.winding] || 0) + 1;
   assert.deepEqual(
     bad,
     [],
@@ -108,4 +115,41 @@ test('budget guard rejects unbounded resolution without changing source', () => 
   assert.throws(() => buildContinuousMaterialSurfaceMesh(input, { xyStepUm: 0.02 }), /budget/);
   assert.throws(() => buildContinuousMaterialSurfaceMesh(input, { xyStepUm: 0 }), /precision/);
   assert.deepEqual(JSON.stringify(input), original);
+});
+
+// Adjacent canonical cells are bookkeeping, not separate physical solids.
+// The display mesh must not introduce an internal material seam at their edge.
+test('adjacent same-material cells render identically to their single merged solid', () => {
+  const rect = (left, right) => [
+    [
+      [
+        [left, -6],
+        [right, -6],
+        [right, 6],
+        [left, 6],
+        [left, -6],
+      ],
+    ],
+  ];
+  const segment = () => ({ layerId: 'base', z0: -3, z1: 3 });
+  const makeInput = (regions) => ({
+    sourceModel: {
+      revision: 2,
+      layers: [{ id: 'base', name: 'Si' }],
+      regions: regions.map((geom, i) => ({ id: 'r' + i, geom, stack: [segment()] })),
+    },
+    fronts: [],
+  });
+  const one = buildContinuousMaterialSurfaceMesh(makeInput([rect(-10, 10)]), {
+    xyStepUm: 1.5,
+    zStepUm: 0.75,
+  });
+  const divided = buildContinuousMaterialSurfaceMesh(makeInput([rect(-10, 0), rect(0, 10)]), {
+    xyStepUm: 1.5,
+    zStepUm: 0.75,
+  });
+  assert.equal(divided.triangles, one.triangles);
+  assert.deepEqual(divided.layers[0].positions, one.layers[0].positions);
+  assert.deepEqual(divided.layers[0].normals, one.layers[0].normals);
+  assertClosed(divided.layers[0]);
 });

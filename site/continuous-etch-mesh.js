@@ -1,3 +1,5 @@
+import { unionGeometries } from './vector-geometry.js';
+
 // Derived visualization geometry. The immutable continuous material owner remains
 // authoritative: mesh resolution must never enter project storage or Process.
 // Input: validated {sourceModel, fronts}; output: physical-um surface triangles.
@@ -108,9 +110,29 @@ function emitTetra(position, value, out) {
 
 function smoothNormals(vertices) {
   const normal = new Float32Array(vertices.length);
+  // Numeric spatial hashes avoid allocating millions of string keys during
+  // the two-pass smooth-normal accumulation. A bucket is checked against the
+  // full quantized XYZ triple, so hash collisions never merge distinct points.
   const sums = new Map();
-  const keyAt = (i) =>
-    [vertices[i], vertices[i + 1], vertices[i + 2]].map((v) => Math.round(v * 10000)).join(',');
+  const recordAt = (index, create) => {
+    const qx = Math.round(vertices[index] * 10000);
+    const qy = Math.round(vertices[index + 1] * 10000);
+    const qz = Math.round(vertices[index + 2] * 10000);
+    const hash =
+      (Math.imul(qx, 73856093) ^ Math.imul(qy, 19349663) ^ Math.imul(qz, 83492791)) >>> 0;
+    let bucket = sums.get(hash);
+    if (!bucket) {
+      if (!create) throw new RangeError('Missing continuous mesh normal vertex');
+      bucket = [];
+      sums.set(hash, bucket);
+    }
+    for (const entry of bucket)
+      if (entry[0] === qx && entry[1] === qy && entry[2] === qz) return entry;
+    if (!create) throw new RangeError('Missing continuous mesh normal vertex');
+    const entry = [qx, qy, qz, 0, 0, 0];
+    bucket.push(entry);
+    return entry;
+  };
   for (let i = 0; i < vertices.length; i += 9) {
     const ux = vertices[i + 3] - vertices[i],
       uy = vertices[i + 4] - vertices[i + 1],
@@ -118,18 +140,22 @@ function smoothNormals(vertices) {
     const vx = vertices[i + 6] - vertices[i],
       vy = vertices[i + 7] - vertices[i + 1],
       vz = vertices[i + 8] - vertices[i + 2];
-    const n = [uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx];
+    const nx = uy * vz - uz * vy,
+      ny = uz * vx - ux * vz,
+      nz = ux * vy - uy * vx;
     for (let offset = 0; offset < 9; offset += 3) {
-      const k = keyAt(i + offset);
-      if (!sums.has(k)) sums.set(k, [0, 0, 0]);
-      const sum = sums.get(k);
-      for (let j = 0; j < 3; j++) sum[j] += n[j];
+      const entry = recordAt(i + offset, true);
+      entry[3] += nx;
+      entry[4] += ny;
+      entry[5] += nz;
     }
   }
   for (let i = 0; i < vertices.length; i += 3) {
-    const n = sums.get(keyAt(i));
-    const magnitude = Math.hypot(...n) || 1;
-    for (let j = 0; j < 3; j++) normal[i + j] = n[j] / magnitude;
+    const n = recordAt(i, false);
+    const magnitude = Math.hypot(n[3], n[4], n[5]) || 1;
+    normal[i] = n[3] / magnitude;
+    normal[i + 1] = n[4] / magnitude;
+    normal[i + 2] = n[5] / magnitude;
   }
   // A planar extrusion has a Z-invariant wall normal. Marching-tetrahedron
   // diagonals can otherwise create false horizontal shading bands on long
@@ -204,14 +230,32 @@ export function buildContinuousMaterialSurfaceMesh(
     { length: ny + 1 },
     (_, i) => box.minY - padding + (i * (box.maxY - box.minY + 2 * padding)) / ny,
   );
+  // Canonical 2.5D cells may share an internal XY edge while owning the
+  // SAME physical material and Z span. A max() of two independent signed
+  // distances is zero on that internal edge, creating a fictitious slit and
+  // surface ribbons through an otherwise solid region. Union these display
+  // footprints first. The stored source/History remains untouched.
+  const mergedParts = new Map();
+  for (const region of source.regions)
+    for (const segment of region.stack) {
+      const key = JSON.stringify([segment.layerId, segment.z0, segment.z1]);
+      if (!mergedParts.has(key))
+        mergedParts.set(key, { layerId: segment.layerId, segment, footprints: [] });
+      mergedParts.get(key).footprints.push(region.geom);
+    }
+  const solids = [...mergedParts.values()].map(({ layerId, segment, footprints }) => ({
+    layerId,
+    segment,
+    geom: footprints.length === 1 ? footprints[0] : unionGeometries(footprints),
+  }));
   const planeSize = (nx + 1) * (ny + 1);
-  const xySigned = source.regions.map((r) => new Float32Array(planeSize));
+  const xySigned = solids.map(() => new Float32Array(planeSize));
   const depthFields = owner.fronts.map((f) => new Float32Array(planeSize));
   for (let iy = 0; iy <= ny; iy++)
     for (let ix = 0; ix <= nx; ix++) {
       const p = ix + (nx + 1) * iy;
-      for (let r = 0; r < source.regions.length; r++)
-        xySigned[r][p] = signedFootprintDistance(xs[ix], ys[iy], source.regions[r].geom);
+      for (let r = 0; r < solids.length; r++)
+        xySigned[r][p] = signedFootprintDistance(xs[ix], ys[iy], solids[r].geom);
       for (let f = 0; f < owner.fronts.length; f++) {
         const front = owner.fronts[f];
         const seedSigned = signedFootprintDistance(xs[ix], ys[iy], front.seedGeom);
@@ -230,10 +274,9 @@ export function buildContinuousMaterialSurfaceMesh(
   const results = [];
   let totalTriangles = 0;
   for (const layerId of layers) {
-    const parts = [];
-    for (let ri = 0; ri < source.regions.length; ri++)
-      for (const segment of source.regions[ri].stack)
-        if (segment.layerId === layerId) parts.push({ ri, segment });
+    const parts = solids.flatMap(({ layerId: ownedLayerId, segment }, ri) =>
+      ownedLayerId === layerId ? [{ ri, segment }] : [],
+    );
     if (!parts.length) continue;
     const layerMinZ = Math.min(...parts.map(({ segment }) => segment.z0));
     const layerMaxZ = Math.max(...parts.map(({ segment }) => segment.z1));
@@ -317,11 +360,12 @@ export function buildContinuousMaterialSurfaceMesh(
     }
     if (positions.length) {
       const vertices = Float32Array.from(positions);
+      const normals = smoothNormals(vertices);
       totalTriangles += vertices.length / 9;
       results.push({
         layerId,
         positions: vertices,
-        normals: smoothNormals(vertices),
+        normals,
         triangles: vertices.length / 9,
       });
     }
