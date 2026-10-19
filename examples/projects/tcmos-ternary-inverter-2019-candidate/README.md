@@ -19,13 +19,14 @@ not a measured 130 nm foundry pitch.
 steps now capture separate SVG-derived Draw Mask geometry without exporting
 process-only well/source-drain/silicide layers. Real Chromium Run All completes
 23/23 with 26 material slabs and zero XY mismatch; both device-local
-Section/3D captures, History and Recovery were checked. The PR remains Draft
-and is not a Welcome example or a calibrated PN/BTBT simulator. Final
-merge/deployment still requires separate user approval.
+Section/3D captures, History and Recovery were checked. The 1×1 project is
+registered as a ninth Welcome entry on this Draft branch, but it is not yet
+published on Main. This remains an illustrative reconstruction, not a
+calibrated PN/BTBT simulator. Final merge/deployment requires owner approval.
 
 # T-CMOS 130 nm ternary inverter — paper-derived reconstruction
 
-Status: **candidate generator, not yet a shipped Welcome Example**.
+Status: **Draft PR: Welcome 1×1 candidate, not yet shipped on Main**.
 
 - Source: J. W. Jeong et al., "Tunnelling-based ternary metal–oxide–semiconductor technology," _Nature Electronics_ **2**, 307–312 (2019), DOI: https://doi.org/10.1038/s41928-019-0272-8.
 - Evidence: paper Fig. 1a–b, Methods (pp. 311–312); Supplementary Fig. 1 and physical model note.
@@ -176,7 +177,7 @@ The opt-in 3D **Cutaway** mode requires a Main ROI. It increases the displayed Z
 - Generated file (uncommitted by default): test-results/tcmos/tcmos-ternary-inverter-130nm.wafercad
 - Repository output (only after acceptance): node scripts/build-tcmos-inverter-example.mjs --write-repo
 
-The generator includes per-step kernel/schema checks, Recipe preflight and a project storage round-trip. Separate release verification must include Run All from fresh Base, actual Section/Main/3D geometry, Mask GDS/OAS export, History replay and Save/Reload. Only afterward add the project to Welcome and generate its final-only preview and 3D thumbnail. A green Node generator alone is not a full literature-Example acceptance.
+The generator includes per-step kernel/schema checks, Recipe preflight and a project storage round-trip. Separate release verification must include Run All from fresh Base, actual Section/Main/3D geometry, Mask GDS/OAS export, History replay and Save/Reload. The Draft branch now includes the Welcome card, a final-state preview and an explicitly schematic thumbnail; Main publication still requires owner approval. A green Node generator alone is not a full literature-Example acceptance.
 
 ## Follow-up model boundary
 
