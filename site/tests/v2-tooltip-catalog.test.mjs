@@ -64,6 +64,7 @@ test('tooltip service keeps native canvas event and model code untouched', () =>
     'utf8',
   );
   assert.match(controller, /pointerover/);
+  assert.match(controller, /dialog:modal/, 'Tooltip must avoid covering modal action rows');
   assert.match(controller, /focusin/);
   assert.doesNotMatch(controller, /preventDefault|stopPropagation/);
   assert.doesNotMatch(controller, /innerHTML|requestAnimationFrame|setInterval/);
