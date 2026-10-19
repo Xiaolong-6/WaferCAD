@@ -207,12 +207,17 @@
   }
 
   body[data-workstation]:not([data-preview-mode]) .p-desktop-dock-actions {
+    display: flex;
+    align-items: center;
+    min-width: 0;
     grid-column: 2;
     grid-row: 1;
     justify-self: center;
     gap: 7px;
     max-width: 100%;
     overflow-x: auto;
+    white-space: nowrap;
+    scrollbar-width: thin;
   }
 
   body[data-workstation]:not([data-preview-mode]) .p-restore-panel-actions {

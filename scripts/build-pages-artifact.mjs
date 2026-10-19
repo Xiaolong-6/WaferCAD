@@ -14,6 +14,8 @@ const excludedFiles = new Set([
   'app-legacy.html',
   'app.js',
   'workstation.css',
+  // Welcome loads welcome.css; retain this retired editor CSS only in Git for archived checks.
+  'style.css',
   // Experimental science oracles belong to tests/preview, not the shipped v2 bundle.
   'isotropic-release-topology.js',
   'experimental/physical-facets/physical-facet-coating.js',
