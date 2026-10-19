@@ -147,6 +147,13 @@ continues to use the original Worker/History path. The
 `scripts/example-open-benchmark.mjs` baseline defaults to strict; use
 `--fast` to measure the attested production path separately.
 
+The TiO₂ metalens Welcome cover is a Chromium 3D render of the complete
+4,725-site illustrative array, and is content-addressed to the full bundled
+file. Its interactive four-view preview remains the four-unit representation,
+so the display explicitly distinguishes the two. The T-CMOS cover is also a
+real Chromium WebP, content-addressed to its saved preview project. Preserve
+these provenance/hash contracts on regeneration.
+
 Welcome browsing shows real 3D-rendered WebP thumbnails without starting app frames or parsing project/layout modules. Clicking Explore 3D or a view tab initializes one interactive frame, preserving the final-only preview workflow. Regenerate thumbnails after preview changes with `node scripts/build-example-thumbnails.mjs` against a running local site and pinned Three; hashes bind each image to its final-preview source.
 
 UI orchestration that does not own canonical geometry lives under `site/controllers/`. Process input/state and worker request assembly belong to `process-panel-controller.js`; History edit/insert strategy, branching gates, and replay transactions belong to `history-mutation-controller.js`; browser autosave/Recovery/cross-tab lease/safe-reload behavior belongs to `workspace-persistence-controller.js`; synchronized view/base summaries belong to `workspace-view-controller.js`; Project toolbar and History-tree presentation belong to `project-controller.js`; Mask/Main/Section canvas drawing lives in `site/plan-renderers.js`. Derived process/ROI selection geometry lives in `site/selection-geometry.js`. Keep build/update checks, welcome startup routing, tab navigation, maximize behavior, rendering details, process-form validation/request assembly, History transaction state, persistence workflows, and similar responsibilities out of the main editor module when they can be expressed through narrow callbacks.

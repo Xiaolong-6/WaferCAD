@@ -219,7 +219,7 @@ export const BUNDLED_EXAMPLES = Object.freeze([
   },
   {
     id: 'tio2-metalens-four-unit',
-    title: 'TiO₂ achromatic metalens · four meta-atoms',
+    title: 'TiO₂ achromatic metalens · 4,725-site array',
     figure: 'Wang et al. · Fig. 2–3 / Supplementary Note 4',
     kind: 'project',
     level: 'Paper-derived nanophotonics',
@@ -232,13 +232,14 @@ export const BUNDLED_EXAMPLES = Object.freeze([
       filename: 'tio2-metalens-preview.wafercad',
     },
     preview: {
-      path: './examples/thumbnails/tio2-metalens-four-unit-schematic.svg',
+      path: './examples/thumbnails/tio2-metalens-four-unit-three.webp',
+      coverSource: 'full',
       view: 'three',
-      alt: 'Illustrative schematic of four TiO2 meta-atom cross-sections, not an author GDS image',
-      label: 'Schematic only · process verified; XY is illustrative',
+      alt: 'Actual WaferCAD 3D render of the illustrative 4,725-site metalens array',
+      label: 'Real 3D · 4,725-site array; the interactive preview uses four representative units',
     },
     summary:
-      'Open loads the complete illustrative 4,725-site array, its matching Mask, nine-step Recipe and compiled History. The cover shows four representative shapes; the actual full-array Run All from Base has passed Kernel replay and storage-quantized geometry acceptance. This is not the authors’ GDS or a verified optical design.',
+      'Open loads the complete illustrative 4,725-site array, its matching Mask, nine-step Recipe and compiled History. The real 3D cover depicts the full array while the lightweight interactive preview shows four representative units; the actual full-array Run All from Base has passed Kernel replay and storage-quantized geometry acceptance. This is not the authors’ GDS or a verified optical design.',
     sources: [
       {
         citation:
@@ -263,10 +264,10 @@ export const BUNDLED_EXAMPLES = Object.freeze([
       filename: 'tcmos-ternary-inverter-preview.wafercad',
     },
     preview: {
-      path: './examples/thumbnails/tcmos-inverter-layout-schematic.svg',
+      path: './examples/thumbnails/tcmos-ternary-inverter-130nm-three.webp',
       view: 'three',
-      alt: 'Illustrative source-vector Mask schematic of the T-CMOS inverter, not a 3D rendering',
-      label: 'Source SVG Mask · schematic only; explore the live 3D preview',
+      alt: 'Actual WaferCAD 3D render of the reconstructed T-CMOS inverter',
+      label: 'Real WaferCAD 3D render · inferred routing retained',
     },
     summary:
       'A complementary tunnelling-based inverter with eight source-vector Mask layers, 218 W contact sites, a replayable 23-step process and T-CMOS / conventional CMOS History variants. The illustrative 4×4 global-routed engineering prototype is separate.',

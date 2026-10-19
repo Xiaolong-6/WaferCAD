@@ -222,7 +222,7 @@ test('Welcome thumbnail assets match their final preview source and image manife
     assert.equal(example.preview.path, entry.path);
     const image = await readFile(new URL('../' + entry.path.replace(/^\.\//, ''), import.meta.url));
     const source = await readFile(
-      new URL('../' + example.previewProject.path.replace(/^\.\//, ''), import.meta.url),
+      new URL('../' + (example.preview?.coverSource === 'full' ? example.path : example.previewProject.path).replace(/^\.\//, ''), import.meta.url),
     );
     assert.equal(image.subarray(8, 12).toString(), 'WEBP');
     assert.equal(image.length, entry.bytes);
