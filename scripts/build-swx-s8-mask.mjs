@@ -1,0 +1,11 @@
+import { writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { buildSwxS8SiliconMask } from './swx-s8-primary-silicon.mjs';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+globalThis.polygonClipping = require('../site/vendor/polygon-clipping.umd.js');
+const { serializeGDS } = await import('../site/layout-export.js');
+const mask = buildSwxS8SiliconMask();
+const target = new URL('../examples/projects/swx-s8-primary-silicon-DRAFT', import.meta.url);
+writeFileSync(fileURLToPath(target) + '.gds', serializeGDS(mask.elements, { cellName: mask.root }));
+console.log(JSON.stringify({ polygons: mask.elements.length, bounds: mask.bounds }));
