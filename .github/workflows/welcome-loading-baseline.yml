@@ -1,12 +1,9 @@
 name: All Welcome Examples loading baseline
 
+# Full nine-example Chromium benchmarking is intentionally opt-in.
+# Routine PRs use the lean Quality and targeted scientific gates.
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'scripts/perf-workstation-cold-open.mjs'
-      - 'scripts/summarize-welcome-loading.mjs'
-      - '.github/workflows/welcome-loading-baseline.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
