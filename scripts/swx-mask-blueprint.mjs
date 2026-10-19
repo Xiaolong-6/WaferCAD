@@ -34,7 +34,7 @@ export function buildSwxMaskLayout() {
     }
   };
   const addRect=(name,layer,part,x,y,w,h,ev="inferred")=>put(name,layer,part,rect(x,y,w,h),ev);
-  // Local X is the mechanical travel axis (the paper's +Y). Z is out of plane.
+  // Local +Y is the mechanical travel axis (the paper's +Y). Z is out of plane.
   // The OFF tooth-tip gap is 0.900 um. ON is a separate post-release pose, NOT another mask.
   put("SWX_FIXED_MMI",1,"fixed",[
     [-46,0.75],[-34,0.75],[-32.2,3.0],[-47.8,3.0]
@@ -109,29 +109,36 @@ export function buildSwxMaskLayout() {
   }
   // Physical bridging from mobile reflector to shuttle. Top/fixed MMI is isolated.
   path([[-35,-1.2],[-31,-2.2],[-27.2,-2.2]],.65,"MOVING_SWX_TO_SHUTTLE","moving");
-  // Two opposed, axially co-registered comb banks (20 stationary/movable pairs each).
-  // Moving fingers translate in +X; an OFF 200nm overlap becomes 1085nm after +885nm.
-  const pairsPerBank=20,combPitch=1.6,fingerWidth=.5,firstY=6;
-  for(const sign of [1,-1]){
-    const bank=sign>0?"NORTH":"SOUTH";
-    const yc=sign>0?firstY:-firstY;
-    addRect(`${bank}_MOVING_HANDLE`,1,"moving",9,sign>0?5.6:-37.6,2.8,32.0);
-    addRect(`${bank}_STATIONARY_HANDLE`,1,"fixed",18,sign>0?5.6:-37.6,6,32.0);
-    path([[10.2,sign*6],[10.2,sign*3],[8,sign*2.5]],.9,`${bank}_SHUTTLE_LINK`,"moving");
+  // The reflector gap closes along local +Y, as in the paper. The comb fingers
+  // MUST also gain overlap on +Y actuation (not +X). Both banks are axially
+  // co-registered in X with 20 opposing finger PAIRS each. Their specific
+  // handles and electrical feed geometry are engineering reconstructions.
+  const pairsPerBank=20,combPitch=1.6,fingerWidth=.5,firstFingerX=-4;
+  for(const bank of ["NORTH","SOUTH"]){
+    const north=bank==="NORTH";
+    const fBusY=north?17.9:-14.1;
+    const mBusY=north?9:-23;
+    addRect(`${bank}_MOVING_HANDLE`,1,"moving",-5,mBusY,33,2.9);
+    addRect(`${bank}_STATIONARY_HANDLE`,1,"fixed",-5,fBusY,33,6.1);
     for(let i=0;i<pairsPerBank;i++){
-      const fy=yc+sign*(i*combPitch);
-      const my=fy+sign*.8;
-      const fs=sign>0?fy:fy-fingerWidth, ms=sign>0?my:my-fingerWidth;
-      addRect(`${bank}_FIXED_FINGER_${i}`,1,"fixed",14.8,fs,3.2,fingerWidth,
-        "finger-3.2x0.5um-gap-0.3um-source;placement-inferred");
-      addRect(`${bank}_MOVING_FINGER_${i}`,1,"moving",11.8,ms,3.2,fingerWidth,
-        "finger-3.2x0.5um-gap-0.3um-source;placement-inferred");
+      const x=firstFingerX+i*combPitch;
+      addRect(`${bank}_FIXED_FINGER_${i}`,1,"fixed",x,north?14.8:-17.2,
+        fingerWidth,3.2,
+        "3.2um length, 0.5um width, 0.3um side gap; XY placement inferred");
+      addRect(`${bank}_MOVING_FINGER_${i}`,1,"moving",x+.8,north?11.8:-20.2,
+        fingerWidth,3.2,
+        "3.2um length, 0.5um width, 0.3um side gap; XY placement inferred");
     }
-    // Wide stationary comb handle needs to retain BOX support after selective release.
-    addRect(`${bank}_FIXED_PAD`,1,"fixed",24,sign>0?19:-31,6,12);
-    addRect(`${bank}_CR_AU`,3,"metal",25,sign>0?20:-30,4,10,
-      "Cr50nm+Au300nm-source;pad-boundary-inferred");
+    addRect(`${bank}_FIXED_PAD`,1,"fixed",-12,fBusY,7,6.1,
+      "BOX-supported pad placement inferred");
+    addRect(`${bank}_CR_AU`,3,"metal",-11,fBusY+1.1,5,3.9,
+      "50nm Cr/300nm Au; pad shape inferred");
   }
+  // Upper moving handle ties directly to shuttle. The lower moving comb
+  // must detour around its intervening fixed comb bus (no electrical short).
+  path([[27.7,10.4],[30,10],[30,2.65]],.75,"NORTH_SHUTTLE_LINK","moving");
+  path([[27.7,-21.5],[31,-20],[31,-3.2],[30,-2.65]],.7,
+    "SOUTH_SHUTTLE_LINK","moving");
   // Two spring stations straddle the combs along the travel axis. Each station
   // has a top/bottom folded member. Vertical 30/22um runs, 0.2um beam width,
   // 1.5um clearance; exact attachment routing and anchors inferred.
@@ -202,7 +209,7 @@ export function renderSwxMaskSvg(layout){
   const out=[`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="${title}">`,
     `<rect width="100%" height="100%" fill="#F8FAFC"/>`,
     `<text x="64" y="53" fill="#10253B" font-size="30" font-family="sans-serif" font-weight="bold">${title}</text>`,
-    `<text x="64" y="83" fill="#52657B" font-size="17" font-family="sans-serif">Local X is paper +Y actuation direction · coordinates in µm · OFF state mask, no post-release deformation</text>`,
+    `<text x="64" y="83" fill="#52657B" font-size="17" font-family="sans-serif">Local Y is paper +Y actuation direction · coordinates in µm · OFF state mask, no post-release deformation</text>`,
     `<rect x="50" y="109" width="1400" height="921" fill="#FFFFFF" stroke="#CBD5E1" rx="14"/>`,
     `<g stroke="#E2E8F0" stroke-width=".6">`];
   for(let x=-60;x<=50;x+=10) {
