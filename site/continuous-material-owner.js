@@ -71,3 +71,18 @@ export function continuousOwnerMaterialAt(owner, point) {
     null
   );
 }
+
+// Read-only Section sampling from the very same analytic material owner.
+// Only the number of query points changes with zoom; no N-band geometry is
+// persisted. Native Section must consume this contract before UI promotion.
+export function sampleContinuousOwnerSection(owner, a, b, steps = 128) {
+  if (!Number.isSafeInteger(steps) || steps < 2 || steps > 4096)
+    throw new RangeError('Invalid Section sample budget');
+  if (![...a, ...b].every(Number.isFinite) || a.length !== 2 || b.length !== 2)
+    throw new RangeError('Invalid physical Section endpoints');
+  return Array.from({ length: steps + 1 }, (_, i) => {
+    const t = i / steps;
+    const xy = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+    return { t, xy, column: continuousOwnerColumnAtXY(owner, xy) };
+  });
+}
