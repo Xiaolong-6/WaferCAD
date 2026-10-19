@@ -311,11 +311,13 @@ export function solidBordersFromTopology(
           const p = closed[index],
             before = closed[(index + count - 1) % count],
             after = closed[(index + 1) % count],
-            u = [p[0] - before[0], p[1] - before[1]],
-            v = [after[0] - p[0], after[1] - p[1]],
-            denominator = Math.hypot(...u) * Math.hypot(...v);
+            ux = p[0] - before[0],
+            uy = p[1] - before[1],
+            vx = after[0] - p[0],
+            vy = after[1] - p[1],
+            denominator = Math.hypot(ux, uy) * Math.hypot(vx, vy);
           if (!(denominator > 0)) continue;
-          const cosine = (u[0] * v[0] + u[1] * v[1]) / denominator;
+          const cosine = (ux * vx + uy * vy) / denominator;
           if (cosine <= threshold)
             lines.push([
               [...p, z0],
