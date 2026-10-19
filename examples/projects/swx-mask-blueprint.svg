@@ -96,7 +96,7 @@
 <polygon points="1054.16,439.76 1058.56,439.76 1058.56,411.6 1054.16,411.6" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_17 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
 <polygon points="1068.24,439.76 1072.64,439.76 1072.64,411.6 1068.24,411.6" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_18 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
 <polygon points="1082.32,439.76 1086.72,439.76 1086.72,411.6 1082.32,411.6" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_FINGER_19 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
-<polygon points="744.4,412.48 806,412.48 806,358.8 744.4,358.8" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_PAD · BOX-supported pad placement inferred</title></polygon>
+<polygon points="744.4,412.48 807.32,412.48 807.32,358.8 744.4,358.8" fill="#5689C6" stroke="#5689C6"><title>NORTH_FIXED_PAD · BOX-supported pad placement inferred</title></polygon>
 <polygon points="806,694.08 1096.4,694.08 1096.4,640.4 806,640.4" fill="#5689C6" stroke="#5689C6"><title>SOUTH_STATIONARY_HANDLE · inferred</title></polygon>
 <polygon points="814.8,721.36 819.2,721.36 819.2,693.2 814.8,693.2" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_0 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
 <polygon points="828.88,721.36 833.28,721.36 833.28,693.2 828.88,693.2" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_1 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
@@ -118,7 +118,7 @@
 <polygon points="1054.16,721.36 1058.56,721.36 1058.56,693.2 1054.16,693.2" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_17 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
 <polygon points="1068.24,721.36 1072.64,721.36 1072.64,693.2 1068.24,693.2" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_18 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
 <polygon points="1082.32,721.36 1086.72,721.36 1086.72,693.2 1082.32,693.2" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_FINGER_19 · 3.2um length, 0.5um width, 0.3um side gap; XY placement inferred</title></polygon>
-<polygon points="744.4,694.08 806,694.08 806,640.4 744.4,640.4" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_PAD · BOX-supported pad placement inferred</title></polygon>
+<polygon points="744.4,694.08 807.32,694.08 807.32,640.4 744.4,640.4" fill="#5689C6" stroke="#5689C6"><title>SOUTH_FIXED_PAD · BOX-supported pad placement inferred</title></polygon>
 <polygon points="703.92,207.44 730.32,207.44 730.32,138.8 703.92,138.8" fill="#5689C6" stroke="#5689C6"><title>SPRING_ANCHOR_-14_N · anchor-body-inferred;BOX-support-required</title></polygon>
 <polygon points="703.92,1001.2 730.32,1001.2 730.32,932.56 703.92,932.56" fill="#5689C6" stroke="#5689C6"><title>SPRING_ANCHOR_-14_S · anchor-body-inferred;BOX-support-required</title></polygon>
 <polygon points="1152.72,207.44 1179.12,207.44 1179.12,138.8 1152.72,138.8" fill="#5689C6" stroke="#5689C6"><title>SPRING_ANCHOR_37_N · anchor-body-inferred;BOX-support-required</title></polygon>
