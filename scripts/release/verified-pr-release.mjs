@@ -180,6 +180,30 @@ function runId(check) {
   return parts ? Number(parts[1]) : 0;
 }
 
+// GitHub retains Draft and Ready jobs for the same PR head SHA. Only the
+// newest authenticated attempt for each check name is authoritative. Never
+// substitute an earlier success for a newer incomplete or failed attempt.
+export function latestCheckRuns(checks) {
+  if (!Array.isArray(checks)) return null;
+  const latest = new Map();
+  for (const check of checks) {
+    const started = Date.parse(check?.started_at || '');
+    if (!check?.name || !Number.isSafeInteger(check.id) || !Number.isFinite(started))
+      return null;
+    const previous = latest.get(check.name);
+    if (
+      !previous ||
+      started > previous.started ||
+      (started === previous.started && check.id > previous.check.id)
+    ) {
+      latest.set(check.name, { check, started });
+    } else if (started === previous.started && check.id === previous.check.id) {
+      return null;
+    }
+  }
+  return [...latest.values()].map((entry) => entry.check);
+}
+
 async function findRelease() {
   const event = process.env.GITHUB_EVENT_NAME;
   const sha = process.env.GITHUB_SHA;
@@ -239,7 +263,9 @@ async function findRelease() {
     const listing = await api('commits/' + parents[1] + '/check-runs?per_page=100');
     if (listing.total_count > 100 || !Array.isArray(listing.check_runs))
       return { fast: false, mode: 'full', reason: 'PR check listing unavailable or truncated' };
-    checks = listing.check_runs;
+    checks = latestCheckRuns(listing.check_runs);
+    if (!checks)
+      return { fast: false, mode: 'full', reason: 'malformed or ambiguous PR check attempts' };
     const pending = checks.some((c) => c.status !== 'completed');
     const missing = required.some((name) => checks.filter((c) => c.name === name).length !== 1);
     complete = !pending && !missing;
