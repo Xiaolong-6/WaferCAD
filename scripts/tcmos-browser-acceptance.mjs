@@ -570,8 +570,7 @@ try {
     assert.equal(framing.sectionCollapse.top, 0.68);
     assert.equal(framing.sectionCollapse.bottom, -0.8);
     await page.waitForFunction(
-      () =>
-        Number(document.querySelector('#threeHost')?.dataset.implantCutBuiltCount) > 0,
+      () => Number(document.querySelector('#threeHost')?.dataset.implantCutBuiltCount) > 0,
       null,
       { timeout: 45000 },
     );
@@ -664,8 +663,7 @@ try {
     await waitForPaint(page);
     const isolatedThreeExpanded = await requireLargeView('three');
     await page.waitForFunction(
-      () =>
-        Number(document.querySelector('#threeHost')?.dataset.implantCutBuiltCount) > 0,
+      () => Number(document.querySelector('#threeHost')?.dataset.implantCutBuiltCount) > 0,
       null,
       { timeout: 45000 },
     );
