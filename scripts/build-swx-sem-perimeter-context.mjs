@@ -20,9 +20,15 @@ const contains = (model, point) => {
   const regions = model.regions.filter((region) => v.pointInMulti(point, region.geom));
   return new Set(regions.flatMap((region) => region.stack.map((layer) => layer.layerId)));
 };
-// The former full Si ring and two broad flanks were fabricated by earlier
-// iterations: there is no author evidence for device Si at these positions.
-// Check the actual final OFF/ON material stack, not just the input Mask.
+// Registered, non-production SEM grey-area candidate: verify material from
+// actual post-HF model, never from the mask silhouette alone.
+const examinedPhotoMesaPoints = [
+  [-52.648, -93.006],
+  [-22.461, -51.621],
+  [-47.994, -87.888],
+  [55.9, -90.002],
+  [7.5, -66.701],
+];
 const unverifiedExterior = [
   [-90, -50],
   [90, -50],
@@ -33,6 +39,10 @@ const unverifiedExterior = [
 ];
 for (const branch of project.snapshotBranches.branches) {
   const model = branch.headState.model;
+  for (const point of examinedPhotoMesaPoints) {
+    const layers = contains(model, point);
+    assert.ok(layers.has('layer-2'), 'SEM photo-mesa hypothesis missing device Si');
+  }
   for (const point of unverifiedExterior) {
     const layers = contains(model, point);
     assert.ok(!layers.has('layer-2'), 'Source-unverified exterior device Si fabricated');
@@ -52,9 +62,12 @@ await writeFile(
   JSON.stringify(
     {
       ...validation,
-      comparisonRole: 'paper SEM source review without invented peripheral silicon',
+      comparisonRole: 'SEM Fig3a photographic grey-area Si hypothesis, NOT author GDS',
       perimeter: SWX_PERIMETER_CONTEXT_ASSUMPTIONS,
       realPostHFUnverifiedExteriorSiIsAbsent: true,
+      processedSemPhotoMesaMaterialProbesVerified: true,
+      tracedMesaSourceMaterialVerified: false,
+      sourceMeasuredXYRegistrationVerified: false,
       realPostHFFixedCombSupportedAndMovingSWXSuspended: true,
       sourceClosedPerimeterTrenchRejected: true,
       sourceAuthorPerimeterGdsAccepted: false,
@@ -69,4 +82,4 @@ await writeFile(
     2,
   ) + '\n',
 );
-console.log('SEM Fig. 3a study: real OFF/ON Process, no invented outer Si');
+console.log('SEM Fig. 3a study: real OFF/ON Process with photo-traced mesa trial');

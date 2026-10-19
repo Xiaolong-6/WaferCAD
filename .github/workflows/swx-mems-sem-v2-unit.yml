@@ -9,6 +9,7 @@ on:
       - 'scripts/build-swx-sem-v2-unit.mjs'
       - 'scripts/swx-mems-sem-ground-return-candidate.mjs'
       - 'scripts/swx-mems-sem-perimeter-context.mjs'
+      - 'scripts/swx-sem-fig3a-mesa-data.mjs'
       - 'scripts/build-swx-sem-perimeter-context.mjs'
       - 'site/tests/swx-mems-sem-perimeter-context.test.mjs'
       - 'scripts/build-swx-sem-v2-ground-return-candidate.mjs'
