@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { parseGDS, flattenGDS } from '../site/gds.js';
 import { buildSwxMaskLayout } from './swx-mask-blueprint.mjs';
 
 // Every element is a convex quad or SWT triangle; SAT measures planar
@@ -207,5 +209,29 @@ test('full 220nm Si has exactly two positive-area connected nets',()=>{
   for(let i=0;i<26;i++){
     assert.equal(body('SWT_FIXED_'+i),ground);
     assert.equal(body('SWT_MOVABLE_'+i),ground);
+  }
+});
+
+test('checked-in GDS matches generator after 0.1nm export quantization',()=>{
+  const bytes=readFileSync(new URL('../examples/projects/swx-unit-off-mask-DRAFT.gds',
+    import.meta.url));
+  const ab=bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength);
+  const parsed=parseGDS(ab),reopened=flattenGDS(parsed,parsed.root);
+  const source=buildSwxMaskLayout().elements;
+  assert.ok(reopened.units.hasPhysicalUnits);
+  assert.equal(reopened.units.dbuToMicron,.0001);
+  assert.equal(reopened.elements.length,source.length);
+  for(let i=0;i<source.length;i++){
+    const a=source[i],b=reopened.elements[i];
+    assert.equal(a.layer,b.layer,'layer mismatch polygon '+i);
+    assert.equal(a.datatype,b.datatype);
+    assert.equal(a.points.length,b.points.length,'point count mismatch polygon '+i);
+    for(let k=0;k<a.points.length;k++){
+      for(let axis=0;axis<2;axis++){
+        const target=Math.round(a.points[k][axis]*1e4)/1e4;
+        assert.ok(Math.abs(target-b.points[k][axis])<1e-8,
+          'stale GDS polygon '+i+' vertex '+k+' axis '+axis);
+      }
+    }
   }
 });
