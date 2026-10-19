@@ -45,7 +45,11 @@ test('Mask onboarding hint appears only when both File and Draw sources are empt
   state.layout.elements.push({ id: 'imported-GDS-rectangle' });
   assert.equal(isMaskContentEmpty(state), false);
   state.maskSourceMode = 'draw';
-  assert.equal(isMaskContentEmpty(state), false, 'Switching to empty Draw cannot restore onboarding');
+  assert.equal(
+    isMaskContentEmpty(state),
+    false,
+    'Switching to empty Draw cannot restore onboarding',
+  );
   state.layout.elements = [];
   assert.equal(isMaskContentEmpty(state), true);
   state.layout.linework.push({ id: 'imported-GDS-path' });
@@ -54,7 +58,11 @@ test('Mask onboarding hint appears only when both File and Draw sources are empt
   state.drawMask.shapes.push({ id: 'drawn-rectangle' });
   assert.equal(isMaskContentEmpty(state), false);
   state.maskSourceMode = 'file';
-  assert.equal(isMaskContentEmpty(state), false, 'Switching to empty File cannot restore onboarding');
+  assert.equal(
+    isMaskContentEmpty(state),
+    false,
+    'Switching to empty File cannot restore onboarding',
+  );
   state.drawMask.shapes = [];
   assert.equal(isMaskContentEmpty(state), true);
   assert.equal(isMaskContentEmpty(null), false);

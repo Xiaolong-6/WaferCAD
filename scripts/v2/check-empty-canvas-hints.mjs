@@ -238,7 +238,8 @@ try {
         'Imported File Mask keeps onboarding hidden when active Draw source is empty',
       );
       await shot(page, 'desktop-imported-file-with-empty-draw-no-hint');
-      await page.locator('#maskPanel [data-action="draw-toggle"]').click();
+      // Draw opens the drawing source; returning to File uses the source picker.
+      await page.locator('[data-action="mask-source:file"]').click();
       await page.waitForFunction(
         () => window.WaferCadV2Workstation.snapshot().maskSourceMode === 'file',
       );
