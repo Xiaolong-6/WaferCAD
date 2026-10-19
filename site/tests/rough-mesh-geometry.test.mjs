@@ -363,7 +363,8 @@ test('triangle-partitioned LOD zones treat shared edges as seams rather than phy
 
   assert.equal(geometry.userData.roughLodZoneCount, 2);
   assert.equal(geometry.userData.roughLodStitchCount, 1);
-  assert.equal(geometry.userData.roughBorderPositions.length, 24);
+  assert.equal(geometry.userData.roughBorderPositions.length, 0);
+  assert.equal(geometry.userData.roughBoundaryPositions.length, 24);
 });
 
 test('buried rough interfaces do not generate ideal-plane closure skirts', () => {
@@ -411,7 +412,8 @@ test('buried rough interfaces do not generate ideal-plane closure skirts', () =>
       closeToIdeal: false,
     });
 
-  assert.ok(exposed.roughBorderPositions.length > 0);
+  assert.equal(exposed.roughBorderPositions.length, 0, 'a cosmetic rough patch has no structural border');
+  assert.ok(exposed.roughBoundaryPositions.length > 0, 'mesh boundary profiles remain available');
   assert.equal(buried.roughBorderPositions.length, 0);
   assert.ok(exposed.positions.length > buried.positions.length);
 });
@@ -705,7 +707,12 @@ test('rough physical sidewall borders are emitted without duplicated closure ski
       },
     ],
   });
-  assert.equal(physical.roughBorderPositions.length, baseline.roughBorderPositions.length);
+  assert.equal(baseline.roughBorderPositions.length, 0);
+  assert.ok(physical.roughBorderPositions.length > 0, 'a true sidewall must retain its outline');
+  assert.ok(
+    physical.roughBorderPositions.length < physical.roughBoundaryPositions.length,
+    'an unrelated rough patch perimeter must remain unoutlined',
+  );
   assert.equal(baseline.positions.length - physical.positions.length, 18);
 });
 
