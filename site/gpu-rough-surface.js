@@ -283,7 +283,9 @@ float waferCadFarFieldShade(vec2 xy) {
     footprint * 5.0
   );
   float visual = waferCadFarValueNoise(xy / displayCell);
-  return 1.0 - waferCadRoughFarFieldContrast * (0.25 + 1.05 * visual);
+  float featurePixels = waferCadRoughFarFieldFeatureSize / max(1e-9, footprint);
+  float unresolved = 1.0 - smoothstep(0.75, 8.0, featurePixels);
+  return 1.0 - waferCadRoughFarFieldContrast * unresolved * (0.25 + 1.05 * visual);
 }
 `;
 
