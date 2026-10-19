@@ -16,6 +16,7 @@ const {
   restoreContinuousMaterialOwner,
   continuousOwnerColumnAtXY,
   continuousOwnerMaterialAt,
+  sampleContinuousOwnerSection,
 } = await import('../continuous-material-owner.js');
 const { continuousMaterialColumn } = await import('../continuous-etch-geometry.js');
 
@@ -122,4 +123,19 @@ test('validated owner cannot silently change after restore', () => {
     live.sourceModel.regions[0].stack[0].z0 = 200;
   }, TypeError);
   assert.equal(continuousOwnerMaterialAt(live, [0, 0, -9]), null);
+});
+
+test('Section samples always query the same canonical continuous material owner', () => {
+  const owner = createContinuousMaterialOwner(fixture(), operation());
+  const before = JSON.stringify(owner);
+  for (const resolution of [8, 72, 256]) {
+    const samples = sampleContinuousOwnerSection(owner, [-10, 0], [10, 0], resolution);
+    assert.equal(samples.length, resolution + 1);
+    assert.deepEqual(samples[resolution / 2].column, [
+      { layerId: 'base', z0: -5, z1: 10 },
+      { layerId: 'oxide', z0: 10, z1: 12 },
+    ]);
+  }
+  assert.equal(JSON.stringify(owner), before);
+  assert.throws(() => sampleContinuousOwnerSection(owner, [0, 0], [1, 0], 5000), /budget/);
 });
