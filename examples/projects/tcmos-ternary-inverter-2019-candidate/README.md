@@ -166,9 +166,9 @@ The final candidate now stores `Interlayer SiO2.visible = true` and a global 3D 
 
 A saved project-specific 3D camera targets the transistor pair from an oblique, closer vantage point. This camera is part of the example file, not a global renderer default. Section A–B now traverses the SVG-aligned cross-device channel at y=-1.2 µm. For an individual schematic POLY band, users still need to zoom into Section or adjust A–B; the published Fig. 1a is an illustrative 3D sketch, and no original foundry GDS or exact depth profile is available. Visual matching is _qualitative_.
 
-## Display-only local 3D cutaway evidence
+## Local 3D ROI evidence
 
-The opt-in 3D **Cutaway** mode requires a Main ROI. It increases the displayed Z aspect ratio and contrast of the ROI boundary's surviving buried Implant annotation; it intentionally flattens the _display alpha gradient_ of the cut face, without changing the qualitative annotation interval, stored materials or Recipe. Dark cut-face lines delineate that illustrative interval; they are not measured junction boundaries. The underlying scientific profile is **not** calibrated, and the displayed band must not be interpreted as a measured tunnel junction thickness. The full-marker and HVT-only captures are retained for comparison; inspection derivatives are not published as device files.
+Main ROI clips the actual structure for local inspection. Buried Implant annotations retain their normal depth-gradient presentation, and 3D opacity is independently adjustable. Material geometry and Process History are unchanged. Local ROI views cannot calibrate junction thickness or dopant concentration; compare them with the corresponding Sections and original source figures. Inspection derivatives are not published as device files.
 
 ## Run and acceptance
 
@@ -191,7 +191,7 @@ Initial base: main at 223ba3374f773e8d45fa17b3abb37a2d76b73acd.
 **Stage acceptance (2026-10-17):** The SVG File Mask (8 layers, 232 shapes) has
 user visual approval. The separate process masks are SVG-derived and do not
 appear in GDS/OAS. The Chromium Run All passes 23/23, strict 26-slab
-material parity, independent pMOS/nMOS local Sections and ROI 3D cutaways,
+material parity, independent pMOS/nMOS local Sections and ROI 3D inspection,
 and Save/Recovery. The committed project has been regenerated; exact-head
 CI must still be evaluated after documentation cleanup. No Welcome or Main
 merge has been approved, and no PN/BTBT physics is claimed.
