@@ -1,3 +1,4 @@
+import { CONTINUOUS_ETCH_MODEL_KERNEL } from './continuous-etch-model.js';
 import { isArrayModel, storedModelParts } from './model-array.js';
 import { migrateProjectFile, validateProjectFile } from './project-schema.js';
 import { compactGeometryDictionary, expandGeometryDictionary } from './project-geometry-storage.js';
@@ -741,8 +742,20 @@ function hasSubgridModelLengths(project) {
   );
 }
 
+function projectHasContinuousEtch(project) {
+  const isContinuous = (model) =>
+    model?.kernel === CONTINUOUS_ETCH_MODEL_KERNEL || model?.continuousEtchOwner != null;
+  return (
+    isContinuous(project.model) ||
+    (project.snapshots || []).some((s) => isContinuous(s.state?.model)) ||
+    (project.snapshotBranches?.nodes || []).some((n) => isContinuous(n.state?.model)) ||
+    (project.snapshotBranches?.branches || []).some((b) => isContinuous(b.headState?.model))
+  );
+}
+
 export function prepareProjectForExport(project) {
-  if (hasSubgridModelLengths(project)) {
+  // Exact analytical geometry may not be quantized by the compact codec.
+  if (projectHasContinuousEtch(project) || hasSubgridModelLengths(project)) {
     return { stored: prepareProjectForWorkspaceStorage(project), mode: 'lossless' };
   }
   try {
@@ -794,7 +807,10 @@ export function downloadProject(project, filename = 'wafercad-project.wafercad')
   return { requested: true, filename, bytes: blob.size, mode };
 }
 
-export async function readProjectFile(file, { experimentalPhysicalFacetReadOnly = false } = {}) {
+export async function readProjectFile(
+  file,
+  { experimentalPhysicalFacetReadOnly = false, experimentalContinuousEtchReadOnly = false } = {},
+) {
   if (!file) throw new Error('No project file selected.');
   if (file.size > MAX_PROJECT_FILE_BYTES) {
     throw new Error(
@@ -811,6 +827,11 @@ export async function readProjectFile(file, { experimentalPhysicalFacetReadOnly 
 
   expandProjectStorage(parsed);
   const project = validateProjectFile(migrateProjectFile(parsed));
+  if (project.model.kernel === CONTINUOUS_ETCH_MODEL_KERNEL && !experimentalContinuousEtchReadOnly) {
+    throw new Error(
+      'Continuous Etch is not yet supported by the production Workstation; no flat import is permitted.',
+    );
+  }
   // The opt-in owner is persisted and strictly validated, but the default
   // Workstation must not draw its physical material as a flat surrogate.
   if (

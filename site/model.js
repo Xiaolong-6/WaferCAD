@@ -1,6 +1,7 @@
 import { indexedIntersectionInputs } from './process-boundary-index.js';
 import { addQualitativeDopantRegion, resolveQualitativeDopantRegion } from './dopant-regions.js';
 import { adaptiveReleaseDepthBands } from './isotropic-release-oracle.js';
+import { assertContinuousEtchNotProcessed, assertContinuousEtchNotRendered } from './continuous-etch-model.js';
 import {
   assertExperimentalPhysicalFacetNotProcessed,
   applyExperimentalPhysicalFacetConformal,
@@ -249,6 +250,7 @@ export function setLayerVisible(model, id, visible) {
 }
 
 export function visibleMaterialModel(model) {
+  assertContinuousEtchNotRendered(model);
   assertExperimentalPhysicalFacetNotRendered(model);
   const hidden = new Set(
     (model?.layers || []).filter((layer) => layer.visible === false).map((layer) => layer.id),
@@ -1791,6 +1793,8 @@ function applyOperationImpl(
 }
 
 export function applyOperation(model, params) {
+  const continuousUnsupported = assertContinuousEtchNotProcessed(model);
+  if (continuousUnsupported) return continuousUnsupported;
   const physicalConformal = applyExperimentalPhysicalFacetConformal(model, params);
   if (physicalConformal) return physicalConformal;
   const unsupported = assertExperimentalPhysicalFacetNotProcessed(model);

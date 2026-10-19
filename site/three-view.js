@@ -10,6 +10,7 @@ import { disposeRendererSceneResources } from './renderer-v4-resource-lifetime.j
 import { runTemporaryRendererCapture } from './renderer-capture-transaction.js';
 import { renderDepthAwareOutlines } from './three-outline-pass.js';
 import { shouldYieldDuringSceneAssembly } from './renderer-cooperative-assembly.js';
+import { CONTINUOUS_ETCH_MODEL_KERNEL } from './continuous-etch-model.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
   annotationInspectionCutSegments,
@@ -3196,6 +3197,15 @@ diffuseColor.a *= waferCadAlphaScale;`,
     }
     const model = getModel();
     if (!model) return;
+    if (model.kernel === CONTINUOUS_ETCH_MODEL_KERNEL || model.continuousEtchOwner != null) {
+      // The old 2.5D geometry is only an unetched reference, not the final solid.
+      disposeGroup();
+      host.dataset.renderState = 'error';
+      host.dataset.renderPhase = 'build-failed';
+      host.dataset.rendererBuildFailure = 'Continuous etch 3D mesh is not implemented';
+      stats.textContent = 'Continuous etch 3D unavailable';
+      return;
+    }
     if (model.kernel === PHYSICAL_FACET_MODEL_KERNEL) {
       try {
         renderExperimentalPhysicalFacet(
