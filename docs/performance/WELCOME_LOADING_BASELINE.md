@@ -66,8 +66,8 @@ projects and all repetitions must pass the completeness checker; missing or
 failed data cannot be reported as a green baseline. A missing renderer metric
 is reported as **not instrumented**, never zero.
 
-The dedicated workflow is triggered only when benchmark instrumentation is
-changed in its PR. It does **not** run on every ordinary Main push and does
-not constitute an end-user Windows / hardware GPU SLA. Compare repeated runs
+The dedicated benchmark workflow is manual-only (`workflow_dispatch`),
+not automatically triggered by PR or Main pushes, and does not constitute
+an end-user Windows / hardware GPU SLA. Compare repeated runs
 only after recording the OS, browser, sample count, release source SHA and
 project artifact SHA. Do not tune production geometry just to improve timings.

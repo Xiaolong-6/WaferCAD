@@ -44,6 +44,7 @@ The [CI architecture audit](archive/CI_ARCHITECTURE_AUDIT_2026-10-12.md) tracks 
 ## Scientific and interchange contracts
 
 - [Process benchmarks](science/PROCESS_BENCHMARKS.md) — analytic geometry acceptance and approximation limits.
+- [Welcome Example loading baseline](performance/WELCOME_LOADING_BASELINE.md) — per-phase timing methods and limits.
 - [Experimental isotropic release oracle (2026-10-16)](science/ISOTROPIC_RELEASE_ORACLE_2026-10-16.md) — continuous Euclidean release reference, adaptive partition bounds, and unresolved production topology.
 - [Paper-figure provenance matrix (2026-10-16)](evidence/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md) — eight-family figure provenance and explicit unaccepted fidelity.
 - [Process numerical and physical interpretation contract](science/PROCESS_NUMERICAL_CONTRACT_2026-10-14.md) — numerical Z resolution, sub-0.01 nm preservation and continuum-film limitations.
