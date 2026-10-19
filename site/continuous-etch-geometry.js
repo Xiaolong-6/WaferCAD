@@ -26,7 +26,7 @@ function continuousFrontZ(front,point){return front.seedZ+(front.face==="front"?
 
 function continuousReleaseRemoves(front,point,layerId){if(layerId!==front.layerId)return false;const [x,y,z]=point;finite("x",x);finite("y",y);finite("z",z);const depth=(front.face==="front"?front.seedZ-z:z-front.seedZ);return depth>=0&&depth<continuousDepthAtXY(front,[x,y]);}
 
-function sampleContinuousSection(front,a,b,steps=128){if(!Number.isSafeInteger(steps)||steps<2||steps>4096)throw new RangeError("Invalid display step budget");for(const p of [a,b]){finite("section x",p?.[0]);finite("section y",p?.[1]);}return Array.from({length:steps+1},(_,i)=>{const t=i/steps,xy=[a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1])];return {xy,z:continuousFrontZ(front,xy)};});}
+function sampleContinuousSection(front,a,b,steps=128){if(!Number.isSafeInteger(steps)||steps<2||steps>4096)throw new RangeError("Invalid display step budget");for(const p of [a,b]){finite("section x",p?.[0]);finite("section y",p?.[1]);}return Array.from({length:steps+1},(_,i)=>{const t=i/steps,xy=[a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1])];return {xy,z:seedDistance(xy,front.seedGeom)<=front.lateralUm?continuousFrontZ(front,xy):null};});}
 
 function remainingMaterialAt(model,fronts,point){const [x,y,z]=point;finite("x",x);finite("y",y);finite("z",z);if(!Array.isArray(fronts))throw new TypeError("Fronts must be an array");for(const region of model?.regions||[]){if(!inMulti([x,y],region.geom))continue;for(const part of region.stack||[]){if(z>=part.z0&&z<part.z1)return fronts.some(f=>continuousReleaseRemoves(f,point,part.layerId))?null:part.layerId;}}return null;}
 
