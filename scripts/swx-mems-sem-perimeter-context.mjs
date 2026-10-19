@@ -40,14 +40,22 @@ export function createSwxSemPerimeterContext(state = 'off') {
   const exterior = SEM_FIG3A_MESA_CONTOURS_UM.map((ring) => ring.map(([x, y]) => [x, y]));
   const maskPolygons = new Map(original.maskPolygons);
   maskPolygons.set(1, [...original.maskPolygons.get(1), ...exterior]);
-  const additions = exterior.map((points) => ({ kind: 'polygon', sourceCell:'SWX_MEMS_UNIT', layer:1, datatype:0, points }));
+  const additions = exterior.map((points) => ({
+    kind: 'polygon',
+    sourceCell: 'SWX_MEMS_UNIT',
+    layer: 1,
+    datatype: 0,
+    points,
+  }));
   return {
     ...original,
     layout: {
       ...original.layout,
       name: 'Hu 2025 Fig 3a PHOTO-TRACED perimeter trial (NOT AUTHOR GDS)',
       elements: [...original.layout.elements, ...additions],
-      combos: original.layout.combos.map(combo => combo.layer === 1 ? {...combo, count: maskPolygons.get(1).length}:combo),
+      combos: original.layout.combos.map((combo) =>
+        combo.layer === 1 ? { ...combo, count: maskPolygons.get(1).length } : combo,
+      ),
       bounds: {
         minX: -width / 2,
         minY: -height / 2,
