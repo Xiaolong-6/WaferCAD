@@ -263,6 +263,7 @@ function createValidationContext() {
       components: new WeakMap(),
       differences: new WeakMap(),
       intersections: new WeakMap(),
+      contourProofs: new WeakMap(),
     },
   };
 }
@@ -309,15 +310,78 @@ function rectangularBoundary(geometry, cache) {
   return rectangle;
 }
 
+// Conservative outline proof: if no outer-ring segments can touch and
+// neither first vertex is inside the other outer ring, filled polygons cannot
+// overlap. Holes only remove area, so testing outer rings is conservative.
+// A potential contact always falls through to the original exact Boolean.
+function contourEdgeBoxes(ring) {
+  const boxes = [];
+  for (let i = 0; i + 1 < ring.length; i++) {
+    const a = ring[i],
+      b = ring[i + 1];
+    boxes.push({
+      minX: Math.min(a[0], b[0]),
+      maxX: Math.max(a[0], b[0]),
+      minY: Math.min(a[1], b[1]),
+      maxY: Math.max(a[1], b[1]),
+    });
+  }
+  return boxes.sort((a, b) => a.minX - b.minX);
+}
+
+function provablySeparatedContours(left, right) {
+  if (!left.outline || !right.outline) return false;
+  const sides = [left.edges, right.edges],
+    cursor = [0, 0],
+    active = [[], []];
+  const margin = 1e-9;
+  while (cursor[0] < sides[0].length || cursor[1] < sides[1].length) {
+    const side =
+      cursor[1] >= sides[1].length ||
+      (cursor[0] < sides[0].length && sides[0][cursor[0]].minX <= sides[1][cursor[1]].minX)
+        ? 0
+        : 1;
+    const current = sides[side][cursor[side]++],
+      other = 1 - side;
+    active[other] = active[other].filter((edge) => edge.maxX >= current.minX - margin);
+    for (const previous of active[other]) {
+      if (previous.maxY >= current.minY - margin && current.maxY >= previous.minY - margin)
+        return false;
+    }
+    active[side].push(current);
+  }
+  return (
+    !pointInProofRing(left.outline[0], right.outline) &&
+    !pointInProofRing(right.outline[0], left.outline)
+  );
+}
+
+function cachedContourSeparation(a, b, cache) {
+  let row = cache.contourProofs.get(a);
+  if (!row) {
+    row = new WeakMap();
+    cache.contourProofs.set(a, row);
+  }
+  if (row.has(b)) return row.get(b);
+  const separated = provablySeparatedContours(a, b);
+  row.set(b, separated);
+  return separated;
+}
+
 function geometryComponents(geometry, cache) {
   if (!cache.components.has(geometry)) {
     cache.components.set(
       geometry,
       geometry
-        .map((polygon, index) => ({
-          index,
-          bounds: geometryBounds([polygon]),
-        }))
+        .map((polygon, index) => {
+          const outline = polygon[0] || null;
+          return {
+            index,
+            bounds: geometryBounds([polygon]),
+            outline,
+            edges: outline ? contourEdgeBoxes(outline) : null,
+          };
+        })
         .sort((a, b) => a.bounds.minX - b.bounds.minX),
     );
   }
@@ -438,6 +502,7 @@ function intersectionCandidates(left, right, cache, radialProof = null) {
         current.bounds.maxY <= previous.bounds.minY
       )
         continue;
+      if (cachedContourSeparation(current, previous, cache)) continue;
       if (
         radial &&
         provablyRadiallySeparated(radial[side]?.[current.index], radial[other]?.[previous.index])
