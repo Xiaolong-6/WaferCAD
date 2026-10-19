@@ -188,8 +188,7 @@ export function latestCheckRuns(checks) {
   const latest = new Map();
   for (const check of checks) {
     const started = Date.parse(check?.started_at || '');
-    if (!check?.name || !Number.isSafeInteger(check.id) || !Number.isFinite(started))
-      return null;
+    if (!check?.name || !Number.isSafeInteger(check.id) || !Number.isFinite(started)) return null;
     const previous = latest.get(check.name);
     if (
       !previous ||
