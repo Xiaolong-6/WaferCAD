@@ -123,3 +123,44 @@ multi-seed collisions, source-paper XeF2 chemistry or total final
 Si shape is within 0.5 µm. Those independent topology, Section,
 volume and real-browser acceptance checks remain required before
 promotion to normal Process.
+
+## Exact continuous geometry foundation (2026-10-19, development branch)
+
+The opt-in `site/continuous-etch-geometry.js` defines an **analytic** selective
+release front. The original material/XY footprint and its target layer are
+queried at each physical position, without storing 8, 72 or any other number
+of Z bands. For distance `d` outside the real exposed seed polygon,
+independent lateral reach `L` and vertical depth `D` give
+`depth(d) = D * sqrt(max(0, 1 - (d/L)^2))` for `0 <= d < L`.
+Inside the exposed seed polygon the depth is `D`. Circular requires `L = D`;
+elliptical permits independent values. The vertical option has a rectangular
+front. These are **geometric** parameterizations, not a calibrated XeF2
+reaction-rate model. The original mask boundary is still polygonal.
+
+The read-only `site/continuous-etch-topology.js` adapter derives fronts only
+from physically exposed patches returned by the **existing production
+`exposedSurfaceGroups()`**, filters by actual target layer and mask ROI,
+rejects unsupported array/rough owners, and requires exact model-revision
+parity for material queries. Section curves may be sampled at an arbitrary
+display resolution; those samples never become canonical material geometry.
+
+**Integration is not yet complete.** Existing `site/model.js` still mutates
+2.5D region stacks for normal isotropic Process. The analytic front is not
+persisted in v14 project state and is not yet consumed by the native Section,
+3D, Conformal, follow-on Etch, History/Recovery or GLB exporters. Therefore
+no new production UI mode or published Microdisk replacement is enabled, and
+all existing 8/72-band history remains unchanged. Promotion requires an
+atomic canonical material owner accepted by all downstream consumers,
+transactional save/replay and recovery, real native Chromium 3D/Section
+inspection, and scientific volume, mask, multi-seed and post-release process
+invariants. Never render a continuous shell over a stepped stored material
+model and claim geometry parity.
+
+Owning checks introduced on the branch:
+
+- `node --test site/tests/continuous-etch-geometry.test.mjs`
+- `node --test site/tests/continuous-etch-topology.test.mjs`
+
+The current development environment has no complete local checkout; these
+Node files and native Chromium output are **not yet accepted** merely by
+having their code committed. No old test tolerance or baseline was changed.
