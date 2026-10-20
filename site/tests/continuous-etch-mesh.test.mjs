@@ -162,8 +162,10 @@ test('Microdisk higher-quality cubic grid stays closed and within scientific bud
       const u = ((by - cy) * (x - cx) + (cx - bx) * (y - cy)) / det;
       const v = ((cy - ay) * (x - cx) + (ax - cx) * (y - cy)) / det;
       if (u < -1e-6 || v < -1e-6 || u + v > 1 + 1e-6) continue;
-      maxZ = Math.max(maxZ, u * positions[i + 2] + v * positions[i + 5] +
-        (1 - u - v) * positions[i + 8]);
+      maxZ = Math.max(
+        maxZ,
+        u * positions[i + 2] + v * positions[i + 5] + (1 - u - v) * positions[i + 8],
+      );
     }
     return maxZ;
   }
@@ -171,18 +173,22 @@ test('Microdisk higher-quality cubic grid stays closed and within scientific bud
     [0, 40],
     [45, 5.706],
     [60, 4.349],
-    [115, 25.590],
+    [115, 25.59],
     [145, 4.125],
     [175, 4],
   ];
   for (const [x, expectedZ] of expectedSiTop) {
     const actualZ = topAtXY(x, 0);
     assert.ok(Number.isFinite(actualZ), `Si disappeared at x=${x} um`);
-    assert.ok(Math.abs(actualZ - expectedZ) < 0.75,
-      `3D mesh material boundary at x=${x}: displayed ${actualZ} um, physical ${expectedZ} um`);
+    assert.ok(
+      Math.abs(actualZ - expectedZ) < 0.75,
+      `3D mesh material boundary at x=${x}: displayed ${actualZ} um, physical ${expectedZ} um`,
+    );
   }
-  assert.ok(topAtXY(115, 0) - topAtXY(60, 0) > 18,
-    'Continuous 3D must retain the real outer Si rise; never flatten it to hide band seams');
+  assert.ok(
+    topAtXY(115, 0) - topAtXY(60, 0) > 18,
+    'Continuous 3D must retain the real outer Si rise; never flatten it to hide band seams',
+  );
 });
 
 test('budget guard rejects unbounded resolution without changing source', () => {
