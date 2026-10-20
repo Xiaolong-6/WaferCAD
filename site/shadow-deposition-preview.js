@@ -1,5 +1,5 @@
 import { applyOperation, createModel } from './model.js';
-import { intersection, isEmpty, pointInMulti, rectMulti } from './vector-geometry.js';
+import { intersection, isEmpty, rectMulti } from './vector-geometry.js';
 import { polygonAreaUm2, substrateShadowFootprint } from './shadow-exposure-geometry.js';
 
 /**
