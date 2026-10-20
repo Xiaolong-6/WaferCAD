@@ -104,3 +104,23 @@ node --test site/tests/transmon-gds-chip-extract.test.mjs \
 - This first local Kernel diagnostic ran against the previously mounted source snapshot because the current `main` exact-SHA checkout is not available locally; the current-`main` `gds.js` and `layout-io.js` Git blobs match the snapshot, but `model.js` does not. Targeted process/scientific tests on the actual new branch baseline remain required before merge.
 
 The project does not simulate Josephson shadow evaporation, lift-off, AlOx or the quantum electrical response. It is a **Nb + Si recess checkpoint** only. No manual CI or full Quality suite was run for this research iteration.
+
+## Original Josephson junction double-dose mask verification
+
+The author GDS source has also been checked at the **actual Q2 SREF** and in its native unrotated cell, using `scripts/transmon-junction-dose-audit.mjs` and `site/tests/transmon-junction-dose-audit.test.mjs`. This test uses the public source binary and does not create synthetic replacements for the final source measurement.
+
+```sh
+node scripts/transmon-junction-dose-audit.mjs \
+  --input /path/to/Zenodo_files/sample.gds \
+  --report q2-junction-dose-audit.json
+WAFERCAD_TRANSMON_GDS=/path/to/Zenodo_files/sample.gds \
+  node --test site/tests/transmon-junction-dose-audit.test.mjs
+```
+
+**Measured author mask facts:** `chip2` references `jj_width0p18` at (1400, 2513) µm with a 90° rotation, no reflection, unit magnification. Flattening the original `chip2` yields 39,487 polygons; all 17 nearby EBL polygons equal the native `jj_width0p18` geometry after that reference transform, matching their original vertices and layer/datatype identities. In the junction cell, `8/0` has 8 polygons with total union area 11.200000 µm², and `8/1` has 9 polygons with total area 11.201288 µm². Their Boolean intersection is zero.
+
+**Dose-to-layer interpretation remains a hypothesis:** the `8/1` long connected junction strips geometrically correspond to the main lithographic pattern (1000 µC/cm² in the article). The `8/0` terminal regions plausibly correspond to the lower-dose undercut exposure (400 µC/cm²). Because the GDS contains no unambiguous exposure-dose metadata, this cannot yet be stated as an author-verified layer map. See Supplementary Fig. 1 and the Methods section; do not silently turn this hypothesis into a verified material/process assignment.
+
+Local offline validation on the source snapshot: **3/3 new targeted tests passed**, including incorrect-rotation and overlapping-datatype counterexamples; Prettier 3.9.9 check passed. GitHub copies of both files were verified by their exact Git blob hashes. The complete current-branch checkout, WebGL Workstation, resist undercut geometry, actual 45° shadow evaporation, thin AlOx and lift-off **remain unverified/not implemented for this paper**. No simulated junction 3D result is claimed.
+
+**Next scientific gate:** establish a generic material/process contract for two-layer MMA/PMMA relief, shadow occlusion and directional deposition at the specific `θ=45°`/`ϕ` angles in the paper, including selective clearing and bandage contact. Do not approximate this by non-shadowed conformal coating or falsely claim the existing Implant tilt models metal evaporation.
