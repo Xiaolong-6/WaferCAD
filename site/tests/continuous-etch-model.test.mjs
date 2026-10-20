@@ -137,7 +137,9 @@ test('continuous release cannot inherit implicit or Workstation default Z Break'
   const plain = { kernel: 'vector-2.5d-v1' };
   const workstationDefault = { enabled: true, top: 36.8, bottom: -36.8 };
   assert.deepEqual(continuousEtchDisplayCollapse(continuous, null), { enabled: false });
-  assert.deepEqual(continuousEtchDisplayCollapse(continuous, workstationDefault), { enabled: false });
+  assert.deepEqual(continuousEtchDisplayCollapse(continuous, workstationDefault), {
+    enabled: false,
+  });
   assert.equal(continuousEtchDisplayCollapse(plain, workstationDefault), workstationDefault);
   const explicit = { ...workstationDefault, continuousEtchExplicit: true };
   assert.equal(continuousEtchDisplayCollapse(continuous, explicit), explicit);
@@ -179,8 +181,7 @@ test('Workstation import rejects continuous owners hidden in any History or Reco
   for (const variant of ['snapshot', 'historyNode', 'branchHead']) {
     const candidate = structuredClone(project);
     if (variant === 'snapshot') candidate.snapshots[0].state.model = released;
-    else if (variant === 'historyNode')
-      candidate.snapshotBranches.nodes[0].state.model = released;
+    else if (variant === 'historyNode') candidate.snapshotBranches.nodes[0].state.model = released;
     else candidate.snapshotBranches.branches[0].headState.model = released;
     const exported = prepareProjectForExport(candidate);
     assert.equal(exported.mode, 'lossless');
