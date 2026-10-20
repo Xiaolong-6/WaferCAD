@@ -108,8 +108,7 @@ export function appearanceSurfaceGroups(model, clip = null) {
 }
 
 export function sectionContours(model, a, b) {
-  if (model?.kernel === 'vector-continuous-etch-v1')
-    return continuousSectionContours(model, a, b);
+  if (model?.kernel === 'vector-continuous-etch-v1') return continuousSectionContours(model, a, b);
   const owner = validateExperimentalPhysicalFacetModel(model);
   if (owner) {
     // One true physical solid, directly from its shared 3D triangle owner.

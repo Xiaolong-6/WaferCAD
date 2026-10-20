@@ -154,9 +154,12 @@ test('Microdisk higher-quality cubic grid stays closed and within scientific bud
     const positions = si.positions;
     let maxZ = -Infinity;
     for (let i = 0; i < positions.length; i += 9) {
-      const ax = positions[i], ay = positions[i + 1];
-      const bx = positions[i + 3], by = positions[i + 4];
-      const cx = positions[i + 6], cy = positions[i + 7];
+      const ax = positions[i],
+        ay = positions[i + 1];
+      const bx = positions[i + 3],
+        by = positions[i + 4];
+      const cx = positions[i + 6],
+        cy = positions[i + 7];
       const det = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy);
       if (Math.abs(det) < 1e-9) continue;
       const u = ((by - cy) * (x - cx) + (cx - bx) * (y - cy)) / det;

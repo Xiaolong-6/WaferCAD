@@ -23,15 +23,21 @@ export function continuousSectionContours(
 ) {
   if (model?.kernel !== 'vector-continuous-etch-v1')
     throw new RangeError('Continuous Section requires dedicated model kernel');
-  if (!(Number.isFinite(maxStepUm) && maxStepUm > 0) ||
-      !Number.isSafeInteger(maxPoints) || maxPoints < 2 || maxPoints > 16384)
+  if (
+    !(Number.isFinite(maxStepUm) && maxStepUm > 0) ||
+    !Number.isSafeInteger(maxPoints) ||
+    maxPoints < 2 ||
+    maxPoints > 16384
+  )
     throw new RangeError('Invalid continuous Section display sampling budget');
   if (a?.length !== 2 || b?.length !== 2 || ![...a, ...b].every(Number.isFinite))
     throw new RangeError('Invalid physical Section endpoints');
   const length = Math.hypot(b[0] - a[0], b[1] - a[1]);
   if (!(length > 0)) return [];
   const owner = restoreContinuousMaterialOwner(model.continuousEtchOwner);
-  const layers = new Map(owner.sourceModel.layers.map((layer) => [layer.id, layer.visible !== false]));
+  const layers = new Map(
+    owner.sourceModel.layers.map((layer) => [layer.id, layer.visible !== false]),
+  );
   const byLayer = new Map();
   const at = (t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
   const append = ({ layerId, points }) => {
@@ -41,12 +47,12 @@ export function continuousSectionContours(
   for (const region of owner.sourceModel.regions) {
     for (const [t0, t1] of lineIntervalsInMulti(a, b, region.geom)) {
       if (!(t1 > t0)) continue;
-      const count = Math.max(2, Math.min(maxPoints, Math.ceil((t1 - t0) * length / maxStepUm)));
+      const count = Math.max(2, Math.min(maxPoints, Math.ceil(((t1 - t0) * length) / maxStepUm)));
       const active = new Map();
       for (let index = 0; index <= count; index++) {
-        const t = t0 + (t1 - t0) * index / count;
-        const interior = index === 0 ? t0 + (t1 - t0) * 1e-9 :
-          index === count ? t1 - (t1 - t0) * 1e-9 : t;
+        const t = t0 + ((t1 - t0) * index) / count;
+        const interior =
+          index === 0 ? t0 + (t1 - t0) * 1e-9 : index === count ? t1 - (t1 - t0) * 1e-9 : t;
         const ordinalByLayer = new Map();
         const present = new Set();
         for (const { layerId, z0, z1 } of continuousOwnerColumnAtXY(owner, at(interior))) {
