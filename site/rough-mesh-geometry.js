@@ -429,10 +429,15 @@ export function roughMeshDataFromPreparedCap({
         roughBoundaryPositions.push(...top0, ...top1);
         if (!closeToIdeal) continue;
         if (!hasPhysicalSidewallAt(edge, middleGlobalT)) {
+          // The edge only closes a roughness patch to its ideal surface.
+          // It is not a physical material boundary and must not be outlined.
           pushTriangle(point0, point1, top1);
           pushTriangle(point0, top1, top0);
+        } else {
+          // Only a real, owned material sidewall is a visible rough cap border.
+          // LOD joins and rough/flat patch boundaries remain mesh-only.
+          roughBorderPositions.push(...top0, ...top1);
         }
-        roughBorderPositions.push(...top0, ...top1);
       }
     }
   }

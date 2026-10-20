@@ -109,8 +109,36 @@
       'Change visualization transparency without altering physical layers.',
     ],
     'three.borders': [
-      '3D borders',
-      'Show or hide structural edge outlines. Model geometry is unchanged.',
+      '3D Border Inspector',
+      'Configure physical outline categories and line styles independently of material opacity.',
+    ],
+    'three.border.enabled': [
+      'Show borders',
+      'Show or hide the selected outlines. No geometry or Process state is modified.',
+    ],
+    'three.border.preset.clean': ['Clean', 'Show only exposed outer edges and ROI cut borders.'],
+    'three.border.preset.structure': [
+      'Structure',
+      'Show interior material interfaces and buried features when transparent.',
+    ],
+    'three.border.preset.xray': [
+      'X-Ray',
+      'Show interior structure and dashed edges occluded by the nearest surface.',
+    ],
+    'three.border.exterior': ['Exterior', 'Physical outer surfaces, steps and exposed edges.'],
+    'three.border.interface': [
+      'Material interfaces',
+      'Real buried boundaries between different material layers. Large wafer overviews use a bounded outline preview; select an ROI for complete internal contours.',
+    ],
+    'three.border.buried': ['Buried features', 'Interior walls, vias and embedded physical edges.'],
+    'three.border.occluded': [
+      'Occluded edges',
+      'Physical edges hidden behind the nearest solid surface.',
+    ],
+    'three.border.roi': ['ROI cut', 'Edges exposed by the currently selected inspection cut.'],
+    'three.border.strength': [
+      'Line strength',
+      'Adjust visible border contrast. Auto enables internal geometry in transparent inspection; Solid and Dashed override the default line style. These settings affect presentation only.',
     ],
     'three.export.glb': ['Export physical GLB', 'Download the 3D structure in physical metres.'],
     'three.export.png': ['Capture 3D PNG', 'Export a 3× raster image of the current 3D view.'],
@@ -274,6 +302,34 @@
     'project.units': [
       'XYZ display units',
       'Change how physical coordinates are displayed; geometry is stored in canonical units.',
+    ],
+    'history.edit.discard': [
+      'Replace and discard',
+      'Replace this Step and remove all following Steps in the current Variant. The Recovery checkpoint preserves the prior state.',
+    ],
+    'history.edit.replay': [
+      'Replace and replay',
+      'Apply the edited Step in this Variant, then recompute downstream Steps. Replay failure restores the original transaction.',
+    ],
+    'history.edit.branch.replay': [
+      'New Variant with later Steps',
+      'Preserve the source Variant. Create a new Variant with the edited Step and recompute later Steps.',
+    ],
+    'history.edit.branch.only': [
+      'New Variant with edited Step',
+      'Preserve the source Variant. The new Variant ends at the edited Step.',
+    ],
+    'history.insert.current': [
+      'Insert in current Variant',
+      'Insert the new Step before the selected Step and recompute the affected later Steps.',
+    ],
+    'history.insert.branch.replay': [
+      'Insert and carry in new Variant',
+      'Preserve the source Variant and recompute later Steps in a new Variant.',
+    ],
+    'history.insert.branch.start': [
+      'Insert and start new Variant',
+      'Start a separate Variant at the insertion point without copying later Steps.',
     ],
     'history.undo': [
       'Undo process change',

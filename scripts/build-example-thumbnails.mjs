@@ -40,8 +40,9 @@ try {
       );
       continue;
     }
+    const fullCover = example.preview?.coverSource === 'full';
     const inputPath = new URL(
-      '../site/' + example.previewProject.path.replace(/^\.\//, ''),
+      '../site/' + (fullCover ? example.path : example.previewProject.path).replace(/^\.\//, ''),
       import.meta.url,
     );
     const input = await readFile(inputPath);
@@ -52,14 +53,29 @@ try {
     await installPinnedThreeRoute(context);
     const page = await context.newPage(),
       errors = observePageErrors(page);
-    await page.goto(baseUrl + '/app.html?preview=1&example=' + example.id + '&view=three', {
-      waitUntil: 'domcontentloaded',
-    });
+    await page.goto(
+      baseUrl +
+        (fullCover
+          ? '/app.html?start=example&example=' + example.id
+          : '/app.html?preview=1&example=' + example.id + '&view=three'),
+      {
+        waitUntil: 'domcontentloaded',
+      },
+    );
     await page.waitForFunction(
       () => document.body.dataset.ready === 'true' && window.WaferCadV2Workstation?.ready,
       null,
       { timeout: 120000 },
     );
+    if (fullCover && !(await page.locator('#threeHost').isVisible())) {
+      // A real full-project cover may open in mobile single-view or desktop
+      // docking; select 3D only when it is not already shown.
+      const dockToggle = page.locator('button[data-action="dock:view:three"]');
+      const singleToggle = page.locator('button[data-action="view:three"]');
+      if (await dockToggle.isVisible()) await dockToggle.click();
+      else if (await singleToggle.isVisible()) await singleToggle.click();
+      else throw Error(`Cannot open the 3D view for ${example.id}`);
+    }
     await page.waitForFunction(
       () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
       null,

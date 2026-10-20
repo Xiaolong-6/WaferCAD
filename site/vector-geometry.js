@@ -12,7 +12,6 @@ import {
 
 // Polygon Boolean operations validate the vendor engine lazily in
 // polygon-boolean.js; schema modules may be imported before vendor bootstrap.
-
 export { BOOLEAN_RETRY_GRID_UM, EPS, canonicalizeBooleanGeometry, closeRing, normalizeMulti };
 
 export const cloneGeom = (geom) => structuredClone(geom || []);
@@ -67,7 +66,10 @@ function polygonBounds(poly) {
   return Number.isFinite(minX) ? { minX, minY, maxX, maxY } : null;
 }
 
-function unionPolygonComponents(geometries) {
+// The optional cache is scoped to one immutable Process topology derivation.
+// Never share it between calls; only original polygon reference identities are
+// used as keys, so distinct value-equal inputs retain their ordinary semantics.
+function unionPolygonComponents(geometries, reuse = null) {
   const entries = [];
   const seenGeometryRefs = new WeakSet();
   for (const geom of geometries || []) {
@@ -79,9 +81,20 @@ function unionPolygonComponents(geometries) {
       if (seenGeometryRefs.has(geom)) continue;
       seenGeometryRefs.add(geom);
     }
-    for (const poly of normalizeMulti(geom)) {
+    const normalized = normalizeMulti(geom);
+    // Malformed input can lose polygons during normalization; never assign a
+    // source identity to a different polygon merely because its index moved.
+    const refsMatch = Array.isArray(geom) && normalized.length === geom.length;
+    for (let index = 0; index < normalized.length; index++) {
+      const poly = normalized[index];
+      const source = refsMatch ? geom[index] : null;
+      let id;
+      if (reuse && source && typeof source === 'object') {
+        id = reuse.polygonIds.get(source);
+        if (id == null) reuse.polygonIds.set(source, (id = ++reuse.nextId));
+      }
       const bounds = polygonBounds(poly);
-      if (bounds) entries.push({ geom: [poly], bounds });
+      if (bounds) entries.push({ geom: [poly], bounds, id });
     }
   }
   if (!entries.length) return [];
@@ -98,17 +111,30 @@ function unionPolygonComponents(geometries) {
   const components = connectedBoundingBoxGroups(
     entries.map((entry) => entry.bounds),
     EPS,
-  ).map((indices) => indices.map((index) => entries[index].geom));
+  );
 
   const out = [];
   let mergedComponents = false;
-  for (const component of components.values()) {
-    if (component.length === 1) {
-      out.push(...component[0]);
+  for (const indices of components.values()) {
+    if (indices.length === 1) {
+      out.push(...entries[indices[0]].geom);
       continue;
     }
     mergedComponents = true;
-    const merged = booleanWithNormalizedRetry('union', component);
+    const key =
+      reuse && indices.every((index) => entries[index].id != null)
+        ? indices.map((index) => entries[index].id).join(',')
+        : null;
+    let merged = key == null ? null : reuse.components.get(key);
+    if (merged) {
+      merged = normalizeMulti(merged);
+    } else {
+      merged = booleanWithNormalizedRetry(
+        'union',
+        indices.map((index) => entries[index].geom),
+      );
+      if (key != null) reuse.components.set(key, merged);
+    }
     out.push(...merged);
   }
   // Singleton components are already independent, normalized geometry.
@@ -117,8 +143,8 @@ function unionPolygonComponents(geometries) {
   return mergedComponents ? normalizeMulti(out) : out;
 }
 
-export function unionGeometries(geometries) {
-  return unionPolygonComponents(geometries);
+export function unionGeometries(geometries, reuse = null) {
+  return unionPolygonComponents(geometries, reuse);
 }
 
 function unionGeometriesPairwise(geometries) {

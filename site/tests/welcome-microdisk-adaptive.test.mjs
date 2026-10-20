@@ -62,15 +62,18 @@ test('Welcome Microdisk opens the byte-exact released 72-band project with both 
   assert.match(detailed.name, /assumed/);
 });
 
-test('Welcome keeps fast original thumbnail/preview without misrepresenting 72-band geometry', async () => {
+test('Welcome uses real 72-band 3D cover and retains the fast original interactive preview', async () => {
   const entry = BUNDLED_EXAMPLES.find((item) => item.id === 'suspended-silica-microdisk');
   assert.equal(entry.previewSourcePath, './examples/suspended-silica-microdisks.wafercad');
   assert.equal(
     entry.previewProject.path,
     './examples/previews/suspended-silica-microdisk.wafercad',
   );
-  assert.match(entry.preview.alt, /Simplified original/);
-  assert.match(entry.preview.label, /Lightweight original preview/);
+  assert.equal(entry.preview.coverSource, 'full', 'the cover must hash the actual adaptive file');
+  assert.match(entry.preview.alt, /72-band/);
+  assert.match(entry.preview.label, /72-band adaptive 3D/);
+  assert.match(entry.preview.label, /interactive preview uses original lightweight geometry/);
+  assert.match(entry.summary, /3D cover shows the 72-band release/);
   const original = await readProjectFile(new Blob([await readFile(originalPath)]));
   const preview = await readProjectFile(new Blob([await readFile(originalPreviewPath)]));
   assert.deepEqual(preview.model, original.model);

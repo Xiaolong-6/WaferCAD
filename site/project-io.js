@@ -754,7 +754,6 @@ function projectHasContinuousEtch(project) {
 }
 
 export function prepareProjectForExport(project) {
-  // Exact analytical geometry may not be quantized by the compact codec.
   if (projectHasContinuousEtch(project) || hasSubgridModelLengths(project)) {
     return { stored: prepareProjectForWorkspaceStorage(project), mode: 'lossless' };
   }
@@ -809,7 +808,11 @@ export function downloadProject(project, filename = 'wafercad-project.wafercad')
 
 export async function readProjectFile(
   file,
-  { experimentalPhysicalFacetReadOnly = false, experimentalContinuousEtchReadOnly = false } = {},
+  {
+    experimentalPhysicalFacetReadOnly = false,
+    experimentalContinuousEtchReadOnly = false,
+    trustedBundledExample = null,
+  } = {},
 ) {
   if (!file) throw new Error('No project file selected.');
   if (file.size > MAX_PROJECT_FILE_BYTES) {
@@ -825,8 +828,29 @@ export async function readProjectFile(
     throw new Error('Project file is not valid JSON.');
   }
 
+  // Release staging strictly validates the exact full file and all History
+  // states before publishing its content-addressed receipt. Recheck the
+  // actual bytes at this boundary before skipping redundant validation.
+  if (trustedBundledExample) {
+    const expected = trustedBundledExample.sha256;
+    if (!/^[a-f0-9]{64}$/.test(expected || '')) throw Error('Invalid bundled integrity receipt.');
+    const bytes = await file.arrayBuffer();
+    const digest = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
+      .map((value) => value.toString(16).padStart(2, '0'))
+      .join('');
+    if (digest !== expected) throw Error('Bundled project integrity verification failed.');
+    if (
+      parsed?.format !== 'WaferCAD-vector' ||
+      !Number.isInteger(parsed.version) ||
+      !parsed.model ||
+      !parsed.layout
+    )
+      throw Error('Invalid bundled project header.');
+  }
   expandProjectStorage(parsed);
-  const project = validateProjectFile(migrateProjectFile(parsed));
+  const project = trustedBundledExample
+    ? migrateProjectFile(parsed)
+    : validateProjectFile(migrateProjectFile(parsed));
   if (
     project.model.kernel === CONTINUOUS_ETCH_MODEL_KERNEL &&
     !experimentalContinuousEtchReadOnly

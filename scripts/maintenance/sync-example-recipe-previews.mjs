@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
+import { BUNDLED_EXAMPLES } from '../../site/bundled-examples.js';
 
 const pairs = [
   ['photodetector-literature-examples', 'photodetector-literature', 'photodetector-literature'],
@@ -55,7 +56,15 @@ for (const [sourceId, previewId, exampleId] of pairs) {
   }
   const entry = manifest.examples.find((item) => item.id === exampleId);
   assert.ok(entry, `${exampleId}: missing thumbnail provenance entry`);
-  const digest = sha256(nextRaw);
+  // The source digest follows the static cover's actual full/preview input.
+  // Refreshing a lightweight interactive preview must not rewrite a full cover.
+  const example = BUNDLED_EXAMPLES.find((item) => item.id === exampleId);
+  assert.ok(example, `${exampleId}: missing bundled example`);
+  const coverInput =
+    example.preview?.coverSource === 'full'
+      ? await readFile(new URL(`../../site/${example.path.slice(2)}`, import.meta.url))
+      : nextRaw;
+  const digest = sha256(coverInput);
   if (write) entry.sourceSha256 = digest;
   else
     assert.equal(entry.sourceSha256, digest, `${exampleId}: thumbnail source checksum has drifted`);

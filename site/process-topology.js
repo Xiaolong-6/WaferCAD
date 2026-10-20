@@ -39,21 +39,24 @@ function cloneAppearance(appearance) {
   return appearance ? { ...appearance } : null;
 }
 
-function safeUnionParts(geometries) {
+function safeUnionParts(geometries, reuse = null) {
   const geoms = (geometries || []).filter((geom) => !isEmpty(geom));
   if (!geoms.length) return [];
   if (geoms.length === 1) return [cloneGeom(geoms[0])];
   try {
-    const merged = unionGeometries(geoms);
+    const merged = unionGeometries(geoms, reuse);
     return isEmpty(merged) ? [] : [merged];
   } catch {
     const middle = Math.ceil(geoms.length / 2);
-    return [...safeUnionParts(geoms.slice(0, middle)), ...safeUnionParts(geoms.slice(middle))];
+    return [
+      ...safeUnionParts(geoms.slice(0, middle), reuse),
+      ...safeUnionParts(geoms.slice(middle), reuse),
+    ];
   }
 }
 
-function safeUnionGeometry(geometries) {
-  return safeUnionParts(geometries).flatMap((geom) => geom);
+function safeUnionGeometry(geometries, reuse = null) {
+  return safeUnionParts(geometries, reuse).flatMap((geom) => geom);
 }
 
 function clippedRegionGeometry(region, clip) {
@@ -141,7 +144,7 @@ export function visibleSurfaceGroups(model, { face = 'front', clip = null } = {}
   );
 }
 
-export function extrusionGroupsFromTopology(model, clip = null) {
+export function extrusionGroupsFromTopology(model, clip = null, reuse = null) {
   const groups = new Map();
   for (const region of model?.regions || []) {
     const geom = clippedRegionGeometry(region, clip);
@@ -154,7 +157,7 @@ export function extrusionGroupsFromTopology(model, clip = null) {
   }
   return [...groups.values()].map(({ geoms, ...segment }) => ({
     ...segment,
-    polys: safeUnionGeometry(geoms),
+    polys: safeUnionGeometry(geoms, reuse),
   }));
 }
 
@@ -196,11 +199,15 @@ export function sectionSlicesFromTopology(model, a, b) {
 }
 
 export function materialSolidsFromTopology(model, clip = null) {
+  const reuse = { polygonIds: new WeakMap(), components: new Map(), nextId: 0 };
   const layers = new Map();
-  for (const item of extrusionGroupsFromTopology(model, clip)) {
+  for (const item of extrusionGroupsFromTopology(model, clip, reuse)) {
     if (!layers.has(item.layerId)) layers.set(item.layerId, []);
     layers.get(item.layerId).push(item);
   }
+  // Extrusion unions have finished; these intermediate polygons are no longer
+  // part of later slab union inputs. Release their cached results now.
+  reuse.components.clear();
 
   return [...layers].map(([layerId, items]) => {
     const events = new Map();
@@ -223,11 +230,15 @@ export function materialSolidsFromTopology(model, clip = null) {
       // XY regions overlap; do not assume material disjointness or relax any
       // scientific tolerance. Every slab still receives its exact union.
       let polys = [];
+      const sourceItems = new Set();
       for (let index = levels.length - 2; index >= 0; index--) {
         const upper = levels[index + 1],
           added = events.get(upper).end;
-        if (added.length) polys = safeUnionGeometry([polys, ...added.map((item) => item.polys)]);
-        slabs[index] = { z0: levels[index], z1: upper, polys };
+        if (added.length) {
+          polys = safeUnionGeometry([polys, ...added.map((item) => item.polys)], reuse);
+          for (const item of added) sourceItems.add(item);
+        }
+        slabs[index] = { z0: levels[index], z1: upper, polys, sourceItems: new Set(sourceItems) };
       }
     } else {
       const active = new Set();
@@ -237,8 +248,11 @@ export function materialSolidsFromTopology(model, clip = null) {
           event = events.get(z0);
         for (const item of event.end) active.delete(item);
         for (const item of event.start) active.add(item);
-        const polys = safeUnionGeometry([...active].map((item) => item.polys));
-        slabs.push({ z0, z1, polys });
+        const polys = safeUnionGeometry(
+          [...active].map((item) => item.polys),
+          reuse,
+        );
+        slabs.push({ z0, z1, polys, sourceItems: new Set(active) });
       }
     }
 
@@ -249,44 +263,61 @@ export function materialSolidsFromTopology(model, clip = null) {
         [slab.z0, -1, slabs[index - 1]],
         [slab.z1, 1, slabs[index + 1]],
       ]) {
-        const polys = difference(slab.polys, neighbor?.polys || []);
+        // When every contributing extrusion is still present in the neighbor,
+        // its union must contain this entire slab. There is no exposed cap.
+        // Uncertain relations retain the unmodified exact polygon difference.
+        const fullyCovered =
+          neighbor &&
+          slab.sourceItems.size <= neighbor.sourceItems.size &&
+          [...slab.sourceItems].every((item) => neighbor.sourceItems.has(item));
+        const polys = fullyCovered ? [] : difference(slab.polys, neighbor?.polys || []);
         if (!isEmpty(polys)) caps.push({ z, normal, polys });
       }
     }
 
+    // Every following layer has a separate input set. Keep the memo bounded
+    // to this layer so large 3D projects do not pin all Boolean results.
+    reuse.components.clear();
     return {
       layerId,
-      slabs: slabs.filter((slab) => !isEmpty(slab.polys)),
+      slabs: slabs.filter((slab) => !isEmpty(slab.polys)).map(({ sourceItems, ...slab }) => slab),
       caps,
     };
   });
 }
 
-export function solidBordersFromTopology({ slabs, caps }, thresholdDegrees = 20) {
+export function solidBordersFromTopology(
+  { slabs, caps },
+  thresholdDegrees = 20,
+  verticalOnly = false,
+) {
   const lines = [];
-  for (const { z, polys } of caps || [])
-    for (const poly of polys || [])
-      for (const ring of poly || [])
-        for (let index = 1; index < ring.length; index++)
-          lines.push([
-            [...ring[index - 1], z],
-            [...ring[index], z],
-          ]);
+  if (!verticalOnly)
+    for (const { z, polys } of caps || [])
+      for (const poly of polys || [])
+        for (const ring of poly || [])
+          for (let index = 1; index < ring.length; index++)
+            lines.push([
+              [...ring[index - 1], z],
+              [...ring[index], z],
+            ]);
 
   const threshold = Math.cos((thresholdDegrees * Math.PI) / 180);
   for (const { z0, z1, polys } of slabs || [])
     for (const poly of polys || [])
       for (const closed of poly || []) {
-        const ring = closed.slice(0, -1);
-        for (let index = 0; index < ring.length; index++) {
-          const p = ring[index],
-            before = ring[(index + ring.length - 1) % ring.length],
-            after = ring[(index + 1) % ring.length],
-            u = [p[0] - before[0], p[1] - before[1]],
-            v = [after[0] - p[0], after[1] - p[1]],
-            denominator = Math.hypot(...u) * Math.hypot(...v);
+        const count = closed.length - 1;
+        for (let index = 0; index < count; index++) {
+          const p = closed[index],
+            before = closed[(index + count - 1) % count],
+            after = closed[(index + 1) % count],
+            ux = p[0] - before[0],
+            uy = p[1] - before[1],
+            vx = after[0] - p[0],
+            vy = after[1] - p[1],
+            denominator = Math.hypot(ux, uy) * Math.hypot(vx, vy);
           if (!(denominator > 0)) continue;
-          const cosine = (u[0] * v[0] + u[1] * v[1]) / denominator;
+          const cosine = (ux * vx + uy * vy) / denominator;
           if (cosine <= threshold)
             lines.push([
               [...p, z0],
@@ -384,8 +415,60 @@ function ownsMaterialInterface(current, other, layerOrder) {
   );
 }
 
+// Immutable input geometries are reused across the caps of one derived plan.
+// A per-call WeakMap avoids repeatedly scanning every vertex of those caps.
+// A negative result is only accepted if *every* pair of component bounding
+// boxes is separated by more than the same EPS used by polygon-clipping.
+function provablyDisjointCapComponents(a, b, boundsCache) {
+  if (!Array.isArray(a) || !Array.isArray(b)) return false;
+  if (a.length <= 1 && b.length <= 1) return false;
+  if (!a.length || !b.length || a.length * b.length > 2048) return false;
+  const componentBounds = (geom) => {
+    if (boundsCache.has(geom)) return boundsCache.get(geom);
+    const boxes = [];
+    for (const polygon of geom) {
+      if (!Array.isArray(polygon) || !polygon.length) return null;
+      let minX = Infinity,
+        minY = Infinity,
+        maxX = -Infinity,
+        maxY = -Infinity;
+      for (const ring of polygon) {
+        if (!Array.isArray(ring)) return null;
+        for (const point of ring) {
+          if (!Array.isArray(point) || !Number.isFinite(point[0]) || !Number.isFinite(point[1]))
+            return null;
+          minX = Math.min(minX, point[0]);
+          minY = Math.min(minY, point[1]);
+          maxX = Math.max(maxX, point[0]);
+          maxY = Math.max(maxY, point[1]);
+        }
+      }
+      if (!Number.isFinite(minX)) return null;
+      boxes.push({ minX, minY, maxX, maxY });
+    }
+    boundsCache.set(geom, boxes);
+    return boxes;
+  };
+  const left = componentBounds(a),
+    right = componentBounds(b);
+  if (!left || !right) return false;
+  for (const x of left) {
+    for (const y of right) {
+      if (
+        x.maxX >= y.minX - 1e-8 &&
+        y.maxX >= x.minX - 1e-8 &&
+        x.maxY >= y.minY - 1e-8 &&
+        y.maxY >= x.minY - 1e-8
+      )
+        return false;
+    }
+  }
+  return true;
+}
+
 function ownHorizontalMaterialCaps(rawCaps, layerOrder) {
   const owned = [];
+  const boundsCache = new WeakMap();
   for (let index = 0; index < rawCaps.length; index++) {
     const cap = rawCaps[index];
     let remaining = cap.polys;
@@ -397,6 +480,7 @@ function ownHorizontalMaterialCaps(rawCaps, layerOrder) {
       if (Math.abs(other.z - cap.z) > INTERFACE_EPSILON_UM) continue;
       if (other.normal !== -cap.normal) continue;
 
+      if (provablyDisjointCapComponents(remaining, other.polys, boundsCache)) continue;
       const overlap = intersection(remaining, other.polys);
       if (isEmpty(overlap)) continue;
       if (ownsMaterialInterface(cap, other, layerOrder)) {
@@ -578,7 +662,9 @@ function ownedVerticalBorderLines(solids, sidewalls) {
   }
   const groups = new Map();
   for (const item of solids) {
-    for (const [a, b] of solidBordersFromTopology(item)) {
+    // Horizontal cap outlines are handled separately below; do not allocate
+    // and immediately discard them during exterior vertical-edge ownership.
+    for (const [a, b] of solidBordersFromTopology(item, 20, true)) {
       if (Math.abs(a[2] - b[2]) <= TOPOLOGY_EPSILON_UM) continue;
       const z0 = Math.min(a[2], b[2]),
         z1 = Math.max(a[2], b[2]),

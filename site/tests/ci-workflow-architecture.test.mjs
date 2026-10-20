@@ -14,8 +14,11 @@ test('production Pages requires quality, browser and UI acceptance before publis
   assert.match(pages, /  stage-pages:\n/);
   assert.match(
     pages,
-    /needs: \[release-quality, release-browser, release-ui-v2, release-science\]/,
+    /needs: \[release-evidence, release-quality, release-browser, release-ui-v2, release-science\]/,
   );
+  assert.match(pages, /  release-evidence:\n/);
+  assert.ok(pages.includes('run: node --test site/tests/release-evidence.test.mjs'));
+  assert.match(pages, /if: .*needs.release-evidence.outputs.fast != 'true'/);
   assert.match(pages, /needs: \[stage-pages\]/);
   assert.match(pages, /run: npm run check/);
   assert.match(pages, /uses: \.\/\.github\/workflows\/browser-regression\.yml/);
@@ -46,15 +49,20 @@ test('Pages cannot silently skip publishing after an upstream optional suite ski
   assert.ok(stage, 'production stage job must exist');
   assert.match(
     stage,
-    /if: \$\{\{ always\(\) && !cancelled\(\) && github\.ref == 'refs\/heads\/main' \}\}/,
+    /if: \$\{\{ always\(\) && !cancelled\(\) && github\.ref == 'refs\/heads\/main' && needs\.release-evidence\.outputs\.mode != 'superseded' \}\}/,
   );
   for (const gate of ['QUALITY', 'BROWSER', 'UI_V2', 'SCIENCE']) {
     assert.match(stage, new RegExp(`\\b${gate}_RESULT:\\s*\\$\\{\\{ needs\\.`));
   }
-  assert.match(stage, /if \[\[ "\$result" != success \]\]; then/);
+  assert.match(stage, /test "\$EVIDENCE_RESULT" = success/);
+  assert.match(stage, /if \[\[ "\$FAST" == true \]\]; then/);
+  assert.match(stage, /expected=skipped/);
+  assert.match(stage, /elif \[\[ "\$FAST" == false \]\]; then/);
+  assert.match(stage, /expected=success/);
+  assert.match(stage, /if \[\[ "\$result" != "\$expected" \]\]; then/);
   assert.match(stage, /exit 1/);
   assert.ok(
-    stage.indexOf('Require successful same-revision release gates') <
+    stage.indexOf('Require proven fast release or successful full release gates') <
       stage.indexOf('Checkout verified revision'),
     'fail-closed release gate must precede artifact construction',
   );
@@ -73,15 +81,34 @@ test('Pages requires a real deploy and rejects false-green skipped publish jobs'
     ),
     'explicit success status must allow a completed stage to run despite skipped optional upstream jobs',
   );
-  assert.match(verdict, /needs: \[stage-pages, deploy\]/);
+  assert.match(verdict, /needs: \[release-evidence, stage-pages, deploy\]/);
   assert.ok(
     verdict.includes("if: ${{ always() && github.ref == 'refs/heads/main' }}"),
     'final verdict must be evaluated even if the deployment was skipped',
   );
   assert.ok(verdict.includes('STAGE_RESULT: ${{ needs.stage-pages.result }}'));
   assert.ok(verdict.includes('DEPLOY_RESULT: ${{ needs.deploy.result }}'));
-  assert.match(verdict, /if \[\[ "\$result" != success \]\]; then/);
+  assert.match(
+    verdict,
+    /"\$STAGE_RESULT" == success && "\$DEPLOY_RESULT" == success && "\$PUBLISHED" == true/,
+  );
   assert.match(verdict, /exit 1/);
+});
+
+test('Main verification is independent while irreversible Pages publication is serialized', () => {
+  const pages = workflow('pages');
+  assert.match(pages, /group: pages-validation-\$\{\{ github\.sha \}\}/);
+  assert.match(pages, /group: pages-publication/);
+  assert.match(pages, /cancel-in-progress: false/);
+  const release = pages.split('  deploy:\n')[1]?.split('  release-verdict:\n')[0];
+  const verdict = pages.split('  release-verdict:\n')[1];
+  assert.ok(release?.includes("ref: 'heads/main'"));
+  assert.ok(release?.includes('ref.data.object.sha === context.sha'));
+  assert.ok(release?.includes("if: ${{ steps.latest.outputs.current == 'true' }}"));
+  assert.ok(verdict?.includes('PUBLISHED: ${{ needs.deploy.outputs.published }}'));
+  assert.ok(verdict?.includes('SUPERSEDED: ${{ needs.deploy.outputs.superseded }}'));
+  assert.ok(verdict?.includes('RELEASE_MODE: ${{ needs.release-evidence.outputs.mode }}'));
+  assert.ok(verdict?.includes('exit 1'));
 });
 
 test('Pages scientific gate requires routed Main/Mask, KLayout and Recipe outcomes', () => {
@@ -93,9 +120,12 @@ test('Pages scientific gate requires routed Main/Mask, KLayout and Recipe outcom
   assert.match(pages, /  release-science:\n/);
   assert.match(
     pages,
-    /needs: \[release-impact, release-main-mask, release-klayout, release-recipe\]/,
+    /needs: \[release-evidence, release-impact, release-main-mask, release-klayout, release-recipe\]/,
   );
-  assert.match(pages, /if: \$\{\{ always\(\) \}\}/);
+  assert.match(
+    pages,
+    /if: \$\{\{ always\(\) && needs\.release-evidence\.outputs\.fast != 'true' && needs\.release-evidence\.outputs\.mode != 'superseded' \}\}/,
+  );
   assert.match(pages, /test "\$result" = success/);
   assert.match(pages, /test "\$result" = skipped/);
   for (const [job, path] of [

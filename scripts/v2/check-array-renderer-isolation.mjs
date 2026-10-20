@@ -70,8 +70,18 @@ try {
     const border = page.locator('#threePanel [data-action="borders:three"]');
     const beforeBorder = (await snap()).threeDisplay.borders;
     await border.click();
+    const inspector = page.locator('[data-border-inspector]');
+    await inspector.waitFor({ state: 'visible' });
+    assert.equal(
+      (await snap()).threeDisplay.borders,
+      beforeBorder,
+      'Opening Inspector must not toggle Border visibility',
+    );
+    const enabled = inspector.getByRole('button', { name: 'Show 3D borders' });
+    assert.equal(await enabled.getAttribute('aria-pressed'), String(beforeBorder));
+    await enabled.click();
     assert.equal((await snap()).threeDisplay.borders, !beforeBorder);
-    await border.click();
+    await enabled.click();
     assert.equal((await snap()).threeDisplay.borders, beforeBorder);
     assert.deepEqual((await snap()).model, initial.model, 'Borders do not mutate array instances');
     assert.deepEqual(errors, []);

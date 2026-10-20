@@ -119,7 +119,7 @@ try {
     await page.locator('#workspaceRecoverySelect').selectOption(oldKey);
     await page.locator('#workspaceRestoreBtn').click();
     await page
-      .locator('.v2-workflow-dialog-actions')
+      .locator('.v2-confirm-dialog')
       .getByRole('button', { name: 'Restore', exact: true })
       .click();
     await page.waitForFunction(() => window.__recoveryTakeover?.paused, null, {
@@ -128,7 +128,7 @@ try {
 
     await competitor.locator('#workspaceTakeOverBtn').click();
     await competitor
-      .locator('.v2-workflow-dialog-actions')
+      .locator('.v2-confirm-dialog')
       .getByRole('button', { name: 'Take over', exact: true })
       .click();
     await competitor.waitForFunction(
@@ -191,7 +191,7 @@ try {
     await page.locator('[data-action="domain:project"]').click();
     await page.locator('#workspaceTakeOverBtn').click();
     await page
-      .locator('.v2-workflow-dialog-actions')
+      .locator('.v2-confirm-dialog')
       .getByRole('button', { name: 'Use this tab', exact: true })
       .click();
     await page.waitForFunction(
@@ -253,7 +253,7 @@ try {
     await competitor.locator('[data-action="domain:project"]').click();
     await competitor.locator('#workspaceTakeOverBtn').click();
     await competitor
-      .locator('.v2-workflow-dialog-actions')
+      .locator('.v2-confirm-dialog')
       .getByRole('button', { name: 'Load latest saved', exact: true })
       .click();
     await competitor.waitForFunction(

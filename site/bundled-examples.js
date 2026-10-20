@@ -103,8 +103,8 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     variants: ['Original paper-derived release', 'Adaptive 72-band release · illustrative'],
     path: './examples/suspended-silica-microdisks-adaptive.wafercad',
     filename: 'suspended-silica-microdisks-adaptive.wafercad',
-    // Deliberately keep the verified fast cover from the original source.
-    // Its simplified 3D is not a screenshot of the 72-band active Variant.
+    // The interactive preview stays lightweight; the static cover now comes
+    // from the saved adaptive 72-band project shown when the user opens it.
     previewSourcePath: './examples/suspended-silica-microdisks.wafercad',
     previewProject: {
       path: './examples/previews/suspended-silica-microdisk.wafercad',
@@ -113,11 +113,12 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     preview: {
       path: './examples/thumbnails/suspended-silica-microdisk-three.webp',
       view: 'three',
-      alt: 'Simplified original microdisk 3D preview; full 72-band adaptive release opens separately',
-      label: 'Lightweight original preview · open for full 72-band model',
+      coverSource: 'full',
+      alt: 'Real WaferCAD 3D render of the saved adaptive 72-band silica microdisk release',
+      label: '72-band adaptive 3D · interactive preview uses original lightweight geometry',
     },
     summary:
-      'Paper-derived 148/82 µm spoked silica disk with 1.8 µm oxide. Opens the saved 72-band adaptive undercut Variant (36 µm assumed XeF₂ release), plus its original History branch; preview intentionally shows the lightweight original.',
+      'Paper-derived 148/82 µm spoked silica disk with 1.8 µm oxide. Opens the saved 72-band adaptive undercut Variant (36 µm assumed XeF₂ release), plus its original History branch; the 3D cover shows the 72-band release, while the interactive preview uses the original lightweight geometry.',
     sources: [
       {
         citation:
@@ -232,13 +233,14 @@ export const BUNDLED_EXAMPLES = Object.freeze([
       filename: 'tio2-metalens-preview.wafercad',
     },
     preview: {
-      path: './examples/thumbnails/tio2-metalens-four-unit-schematic.svg',
+      path: './examples/thumbnails/tio2-metalens-four-unit-three.webp',
+      coverSource: 'full',
       view: 'three',
-      alt: 'Illustrative schematic of four TiO2 meta-atom cross-sections, not an author GDS image',
-      label: 'Schematic only · process verified; XY is illustrative',
+      alt: 'Actual WaferCAD 3D render of the illustrative 4,725-site metalens array',
+      label: 'Real 3D · 4,725-site array; the interactive preview uses four representative units',
     },
     summary:
-      'Open loads the complete illustrative 4,725-site array, its matching Mask, nine-step Recipe and compiled History. The cover shows four representative shapes; the actual full-array Run All from Base has passed Kernel replay and storage-quantized geometry acceptance. This is not the authors’ GDS or a verified optical design.',
+      'Open loads the complete illustrative 4,725-site array, its matching Mask, nine-step Recipe and compiled History. The real 3D cover depicts the full array while the lightweight interactive preview shows four representative units; the actual full-array Run All from Base has passed Kernel replay and storage-quantized geometry acceptance. This is not the authors’ GDS or a verified optical design.',
     sources: [
       {
         citation:
@@ -263,10 +265,10 @@ export const BUNDLED_EXAMPLES = Object.freeze([
       filename: 'tcmos-ternary-inverter-preview.wafercad',
     },
     preview: {
-      path: './examples/thumbnails/tcmos-inverter-layout-schematic.svg',
+      path: './examples/thumbnails/tcmos-ternary-inverter-130nm-three.webp',
       view: 'three',
-      alt: 'Illustrative source-vector Mask schematic of the T-CMOS inverter, not a 3D rendering',
-      label: 'Source SVG Mask · schematic only; explore the live 3D preview',
+      alt: 'Illustrative T-CMOS reconstruction shown in an actual WaferCAD 3D renderer screenshot',
+      label: 'Real WaferCAD 3D render · inferred routing retained',
     },
     summary:
       'A complementary tunnelling-based inverter with eight source-vector Mask layers, 218 W contact sites, a replayable 23-step process and T-CMOS / conventional CMOS History variants. The illustrative 4×4 global-routed engineering prototype is separate.',
