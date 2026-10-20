@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  adaptiveRoughMeshLod,
   roughDisplayHeightBlend,
   roughFarFieldContrast,
   roughDisplayProfileOffsetAtPoint,
@@ -19,6 +20,26 @@ const appearance = {
   heightCv: 0.3,
   seed: 20261015,
 };
+
+test('Stable-scale resolved LOD requests finer samples within unchanged pixel and triangle limits', () => {
+  const context = {
+    triangleCount: 2,
+    maxEdge: Math.hypot(0.6, 0.6),
+    featureSize: 0.3,
+    distance: 0.1,
+    viewportWidth: 1100,
+    viewportHeight: 800,
+    triangleBudget: 10000,
+  };
+  assert.equal(adaptiveRoughMeshLod(context).estimatedTriangles, 512);
+  const stable = { ...context, morphology: 'stochastic-v2' };
+  assert.equal(adaptiveRoughMeshLod(stable).estimatedTriangles, 8192);
+  assert.equal(adaptiveRoughMeshLod({ ...stable, triangleBudget: 32 }).estimatedTriangles, 32);
+  assert.equal(
+    adaptiveRoughMeshLod({ ...stable, distance: 100000 }).estimatedTriangles,
+    adaptiveRoughMeshLod({ ...context, distance: 100000 }).estimatedTriangles,
+  );
+});
 
 test('3D profile filtering uses cap XY density independently of ROI and repeated films', () => {
   const task = (size, budget, profile = appearance) => ({

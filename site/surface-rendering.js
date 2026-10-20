@@ -187,6 +187,7 @@ export function adaptiveRoughMeshLod({
   triangleCount = 1,
   maxEdge = 0,
   featureSize = 1,
+  morphology = 'stochastic',
   distance = 1,
   viewportWidth = 1,
   viewportHeight = 1,
@@ -215,7 +216,10 @@ export function adaptiveRoughMeshLod({
     detail = roughLod(featurePixels),
     priority = Math.max(0.02, Math.min(1, Number(screenPriority) || 0)),
     renderingDetail = Math.max(0.01, Math.min(1, Number(roughnessDetail) || 0.01)),
-    samplesPerFeature = 1 + 3 * detail.detail * renderingDetail,
+    // The stable field can converge at resolved scales. Request finer samples
+    // there while retaining the same screen-space and scene-budget bounds.
+    resolvedSamples = morphology === 'stochastic-v2' ? 16 : 4,
+    samplesPerFeature = 1 + (resolvedSamples - 1) * detail.detail * renderingDetail,
     targetEdge = Math.max(
       feature / samplesPerFeature,
       1.75 / Math.max(1e-12, pxPerUnit * Math.sqrt(priority * renderingDetail)),
@@ -546,6 +550,7 @@ export function roughTaskDisplaySampling(tasks) {
         triangleCount: zone.baseTriangles.length,
         maxEdge: zone.maxEdge,
         featureSize: appearance?.featureSize,
+        morphology: appearance?.morphology,
         ...zone.lodContext,
         triangleBudget: zone.triangleBudget,
       }).estimatedTriangles;

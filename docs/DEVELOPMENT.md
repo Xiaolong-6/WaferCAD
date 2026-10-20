@@ -202,11 +202,16 @@ No bundled example or saved History state is implicitly upgraded.
 The Photodetector-coordinate 0.6 um cutline audit compares actual Three.js
 triangle intersections at 65 interior points. With 2, 32 and 512 triangles,
 v2 RMS interpolation errors are approximately 128, 27.9 and 3.53 nm, while
-the legacy 512-triangle case remains approximately 133 nm. A separately
-pre-refined 8,192-triangle diagnostic input gives 0.357 nm RMS (2.83 nm maximum);
-this is **not** a change to the production LOD allocation, which still caps
-its target at four samples per nominal feature. The 1 nm RMS convergence
-assertion belongs to that resolved diagnostic patch, not all camera/ROI scales.
+the legacy 512-triangle case remains approximately 133 nm. At 8,192 triangles
+the production adaptive mesh gives 0.357 nm RMS
+(2.83 nm maximum). Resolved v2 profiles target up to sixteen samples per nominal
+feature; legacy profiles retain four. Screen-space limits, Fast/Interactive
+policy, maximum subdivision depth and scene-wide triangle budgets still bound
+this request, and conformal caps retain synchronized allocations. The 1 nm RMS
+convergence assertion belongs to that resolved diagnostic patch with sufficient
+budget, not all camera/ROI scales.
+Physical GLB retains its camera-independent allocation request and existing
+hard budget; finer interactive sampling does not enlarge that export request.
 Matched conformal meshes retain the existing `2e-5 um` height/film contract.
 Neither convergence nor the new morphology claims pixel-level equality between
 Section screen filtering and coarse 3D LOD, or hardware GPU acceptance.

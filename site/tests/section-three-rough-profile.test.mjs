@@ -120,42 +120,19 @@ for (const morphology of ['stochastic', 'stochastic-v2']) {
         [x0, y1, 0],
       ],
     ];
-    // Refine input triangulation for the highest-resolution scientific audit;
-    // production LOD still chooses at most four samples per nominal feature.
-    const refinedBase = [];
-    for (let row = 0; row < 64; row++) {
-      for (let col = 0; col < 64; col++) {
-        const ax = x0 + ((x1 - x0) * col) / 64,
-          bx = x0 + ((x1 - x0) * (col + 1)) / 64,
-          ay = y0 + ((y1 - y0) * row) / 64,
-          by = y0 + ((y1 - y0) * (row + 1)) / 64;
-        refinedBase.push(
-          [
-            [ax, ay, 0],
-            [bx, ay, 0],
-            [bx, by, 0],
-          ],
-          [
-            [ax, ay, 0],
-            [bx, by, 0],
-            [ax, by, 0],
-          ],
-        );
-      }
-    }
     const before = JSON.stringify(region);
     const rms = [];
     for (const depth of morphology === 'stochastic-v2' ? [0, 2, 4, 6] : [0, 2, 4]) {
       const zone = {
-        baseTriangles: depth <= 4 ? triangles : refinedBase,
-        edges: roughBoundaryEdgesFromTriangles(depth <= 4 ? triangles : refinedBase),
-        maxEdge: Math.hypot(x1 - x0, y1 - y0) / (depth <= 4 ? 1 : 64),
+        baseTriangles: triangles,
+        edges: roughBoundaryEdgesFromTriangles(triangles),
+        maxEdge: Math.hypot(x1 - x0, y1 - y0),
         triangleBudget: 2 * 4 ** depth,
         lodContext: {
           distance: 0.1,
           viewportWidth: 1100,
           viewportHeight: 800,
-          maxDepth: depth <= 4 ? depth : 0,
+          maxDepth: depth,
         },
       };
       const meshes = [si.z1, oxide.z1].map((z) => {
@@ -167,7 +144,7 @@ for (const morphology of ['stochastic', 'stochastic-v2']) {
           gpuDisplacement: false,
           lodZones: [zone],
         });
-        assert.equal(data.metadata.roughSubdivisionDepth, depth <= 4 ? depth : 0);
+        assert.equal(data.metadata.roughSubdivisionDepth, depth);
         for (let index = 0; index < data.positions.length; index += 3) {
           const [x, y, height] = data.positions.slice(index, index + 3);
           const sectionHeight =

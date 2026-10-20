@@ -2501,6 +2501,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
                 triangleCount: zone.baseTriangles.length,
                 maxEdge: zone.maxEdge,
                 featureSize: task.cap.appearance?.featureSize,
+                morphology: task.cap.appearance?.morphology,
                 ...lodContext,
                 roughnessDetail,
               }),
@@ -2560,7 +2561,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
     tasks.forEach((task, index) => {
       const appearance = task.cap.appearance,
         blend =
-          appearance?.kind === 'rough' && appearance.morphology === 'stochastic'
+          appearance?.kind === 'rough' &&
+          ['stochastic', 'stochastic-v2'].includes(appearance.morphology)
             ? roughDisplayHeightBlend(appearance.featureSize, sampling[index].pitch)
             : 1;
       task.visualAppearance = blend < 1 ? { ...appearance, displayRoughBlend: blend } : appearance;
