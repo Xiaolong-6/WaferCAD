@@ -114,7 +114,10 @@ async function mobile() {
   try {
     await page.goto(base + '/app.html?start=empty', { waitUntil: 'domcontentloaded' });
     await ready(page);
-    await page.locator('[data-action="domain:history"]').click();
+    if (!(await page.locator('.p-nav [data-action="domain:history"]').isVisible())) {
+      await page.locator('[data-action="show-editor"]').click();
+    }
+    await page.locator('.p-nav [data-action="domain:history"]').click();
     const zero = page.locator('#snapshotList .snapshot-base-step');
     await zero.waitFor({ state: 'visible' });
     await zero.click();
