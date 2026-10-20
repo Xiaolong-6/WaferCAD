@@ -447,15 +447,38 @@ export function roughProfileOffsetAtPoint(x, y, appearance) {
     sin = Math.sin(angle),
     rx = Number(x) * cos + Number(y) * sin,
     ry = -Number(x) * sin + Number(y) * cos,
-    featureFactor = lognormalFactor(
-      featureCv,
-      gaussianNoise2D(rx, ry, meanFeature * 4, (seed ^ 0x51ed270b) >>> 0, 1),
-    ),
-    localFeature = Math.max(meanFeature * 0.2, meanFeature * featureFactor),
-    heightFactor = lognormalFactor(
-      heightCv,
-      gaussianNoise2D(rx, ry, localFeature, (seed ^ 0x9e3779b9) >>> 0, 2),
-    ),
+    stableScale = appearance?.morphology === 'stochastic-v2';
+  // The legacy field divides absolute coordinates by a varying local pitch.
+  // Its derivative grows with distance from the origin. The explicit v2 field
+  // instead warps a fixed-pitch lattice by at most 1/4 pitch per axis. Feature
+  // CV controls this bounded, coarse displacement; it is not an exact measured
+  // correlation-length distribution. Never substitute this field for saved v1.
+  let heightNoise;
+  if (stableScale) {
+    const warp = (channel) =>
+      meanFeature *
+      0.25 *
+      featureCv *
+      Math.max(
+        -1,
+        Math.min(1, gaussianNoise2D(rx, ry, meanFeature * 4, (seed ^ 0x51ed270b) >>> 0, channel)),
+      );
+    heightNoise = gaussianNoise2D(
+      rx + warp(1),
+      ry + warp(3),
+      meanFeature,
+      (seed ^ 0x9e3779b9) >>> 0,
+      2,
+    );
+  } else {
+    const featureFactor = lognormalFactor(
+        featureCv,
+        gaussianNoise2D(rx, ry, meanFeature * 4, (seed ^ 0x51ed270b) >>> 0, 1),
+      ),
+      localFeature = Math.max(meanFeature * 0.2, meanFeature * featureFactor);
+    heightNoise = gaussianNoise2D(rx, ry, localFeature, (seed ^ 0x9e3779b9) >>> 0, 2);
+  }
+  const heightFactor = lognormalFactor(heightCv, heightNoise),
     relief = Math.min(roughMaxRelief(appearance), meanHeight * heightFactor),
     polarity = appearance?.polarity === 'normal' ? 'normal' : 'inverted',
     offset = polarity === 'normal' ? roughMaxRelief(appearance) - relief : relief;

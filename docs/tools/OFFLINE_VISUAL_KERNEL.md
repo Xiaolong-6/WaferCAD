@@ -273,6 +273,24 @@ already selects CPU; software results cannot establish hardware acceptance.
 This diagnostic does not change the physical heightfield or accept the
 remaining triangle-interior interpolation error.
 
+The probe also compares explicit `stochastic-v2` with the legacy stochastic
+field at the same coordinates; it never upgrades the supplied project.
+For reproducible normal-Origin stable-scale Process/Worker, 50 nm Conformal,
+Undo/Redo, file export/Open and local Save/reload checks, run:
+
+```sh
+python3 scripts/offline-native-app-capture.py --root . --require-origin \
+  --project tests/fixtures/project-io/stable-rough-base.wafercad \
+  --check-stable-rough-ui --output test-results/stable-rough-ui
+```
+
+The output includes a real exported `stable-rough-roundtrip.wafercad`. Pass
+that file with `--inmemory-project` and `--check-glb` to check production GLB
+physical vertex heights and matched 50 nm film samples, independently of
+display Z scaling. This focused check expects explicit stable-scale front
+profiles; it does not replace the general GLB, History or Recovery suites.
+Reuse the installed Chromium path/headless options as appropriate above.
+
 ### Source-backed in-memory native 3D: demo or validated project
 
 Worker-restricted browsers can still render real, validated model topology

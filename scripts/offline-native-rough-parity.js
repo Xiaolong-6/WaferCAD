@@ -15,8 +15,10 @@ async (model) => {
   const results = [];
   try {
     for (const [name, x, appearance] of [
-      ['origin-control', 0, profile],
-      ['photodetector-actual', 2495, profile],
+      ['origin-control', 0, { ...profile, morphology: 'stochastic' }],
+      ['photodetector-actual', 2495, { ...profile, morphology: 'stochastic' }],
+      ['stable-scale-actual', 2495, { ...profile, morphology: 'stochastic-v2' }],
+      ['stable-scale-origin', 0, { ...profile, morphology: 'stochastic-v2' }],
       ['uniform-height-control', 2495, { ...profile, heightCv: 0 }],
     ]) {
       const triangles = [];

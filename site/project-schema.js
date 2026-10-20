@@ -169,8 +169,8 @@ function validateSurfaceAppearance(appearance, path) {
   assertFinite(appearance.featureCv, `${path}.featureCv`, { min: 0, max: 1 });
   assertFinite(appearance.heightCv, `${path}.heightCv`, { min: 0, max: 1 });
   assertString(appearance.morphology, `${path}.morphology`);
-  if (!['stochastic', 'pyramid'].includes(appearance.morphology)) {
-    fail(`${path}.morphology`, 'must be stochastic or pyramid.');
+  if (!['stochastic', 'stochastic-v2', 'pyramid'].includes(appearance.morphology)) {
+    fail(`${path}.morphology`, 'must be stochastic, stochastic-v2 or pyramid.');
   }
   assertString(appearance.polarity, `${path}.polarity`);
   if (!['inverted', 'normal'].includes(appearance.polarity)) {

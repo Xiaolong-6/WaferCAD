@@ -181,6 +181,36 @@ registration. Reported interpolation errors are diagnostics, not approved
 tolerances. Changing that physical heightfield requires an explicit scientific
 and project-compatibility contract, including physical GLB export.
 
+The explicit **Rough (stable scale)** option stores `morphology: stochastic-v2`.
+It keeps the seeded rotation, height distribution, polarity and depth envelope,
+but replaces the variable denominator with a fixed `featureSize` lattice.
+Each rotated coordinate is displaced by
+`featureSize * 0.25 * featureCv * clamp(coarseNoise, -1, 1)`; the two coarse
+noise channels use four times the nominal pitch. Feature CV controls bounded
+spacing variation here, not an exact measured correlation-length CV. This is
+a distinct deterministic morphology, not a measured SEM reconstruction or a
+band-limited signal. Section, CPU mesh, GLSL, sidewall/border sampling and
+physical GLB export consume that same explicit field.
+
+Existing `stochastic` profiles and unspecified Recipe rough modes retain their
+legacy algorithm without automatic conversion. Manual Process, Recipe editing,
+History replay, inherited films/annotations and file/Recovery storage must
+preserve the selected morphology. A legacy reader rejects the unfamiliar enum
+rather than silently displaying v2 as v1; unknown future values also reject.
+No bundled example or saved History state is implicitly upgraded.
+
+The Photodetector-coordinate 0.6 um cutline audit compares actual Three.js
+triangle intersections at 65 interior points. With 2, 32 and 512 triangles,
+v2 RMS interpolation errors are approximately 128, 27.9 and 3.53 nm, while
+the legacy 512-triangle case remains approximately 133 nm. A separately
+pre-refined 8,192-triangle diagnostic input gives 0.357 nm RMS (2.83 nm maximum);
+this is **not** a change to the production LOD allocation, which still caps
+its target at four samples per nominal feature. The 1 nm RMS convergence
+assertion belongs to that resolved diagnostic patch, not all camera/ROI scales.
+Matched conformal meshes retain the existing `2e-5 um` height/film contract.
+Neither convergence nor the new morphology claims pixel-level equality between
+Section screen filtering and coarse 3D LOD, or hardware GPU acceptance.
+
 Hardware renderer names alone do not establish CPU/GPU height parity. Before
 using shader displacement, qualify the task with up to 64 Float32 XY samples
 across its prepared cap zones, executing the production profile in the vertex

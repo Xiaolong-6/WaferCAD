@@ -95,111 +95,150 @@ test('Section and 3D share physical heights when resolved; coarse views have exp
   assert.equal(roughProfileOffsetAtPoint(x, y, appearance), original);
 });
 
-test('Actual 3D cutline audits distinguish unresolved profile error from conformal registration', async (t) => {
-  const THREE = await import('three');
-  const {
-    geometryFromRoughMeshData,
-    roughBoundaryEdgesFromTriangles,
-    roughMeshDataFromPreparedCap,
-  } = await import('../rough-mesh-geometry.js');
-  const x0 = 2494.7,
-    x1 = 2495.3,
-    y0 = -0.3,
-    y1 = 0.3;
-  const triangles = [
-    [
-      [x0, y0, 0],
-      [x1, y0, 0],
-      [x1, y1, 0],
-    ],
-    [
-      [x0, y0, 0],
-      [x1, y1, 0],
-      [x0, y1, 0],
-    ],
-  ];
-  const before = JSON.stringify(region);
-  const rms = [];
-  for (const depth of [0, 2, 4]) {
-    const zone = {
-      baseTriangles: triangles,
-      edges: roughBoundaryEdgesFromTriangles(triangles),
-      maxEdge: Math.hypot(x1 - x0, y1 - y0),
-      triangleBudget: 2 * 4 ** depth,
-      lodContext: { distance: 0.1, viewportWidth: 1100, viewportHeight: 800, maxDepth: depth },
-    };
-    const meshes = [si.z1, oxide.z1].map((z) => {
-      const data = roughMeshDataFromPreparedCap({
-        z,
-        normal: 1,
-        appearance,
-        closeToIdeal: false,
-        gpuDisplacement: false,
-        lodZones: [zone],
-      });
-      assert.equal(data.metadata.roughSubdivisionDepth, depth);
-      for (let index = 0; index < data.positions.length; index += 3) {
-        const [x, y, height] = data.positions.slice(index, index + 3);
-        const sectionHeight =
-          z + roughProfileOffsetAtPixelFootprint(x, y, appearance, { pixelsPerUm: 100 });
-        assert.ok(
-          Math.abs(height - sectionHeight) < 2e-5,
-          'Matched Float32 vertices must retain physical Section height',
+for (const morphology of ['stochastic', 'stochastic-v2']) {
+  test(`Actual 3D cutline audits ${morphology} convergence and conformal registration`, async (t) => {
+    const appearance = { ...si.frontSurface, morphology };
+    const THREE = await import('three');
+    const {
+      geometryFromRoughMeshData,
+      roughBoundaryEdgesFromTriangles,
+      roughMeshDataFromPreparedCap,
+    } = await import('../rough-mesh-geometry.js');
+    const x0 = 2494.7,
+      x1 = 2495.3,
+      y0 = -0.3,
+      y1 = 0.3;
+    const triangles = [
+      [
+        [x0, y0, 0],
+        [x1, y0, 0],
+        [x1, y1, 0],
+      ],
+      [
+        [x0, y0, 0],
+        [x1, y1, 0],
+        [x0, y1, 0],
+      ],
+    ];
+    // Refine input triangulation for the highest-resolution scientific audit;
+    // production LOD still chooses at most four samples per nominal feature.
+    const refinedBase = [];
+    for (let row = 0; row < 64; row++) {
+      for (let col = 0; col < 64; col++) {
+        const ax = x0 + ((x1 - x0) * col) / 64,
+          bx = x0 + ((x1 - x0) * (col + 1)) / 64,
+          ay = y0 + ((y1 - y0) * row) / 64,
+          by = y0 + ((y1 - y0) * (row + 1)) / 64;
+        refinedBase.push(
+          [
+            [ax, ay, 0],
+            [bx, ay, 0],
+            [bx, by, 0],
+          ],
+          [
+            [ax, ay, 0],
+            [bx, by, 0],
+            [ax, by, 0],
+          ],
         );
       }
-      return new THREE.Mesh(geometryFromRoughMeshData(THREE, data), new THREE.MeshBasicMaterial());
-    });
-    const ray = new THREE.Raycaster();
-    let squared = 0,
-      maximum = 0,
-      filmError = 0;
-    for (let i = 0; i < 65; i++) {
-      const x = x0 + ((x1 - x0) * (i + 0.5)) / 65,
-        y = 0.123;
-      ray.set(
-        new THREE.Vector3(x, y, oxide.z1 + appearance.etchDepth + 1),
-        new THREE.Vector3(0, 0, -1),
-      );
-      const heights = meshes.map((mesh) => {
-        const hit = ray.intersectObject(mesh, false)[0];
-        assert.ok(hit, 'The physical cutline must hit the rendered cap');
-        return hit.point.z;
+    }
+    const before = JSON.stringify(region);
+    const rms = [];
+    for (const depth of morphology === 'stochastic-v2' ? [0, 2, 4, 6] : [0, 2, 4]) {
+      const zone = {
+        baseTriangles: depth <= 4 ? triangles : refinedBase,
+        edges: roughBoundaryEdgesFromTriangles(depth <= 4 ? triangles : refinedBase),
+        maxEdge: Math.hypot(x1 - x0, y1 - y0) / (depth <= 4 ? 1 : 64),
+        triangleBudget: 2 * 4 ** depth,
+        lodContext: {
+          distance: 0.1,
+          viewportWidth: 1100,
+          viewportHeight: 800,
+          maxDepth: depth <= 4 ? depth : 0,
+        },
+      };
+      const meshes = [si.z1, oxide.z1].map((z) => {
+        const data = roughMeshDataFromPreparedCap({
+          z,
+          normal: 1,
+          appearance,
+          closeToIdeal: false,
+          gpuDisplacement: false,
+          lodZones: [zone],
+        });
+        assert.equal(data.metadata.roughSubdivisionDepth, depth <= 4 ? depth : 0);
+        for (let index = 0; index < data.positions.length; index += 3) {
+          const [x, y, height] = data.positions.slice(index, index + 3);
+          const sectionHeight =
+            z + roughProfileOffsetAtPixelFootprint(x, y, appearance, { pixelsPerUm: 100 });
+          assert.ok(
+            Math.abs(height - sectionHeight) < 2e-5,
+            'Matched Float32 vertices must retain physical Section height',
+          );
+        }
+        return new THREE.Mesh(
+          geometryFromRoughMeshData(THREE, data),
+          new THREE.MeshBasicMaterial(),
+        );
       });
-      const section =
-        si.z1 + roughProfileOffsetAtPixelFootprint(x, y, appearance, { pixelsPerUm: 100 });
-      const error = Math.abs(heights[0] - section);
-      squared += error ** 2;
-      maximum = Math.max(maximum, error);
-      filmError = Math.max(filmError, Math.abs(heights[1] - heights[0] - (oxide.z1 - si.z1)));
+      const ray = new THREE.Raycaster();
+      let squared = 0,
+        maximum = 0,
+        filmError = 0;
+      for (let i = 0; i < 65; i++) {
+        const x = x0 + ((x1 - x0) * (i + 0.5)) / 65,
+          y = 0.123;
+        ray.set(
+          new THREE.Vector3(x, y, oxide.z1 + appearance.etchDepth + 1),
+          new THREE.Vector3(0, 0, -1),
+        );
+        const heights = meshes.map((mesh) => {
+          const hit = ray.intersectObject(mesh, false)[0];
+          assert.ok(hit, 'The physical cutline must hit the rendered cap');
+          return hit.point.z;
+        });
+        const section =
+          si.z1 + roughProfileOffsetAtPixelFootprint(x, y, appearance, { pixelsPerUm: 100 });
+        const error = Math.abs(heights[0] - section);
+        squared += error ** 2;
+        maximum = Math.max(maximum, error);
+        filmError = Math.max(filmError, Math.abs(heights[1] - heights[0] - (oxide.z1 - si.z1)));
+      }
+      rms.push(Math.sqrt(squared / 65));
+      assert.ok(filmError < 2e-5, `Actual cap-interior film error ${filmError} um`);
+      t.diagnostic(
+        `cutline refinement ${depth}: RMS ${rms.at(-1)} um; max ${maximum} um; film error ${filmError} um`,
+      );
+      for (const mesh of meshes) {
+        mesh.geometry.dispose();
+        mesh.material.dispose();
+      }
     }
-    rms.push(Math.sqrt(squared / 65));
-    assert.ok(filmError < 2e-5, `Actual cap-interior film error ${filmError} um`);
-    t.diagnostic(
-      `cutline LOD ${depth}: RMS ${rms.at(-1)} um; max ${maximum} um; film error ${filmError} um`,
+    if (morphology === 'stochastic-v2') {
+      assert.ok(rms[2] < rms[0] / 10, 'Resolved fixed-scale meshes must converge');
+      assert.ok(rms[3] < rms[2] / 4, 'Further refinement must keep reducing interpolation error');
+      assert.ok(rms[3] < 0.001, 'Resolved cutline RMS must be below 1 nm');
+    }
+    // Interpolation error is diagnostic, not an accepted pixel/height tolerance.
+    // This legacy variable-feature field is not band-limited by featureSize:
+    // comparing vertices alone cannot establish interior cross-view acceptance.
+    const x = 2495.0123,
+      y = 0.123;
+    const roundingError = Math.abs(
+      roughProfileOffsetAtPoint(x, y, appearance) -
+        roughProfileOffsetAtPoint(Math.fround(x), Math.fround(y), appearance),
     );
-    for (const mesh of meshes) {
-      mesh.geometry.dispose();
-      mesh.material.dispose();
-    }
-  }
-  // Interpolation error is diagnostic, not an accepted pixel/height tolerance.
-  // This legacy variable-feature field is not band-limited by featureSize:
-  // comparing vertices alone cannot establish interior cross-view acceptance.
-  const x = 2495.0123,
-    y = 0.123;
-  const roundingError = Math.abs(
-    roughProfileOffsetAtPoint(x, y, appearance) -
-      roughProfileOffsetAtPoint(Math.fround(x), Math.fround(y), appearance),
-  );
-  t.diagnostic(
-    `physical field change after Float32 XY rounding at (${x}, ${y}): ${roundingError} um`,
-  );
-  assert.equal(
-    JSON.stringify(region),
-    before,
-    'Cutline inspection cannot mutate the Process model',
-  );
-});
+    t.diagnostic(
+      `physical field change after Float32 XY rounding at (${x}, ${y}): ${roundingError} um`,
+    );
+    assert.equal(
+      JSON.stringify(region),
+      before,
+      'Cutline inspection cannot mutate the Process model',
+    );
+  });
+}
 
 test('Seed-matched conformal interfaces retain 50 nm physical separation at both views and Z factors', () => {
   assert.deepEqual(appearance, oxide.frontSurface);
@@ -262,4 +301,45 @@ test('Photodetector local relief bands keep seeded cap, oxide, implant and sidew
     assert.ok(display.mapZ(si.z0) < lower, 'Underlying silicon may not cross top cap');
   }
   assert.equal(JSON.stringify(region), modelBefore, 'Presentation may not mutate Process geometry');
+});
+
+test('Legacy profile samples remain fixed and stable-scale increments stay bounded far from origin', () => {
+  for (const [x, y, expected] of [
+    [0, 0, 0.38579933392208593],
+    [2495.0123, 0.123, 0.05073407009054709],
+    [2495.0133, 0.123, 0.12885675297740373],
+    [-50000, 20000, 0.3018437136383224],
+  ])
+    assert.equal(roughProfileOffsetAtPoint(x, y, appearance), expected);
+  for (const seed of [0, 123, appearance.seed, 0xffffffff]) {
+    for (const featureCv of [0, 0.25, 1]) {
+      const profile = {
+        ...appearance,
+        morphology: 'stochastic-v2',
+        seed,
+        featureCv,
+        polarity: 'inverted',
+      };
+      for (const origin of [0, 2495, -50000, 50000]) {
+        for (let i = 0; i < 40; i++) {
+          const x = origin + i * 0.037,
+            y = 0.123 + i * 0.013;
+          const offset = roughProfileOffsetAtPoint(x, y, profile);
+          const near = roughProfileOffsetAtPoint(x + profile.featureSize / 1000, y, profile);
+          assert.ok(offset >= 0 && offset <= profile.etchDepth);
+          assert.ok(
+            Math.abs(near - offset) < profile.etchDepth * 0.02,
+            'A 1/1000-pitch step cannot introduce origin-amplified spikes',
+          );
+          assert.ok(
+            Math.abs(
+              roughProfileOffsetAtPoint(x, y, { ...profile, polarity: 'normal' }) +
+                offset -
+                profile.etchDepth,
+            ) < 1e-12,
+          );
+        }
+      }
+    }
+  }
 });

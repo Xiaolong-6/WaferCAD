@@ -249,3 +249,48 @@ test('Core and rough process contracts', () => {
   });
   assert.equal(surfaceSegment(regionAt(roughEtch, [0, 0]).stack).frontSurface, undefined);
 });
+
+test('Explicit stable rough Etch and conformal replay preserve algorithm identity', () => {
+  const model = createModel({ shape: 'rect', width: 2, height: 2, thickness: 2 });
+  const initial = structuredClone(model);
+  const etch = {
+    type: 'etch',
+    thickness: 0.8,
+    area: model.boundary,
+    face: 'front',
+    surface: {
+      kind: 'rough',
+      morphology: 'stochastic-v2',
+      polarity: 'inverted',
+      featureSize: 0.3,
+      meanHeight: 0.4,
+      featureCv: 0.25,
+      heightCv: 0.3,
+      seed: 123,
+    },
+  };
+  assert.equal(applyOperation(model, etch).changed, true);
+  const profile = structuredClone(model.regions[0].stack[0].frontSurface);
+  assert.equal(profile.morphology, 'stochastic-v2');
+  const deposit = {
+    type: 'add',
+    name: 'ALD',
+    thickness: 0.05,
+    face: 'front',
+    area: model.boundary,
+    growth: 'conformal',
+  };
+  assert.equal(applyOperation(model, deposit).changed, true);
+  assert.deepEqual(model.regions[0].stack.at(-1).frontSurface, profile);
+  const replay = structuredClone(initial);
+  applyOperation(replay, etch);
+  applyOperation(replay, deposit);
+  assert.deepEqual(replay, model);
+  const before = JSON.stringify(model);
+  assert.equal(
+    applyOperation(model, { ...etch, surface: { ...etch.surface, morphology: 'stochastic-v3' } })
+      .changed,
+    false,
+  );
+  assert.equal(JSON.stringify(model), before);
+});

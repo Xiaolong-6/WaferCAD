@@ -1440,3 +1440,48 @@ test('project snapshots accept Lift-off in an embedded Recipe and reject unknown
   project.processRecipe.steps[0].command = 'unsupported-liftoff-variant';
   assert.throws(() => validateProjectFile(project), /command.*not supported/);
 });
+
+test('Explicit stable-scale morphology survives file and Recovery packing with legacy History intact', async () => {
+  const source = validProject();
+  source.version = CURRENT_PROJECT_VERSION;
+  const profile = {
+    kind: 'rough',
+    morphology: 'stochastic-v2',
+    polarity: 'inverted',
+    featureSize: 0.3,
+    meanHeight: 0.4,
+    featureCv: 0.25,
+    heightCv: 0.3,
+    etchDepth: 0.8,
+    seed: 123,
+    profileId: 'stable-test',
+    geometryMode: 'ideal',
+  };
+  source.model.regions[0].stack[0].frontSurface = profile;
+  const legacy = structuredClone(source);
+  legacy.model.regions[0].stack[0].frontSurface.morphology = 'stochastic';
+  source.snapshots = [
+    {
+      id: 'legacy-before-opt-in',
+      name: 'Legacy rough',
+      createdAt: '2026-10-20T12:00:00.000Z',
+      state: legacy,
+    },
+  ];
+  const before = JSON.stringify(source);
+  for (const text of [
+    serializeProject(source),
+    JSON.stringify(prepareProjectForWorkspaceStorage(source)),
+  ]) {
+    const loaded = await readProjectFile({ size: new Blob([text]).size, text: async () => text });
+    assert.deepEqual(loaded.model.regions[0].stack[0].frontSurface, profile);
+    assert.equal(
+      loaded.snapshots[0].state.model.regions[0].stack[0].frontSurface.morphology,
+      'stochastic',
+    );
+  }
+  assert.equal(JSON.stringify(source), before);
+  const invalid = structuredClone(source);
+  invalid.model.regions[0].stack[0].frontSurface.morphology = 'stochastic-v3';
+  assert.throws(() => validateProjectFile(invalid), /morphology/);
+});

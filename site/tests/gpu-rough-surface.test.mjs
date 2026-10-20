@@ -126,6 +126,12 @@ test('GPU rough uniforms preserve deterministic appearance identity', () => {
 
   assert.equal(uniforms.waferCadRoughFeatureSize.value, 0.8);
   assert.equal(uniforms.waferCadRoughMorphology.value, 1);
+  assert.equal(uniforms.waferCadRoughStableScale.value, 0);
+  assert.equal(
+    gpuRoughAppearanceUniforms({ ...appearance, morphology: 'stochastic-v2' })
+      .waferCadRoughStableScale.value,
+    1,
+  );
   assert.equal(uniforms.waferCadRoughPolarityNormal.value, 1);
   assert.equal(uniforms.waferCadRoughSeedLow.value, 0xba98);
   assert.equal(uniforms.waferCadRoughSeedHigh.value, 0xfedc);
@@ -202,7 +208,7 @@ test('GPU rough decorator chains existing material shader hooks', () => {
   assert.equal(priorCompileCalls, 1);
   assert.equal(material.needsUpdate, true);
   assert.equal(material.userData.waferCadGpuRough.normalStrengthBase, 1);
-  assert.match(material.customProgramCacheKey(), /wafercad-gpu-rough-v8/);
+  assert.match(material.customProgramCacheKey(), /wafercad-gpu-rough-v9/);
   assert.match(shader.vertexShader, /waferCadGpuDisplace/);
   assert.doesNotMatch(shader.vertexShader, /instanceMatrix\[3\]\.xy/);
   assert.match(shader.vertexShader, /transformed\.z \+= waferCadRoughProfileNormal/);

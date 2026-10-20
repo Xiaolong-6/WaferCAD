@@ -1,6 +1,6 @@
 import { roughDisplayProfileOffsetAtPoint } from './surface-rendering.js';
 
-const GPU_ROUGH_PROGRAM_VERSION = 'wafercad-gpu-rough-v8';
+const GPU_ROUGH_PROGRAM_VERSION = 'wafercad-gpu-rough-v9';
 const gpuHeightParityCache = new WeakMap();
 
 // The existing physical vertex-height contract, in micrometres. Renderer-name
@@ -76,6 +76,7 @@ export function gpuRoughAppearanceUniforms(
     waferCadRoughSampleOriginX: { value: Number(origin[0]) || 0 },
     waferCadRoughSampleOriginY: { value: Number(origin[1]) || 0 },
     waferCadRoughMorphology: { value: appearance?.morphology === 'pyramid' ? 1 : 0 },
+    waferCadRoughStableScale: { value: appearance?.morphology === 'stochastic-v2' ? 1 : 0 },
     waferCadRoughPolarityNormal: { value: appearance?.polarity === 'normal' ? 1 : 0 },
     waferCadRoughProfileNormal: { value: Number(profileNormal) < 0 ? -1 : 1 },
     waferCadRoughNormalStrength: {
@@ -140,6 +141,7 @@ uniform float waferCadRoughSeedHigh;
 uniform float waferCadRoughSampleOriginX;
 uniform float waferCadRoughSampleOriginY;
 uniform float waferCadRoughMorphology;
+uniform float waferCadRoughStableScale;
 uniform float waferCadRoughPolarityNormal;
 uniform float waferCadRoughProfileNormal;
 uniform float waferCadRoughNormalStrength;
@@ -257,6 +259,18 @@ float waferCadStochasticOffset(vec2 point, uint seed) {
   float c = cos(angle);
   float s = sin(angle);
   vec2 rotated = vec2(point.x * c + point.y * s, -point.x * s + point.y * c);
+  if (waferCadRoughStableScale > 0.5) {
+    vec2 warp = meanFeature * 0.25 * waferCadRoughFeatureCv * clamp(vec2(
+      waferCadGaussianNoise2D(rotated, meanFeature * 4.0, seed ^ 0x51ed270bu, 1),
+      waferCadGaussianNoise2D(rotated, meanFeature * 4.0, seed ^ 0x51ed270bu, 3)
+    ), vec2(-1.0), vec2(1.0));
+    float heightFactor = waferCadLognormalFactor(
+      waferCadRoughHeightCv,
+      waferCadGaussianNoise2D(rotated + warp, meanFeature, seed ^ 0x9e3779b9u, 2)
+    );
+    float relief = min(waferCadRoughEtchDepth, meanHeight * heightFactor);
+    return waferCadRoughPolarityNormal > 0.5 ? waferCadRoughEtchDepth - relief : relief;
+  }
   float featureFactor = waferCadLognormalFactor(
     waferCadRoughFeatureCv,
     waferCadGaussianNoise2D(rotated, meanFeature * 4.0, seed ^ 0x51ed270bu, 1)

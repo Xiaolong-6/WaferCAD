@@ -62,6 +62,89 @@ def local_file(url: str, site: Path, three: Path, version: str):
     return path, kind
 
 
+def check_stable_rough_ui(page, out: Path):
+    """Real Manual Process, Worker, Undo/Redo, local Save and file Open."""
+    snapshot = lambda: page.evaluate('() => window.WaferCadV2Workstation.snapshot()')
+    initial = snapshot()['model']
+    if initial['width'] != 2 or initial['height'] != 2:
+        raise ValueError('Stable rough UI probe requires an explicit 2 um base project')
+    page.locator('[data-action="domain:process"]').click()
+    for control, value in [('operationType', 'etch'), ('etchProfile', 'directional'),
+                           ('operationArea', 'full'), ('faceToggleBtn', 'front'),
+                           ('etchSurfaceMode', 'rough-stable')]:
+        page.locator('#' + control).select_option(value)
+    for control, value in [('operationThickness', '0.75'), ('roughFeatureSize', '0.3'),
+                           ('roughAmplitude', '0.4'), ('roughFeatureCv', '25'),
+                           ('roughHeightCv', '30'), ('roughSeed', '123')]:
+        page.locator('#' + control).fill(value)
+    # The 0.75 um Etch leaves exactly 0.25 um, avoiding binary subtraction
+    # roundoff when asserting exact file/Recovery equality at the 0.1 nm grid.
+    page.locator('#applyOperationBtn').click()
+    page.wait_for_function('''() => {
+      const s=window.WaferCadV2Workstation.snapshot();
+      return !s.workflow.busy && s.model.regions[0]?.stack[0]?.frontSurface?.morphology === 'stochastic-v2';
+    }''', timeout=60000)
+    etched = snapshot()
+    replay = etched['workflow']['steps'][-1]['operation']['replay']['params']['surface']
+    if replay['morphology'] != 'stochastic-v2':
+        raise RuntimeError('Manual Apply lost stable profile replay identity')
+    page.screenshot(path=str(out / 'stable-rough-process.png'), animations='disabled')
+    page.locator('#operationType').select_option('add')
+    page.locator('#growthMode').select_option('conformal')
+    page.locator('#layerName').fill('Stable ALD 50 nm')
+    page.locator('#operationThickness').fill('0.05')
+    page.locator('#applyOperationBtn').click()
+    page.wait_for_function('''() => {
+      const s=window.WaferCadV2Workstation.snapshot();
+      return !s.workflow.busy && s.model.layers.length === 2;
+    }''', timeout=60000)
+    coated = snapshot()
+    stack = coated['model']['regions'][0]['stack']
+    if stack[0]['frontSurface'] != stack[-1]['frontSurface'] or abs(stack[-1]['z1'] - stack[0]['z1'] - 0.05) > 1e-10:
+        raise RuntimeError('Stable conformal film lost its 50 nm profile registration')
+    page.locator('[data-action="domain:history"]').click()
+    page.locator('#undoBtn').click()
+    if snapshot()['model'] != etched['model']:
+        raise RuntimeError('Undo failed to restore the exact stable Etch')
+    page.locator('#redoBtn').click()
+    if snapshot()['model'] != coated['model']:
+        raise RuntimeError('Redo changed stable profile or film geometry')
+    page.locator('[data-action="domain:project"]').click()
+    page.locator('#projectNameInput').fill('Stable rough acceptance')
+    page.locator('#saveProjectBtn').click()
+    page.wait_for_function('''() => /Saved/.test(
+      document.querySelector('[data-slot="status.message"]')?.textContent || '')''', timeout=30000)
+    page.locator('#projectExportMenuBtn').click()
+    with page.expect_download(timeout=60000) as download:
+        page.locator('#exportProjectBtn').click()
+    target = out / 'stable-rough-roundtrip.wafercad'
+    download.value.save_as(str(target))
+    page.locator('#openProjectInput').set_input_files(str(target))
+    button = page.get_by_role('button', name='Open project', exact=True)
+    if button.count() and button.last.is_visible():
+        button.last.click()
+    page.wait_for_function('''() => /Opened/.test(
+      document.querySelector('[data-slot="status.message"]')?.textContent || '')''', timeout=60000)
+    (out / 'stable-model-before-open.json').write_text(json.dumps(coated['model']))
+    (out / 'stable-model-after-open.json').write_text(json.dumps(snapshot()['model']))
+    if snapshot()['model'] != coated['model']:
+        raise RuntimeError('Worker file round-trip changed stable physical geometry')
+    page.reload(wait_until='domcontentloaded')
+    page.wait_for_function('''() => document.body.dataset.ready === 'true' &&
+      window.WaferCadV2Workstation.snapshot().model.layers.length === 2''', timeout=60000)
+    if snapshot()['model'] != coated['model']:
+        raise RuntimeError('Saved workspace reload changed stable physical geometry')
+    page.wait_for_function('''() => {
+      const host=document.getElementById('threeHost');
+      return host?.dataset.renderState === 'ready' && host.dataset.renderPhase === 'complete' &&
+        host.querySelector('canvas')?.dataset.roughMeshMode === 'detailed';
+    }''', timeout=60000)
+    page.screenshot(path=str(out / 'stable-rough-reloaded.png'), animations='disabled')
+    return {'manualWorkerApply': True, 'conformal50nm': True, 'undoRedoExact': True,
+            'fileOpenExact': True, 'localSaveReloadExact': True,
+            'project': target.name, 'model': coated['model']}
+
+
 def is_optional_build_info_rejection(item: dict) -> bool:
     """Only the optional app-origin build stamp may be ignored in offline mode."""
     parsed = urlsplit(item['url'])
@@ -168,7 +251,9 @@ def source_revision(root: Path):
     try:
         commit = subprocess.run(['git', '-C', str(root), 'rev-parse', 'HEAD'],
                                 capture_output=True, text=True, check=True, timeout=4).stdout.strip()
-        return {'revision': commit, 'source': 'git'}
+        dirty = bool(subprocess.run(['git', '-C', str(root), 'status', '--porcelain'],
+                                    capture_output=True, text=True, check=True, timeout=4).stdout.strip())
+        return {'revision': commit, 'dirty': dirty, 'source': 'git'}
     except (OSError, subprocess.SubprocessError):
         return {'revision': 'unavailable', 'source': 'unversioned-source'}
 
@@ -360,6 +445,10 @@ def run(args):
                     report['images']['project'] = {'file': image.name, 'sha256': snapshot_sha(image)}
                     report['exampleLoad'] = 'attempted; independently inspect native page and Worker logs'
                     report['afterProject'] = runtime_probe(page)
+            if args.check_stable_rough_ui:
+                if mode != 'https-origin':
+                    raise RuntimeError('Stable rough UI acceptance requires normal HTTPS Origin')
+                report['stableRoughUi'] = check_stable_rough_ui(page, out)
             if args.inmemory_demo or args.inmemory_project:
                 model_input = {'model': None, 'demo': args.inmemory_demo,
                                'roiBounds': args.inmemory_roi, 'zBreak': args.inmemory_z_break,
@@ -433,6 +522,9 @@ def run(args):
                 if args.check_rough_parity:
                     expression = (root / 'scripts/offline-native-rough-parity.js').read_text(encoding='utf-8')
                     report['roughHeightParity'] = page.evaluate(expression, model_input['model'])
+                if args.check_glb:
+                    expression = (root / 'scripts/offline-native-glb-check.js').read_text(encoding='utf-8')
+                    report['physicalGlb'] = page.evaluate(expression)
             report['httpRequestsAllowed'] = dict(counts)
             report['rejectedRequests'] = rejected
             # Only exact build-info.json is known harmless; any other denial needs review.
@@ -481,6 +573,8 @@ def main():
     parser.add_argument('--height', type=int, default=1000)
     parser.add_argument('--check-z-ui', action='store_true', help='Exercise real v2 display-only Z menu')
     parser.add_argument('--check-rough-parity', action='store_true', help='Probe production GLSL at Photodetector physical coordinates')
+    parser.add_argument('--check-stable-rough-ui', action='store_true', help='Apply stable rough Etch/ALD and verify native Undo, Save, file Open and reload on a 2 um base')
+    parser.add_argument('--check-glb', action='store_true', help='Check production physical GLB stable-profile heights and 50 nm film')
     parser.add_argument('--headless', action='store_true', help='Opt out of headful/Xvfb; may disable WebGL')
     parser.add_argument('--require-origin', action='store_true', help='Fail rather than use null-origin diagnostic')
     args = parser.parse_args()
@@ -490,6 +584,8 @@ def main():
         parser.error('ROI and Z break require --inmemory-project')
     if args.check_rough_parity and not args.inmemory_project:
         parser.error('Rough height parity requires --inmemory-project')
+    if args.check_glb and not args.inmemory_project:
+        parser.error('Physical GLB check requires --inmemory-project')
     try:
         args.inmemory_roi = parse_native_bounds(args.inmemory_roi, 'ROI', 4)
         args.inmemory_z_break = parse_native_bounds(args.inmemory_z_break, 'Z break', 2)
