@@ -48,9 +48,11 @@ jobs:
       - run: npx playwright install --with-deps chromium
       # Ready PRs have the same full checks in Quality. Pages either runs its
       # release Quality job or verifies the exact Ready PR Quality evidence.
-      # Keep this gate for standalone pushes and reusable callers by default.
+      # Reusable workflows inherit the caller's event and workflow identity.
+      # Only this workflow's direct PR run may assume that Quality is present.
+      # All other callers must explicitly opt out of the shared gate.
       - name: Shared lint, docs and Node test gate
-        if: ${{ github.event_name != 'pull_request' && !inputs.skip_shared_node_gate }}
+        if: ${{ !inputs.skip_shared_node_gate && (github.event_name != 'pull_request' || !startsWith(github.workflow_ref, format('{0}/.github/workflows/process-recipe-safety.yml@', github.repository))) }}
         run: npm run check:ci
       - name: Start local app
         run: |

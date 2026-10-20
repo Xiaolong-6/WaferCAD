@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
+import { runInNewContext } from 'node:vm';
 
 function workflow(name) {
   return readFileSync(new URL('../../.github/workflows/' + name, import.meta.url), 'utf8');
@@ -50,17 +51,46 @@ test('draft deferral never disables reusable production release acceptance', () 
 test('Recipe safety reuses the full Quality gate instead of running it twice', () => {
   const recipe = workflow('process-recipe-safety.yml');
   assert.match(recipe, /skip_shared_node_gate:[\s\S]*?default: false/);
-  assert.match(
-    recipe,
-    /name: Shared lint, docs and Node test gate\n        if: \$\{\{ github\.event_name != 'pull_request' && !inputs\.skip_shared_node_gate \}\}\n        run: npm run check:ci/,
-  );
-
+  assert.match(recipe, /name: Shared lint, docs and Node test gate[\s\S]*?run: npm run check:ci/);
   const pages = workflow('pages.yml');
   assert.match(
     pages,
     /release-recipe:[\s\S]*?uses: \.\/\.github\/workflows\/process-recipe-safety\.yml\n    with:\n      skip_shared_node_gate: true/,
   );
   assert.match(pages, /name: Release lint, format, docs and Node tests[\s\S]*?run: npm run check/);
+});
+
+test('Recipe reusable callers retain the shared gate unless they explicitly opt out', () => {
+  const source = workflow('process-recipe-safety.yml');
+  const expression = source.match(
+    /name: Shared lint, docs and Node test gate\n        if: \$\{\{ (.+) \}\}/,
+  )?.[1];
+  assert.ok(expression, 'Shared gate condition must be present');
+  const repository = 'Xiaolong-6/WaferCAD';
+  for (const [event, caller, skip, expected] of [
+    ['pull_request', 'process-recipe-safety.yml', false, false],
+    ['push', 'process-recipe-safety.yml', false, true],
+    ['pull_request', 'other.yml', false, true],
+    ['pull_request', 'other.yml', true, false],
+    ['push', 'other.yml', false, true],
+    ['push', 'pages.yml', true, false],
+    ['pull_request', '', false, true],
+    ['pull_request', 'process-recipe-safety.yml.bak', false, true],
+  ]) {
+    const actual = runInNewContext(expression, {
+      github: {
+        event_name: event,
+        repository,
+        workflow_ref: caller
+          ? repository + '/.github/workflows/' + caller + '@refs/heads/main'
+          : '',
+      },
+      inputs: { skip_shared_node_gate: skip },
+      startsWith: (value, prefix) => value.toLowerCase().startsWith(prefix.toLowerCase()),
+      format: (template, value) => template.replace('{0}', value),
+    });
+    assert.equal(actual, expected, event + '/' + caller + '/skip=' + skip);
+  }
 });
 
 test('Draft browser baseline retains UI smoke and scientific process gate', () => {
