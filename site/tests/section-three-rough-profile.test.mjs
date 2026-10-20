@@ -124,3 +124,36 @@ test('Seed-matched conformal interfaces retain 50 nm physical separation at both
     }
   }
 });
+
+test('Photodetector local relief bands keep seeded cap, oxide, implant and sidewall Z ordered', async () => {
+  const { createThreeRoughReliefDisplayTransform, threeRoughReliefBands } =
+    await import('../three-z-display.js');
+  const bands = threeRoughReliefBands(model);
+  assert.ok(bands.length > 0 && bands.length <= 16);
+  const state = createCollapsedZDisplayTransform({
+    zMin: si.z0,
+    zMax: oxide.z1 + appearance.etchDepth,
+    collapse: { enabled: true, top: si.z1 - 0.5, bottom: si.z0 + 0.5 },
+    breakFraction: 0,
+  });
+  const display = createThreeRoughReliefDisplayTransform(state, bands, 30);
+  assert.equal(display.reliefActive, true);
+  const modelBefore = JSON.stringify(region);
+  for (const [x, y] of [
+    [2492, -3],
+    [2495.123, -0.4],
+    [2498, 3],
+  ]) {
+    const height = roughDisplayProfileOffsetAtPoint(x, y, {
+      ...appearance,
+      displayRoughBlend: 0.12,
+    });
+    const lower = display.mapZ(si.z1 + height);
+    const upper = display.mapZ(oxide.z1 + height);
+    assert.ok(lower < upper, 'Conformal thickness must retain its sign');
+    assert.ok(Math.abs(upper - lower - (oxide.z1 - si.z1) * 30) < 1e-7);
+    assert.ok(Number.isFinite(display.mapZ(si.z0)));
+    assert.ok(display.mapZ(si.z0) < lower, 'Underlying silicon may not cross top cap');
+  }
+  assert.equal(JSON.stringify(region), modelBefore, 'Presentation may not mutate Process geometry');
+});

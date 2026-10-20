@@ -36,3 +36,45 @@ test('3D scene Z scaling preserves gaps, conformal interfaces and physical value
   }
   assert.deepEqual(physical, original);
 });
+
+test('Local relief map is strictly monotone, bounded in Z and reversible at ×1', async () => {
+  const { createThreeRoughReliefDisplayTransform, normalizeThreeRoughReliefFactor } =
+    await import('../three-z-display.js');
+  const base = createCollapsedZDisplayTransform({
+    zMin: -10,
+    zMax: 15,
+    collapse: { enabled: true, top: 0, bottom: -9 },
+    breakFraction: 0,
+  });
+  const bands = [[9, 10.5]];
+  const original = JSON.stringify(bands);
+  const identity = createThreeRoughReliefDisplayTransform(base, bands, 1);
+  assert.equal(identity.reliefActive, false);
+  for (const z of [-10, 0, 5, 9.3, 10.5, 15]) assert.equal(identity.mapZ(z), base.mapZ(z));
+  assert.equal(normalizeThreeRoughReliefFactor(999), 1);
+  const enlarged = createThreeRoughReliefDisplayTransform(base, bands, 30);
+  assert.equal(enlarged.reliefBands, 1);
+  assert.equal(enlarged.reliefActive, true);
+  let previous = -Infinity;
+  for (let z = -8.95; z <= 14.99; z += 0.01) {
+    const displayed = enlarged.mapZ(z);
+    assert.ok(displayed >= previous - 1e-10, 'Z mapping must never reverse vertical ownership');
+    previous = displayed;
+  }
+  // A 50 nm conformal layer in the relief band becomes 1.5 displayed µm
+  // before the global 3D fit. Its physical volume and ordering remain intact.
+  const film = enlarged.mapZ(10.05) - enlarged.mapZ(10);
+  assert.ok(Math.abs(film - 30 * 0.05) < 1e-10);
+  assert.ok(Math.abs(enlarged.mapZ(12) - enlarged.mapZ(11) - 1) < 1e-10);
+  assert.deepEqual(bands, JSON.parse(original));
+});
+
+test('Relief mapping cannot enable GPU-only displacement without remapping its vertices', async () => {
+  const { canUseGpuRoughTask } = await import('../gpu-rough-surface.js');
+  const surface = { kind: 'rough', featureSize: 0.3, meanHeight: 0.5, etchDepth: 0.7 };
+  assert.equal(canUseGpuRoughTask({ appearance: surface }), true);
+  assert.equal(
+    canUseGpuRoughTask({ appearance: surface, zDisplay: { reliefActive: true } }),
+    false,
+  );
+});

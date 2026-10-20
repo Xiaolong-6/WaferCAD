@@ -180,6 +180,9 @@ body[data-workstation] #app-root {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 5px;
 }
+.v2-three-relief-options {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
 .v2-three-z-options .wc-segment {
   min-height: 44px;
   padding: 5px;

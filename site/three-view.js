@@ -57,7 +57,13 @@ import {
   translatedSidewallInstanceGroups,
 } from './renderer-instancing.js';
 import { createCollapsedZDisplayTransform, resolveSectionCollapse } from './section-z-collapse.js';
-import { normalizeThreeZDisplayFactor, threeZDisplayScale } from './three-z-display.js';
+import {
+  createThreeRoughReliefDisplayTransform,
+  normalizeThreeRoughReliefFactor,
+  normalizeThreeZDisplayFactor,
+  threeRoughReliefBands,
+  threeZDisplayScale,
+} from './three-z-display.js';
 import { geometryFromRoughCap, geometryFromRoughMeshData } from './rough-mesh-geometry.js';
 import {
   boundaryProfileFromPositions,
@@ -115,6 +121,7 @@ export function createThreeView({
   getInspection = () => ({ opacity: 1, borders: false }),
   getZCollapse = () => null,
   getZDisplayFactor = () => 1,
+  getRoughReliefFactor = () => 1,
   onViewChanged = () => {},
 } = {}) {
   if (!host) throw new TypeError('3D host is required.');
@@ -345,9 +352,15 @@ export function createThreeView({
         collapse,
         breakFraction: 0,
       }),
+      reliefFactor = normalizeThreeRoughReliefFactor(getRoughReliefFactor()),
+      display = createThreeRoughReliefDisplayTransform(
+        transform,
+        reliefFactor > 1 ? threeRoughReliefBands(model) : [],
+        reliefFactor,
+      ),
       bounds = visibleBounds(model, getClipGeometry()),
       xySpan = Math.max(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY, 1e-12),
-      baseScale = (xySpan * 0.12) / Math.max(transform.displaySpan, 1e-12),
+      baseScale = (xySpan * 0.12) / Math.max(display.displaySpan, 1e-12),
       // An opt-in, uniformly applied display multiplier. All mesh, border,
       // sidewall and conformal geometry shares group.scale.z; Process and GLB
       // export operate on the original unscaled physical model.
@@ -355,7 +368,7 @@ export function createThreeView({
       scale = threeZDisplayScale(baseScale, displayFactor);
 
     return {
-      ...transform,
+      ...display,
       scale,
       displayFactor,
     };
@@ -424,7 +437,8 @@ export function createThreeView({
         : fullyLower
           ? Number(state.backScale) || 1
           : 1,
-      canTranslateSide = (fullyUpper || fullyLower) && Math.abs(sideScale - 1) <= 1e-12;
+      canTranslateSide =
+        !state.reliefActive && (fullyUpper || fullyLower) && Math.abs(sideScale - 1) <= 1e-12;
 
     object.visible = !fullyHidden;
     if (fullyHidden) return;
@@ -474,6 +488,8 @@ export function createThreeView({
     host.dataset.zDisplayScale = String(currentZDisplay.scale);
     host.dataset.zDisplayFactor = String(currentZDisplay.displayFactor);
     host.dataset.zDisplayOnly = 'true';
+    host.dataset.zRoughReliefFactor = String(currentZDisplay.reliefFactor);
+    host.dataset.zRoughReliefBands = String(currentZDisplay.reliefBands);
     host.dataset.zFrontScale = String(currentZDisplay.frontScale);
     host.dataset.zBackScale = String(currentZDisplay.backScale);
     host.dataset.zScaleLinked = String(currentZDisplay.scaleLinked !== false);

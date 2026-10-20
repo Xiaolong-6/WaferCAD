@@ -320,6 +320,25 @@ def run(args):
                                         'factor1Reverted': reverted, 'nullOrigin': mode != 'https-origin'}
                 if selected != '2' or reverted != '1' or 'not physical' not in indicator_text:
                     raise RuntimeError('3D display-only Z control failed to render and revert')
+                page.locator('[data-three-relief-factor="30"]').click()
+                page.wait_for_timeout(900)
+                relief_selected = page.locator('#threeHost').get_attribute(
+                    'data-rough-relief-factor-selected')
+                relief_indicator = indicator.inner_text() if indicator.is_visible() else ''
+                relief_image = out / 'three-relief-display-ui.png'
+                page.screenshot(path=str(relief_image), animations='disabled')
+                report['images']['reliefDisplayUi'] = {
+                    'file': relief_image.name, 'sha256': snapshot_sha(relief_image)}
+                page.locator('[data-three-relief-factor="1"]').click()
+                page.wait_for_timeout(500)
+                relief_reverted = page.locator('#threeHost').get_attribute(
+                    'data-rough-relief-factor-selected')
+                report['roughReliefUi'] = {
+                    'factor30': relief_selected, 'indicator': relief_indicator,
+                    'factor1Reverted': relief_reverted, 'nullOrigin': mode != 'https-origin'}
+                if relief_selected != '30' or relief_reverted != '1' or \
+                        'not physical' not in relief_indicator:
+                    raise RuntimeError('3D local relief control failed to render and revert')
             if args.project:
                 if mode != 'https-origin':
                     report['exampleLoad'] = 'NOT ATTEMPTED: null origin prevents native Worker access'
@@ -344,7 +363,8 @@ def run(args):
             if args.inmemory_demo or args.inmemory_project:
                 model_input = {'model': None, 'demo': args.inmemory_demo,
                                'roiBounds': args.inmemory_roi, 'zBreak': args.inmemory_z_break,
-                               'zDisplayFactor': args.inmemory_z_scale}
+                               'zDisplayFactor': args.inmemory_z_scale,
+                               'roughReliefFactor': args.inmemory_relief_scale}
                 input_evidence = None
                 if args.inmemory_project:
                     project_path = args.inmemory_project.resolve()
@@ -447,6 +467,8 @@ def main():
                              help='Strictly parse a real .wafercad in Node and render its model in isolated ThreeView')
     parser.add_argument('--inmemory-roi', help='xMin,yMin,xMax,yMax in physical micrometres; for --inmemory-project')
     parser.add_argument('--inmemory-z-break', help='top,bottom Z coordinates in physical micrometres; for --inmemory-project')
+    parser.add_argument('--inmemory-relief-scale', type=int, choices=(1, 10, 30), default=1,
+                        help='Opt-in local monotone roughness relief display magnification')
     parser.add_argument('--inmemory-z-scale', type=int, choices=(1, 2, 5, 10), default=1,
                         help='Diagnostic-only uniform 3D display Z multiplier')
     parser.add_argument('--wait-ms', type=int, default=5500)

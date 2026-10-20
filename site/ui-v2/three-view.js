@@ -2,7 +2,12 @@
 import { createThreeView } from '../three-view.js';
 import { mountToolPopover } from './view-kit/tool-popover.js';
 import { BORDER_CATEGORIES, BORDER_PRESETS, normalizeBorderSettings } from '../border-inspector.js';
-import { THREE_Z_DISPLAY_FACTORS, normalizeThreeZDisplayFactor } from '../three-z-display.js';
+import {
+  THREE_ROUGH_RELIEF_FACTORS,
+  THREE_Z_DISPLAY_FACTORS,
+  normalizeThreeRoughReliefFactor,
+  normalizeThreeZDisplayFactor,
+} from '../three-z-display.js';
 
 export function createWorkstationThreeView({ store, workstation }) {
   const { el, button, toolbar } = window.WaferCadV2Components;
@@ -10,6 +15,7 @@ export function createWorkstationThreeView({ store, workstation }) {
   const local = store.local.three;
   local.borderSettings = normalizeBorderSettings(local.borderSettings);
   local.zDisplayFactor = normalizeThreeZDisplayFactor(local.zDisplayFactor);
+  local.roughReliefFactor = normalizeThreeRoughReliefFactor(local.roughReliefFactor);
   const icon = (label, action, glyph) =>
     button('', action, glyph, {
       title: label,
@@ -94,6 +100,7 @@ export function createWorkstationThreeView({ store, workstation }) {
     }),
     getZCollapse: () => state.sectionCollapse,
     getZDisplayFactor: () => local.zDisplayFactor,
+    getRoughReliefFactor: () => local.roughReliefFactor,
     onViewChanged: (camera) => {
       state.threeCamera = camera;
       workstation.changed('three');
@@ -251,13 +258,37 @@ export function createWorkstationThreeView({ store, workstation }) {
     };
     return choice;
   });
+  const reliefButtons = THREE_ROUGH_RELIEF_FACTORS.map((factor) => {
+    const choice = el(
+      'button',
+      {
+        type: 'button',
+        class: 'wc-segment',
+        'data-three-relief-factor': String(factor),
+        'aria-label': `3D roughness relief display ×${factor}`,
+      },
+      `×${factor}`,
+    );
+    choice.onclick = () => {
+      local.roughReliefFactor = factor;
+      updateZDisplayControls();
+      renderer.updateZCollapse();
+      renderer.fit({ preserveOrientation: true });
+      // Displacement must use CPU geometry while the nonlinear display map
+      // is active; a cached GPU-only cap has not passed through the Z map.
+      requestRender();
+    };
+    return choice;
+  });
   zDisplayMenu.append(
     el('strong', {}, '3D vertical display scale'),
     el('div', { class: 'v2-three-z-options' }, ...zDisplayButtons),
+    el('strong', {}, 'Local roughness relief inspection'),
+    el('div', { class: 'v2-three-z-options v2-three-relief-options' }, ...reliefButtons),
     el(
       'p',
       {},
-      'Display only, not physical height. Scales caps, films, sidewalls and borders together. Unresolved roughness stays unresolved.',
+      'Display only, not physical height. Surface relief boosts a narrow Z band around rough interfaces, with one continuous map for caps, conformal films, sidewalls and borders. Coarse meshes remain limited by their resolution.',
     ),
   );
   function updateZDisplayControls() {
@@ -267,9 +298,19 @@ export function createWorkstationThreeView({ store, workstation }) {
         'aria-pressed',
         String(Number(choice.dataset.threeZFactor) === local.zDisplayFactor),
       );
+    local.roughReliefFactor = normalizeThreeRoughReliefFactor(local.roughReliefFactor);
+    for (const choice of reliefButtons)
+      choice.setAttribute(
+        'aria-pressed',
+        String(Number(choice.dataset.threeReliefFactor) === local.roughReliefFactor),
+      );
     host.dataset.zDisplayFactorSelected = String(local.zDisplayFactor);
-    zDisplayIndicator.hidden = local.zDisplayFactor === 1;
-    zDisplayIndicator.textContent = `Display Z ×${local.zDisplayFactor} · not physical`;
+    host.dataset.roughReliefFactorSelected = String(local.roughReliefFactor);
+    zDisplayIndicator.hidden = local.zDisplayFactor === 1 && local.roughReliefFactor === 1;
+    const scales = [];
+    if (local.zDisplayFactor !== 1) scales.push(`Z ×${local.zDisplayFactor}`);
+    if (local.roughReliefFactor !== 1) scales.push(`Relief ×${local.roughReliefFactor}`);
+    zDisplayIndicator.textContent = `Display only: ${scales.join(' / ')} · not physical`;
   }
 
   const borderNames = {

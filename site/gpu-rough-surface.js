@@ -84,6 +84,7 @@ export function canUseGpuRoughTask({
   const frontScale = Number(zDisplay?.frontScale),
     backScale = Number(zDisplay?.backScale),
     scaleCompatible =
+      !zDisplay?.reliefActive &&
       (!Number.isFinite(frontScale) || Math.abs(frontScale - 1) <= 1e-12) &&
       (!Number.isFinite(backScale) || Math.abs(backScale - 1) <= 1e-12);
   return Boolean(!implant && !buried && scaleCompatible && canUseGpuRoughPreview(appearance));
