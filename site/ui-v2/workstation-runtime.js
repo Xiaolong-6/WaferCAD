@@ -327,11 +327,16 @@ export function createWorkstationRuntime(project) {
       }
     }
   };
+  // Apply project-level appearance before the first live Renderer frame.
+  applyLayerAppearance();
+
   function restore(snapshot, { preserveInspection = false } = {}) {
+    // Capture all current and previously observed layer styles before taking
+    // the inspection snapshot; otherwise absent layers lose their latest color.
+    if (preserveInspection) captureLayerAppearance();
     const inspection = preserveInspection
       ? Object.fromEntries(inspectionKeys.map((key) => [key, structuredClone(state[key])]))
       : null;
-    if (preserveInspection) captureLayerAppearance();
     views.get('section')?.resetTransient();
     views.get('main')?.runtime.roi.clearDrawingMode();
     projectState.loadProjectSnapshot(snapshot);
