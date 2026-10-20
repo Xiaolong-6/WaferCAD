@@ -229,7 +229,7 @@ export function decorateRoughSurfaceBoundaries(caps, sidewalls) {
 // wafer-scale repeated arrays, so reuse it while model revision, visibility,
 // and inspection clip are unchanged. Camera/opacity/border changes can then
 // rebuild presentation meshes without re-running process topology.
-export function buildRenderSurfacePlan(model, clip = null) {
+export function buildRenderSurfacePlan(model, clip = null, precomputedSolids = null) {
   if (!model || typeof model !== 'object') {
     return ownedMaterialSurfacesFromTopology(visibleMaterialModel(model), clip);
   }
@@ -239,7 +239,7 @@ export function buildRenderSurfacePlan(model, clip = null) {
 
   const plan = isArrayModel(model)
       ? buildArrayRenderPlan(visibleMaterialModel(model), clip, buildRenderSurfacePlan)
-      : ownedMaterialSurfacesFromTopology(visibleMaterialModel(model), clip),
+      : ownedMaterialSurfacesFromTopology(visibleMaterialModel(model), clip, precomputedSolids),
     decorated = decorateRoughSurfaceBoundaries(plan.caps, plan.sidewalls),
     result = {
       ...plan,

@@ -742,9 +742,9 @@ function ownedMaterialBorderLines(solids, caps, sidewalls) {
   return [...unique.values()];
 }
 
-export function ownedMaterialSurfacesFromTopology(model, clip = null) {
+export function ownedMaterialSurfacesFromTopology(model, clip = null, precomputedSolids = null) {
   const layerOrder = new Map((model?.layers || []).map((layer, index) => [layer.id, index])),
-    solids = materialSolidsFromTopology(model, clip),
+    solids = precomputedSolids ?? materialSolidsFromTopology(model, clip),
     roughMap = appearanceMapFromTopology(model, clip),
     rawCaps = [];
 

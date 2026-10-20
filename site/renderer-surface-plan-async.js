@@ -67,7 +67,18 @@ export async function buildRenderSurfacePlanAsync(model, clip = null, { signal }
         onAbort();
         return;
       }
-      worker.postMessage({ id: 1, action: 'surface-plan', model, clip });
+      worker.postMessage({
+        id: 1,
+        action: 'surface-plan',
+        model,
+        clip,
+        // WorkerNavigator.deviceMemory is not consistently exposed across
+        // engines. Read the actual device budget on the owning UI thread.
+        parallelCapabilities: {
+          hardwareConcurrency: Number(globalThis.navigator?.hardwareConcurrency) || 0,
+          deviceMemory: Number(globalThis.navigator?.deviceMemory) || 0,
+        },
+      });
     } catch (error) {
       finish(error);
     }
