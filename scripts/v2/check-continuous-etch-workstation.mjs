@@ -5,6 +5,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { launchBrowser, newUiPage } from '../test-helpers/ui.mjs';
 
+
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182';
 const output = resolve('test-results/continuous-etch-workstation');
 await mkdir(output, { recursive: true });
@@ -28,6 +29,7 @@ try {
     assert.equal(initial.workflow.writable, true, 'The isolated tab must own its workspace');
     assert.equal(initial.workflow.steps.length, 0, 'Start with a clean process timeline');
 
+
     await page.locator('[data-action="domain:project"]').click();
     if (!(await page.locator('#baseWidth').isVisible())) {
       await page.getByRole('heading', { name: 'Base', exact: true }).click();
@@ -46,6 +48,7 @@ try {
     const source = await snapshot();
     const beforeSteps = source.workflow.steps.length;
     assert.equal(source.model.kernel, 'vector-2.5d-v1');
+
 
     await page.locator('[data-action="domain:process"]').click();
     await page.locator('#operationType').selectOption('etch');
@@ -73,7 +76,14 @@ try {
     assert.equal(model.continuousEtchOwner.fronts[0].shape, 'circular');
     assert.equal(model.continuousEtchOwner.fronts[0].lateralUm, 2);
     assert.equal(model.continuousEtchOwner.fronts[0].verticalUm, 2);
-    const physical = await page.evaluate(async () => {
+    // Sample across the source and release front, not just at the centre.
+    // Front equality alone cannot prove the Process Worker removed the same
+    // physical material when Recipe Run All rebuilds its starting Base.
+    const witnesses = [];
+    for (const x of [-8, -4, 0, 4, 8])
+      for (const y of [-8, -4, 0, 4, 8])
+        for (const z of [-4, -1, 0, 2, 3.5, 4, 4.8]) witnesses.push([x, y, z]);
+    const physical = await page.evaluate(async (points) => {
       const { continuousModelMaterialAt, validateContinuousEtchModel } =
         await import('/continuous-etch-model.js');
       const model = window.WaferCadV2Workstation.snapshot().model;
@@ -81,12 +91,14 @@ try {
       return {
         removedTop: continuousModelMaterialAt(model, [0, 0, 4]),
         retainedCore: continuousModelMaterialAt(model, [0, 0, 0]),
+        grid: points.map((point) => continuousModelMaterialAt(model, point)),
       };
-    });
+    }, witnesses);
     assert.equal(physical.removedTop, null);
     assert.equal(physical.retainedCore, 'base');
     report.physical = physical;
     await page.screenshot({ path: resolve(output, 'continuous-after-apply.png') });
+
 
     // A real Main rectangular ROI must keep the continuous 3D visible and
     // produce scientific cut faces. The Section must show the full physical-Z
@@ -142,6 +154,7 @@ try {
     await page.screenshot({ path: resolve(output, 'continuous-roi-three-maximized.png') });
     await page.locator('#threePanel [data-action="maximize:three"]').click();
 
+
     await page.locator('[data-action="domain:history"]').click();
     await page.locator('#undoBtn').click();
     await page.waitForFunction(
@@ -157,6 +170,7 @@ try {
       { timeout: 30000 },
     );
     assert.deepEqual((await snapshot()).model, model, 'Redo restores the exact analytic owner');
+
 
     await page.locator('[data-action="domain:project"]').click();
     await page.locator('#projectNameInput').fill('Continuous Etch transaction acceptance');
@@ -188,6 +202,7 @@ try {
     assert.deepEqual(restored.model, model, 'Reload recovers exact physical owner');
     assert.equal(restored.workflow.steps.length, committed.workflow.steps.length);
     assert.equal(restored.projectName, 'Continuous Etch transaction acceptance');
+
 
     // Recipe Run All must use the same exact front as a manual Process Apply.
     // This replays from a real rebuilt Base, never substituting legacy N-band Etch.
@@ -224,7 +239,15 @@ try {
       model.continuousEtchOwner.fronts,
       'Run All must preserve the same exact analytic release, not a sampled surrogate',
     );
-    const recipePhysical = await page.evaluate(async () => {
+    const reference = model.continuousEtchOwner.sourceModel;
+    const replayedSource = recipeReplayed.continuousEtchOwner.sourceModel;
+    for (const key of ['shape', 'width', 'height', 'thickness', 'boundary', 'regions'])
+      assert.deepEqual(
+        replayedSource[key],
+        reference[key],
+        `Run All starting Base differs in physical source field ${key}`,
+      );
+    const recipePhysical = await page.evaluate(async (points) => {
       const { continuousModelMaterialAt, validateContinuousEtchModel } =
         await import('/continuous-etch-model.js');
       const current = window.WaferCadV2Workstation.snapshot().model;
@@ -232,9 +255,11 @@ try {
       return {
         removedTop: continuousModelMaterialAt(current, [0, 0, 4]),
         retainedCore: continuousModelMaterialAt(current, [0, 0, 0]),
+        grid: points.map((point) => continuousModelMaterialAt(current, point)),
       };
-    });
+    }, witnesses);
     assert.deepEqual(recipePhysical, physical, 'Recipe and manual Apply must agree on material');
+    report.recipeMaterialWitnessCount = witnesses.length;
     await page.screenshot({ path: resolve(output, 'continuous-after-recipe-runall.png') });
     assert.deepEqual(report.browserErrors, []);
     report.status = 'pass';
