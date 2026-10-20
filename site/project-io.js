@@ -771,9 +771,10 @@ function serializedProject(project, maxBytes, { allowLosslessFallback = false } 
   // The canonical continuous owner includes exact analytic parameters and
   // restorable History states. Never send it through compact 2.5D storage,
   // including callers of the legacy serializeProject() helper.
-  const result = allowLosslessFallback || projectHasContinuousEtch(project)
-    ? prepareProjectForExport(project)
-    : { stored: prepareProjectForStorage(project), mode: 'compact' };
+  const result =
+    allowLosslessFallback || projectHasContinuousEtch(project)
+      ? prepareProjectForExport(project)
+      : { stored: prepareProjectForStorage(project), mode: 'compact' };
   const text = JSON.stringify(result.stored);
   const blob = new Blob([text], { type: 'application/json' });
   if (blob.size > maxBytes) {
