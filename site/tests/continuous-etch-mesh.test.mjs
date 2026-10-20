@@ -144,6 +144,45 @@ test('Microdisk higher-quality cubic grid stays closed and within scientific bud
   assert.ok(result.grid.voxels <= 4000000);
   assert.equal(result.layers.length, 2);
   for (const layer of result.layers) assertClosed(layer);
+
+  // A visually flat substrate can still be a closed, orientable mesh while
+  // having silently lost the physical outer residual silicon rise. Verify
+  // the actual mesh ray intersections against independent M07/36um witnesses.
+  const si = result.layers.find((layer) => layer.layerId === 'base');
+  assert.ok(si, 'Missing physical silicon');
+  function topAtXY(x, y) {
+    const positions = si.positions;
+    let maxZ = -Infinity;
+    for (let i = 0; i < positions.length; i += 9) {
+      const ax = positions[i], ay = positions[i + 1];
+      const bx = positions[i + 3], by = positions[i + 4];
+      const cx = positions[i + 6], cy = positions[i + 7];
+      const det = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy);
+      if (Math.abs(det) < 1e-9) continue;
+      const u = ((by - cy) * (x - cx) + (cx - bx) * (y - cy)) / det;
+      const v = ((cy - ay) * (x - cx) + (ax - cx) * (y - cy)) / det;
+      if (u < -1e-6 || v < -1e-6 || u + v > 1 + 1e-6) continue;
+      maxZ = Math.max(maxZ, u * positions[i + 2] + v * positions[i + 5] +
+        (1 - u - v) * positions[i + 8]);
+    }
+    return maxZ;
+  }
+  const expectedSiTop = [
+    [0, 40],
+    [45, 5.706],
+    [60, 4.349],
+    [115, 25.590],
+    [145, 4.125],
+    [175, 4],
+  ];
+  for (const [x, expectedZ] of expectedSiTop) {
+    const actualZ = topAtXY(x, 0);
+    assert.ok(Number.isFinite(actualZ), `Si disappeared at x=${x} um`);
+    assert.ok(Math.abs(actualZ - expectedZ) < 0.75,
+      `3D mesh material boundary at x=${x}: displayed ${actualZ} um, physical ${expectedZ} um`);
+  }
+  assert.ok(topAtXY(115, 0) - topAtXY(60, 0) > 18,
+    'Continuous 3D must retain the real outer Si rise; never flatten it to hide band seams');
 });
 
 test('budget guard rejects unbounded resolution without changing source', () => {
