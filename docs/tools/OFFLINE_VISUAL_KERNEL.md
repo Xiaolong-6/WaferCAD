@@ -291,6 +291,15 @@ section raster, a shader-height parity test, or native 3D visual acceptance.
 Do not switch the saved morphology or weaken scientific tolerances based on
 these statistics alone.
 
+The parity diagnostic also probes stable-scale morphology at ±50,000 µm,
+intermediate positions, a second Seed and normal polarity. Its printed
+`precisionAnchor` is an internal shader-only coordinate frame; the test must
+retain the original model/Seed and validate cache/resource restoration. A
+smaller numeric discrepancy than before does not constitute a passing result:
+only `eligible: true` at the existing 2e-5 µm maximum-error gate can qualify
+the specific sampled task, and the native null-origin result cannot establish
+full Workstation or hardware-GPU acceptance.
+
 The probe also compares explicit `stochastic-v2` with the legacy stochastic
 field at the same coordinates; it never upgrades the supplied project.
 For reproducible normal-Origin stable-scale Process/Worker, 50 nm Conformal,

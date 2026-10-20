@@ -2650,6 +2650,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         decorateGpuRoughMaterial(material, task.visualAppearance || cap.appearance, {
           profileNormal: cap.profileNormal ?? cap.normal,
           normalStrength: mode === 'interactive' ? 0.82 : 1,
+          precisionAnchor: task.gpuHeightParity?.precisionAnchor,
         });
       } else if (!task.implant && !cap.buried && roughFarFieldContrast(0, cap.appearance) > 0) {
         decorateRoughFarFieldMaterial(material, task.visualAppearance || cap.appearance);
@@ -2976,6 +2977,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           decorateGpuRoughMaterial(material, task.visualAppearance || cap.appearance, {
             profileNormal: cap.profileNormal ?? cap.normal,
             normalStrength: interactive ? 0.82 : 1,
+            precisionAnchor: task.gpuHeightParity?.precisionAnchor,
           });
         } else if (!task.implant && !cap.buried && roughFarFieldContrast(0, cap.appearance) > 0) {
           decorateRoughFarFieldMaterial(material, task.visualAppearance || cap.appearance);

@@ -147,6 +147,43 @@ test('GPU rough uniforms preserve deterministic appearance identity', () => {
   assert.equal(filtered.waferCadRoughVisualBlend.value, 0.12);
 });
 
+test('Stable-scale shader frame preserves global lattice indices without changing the physical sampling origin', () => {
+  const surface = {
+    ...appearance,
+    morphology: 'stochastic-v2',
+    seed: 0xfedcba98,
+    featureSize: 0.3,
+    sampleOrigin: [35.25, -4.5],
+  };
+  const anchor = [2495.123456, -1.234567];
+  const uniforms = gpuRoughAppearanceUniforms(surface, { precisionAnchor: anchor });
+  const frame = anchor.map(Math.fround);
+  const theta = ((surface.seed % 3600) / 3600) * Math.PI * 2;
+  const x = frame[0] - surface.sampleOrigin[0],
+    y = frame[1] - surface.sampleOrigin[1];
+  const rotated = [
+    x * Math.cos(theta) + y * Math.sin(theta),
+    -x * Math.sin(theta) + y * Math.cos(theta),
+  ];
+  assert.deepEqual(uniforms.waferCadRoughFrameAnchor.value, frame);
+  for (const [scale, name] of [
+    [1, 'Fine'],
+    [4, 'Coarse'],
+  ]) {
+    const expected = rotated.map((value) => value / (surface.featureSize * scale));
+    const cell = uniforms[`waferCadRough${name}Cell`].value;
+    const fraction = uniforms[`waferCadRough${name}Fraction`].value;
+    assert.deepEqual(cell, expected.map(Math.floor));
+    for (let i = 0; i < 2; i++) {
+      assert.ok(Math.abs(cell[i] + fraction[i] - expected[i]) < 1e-10);
+    }
+  }
+  assert.deepEqual(uniforms.waferCadRoughFrameCosSin.value, [Math.cos(theta), Math.sin(theta)]);
+  assert.equal(uniforms.waferCadRoughSampleOriginX.value, surface.sampleOrigin[0]);
+  assert.equal(uniforms.waferCadRoughSampleOriginY.value, surface.sampleOrigin[1]);
+  assert.deepEqual(surface.sampleOrigin, [35.25, -4.5]);
+});
+
 test('GPU rough preview rejects non-rough or degenerate appearances', () => {
   assert.equal(canUseGpuRoughPreview(appearance), true);
   assert.equal(canUseGpuRoughPreview({ ...appearance, kind: 'smooth' }), false);
@@ -208,7 +245,7 @@ test('GPU rough decorator chains existing material shader hooks', () => {
   assert.equal(priorCompileCalls, 1);
   assert.equal(material.needsUpdate, true);
   assert.equal(material.userData.waferCadGpuRough.normalStrengthBase, 1);
-  assert.match(material.customProgramCacheKey(), /wafercad-gpu-rough-v9/);
+  assert.match(material.customProgramCacheKey(), /wafercad-gpu-rough-v10/);
   assert.match(shader.vertexShader, /waferCadGpuDisplace/);
   assert.doesNotMatch(shader.vertexShader, /instanceMatrix\[3\]\.xy/);
   assert.match(shader.vertexShader, /transformed\.z \+= waferCadRoughProfileNormal/);

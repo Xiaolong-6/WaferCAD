@@ -19,6 +19,15 @@ async (model) => {
       ['photodetector-actual', 2495, { ...profile, morphology: 'stochastic' }],
       ['stable-scale-actual', 2495, { ...profile, morphology: 'stochastic-v2' }],
       ['stable-scale-origin', 0, { ...profile, morphology: 'stochastic-v2' }],
+      ['stable-scale-middle', 500, { ...profile, morphology: 'stochastic-v2' }],
+      ['stable-scale-far', 50000, { ...profile, morphology: 'stochastic-v2' }],
+      ['stable-scale-negative', -50000, { ...profile, morphology: 'stochastic-v2' }],
+      ['stable-scale-alt-seed', 2495, { ...profile, morphology: 'stochastic-v2', seed: 731 }],
+      [
+        'stable-scale-normal-polarity',
+        2495,
+        { ...profile, morphology: 'stochastic-v2', polarity: 'normal' },
+      ],
       ['uniform-height-control', 2495, { ...profile, heightCv: 0 }],
     ]) {
       const triangles = [];
