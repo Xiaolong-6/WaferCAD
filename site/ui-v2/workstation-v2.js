@@ -2,10 +2,9 @@
 // All domain lifecycle and visible business state arrive through an adapter/presentation API.
 (() => {
   const { el, button, divider } = window.WaferCadV2Components;
-  const brandIconUrl = new URL(
-    '../assets/brand/wafercad-icon.svg',
-    document.currentScript?.src || document.baseURI,
-  ).href;
+  const brandIconUrl = document.currentScript?.src
+    ? new URL('../assets/brand/wafercad-icon.svg', document.currentScript.src).href
+    : 'assets/brand/wafercad-icon.svg';
   window.createWaferCadV2Workstation = ({
     root,
     state,
