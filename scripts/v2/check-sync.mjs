@@ -317,15 +317,17 @@ try {
       assert.equal(await page.locator('#mainFaceBtn').getAttribute('aria-pressed'), null);
       await panel('process');
       if (width === 1440) {
+        const undoBeforeDraft = (await snap()).workflow.undo;
         await page.locator('#operationThickness').fill('0.07');
         await page.locator('#operationThickness').press('Tab');
         await page.getByRole('button', { name: 'Increase Thickness / depth' }).click();
         assert.equal(await page.locator('#operationThickness').inputValue(), '0.071');
         assert.equal(
-          await page.getByRole('button', { name: 'Undo model operation' }).isDisabled(),
-          true,
+          (await snap()).workflow.undo,
+          undoBeforeDraft,
           'Uncommitted Process changes must not create model Undo history',
         );
+        assert.equal(await page.getByRole('button', { name: 'Undo model operation' }).count(), 1);
         assert.equal(await page.locator('#operationThickness').inputValue(), '0.071');
         assert.equal(await page.locator('#applyOperationBtn svg').count(), 1);
         assert.equal(await page.locator('#v2MaterialPreview').isDisabled(), true);

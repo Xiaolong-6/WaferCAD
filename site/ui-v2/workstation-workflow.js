@@ -402,8 +402,12 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
   processUndoButton.onclick = () => hooks.get('undoBtn').click();
   processRedoButton.onclick = () => hooks.get('redoBtn').click();
   operationButtons.append(
-    el('div', { class: 'p-edit-actions', role: 'toolbar', 'aria-label': 'Model history' },
-      processUndoButton, processRedoButton),
+    el(
+      'div',
+      { class: 'p-edit-actions', role: 'toolbar', 'aria-label': 'Model history' },
+      processUndoButton,
+      processRedoButton,
+    ),
   );
   const parameterRows = [
     'layerNameRow',

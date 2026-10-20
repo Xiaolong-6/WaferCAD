@@ -299,11 +299,25 @@ export function createWorkstationRuntime(project) {
     });
   }
   const inspectionKeys = [
-    'roi', 'roiAnchor', 'section', 'planViews', 'activeFace',
-    'xyDisplayUnit', 'activeStructurePalette', 'customStructurePalette',
-    'maskOpacity', 'threeOpacity', 'threeShowBorders', 'threeFastMode',
-    'threeCamera', 'sectionScaleMode', 'sectionViewport', 'sectionShowBorders',
-    'sectionDetailRoi', 'sectionCollapse', 'layerAppearance',
+    'roi',
+    'roiAnchor',
+    'section',
+    'planViews',
+    'activeFace',
+    'xyDisplayUnit',
+    'activeStructurePalette',
+    'customStructurePalette',
+    'maskOpacity',
+    'threeOpacity',
+    'threeShowBorders',
+    'threeFastMode',
+    'threeCamera',
+    'sectionScaleMode',
+    'sectionViewport',
+    'sectionShowBorders',
+    'sectionDetailRoi',
+    'sectionCollapse',
+    'layerAppearance',
   ];
   const layerAppearance = new Map(Object.entries(state.layerAppearance || {}));
   const captureLayerAppearance = () => {
@@ -311,7 +325,8 @@ export function createWorkstationRuntime(project) {
       for (const item of state.model?.[kind] || []) {
         if (!item?.id) continue;
         layerAppearance.set(kind + ':' + item.id, {
-          color: item.color, visible: item.visible !== false,
+          color: item.color,
+          visible: item.visible !== false,
         });
       }
     }
