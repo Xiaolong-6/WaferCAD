@@ -1997,6 +1997,7 @@ export function createSnapshotManager({
     rename,
     renameBranch,
     renameHistoryEntity,
+    historyEntityCreator,
     branchesUsingSnapshot,
     remove,
     removeBranch,

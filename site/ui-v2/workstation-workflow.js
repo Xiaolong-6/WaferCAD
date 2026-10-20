@@ -631,6 +631,22 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
     restoreReplayTransaction: restoreTransaction,
     status,
   });
+  // Process-layer names are owned by their originating History Step.
+  // A Layers legend action must never mutate the process lineage directly.
+  store.editHistoryEntity = (kind, id) => {
+    const creator = history.historyEntityCreator(kind, id);
+    const step = creator && history.listHistory().find((entry) => entry.id === creator.id);
+    if (!step) {
+      status(
+        kind === 'layer' && id === 'base'
+          ? 'Edit the Starting Wafer in Project → Base. Step 0 editing is not yet available.'
+          : 'This entity has no editable source Step in the current Variant.',
+        'warning',
+      );
+      return false;
+    }
+    return mutation.beginEdit(step);
+  };
   const color = (kind, id) => {
     const values =
       kind === 'layer'
