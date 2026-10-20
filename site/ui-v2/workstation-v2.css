@@ -873,6 +873,29 @@ body[data-workstation] .p-workbench {
   color: var(--wc-muted);
   font-size: var(--wc-font-aux);
 }
+.p-status[data-level='success'] {
+  color: var(--wc-success);
+  border-top-color: var(--wc-success);
+  background: var(--wc-success-tint);
+}
+.p-status[data-level='warning'] {
+  color: var(--wc-warning);
+  border-top-color: var(--wc-warning);
+  background: var(--wc-warning-tint);
+}
+.p-status[data-level='error'] {
+  color: var(--wc-danger);
+  border-top-color: var(--wc-danger);
+  background: var(--wc-danger-tint);
+}
+.p-status[data-level='warning'] [data-slot='status.message']::before {
+  content: '⚠';
+  margin-inline-end: var(--wc-space-1);
+}
+.p-status[data-level='error'] [data-slot='status.message']::before {
+  content: '✕';
+  margin-inline-end: var(--wc-space-1);
+}
 .p-status-secondary {
   display: flex;
   align-items: center;

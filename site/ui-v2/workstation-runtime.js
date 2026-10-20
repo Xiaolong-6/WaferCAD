@@ -298,10 +298,46 @@ export function createWorkstationRuntime(project) {
       },
     });
   }
-  function restore(snapshot) {
+  const inspectionKeys = [
+    'roi', 'roiAnchor', 'section', 'planViews', 'activeFace',
+    'xyDisplayUnit', 'activeStructurePalette', 'customStructurePalette',
+    'maskOpacity', 'threeOpacity', 'threeShowBorders', 'threeFastMode',
+    'threeCamera', 'sectionScaleMode', 'sectionViewport', 'sectionShowBorders',
+    'sectionDetailRoi', 'sectionCollapse',
+  ];
+  const layerAppearance = new Map();
+  const captureLayerAppearance = () => {
+    for (const kind of ['layers', 'implants', 'electricalRegions']) {
+      for (const item of state.model?.[kind] || []) {
+        if (!item?.id) continue;
+        layerAppearance.set(kind + ':' + item.id, {
+          color: item.color, visible: item.visible,
+        });
+      }
+    }
+  };
+  function restore(snapshot, { preserveInspection = false } = {}) {
+    const inspection = preserveInspection
+      ? Object.fromEntries(inspectionKeys.map((key) => [key, structuredClone(state[key])]))
+      : null;
+    if (preserveInspection) captureLayerAppearance();
     views.get('section')?.resetTransient();
     views.get('main')?.runtime.roi.clearDrawingMode();
     projectState.loadProjectSnapshot(snapshot);
+    if (preserveInspection) {
+      Object.assign(state, inspection);
+      for (const kind of ['layers', 'implants', 'electricalRegions']) {
+        for (const item of state.model?.[kind] || []) {
+          const appearance = layerAppearance.get(kind + ':' + item.id);
+          if (!appearance) continue;
+          if (appearance.color) item.color = appearance.color;
+          if (appearance.visible !== undefined) item.visible = appearance.visible;
+        }
+      }
+    } else {
+      layerAppearance.clear();
+      captureLayerAppearance();
+    }
     renameFocus = null;
     presentationModel = null;
     Object.assign(state, {
@@ -324,7 +360,7 @@ export function createWorkstationRuntime(project) {
   }
   history = createSnapshotManager({
     capture: () => projectState.buildProjectSnapshot(false),
-    restore,
+    restore: (snapshot) => restore(snapshot, { preserveInspection: true }),
     validateState: projectState.isValidSnapshotState,
     validateStates: projectState.isValidSnapshotStates,
     cooperativeValidateStates: true,

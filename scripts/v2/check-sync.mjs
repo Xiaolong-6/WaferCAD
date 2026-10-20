@@ -321,9 +321,11 @@ try {
         await page.locator('#operationThickness').press('Tab');
         await page.getByRole('button', { name: 'Increase Thickness / depth' }).click();
         assert.equal(await page.locator('#operationThickness').inputValue(), '0.071');
-        await page.getByRole('button', { name: 'Undo form edit' }).click();
-        assert.equal(await page.locator('#operationThickness').inputValue(), '0.07');
-        await page.getByRole('button', { name: 'Redo form edit' }).click();
+        assert.equal(
+          await page.getByRole('button', { name: 'Undo model operation' }).isDisabled(),
+          true,
+          'Uncommitted Process changes must not create model Undo history',
+        );
         assert.equal(await page.locator('#operationThickness').inputValue(), '0.071');
         assert.equal(await page.locator('#applyOperationBtn svg').count(), 1);
         assert.equal(await page.locator('#v2MaterialPreview').isDisabled(), true);
