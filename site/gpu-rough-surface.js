@@ -1,4 +1,4 @@
-const GPU_ROUGH_PROGRAM_VERSION = 'wafercad-gpu-rough-v7';
+const GPU_ROUGH_PROGRAM_VERSION = 'wafercad-gpu-rough-v8';
 
 function finitePositive(value, fallback) {
   const number = Number(value);
@@ -277,17 +277,24 @@ float waferCadFarValueNoise(vec2 location) {
 
 float waferCadFarFieldShade(vec2 xy) {
   if (waferCadRoughFarFieldContrast <= 0.0) return 1.0;
-  float footprint = max(length(dFdx(xy)), length(dFdy(xy)));
-  float featurePixels = waferCadRoughFarFieldFeatureSize / max(1e-9, footprint);
+  // A grazing view compresses one world axis much more than the other.
+  // Isotropic max(length(dFdx), length(dFdy)) erases detail along BOTH axes.
+  // Filter independently to keep resolved horizontal texture without shimmer.
+  vec2 footprint = max(abs(dFdx(xy)), abs(dFdy(xy)));
+  float featurePixels = waferCadRoughFarFieldFeatureSize /
+    max(1e-9, max(footprint.x, footprint.y));
   float unresolved = 1.0 - smoothstep(0.75, 8.0, featurePixels);
   if (unresolved <= 0.0) return 1.0;
-  // At least five pixels per cell prevents subpixel shimmer.
-  float displayCell = max(
-    max(1e-6, waferCadRoughFarFieldFeatureSize) * 8.0,
+  vec2 displayCell = max(
+    vec2(max(1e-6, waferCadRoughFarFieldFeatureSize) * 8.0),
     footprint * 5.0
   );
   float visual = waferCadFarValueNoise(xy / displayCell);
-  return 1.0 - waferCadRoughFarFieldContrast * unresolved * (0.25 + 1.05 * visual);
+  // Balanced highlights and shadows preserve the underlying material tint.
+  // This is display-only shading: no mesh, Z or canonical roughness changes.
+  float shade = 1.0 + 2.5 * waferCadRoughFarFieldContrast *
+    unresolved * (2.0 * visual - 1.0);
+  return clamp(shade, 0.65, 1.35);
 }
 `;
 
@@ -414,7 +421,7 @@ export function decorateRoughFarFieldMaterial(material, appearance) {
   material.userData ||= {};
   material.userData.waferCadRoughFarField = { uniforms };
   material.customProgramCacheKey = () =>
-    `${previousProgramKey ? previousProgramKey() : ''}|wafercad-rough-farfield-v1`;
+    `${previousProgramKey ? previousProgramKey() : ''}|wafercad-rough-farfield-v2`;
   material.onBeforeCompile = (shader, renderer) => {
     previousCompile?.(shader, renderer);
     Object.assign(shader.uniforms, uniforms);
