@@ -12,6 +12,10 @@ import { renderDepthAwareOutlines } from './three-outline-pass.js';
 import { shouldYieldDuringSceneAssembly } from './renderer-cooperative-assembly.js';
 import { buildContinuousMaterialSurfaceMesh } from './continuous-etch-mesh.js';
 import {
+  buildExactFilmComponents,
+  exactUnetchedFilmCandidates,
+} from './continuous-exact-film-mesh.js';
+import {
   buildContinuousSiHeightfieldMesh,
   canBuildContinuousSiHeightfield,
 } from './continuous-heightfield-mesh.js';
@@ -3238,15 +3242,44 @@ diffuseColor.a *= waferCadAlphaScale;`,
     const silicon = canBuildContinuousSiHeightfield(owner)
       ? buildContinuousSiHeightfieldMesh(owner, { xyStepUm: 1 })
       : null;
-    const data = buildContinuousMaterialSurfaceMesh(owner, {
-      cubeTables: { edgeTable, triTable },
-      xyStepUm: 1.75,
-      excludeLayerIds: silicon ? ['base'] : [],
-    });
+    // Only the validated shallow-release fast path substitutes exact unetched
+    // film shells. Generic non-rectangular and multilayer stacks keep the
+    // standard implicit extractor and preserve their existing behavior.
+    const exactFilms = silicon ? exactUnetchedFilmCandidates(owner) : new Map();
+    const skipped = [...exactFilms.keys(), ...(silicon ? ['base'] : [])];
+    const materialIds = new Set(
+      owner.sourceModel.regions.flatMap((region) => region.stack.map((part) => part.layerId)),
+    );
+    const allExact = [...materialIds].every((id) => skipped.includes(id));
+    const data = allExact
+      ? {
+          kind: 'hybrid-continuous-analytic-surface-v1',
+          layers: [],
+          triangles: 0,
+          sourceRevision: owner.sourceModel.revision,
+        }
+      : buildContinuousMaterialSurfaceMesh(owner, {
+          cubeTables: { edgeTable, triTable },
+          xyStepUm: 1.75,
+          excludeLayerIds: skipped,
+        });
     if (silicon) {
       data.layers.unshift(silicon);
       data.triangles += silicon.triangles;
     }
+    for (const [layerId, { geom, z0, z1 }] of exactFilms) {
+      const film = buildExactFilmComponents(THREE, geom, z0, z1);
+      for (const part of film.parts) {
+        data.layers.push({ ...part, layerId, exactFlat: true });
+        data.triangles += part.triangles;
+      }
+    }
+    if (data.triangles > 1500000)
+      throw new RangeError('Continuous hybrid mesh exceeds triangle budget');
+    const represented = new Set(data.layers.map((part) => part.layerId));
+    for (const layerId of materialIds)
+      if (!represented.has(layerId))
+        throw new RangeError('Continuous display omitted physical material ' + layerId);
     if (!data.layers.length) throw new RangeError('Continuous Etch has no visible solid');
     const exterior = { kind: 'material-exterior' };
     const materialState = presentationState(exterior, getInspection() || {}).materialState;
