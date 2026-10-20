@@ -98,6 +98,21 @@ button:hover,
 .welcome-copy {
   min-width: 0;
 }
+.welcome-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.welcome-brand-icon {
+  display: block;
+  flex: none;
+  width: 44px;
+  height: 44px;
+}
+.welcome-brand .welcome-kicker {
+  margin-bottom: 0;
+}
 .welcome-kicker {
   margin-bottom: 8px;
   color: #3f5f7c;
