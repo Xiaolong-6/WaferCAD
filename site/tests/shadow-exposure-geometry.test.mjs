@@ -92,3 +92,17 @@ test('author 180 nm cross-mask yields converging two-angle candidate overlap', a
   // The 180 x 180 nm figure refers to the mask, not measured Al/AlOx overlap.
   assert.ok(Math.abs(fine - 0.18 * 0.18) < 0.001);
 });
+
+test('rotating the reticle and incident azimuth together preserves visibility area', async () => {
+  const { transformMulti } = await import('../vector-geometry.js');
+  const originalStack = layers(rect(4), rect(2));
+  const rotatedStack = originalStack.map((layer) => ({
+    ...layer,
+    opening: transformMulti(layer.opening, ([x, y]) => [-y, x]),
+  }));
+  const original = evalMask(originalStack, 45, 0, 0.05);
+  const rotated = evalMask(rotatedStack, 45, 90, 0.05);
+  assert.ok(
+    Math.abs(polygonAreaUm2(original.footprint) - polygonAreaUm2(rotated.footprint)) < 1e-9,
+  );
+});
