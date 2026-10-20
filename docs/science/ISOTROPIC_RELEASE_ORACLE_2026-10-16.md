@@ -254,3 +254,49 @@ parity and ordinary browser acceptance. The current surface shows
 visible tessellation/shading artifacts at the disk rim and substrate
 side; visual release acceptance remains pending. Do not replace
 the released 72-band Microdisk or merge on this evidence.
+
+## Continuous Microdisk surface and default Z Break diagnostic (2026-10-20)
+
+The original 4b389fe Microdisk M07 scientific source was used to distinguish
+real remaining silicon from the dark 72-band visualization. In particular,
+x=115 um along the diameter must retain a silicon top around **25.59 um**,
+whereas x=60 um is around **4.35 um** and the center pedestal reaches 40 um.
+Any renderer which removes the residual outer rise fails this physical
+contract even if its output is visually smooth.
+
+The generic default `resolveSectionCollapse(null, model, bounds)` enables
+a Z Break which can map the entire curved release interval to essentially
+one display height. Continuous material now suppresses this implicit default.
+An explicit future continuous-owner Z Break opt-in must be marked
+`continuousEtchExplicit: true`; ordinary 2.5D behavior is unchanged.
+
+The opt-in native ThreeView display now has a safe two-part analytic path:
+
+- Fully covered rectangular Si substrates with shallow **circular or
+  elliptical** releases use `continuous-heightfield-mesh.js` for the
+  physically sampled top, analytic planar bottom and shared exterior walls.
+  Through-etch, vertical cliffs and unsupported topologies retain the generic
+  implicit extractor; they are never silently passed to the smooth heightfield.
+- Intact single-footprint films use `continuous-exact-film-mesh.js`, based on
+  original Mask triangles and exact Z. A point-contact opening is split into
+  edge-connected components without moving original vertices. The real M07
+  SiO2 film yields **9 individually closed shells, 3404 triangles, 1.8 um**.
+- Generic extraction skips layers already replaced, avoiding duplicate material
+  and redundant volume sampling; it remains a fallback for other material forms.
+
+The focused `continuous-hybrid-microdisk.test.mjs` guards six physical Si
+height witnesses (including the outer rise), watertight edge ownership, all
+nine oxide components, source immutability and unsupported vertical-profile
+fallback. On the verified 4b389fe source overlay, 20 hybrid/extrusion tests
+and 22 isotropic/Z-collapse tests passed. A headed Chromium/Xvfb/SwiftShader
+native ThreeView diagnostic using the validated M07 predecessor showed the
+outer rise, undercut and film with no recurring 72-band black ring and zero
+page JavaScript errors. The diagnostic uses the documented `about:blank`
+origin workaround; it is **not** a normal-origin Workstation transaction or
+an exact branch-HEAD checkout acceptance.
+
+Outstanding product gates remain intact: exact-HEAD Chromium acceptance,
+regular Workstation Open/Save, History/Recovery, ROI and GLB export, general
+follow-on Process consumption, targeted CI and release Quality. No tolerance
+or baseline has been weakened; do not merge or replace the shipped Microdisk
+on this evidence alone.
