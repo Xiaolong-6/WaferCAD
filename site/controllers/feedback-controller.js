@@ -2,7 +2,9 @@ export function classifyStatusMessage(message) {
   const text = String(message || '');
   if (/failed|invalid|must be|unavailable|requires|cannot|error/i.test(text)) return 'error';
   if (
-    /warning|no material|removed|select .* first|not exposed|did not change|skipped|area is empty/i.test(text)
+    /warning|no material|removed|select .* first|not exposed|did not change|skipped|area is empty/i.test(
+      text,
+    )
   )
     return 'warning';
   if (/reading|preparing|loading|importing|resolving/i.test(text)) return 'progress';

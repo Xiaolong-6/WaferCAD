@@ -723,9 +723,10 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
     getProject: () => project,
     refreshRecovery,
     dirty,
-    replayBaseOperations: (steps) => process.replayOperations(steps, {
-      taskLabel: `Replaying ${steps.length} Process Steps on new Starting Wafer…`,
-    }),
+    replayBaseOperations: (steps) =>
+      process.replayOperations(steps, {
+        taskLabel: `Replaying ${steps.length} Process Steps on new Starting Wafer…`,
+      }),
   });
   recoveryPanel.querySelector('.p-actions').prepend(hooks.get('saveProjectBtn'));
   host('panel.base').append(recoveryPanel, conflict);

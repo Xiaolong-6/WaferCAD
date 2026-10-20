@@ -395,7 +395,11 @@ export function createProjectMaskPanels({
         }
         const sourceState = history.readProcessNodeState(node.id);
         if (!sourceState) throw new Error('A Main Step has no validated replay input state.');
-        reverse.push({ operation: node.operation, state: sourceState, entityRefs: node.entityRefs });
+        reverse.push({
+          operation: node.operation,
+          state: sourceState,
+          entityRefs: node.entityRefs,
+        });
         nodeId = node.parentId;
       }
       const steps = reverse.reverse();

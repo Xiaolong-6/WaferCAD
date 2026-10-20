@@ -1,9 +1,18 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createModel } from '../../model.js';
-import { createBaseControlsController } from '../../controllers/base-controls-controller.js';
+import { loadGeometryKernel } from '../../../scripts/process-benchmarks.mjs';
 
-function harness({ replayResult = { ok: true, completed: 2 }, checkpoint = true, prepareError = null } = {}) {
+await loadGeometryKernel();
+
+const { createModel } = await import('../../model.js');
+const { createBaseControlsController } =
+  await import('../../controllers/base-controls-controller.js');
+
+function harness({
+  replayResult = { ok: true, completed: 2 },
+  checkpoint = true,
+  prepareError = null,
+} = {}) {
   let model = createModel({ shape: 'rect', width: 20, height: 10, thickness: 2 });
   model.processRevision = 2;
   model.layers[0].name = 'Silicon';
@@ -27,30 +36,50 @@ function harness({ replayResult = { ok: true, completed: 2 }, checkpoint = true,
       querySelector: () => ({ dataset: { shape: 'rect' } }),
     },
     getModel: () => model,
-    setModel: (next) => { model = next; },
-    setSection: () => { sections++; },
+    setModel: (next) => {
+      model = next;
+    },
+    setSection: () => {
+      sections++;
+    },
     getBaseRevertSnapshot: () => null,
     setBaseRevertSnapshot: () => {},
     getHistory: () => undo,
     getFuture: () => redo,
-    stateSnapshot: () => ({ project: { model: structuredClone(model) }, workspaceState: { model: structuredClone(model) } }),
-    restoreSnapshot: (saved) => { model = structuredClone(saved.project.model); },
-    saveHistory: (saved) => { undo.push(saved); redo.length = 0; },
+    stateSnapshot: () => ({
+      project: { model: structuredClone(model) },
+      workspaceState: { model: structuredClone(model) },
+    }),
+    restoreSnapshot: (saved) => {
+      model = structuredClone(saved.project.model);
+    },
+    saveHistory: (saved) => {
+      undo.push(saved);
+      redo.length = 0;
+    },
     hasProcessEdits: () => true,
     manualMicron: Number,
     formatLengthField: String,
     syncBaseControls: () => {},
     renderAll: () => {},
-    fit3d: () => { fits++; },
+    fit3d: () => {
+      fits++;
+    },
     status: (message, level) => statuses.push({ message, level }),
     chooseHistoryAction: async () => 'replay',
     getHistoryDetails: () => ({ hasHistory: true }),
-    captureBaseSnapshot: () => ({ project: { model: structuredClone(model) }, workspaceState: { model: structuredClone(model) } }),
+    captureBaseSnapshot: () => ({
+      project: { model: structuredClone(model) },
+      workspaceState: { model: structuredClone(model) },
+    }),
     prepareBaseReplay: () => {
       if (prepareError) throw Error(prepareError);
       return { steps: [{ operation: { kind: 'record' } }, { operation: { kind: 'record' } }] };
     },
-    checkpointBeforeBaseReplay: async () => { checkpoints++; return checkpoint; },
+    checkpointBeforeBaseReplay: async () => {
+      checkpoints++;
+      return checkpoint;
+    },
     replayBaseOperations: async () => {
       replays++;
       // Simulate Process replay's per-Step transactional Undo records.
@@ -67,13 +96,29 @@ function harness({ replayResult = { ok: true, completed: 2 }, checkpoint = true,
     },
   });
   return {
-    controller, initial, undo, redo, statuses,
-    get model() { return model; },
-    get checkpoints() { return checkpoints; },
-    get replays() { return replays; },
-    get archived() { return archived; },
-    get sections() { return sections; },
-    get fits() { return fits; },
+    controller,
+    initial,
+    undo,
+    redo,
+    statuses,
+    get model() {
+      return model;
+    },
+    get checkpoints() {
+      return checkpoints;
+    },
+    get replays() {
+      return replays;
+    },
+    get archived() {
+      return archived;
+    },
+    get sections() {
+      return sections;
+    },
+    get fits() {
+      return fits;
+    },
   };
 }
 
@@ -93,7 +138,9 @@ test('Step 0 Base replay is one Undo transaction and keeps current Section/camer
 });
 
 test('Failed Step 0 replay restores physical model and Undo/Redo stacks', async () => {
-  const h = harness({ replayResult: { ok: false, completed: 1, error: 'worker rejected geometry' } });
+  const h = harness({
+    replayResult: { ok: false, completed: 1, error: 'worker rejected geometry' },
+  });
   assert.equal(await h.controller.applyBase(), false);
   assert.deepEqual(h.model, h.initial);
   assert.equal(h.undo.length, 0);
