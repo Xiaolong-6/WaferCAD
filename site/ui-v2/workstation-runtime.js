@@ -303,16 +303,27 @@ export function createWorkstationRuntime(project) {
     'xyDisplayUnit', 'activeStructurePalette', 'customStructurePalette',
     'maskOpacity', 'threeOpacity', 'threeShowBorders', 'threeFastMode',
     'threeCamera', 'sectionScaleMode', 'sectionViewport', 'sectionShowBorders',
-    'sectionDetailRoi', 'sectionCollapse',
+    'sectionDetailRoi', 'sectionCollapse', 'layerAppearance',
   ];
-  const layerAppearance = new Map();
+  const layerAppearance = new Map(Object.entries(state.layerAppearance || {}));
   const captureLayerAppearance = () => {
     for (const kind of ['layers', 'implants', 'electricalRegions']) {
       for (const item of state.model?.[kind] || []) {
         if (!item?.id) continue;
         layerAppearance.set(kind + ':' + item.id, {
-          color: item.color, visible: item.visible,
+          color: item.color, visible: item.visible !== false,
         });
+      }
+    }
+    state.layerAppearance = Object.fromEntries(layerAppearance);
+  };
+  const applyLayerAppearance = () => {
+    for (const kind of ['layers', 'implants', 'electricalRegions']) {
+      for (const item of state.model?.[kind] || []) {
+        const appearance = layerAppearance.get(kind + ':' + item.id);
+        if (!appearance) continue;
+        if (appearance.color) item.color = appearance.color;
+        if (appearance.visible !== undefined) item.visible = appearance.visible;
       }
     }
   };
@@ -326,17 +337,16 @@ export function createWorkstationRuntime(project) {
     projectState.loadProjectSnapshot(snapshot);
     if (preserveInspection) {
       Object.assign(state, inspection);
-      for (const kind of ['layers', 'implants', 'electricalRegions']) {
-        for (const item of state.model?.[kind] || []) {
-          const appearance = layerAppearance.get(kind + ':' + item.id);
-          if (!appearance) continue;
-          if (appearance.color) item.color = appearance.color;
-          if (appearance.visible !== undefined) item.visible = appearance.visible;
-        }
-      }
+      applyLayerAppearance();
     } else {
+      const savedAppearance = state.layerAppearance || {};
       layerAppearance.clear();
       captureLayerAppearance();
+      for (const [key, value] of Object.entries(savedAppearance)) {
+        layerAppearance.set(key, value);
+      }
+      applyLayerAppearance();
+      state.layerAppearance = Object.fromEntries(layerAppearance);
     }
     renameFocus = null;
     presentationModel = null;
