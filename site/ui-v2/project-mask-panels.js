@@ -25,6 +25,8 @@ export function createProjectMaskPanels({
   refreshRecovery,
   dirty,
   replayBaseOperations = async () => ({ ok: false, error: 'Replay unavailable.' }),
+  beginReplayInteraction = () => {},
+  endReplayInteraction = () => {},
 }) {
   const { state, history, projectState } = store;
   const units = createDisplayUnits(() => state);
@@ -410,6 +412,8 @@ export function createProjectMaskPanels({
     },
     checkpointBeforeBaseReplay: () => checkpoint('pre-starting-wafer-replay'),
     replayBaseOperations,
+    beginBaseReplayInteraction: beginReplayInteraction,
+    endBaseReplayInteraction: endReplayInteraction,
     collapseBaseReplayUndo: (start, original) => {
       undo.splice(start);
       undo.push(original);

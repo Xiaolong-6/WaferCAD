@@ -633,6 +633,8 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
     },
     captureReplayTransaction: transaction,
     restoreReplayTransaction: restoreTransaction,
+    beginReplayInteraction: () => persistence?.beginInteraction(),
+    endReplayInteraction: () => persistence?.endInteraction(),
     status,
   });
   // Process-layer names are owned by their originating History Step.
@@ -643,7 +645,7 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
     if (!step) {
       status(
         kind === 'layer' && id === 'base'
-          ? 'Edit the Starting Wafer in Project → Base. Step 0 editing is not yet available.'
+          ? 'To edit Starting Wafer Step 0, open the Project → Base controls.'
           : 'This entity has no editable source Step in the current Variant.',
         'warning',
       );
@@ -723,6 +725,8 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
     getProject: () => project,
     refreshRecovery,
     dirty,
+    beginReplayInteraction: () => persistence?.beginInteraction(),
+    endReplayInteraction: () => persistence?.endInteraction(),
     replayBaseOperations: (steps) =>
       process.replayOperations(steps, {
         taskLabel: `Replaying ${steps.length} Process Steps on new Starting Wafer…`,

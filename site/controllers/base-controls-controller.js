@@ -35,6 +35,8 @@ export function createBaseControlsController({
   checkpointBeforeBaseReplay = async () => false,
   replayBaseOperations = async () => ({ ok: false, error: 'Replay unavailable.' }),
   collapseBaseReplayUndo = () => {},
+  beginBaseReplayInteraction = () => {},
+  endBaseReplayInteraction = () => {},
 }) {
   const $ = (id) => root.getElementById(id);
 
@@ -132,7 +134,12 @@ export function createBaseControlsController({
     const before = captureBaseSnapshot(),
       undoLength = getHistory().length,
       priorFuture = getFuture().slice();
+    let replayInteractionStarted = false;
     try {
+      if (action === 'replay') {
+        beginBaseReplayInteraction();
+        replayInteractionStarted = true;
+      }
       const arraySpec =
         recipeBase?.array ||
         (recipeBase ? inferRectangularGridRecipeBase(getModel(), recipeBase) : null);
@@ -196,6 +203,8 @@ export function createBaseControlsController({
       renderAll();
       status(`Base rebuild failed: ${error.message}`, 'error');
       return false;
+    } finally {
+      if (replayInteractionStarted) endBaseReplayInteraction();
     }
   }
 

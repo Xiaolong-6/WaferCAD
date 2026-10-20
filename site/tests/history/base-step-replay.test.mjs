@@ -25,6 +25,8 @@ function harness({
   let archived = false;
   let sections = 0;
   let fits = 0;
+  let replayInteractionBegins = 0;
+  let replayInteractionEnds = 0;
   const fields = {
     baseWidth: { value: '30' },
     baseHeight: { value: '12' },
@@ -86,6 +88,12 @@ function harness({
       undo.push({ step: 1 }, { step: 2 });
       return replayResult;
     },
+    beginBaseReplayInteraction: () => {
+      replayInteractionBegins++;
+    },
+    endBaseReplayInteraction: () => {
+      replayInteractionEnds++;
+    },
     collapseBaseReplayUndo: (start, saved) => {
       undo.splice(start);
       undo.push(saved);
@@ -119,6 +127,9 @@ function harness({
     get fits() {
       return fits;
     },
+    get replayInteractions() {
+      return [replayInteractionBegins, replayInteractionEnds];
+    },
   };
 }
 
@@ -135,6 +146,7 @@ test('Step 0 Base replay is one Undo transaction and keeps current Section/camer
   assert.deepEqual(h.undo[0].project.model, h.initial);
   assert.equal(h.sections, 0);
   assert.equal(h.fits, 0);
+  assert.deepEqual(h.replayInteractions, [1, 1]);
 });
 
 test('Failed Step 0 replay restores physical model and Undo/Redo stacks', async () => {
@@ -146,6 +158,7 @@ test('Failed Step 0 replay restores physical model and Undo/Redo stacks', async 
   assert.equal(h.undo.length, 0);
   assert.deepEqual(h.redo, [{ previous: 'future' }]);
   assert.equal(h.statuses.at(-1).level, 'error');
+  assert.deepEqual(h.replayInteractions, [1, 1]);
 });
 
 test('Step 0 replay is rejected before mutation without Recovery checkpoint', async () => {
@@ -153,6 +166,7 @@ test('Step 0 replay is rejected before mutation without Recovery checkpoint', as
   assert.equal(await h.controller.applyBase(), false);
   assert.deepEqual(h.model, h.initial);
   assert.equal(h.replays, 0);
+  assert.deepEqual(h.replayInteractions, [0, 0]);
   assert.equal(h.undo.length, 0);
 });
 

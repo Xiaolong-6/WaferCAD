@@ -473,6 +473,28 @@
   border-bottom: 1px solid var(--wc-border);
   min-height: 40px;
 }
+/* Step 0 is a full-width initial-condition row, not a two-column Step/action pair. */
+.v2-history .snapshot-base-step {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--wc-space-1);
+  width: 100%;
+  text-align: left;
+}
+.v2-history .snapshot-base-step strong {
+  font-weight: 600;
+  white-space: normal;
+}
+.v2-history .snapshot-base-step span {
+  font-size: var(--wc-font-xs);
+  color: var(--wc-text-muted);
+  overflow-wrap: anywhere;
+}
+.v2-history .snapshot-base-step:hover,
+.v2-history .snapshot-base-step:focus-visible {
+  background: var(--wc-accent-tint);
+}
 .v2-history .process-history-row {
   cursor: pointer;
 }
