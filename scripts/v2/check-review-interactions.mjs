@@ -94,6 +94,11 @@ try {
       await page.waitForFunction(
         () => document.querySelector('#applyOperationBtn')?.textContent !== 'Save edited Step',
       );
+      if (width <= 820) {
+        // A compact History editor is a real Edit workspace. Return to the
+        // View dock before asking for its Section button.
+        await page.locator('.p-nav [data-action="return-results"]').click();
+      }
       await selectScientificView(page, 'section', width);
       await waitForPaint(page);
       assert.deepEqual(
