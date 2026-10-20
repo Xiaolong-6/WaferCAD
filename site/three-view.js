@@ -22,6 +22,7 @@ import {
 import {
   CONTINUOUS_ETCH_MODEL_KERNEL,
   validateContinuousEtchModel,
+  continuousEtchDisplayCollapse,
 } from './continuous-etch-model.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
@@ -341,17 +342,8 @@ export function createThreeView({
   function zDisplayState(model) {
     const [idealLo, idealHi] = modelBoundsZ(model),
       [lo, hi] = roughVisualBoundsZ(model, [idealLo, idealHi]),
-      // A curved physical release cannot survive the implicit default Z Break:
-      // it would collapse the entire sub-disk silicon rise into a flat plane.
-      // Workstation startup already supplies enabled:true collapse defaults.
-      // A continuous owner must not inherit that destructive default. Future
-      // explicit opt-in requires a dedicated continuousEtchExplicit flag.
-      requestedCollapse = getZCollapse(),
       collapse = resolveSectionCollapse(
-        model?.kernel === CONTINUOUS_ETCH_MODEL_KERNEL &&
-        requestedCollapse?.continuousEtchExplicit !== true
-          ? { enabled: false }
-          : requestedCollapse,
+        continuousEtchDisplayCollapse(model, getZCollapse()),
         model,
         [lo, hi],
       ),

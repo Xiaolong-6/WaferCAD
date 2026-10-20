@@ -95,3 +95,14 @@ export function assertContinuousEtchNotProcessed(model) {
     };
   return null;
 }
+
+// The generic Workstation enables Z Break by default. Its default collapse
+// range can span the entire physical release, visually flattening real Si.
+// Keep canonical continuous material fully expanded until the user explicitly
+// opts into a continuous-owner-specific display collapse.
+export function continuousEtchDisplayCollapse(model, requested) {
+  return model?.kernel === CONTINUOUS_ETCH_MODEL_KERNEL &&
+    requested?.continuousEtchExplicit !== true
+    ? { enabled: false }
+    : requested;
+}

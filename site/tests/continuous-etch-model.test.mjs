@@ -20,6 +20,7 @@ const {
   continuousModelColumnAtXY,
   assertContinuousEtchNotProcessed,
   assertContinuousEtchNotRendered,
+  continuousEtchDisplayCollapse,
 } = await import('../continuous-etch-model.js');
 
 function fixture() {
@@ -124,4 +125,15 @@ test('unsupported follow-on Process rejects continuous material atomically', () 
   assert.equal(response.changed, false);
   assert.match(response.error, /not yet supported/);
   assert.equal(JSON.stringify(model), original);
+});
+
+test('continuous release cannot inherit implicit or Workstation default Z Break', () => {
+  const continuous = { kernel: 'vector-continuous-etch-v1' };
+  const plain = { kernel: 'vector-2.5d-v1' };
+  const workstationDefault = { enabled: true, top: 36.8, bottom: -36.8 };
+  assert.deepEqual(continuousEtchDisplayCollapse(continuous, null), { enabled: false });
+  assert.deepEqual(continuousEtchDisplayCollapse(continuous, workstationDefault), { enabled: false });
+  assert.equal(continuousEtchDisplayCollapse(plain, workstationDefault), workstationDefault);
+  const explicit = { ...workstationDefault, continuousEtchExplicit: true };
+  assert.equal(continuousEtchDisplayCollapse(continuous, explicit), explicit);
 });
