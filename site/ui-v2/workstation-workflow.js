@@ -719,6 +719,9 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
     getProject: () => project,
     refreshRecovery,
     dirty,
+    replayBaseOperations: (steps) => process.replayOperations(steps, {
+      taskLabel: `Replaying ${steps.length} Process Steps on new Starting Wafer…`,
+    }),
   });
   recoveryPanel.querySelector('.p-actions').prepend(hooks.get('saveProjectBtn'));
   host('panel.base').append(recoveryPanel, conflict);
@@ -726,6 +729,14 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
   project = createProjectController({
     root,
     compactHistory: true,
+    getStartingWafer: () => state.model,
+    openStartingWafer: () => {
+      workstation.uiState.domain = 'project';
+      workstation.uiState.mobile = 'edit';
+      workstation.uiState.editorHidden = false;
+      refresh();
+      status('Editing Starting Wafer Step 0. Use Rebuild Base to apply changes.', 'info');
+    },
     decorateHistoryMenu({ details, trigger, content }) {
       // Keep controller-owned content in place while native top-layer popovers
       // avoid clipping inside the History scroller and share overlay lifecycle.

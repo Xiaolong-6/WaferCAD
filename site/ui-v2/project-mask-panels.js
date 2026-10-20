@@ -24,6 +24,7 @@ export function createProjectMaskPanels({
   getProject,
   refreshRecovery,
   dirty,
+  replayBaseOperations = async () => ({ ok: false, error: 'Replay unavailable.' }),
 }) {
   const { state, history, projectState } = store;
   const units = createDisplayUnits(() => state);
@@ -359,13 +360,14 @@ export function createProjectMaskPanels({
     chooseHistoryAction: () =>
       confirmation.ask({
         title: 'Rebuild Base',
-        message: 'Changing Base starts a new Main lineage.',
+        message: 'Choose how to change the Starting Wafer.',
         detail:
-          'Keep archives the previous HEAD and Steps as a restorable Variant. Clear discards History. Undo and Revert retain the previous workspace.',
+          'Replay rebuilds the current Main on the new Base and archives the previous Main. Keep starts a clean Main with the old History archived. Clear removes History.',
         actions: [
           { value: 'cancel', label: 'Cancel' },
           { value: 'clear', label: 'Clear history', kind: 'danger' },
-          { value: 'keep', label: 'Keep previous history', kind: 'primary' },
+          { value: 'keep', label: 'Keep previous history' },
+          { value: 'replay', label: 'Replace Base & Replay', kind: 'primary' },
         ],
       }),
     getHistoryDetails: () => ({
@@ -375,6 +377,40 @@ export function createProjectMaskPanels({
         history.listBranches().length > 1,
     }),
     captureBaseSnapshot: transaction,
+    prepareBaseReplay: () => {
+      const branch = history.activeBranch();
+      if (branch.id !== 'main' || history.continuationContext()) {
+        throw new Error('Return to the Main Variant HEAD before replaying a new Base.');
+      }
+      const nodes = new Map(history.listHistory().map((node) => [node.id, node]));
+      const reverse = [],
+        visited = new Set();
+      let nodeId = branch.headNodeId;
+      while (nodeId) {
+        if (visited.has(nodeId)) throw new Error('Process History contains a cycle.');
+        visited.add(nodeId);
+        const node = nodes.get(nodeId);
+        if (!node || node.branchId !== 'main' || !node.replayable) {
+          throw new Error('Every Main Step must contain replay metadata.');
+        }
+        const sourceState = history.readProcessNodeState(node.id);
+        if (!sourceState) throw new Error('A Main Step has no validated replay input state.');
+        reverse.push({ operation: node.operation, state: sourceState, entityRefs: node.entityRefs });
+        nodeId = node.parentId;
+      }
+      const steps = reverse.reverse();
+      if (steps.length && !history.canRecordOperation(steps.length)) {
+        throw new Error('Not enough History capacity to archive and replay these Steps.');
+      }
+      return { steps };
+    },
+    checkpointBeforeBaseReplay: () => checkpoint('pre-starting-wafer-replay'),
+    replayBaseOperations,
+    collapseBaseReplayUndo: (start, original) => {
+      undo.splice(start);
+      undo.push(original);
+      redo.length = 0;
+    },
     rebuildMainHistory: (options) => history.rebuildMainBase(options),
     refreshHistory: () => getProject()?.renderSnapshots(),
   });
