@@ -1345,6 +1345,9 @@
        * is directly on the right-more of the two left inputs.
        */
       static compare(a, b) {
+        // WaferCAD: self-comparison reaches the same zero result at the end
+        // of the upstream comparator; avoid its other branches and GC work.
+        if (a === b) return 0;
         const alx = a.leftSE.point.x;
         const blx = b.leftSE.point.x;
         const arx = a.rightSE.point.x;
