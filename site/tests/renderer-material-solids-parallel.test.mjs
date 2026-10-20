@@ -55,6 +55,47 @@ test('parallel result assembly reorders by original material order and rejects m
   assert.throws(() => assembleParallelMaterialSolids(partition, heavy, []), /incomplete/);
 });
 
+test('clipped material assembly preserves only surviving layers in source order', () => {
+  const partition = { heavyId: 'film', orderedIds: ['base', 'film', 'passivation'] };
+  const film = { layerId: 'film', slabs: [] };
+  const base = { layerId: 'base', slabs: [] };
+  assert.deepEqual(
+    assembleParallelMaterialSolids(partition, [film], [base], { allowClippedLayers: true }),
+    [base, film],
+  );
+  assert.deepEqual(
+    assembleParallelMaterialSolids(partition, [], [base], { allowClippedLayers: true }),
+    [base],
+  );
+  assert.deepEqual(
+    assembleParallelMaterialSolids(partition, [], [], { allowClippedLayers: true }),
+    [],
+  );
+  assert.throws(() => assembleParallelMaterialSolids(partition, [film], [base]), /incomplete/);
+  assert.throws(
+    () => assembleParallelMaterialSolids(partition, [film, film], [], { allowClippedLayers: true }),
+    /duplicate/,
+  );
+  assert.throws(
+    () =>
+      assembleParallelMaterialSolids(partition, [film], [base, base], {
+        allowClippedLayers: true,
+      }),
+    /duplicate/,
+  );
+  assert.throws(
+    () =>
+      assembleParallelMaterialSolids(partition, [film], [{ layerId: 'foreign' }], {
+        allowClippedLayers: true,
+      }),
+    /incomplete/,
+  );
+  assert.throws(
+    () => assembleParallelMaterialSolids(partition, [base], [], { allowClippedLayers: true }),
+    /incomplete/,
+  );
+});
+
 test('worker branch returns exact serial solids and terminates child; worker error falls back to serial', async () => {
   const model = largeSimpleModel();
   let instances = [];
@@ -175,4 +216,53 @@ test('complete saved M3D partition reconstructs bit-exact solids and Surface Pla
   assert.equal(hash(combined), '69fdea6177a325303be406bbc6cd1a5ece575a581114754d789180a87e679ea6');
   const plan = buildRenderSurfacePlan(model, null, combined);
   assert.equal(hash(plan), '352edd7b0cc5e3d476d279c0e408b1b9d25e8a77ee83fd2acb2973f6dfe6fad6');
+});
+
+test('ROI can remove one or all material layers without triggering serial fallback', async () => {
+  const { rectMulti } = await import('../vector-geometry.js');
+  const model = largeSimpleModel();
+  for (const region of model.regions) {
+    region.geom = rectMulti(3, 3, region.stack[0].layerId === 'film' ? -5 : 5, 0);
+  }
+  const partition = splitHeavyMaterialLayer(model, 8, 8);
+  assert.ok(partition);
+  for (const [name, clip, expected] of [
+    ['heavy-only', rectMulti(4, 4, -5, 0), ['film']],
+    ['other-only', rectMulti(4, 4, 5, 0), ['base']],
+    ['empty', rectMulti(4, 4, 35, 0), []],
+  ]) {
+    const heavy = materialSolidsFromTopology(partition.heavy, clip);
+    const other = materialSolidsFromTopology(partition.other, clip);
+    const combined = assembleParallelMaterialSolids(partition, heavy, other, {
+      allowClippedLayers: true,
+    });
+    const serial = materialSolidsFromTopology(model, clip);
+    assert.deepEqual(
+      combined.map((item) => item.layerId),
+      expected,
+      name,
+    );
+    assert.equal(hash(combined), hash(serial), name);
+    const render = buildRenderSurfacePlan(structuredClone(model), clip, combined);
+    const reference = buildRenderSurfacePlan(model, clip);
+    assert.equal(hash(render), hash(reference), name + ' Surface Plan');
+  }
+  // Exercise the actual asynchronous branch, not just its assembly helper.
+  class RoiWorker {
+    postMessage({ model: heavyModel, clip }) {
+      const solids = materialSolidsFromTopology(heavyModel, clip);
+      queueMicrotask(() => this.onmessage({ data: { id: 1, type: 'done', solids } }));
+    }
+    terminate() {
+      this.terminated = true;
+    }
+  }
+  const clip = rectMulti(4, 4, 5, 0);
+  const result = await parallelMaterialSolids(model, clip, {
+    WorkerClass: RoiWorker,
+    hardwareConcurrency: 8,
+    deviceMemory: 8,
+  });
+  assert.ok(result, 'ROI must not discard valid parallel solids');
+  assert.equal(hash(result), hash(materialSolidsFromTopology(model, clip)));
 });

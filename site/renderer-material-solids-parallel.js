@@ -55,19 +55,30 @@ export function splitHeavyMaterialLayer(model, hardwareConcurrency = 0, deviceMe
   };
 }
 
-export function assembleParallelMaterialSolids(partition, heavy, other) {
+export function assembleParallelMaterialSolids(
+  partition,
+  heavy,
+  other,
+  { allowClippedLayers = false } = {},
+) {
   const solids = [...heavy, ...other];
   const byId = new Map(solids.map((item) => [item.layerId, item]));
+  const permitted = new Set(partition.orderedIds);
+  // An ROI can legitimately remove every extrusion of an otherwise visible
+  // material. Preserve exact source order for the remaining materials while
+  // rejecting missing *unclipped* layers, duplicate IDs, and foreign results.
   if (
-    heavy.length !== 1 ||
-    heavy[0].layerId !== partition.heavyId ||
+    heavy.length > 1 ||
+    (heavy.length === 0 && !allowClippedLayers) ||
+    (heavy.length === 1 && heavy[0].layerId !== partition.heavyId) ||
+    other.some((item) => item.layerId === partition.heavyId) ||
     byId.size !== solids.length ||
-    byId.size !== partition.orderedIds.length ||
-    partition.orderedIds.some((id) => !byId.has(id))
+    solids.some((item) => !permitted.has(item.layerId)) ||
+    (!allowClippedLayers && byId.size !== permitted.size)
   ) {
     throw new Error('Parallel material topology has incomplete or duplicate layer results.');
   }
-  return partition.orderedIds.map((id) => byId.get(id));
+  return partition.orderedIds.filter((id) => byId.has(id)).map((id) => byId.get(id));
 }
 
 export async function parallelMaterialSolids(
@@ -114,7 +125,9 @@ export async function parallelMaterialSolids(
     // This parent is itself a background worker, not the interactive UI.
     const other = materialSolidsFromTopology(partition.other, clip);
     const heavy = await heavyResult;
-    return assembleParallelMaterialSolids(partition, heavy, other);
+    return assembleParallelMaterialSolids(partition, heavy, other, {
+      allowClippedLayers: clip != null,
+    });
   } catch (error) {
     // Never publish partial geometry. The original whole-model calculation
     // in renderer-surface-plan-worker.js remains the fallback.
