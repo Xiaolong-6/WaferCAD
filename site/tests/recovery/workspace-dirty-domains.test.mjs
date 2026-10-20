@@ -148,6 +148,10 @@ test('lightweight view state round-trips without structural geometry', () => {
     up: [0, 0, 1],
   };
   source.display.sectionCollapse = { top: 5, bottom: -4, enabled: true };
+  source.display.layerAppearance = {
+    'layers:base': { color: '#778899', visible: true },
+    'layers:historical-au': { color: '#ffcc00', visible: false },
+  };
 
   const view = extractWorkspaceViewState(source),
     target = projectFixture(),
@@ -172,6 +176,7 @@ test('lightweight view state round-trips without structural geometry', () => {
   assert.equal(target.display.threeFastMode, false);
   assert.deepEqual(target.display.threeCamera, source.display.threeCamera);
   assert.deepEqual(target.display.sectionCollapse, source.display.sectionCollapse);
+  assert.deepEqual(target.display.layerAppearance, source.display.layerAppearance);
   assert.equal(target.model, originalModel);
   assert.equal(target.layout.elements, originalElements);
 });

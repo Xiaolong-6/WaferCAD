@@ -154,10 +154,26 @@ export function createProjectStateController({
 
   function buildProjectSnapshot(
     includeSnapshots = false,
-    { skipHistoryHeadSync = false, workerStorage = false } = {},
+    { skipHistoryHeadSync = false, workerStorage = false, includeAppearance = false } = {},
   ) {
     ensureHierarchy();
     const state = getState();
+    // Appearance is project-level state; historical Process nodes must not store
+    // a growing copy of all layer colors for every Step.
+    let appearance = null;
+    if (includeSnapshots || includeAppearance) {
+      appearance = { ...(state.layerAppearance || {}) };
+      for (const kind of ['layers', 'implants', 'electricalRegions']) {
+        for (const item of state.model?.[kind] || []) {
+          if (!item?.id) continue;
+          appearance[kind + ':' + item.id] = {
+            color: item.color,
+            visible: item.visible !== false,
+          };
+        }
+      }
+      state.layerAppearance = appearance;
+    }
     const project = {
       format: 'WaferCAD-vector',
       version: CURRENT_PROJECT_VERSION,
@@ -189,6 +205,7 @@ export function createProjectStateController({
         xyUnit: state.xyDisplayUnit,
         structurePalette: state.activeStructurePalette,
         customStructurePalette: state.customStructurePalette,
+        ...(includeSnapshots || includeAppearance ? { layerAppearance: appearance } : {}),
         maskOpacity: state.maskOpacity,
         threeOpacity: state.threeOpacity,
         threeShowBorders: state.threeShowBorders,
@@ -296,6 +313,12 @@ export function createProjectStateController({
       customStructurePalette: Array.isArray(project.display?.customStructurePalette)
         ? project.display.customStructurePalette
         : null,
+      layerAppearance:
+        project.display?.layerAppearance &&
+        typeof project.display.layerAppearance === 'object' &&
+        !Array.isArray(project.display.layerAppearance)
+          ? structuredClone(project.display.layerAppearance)
+          : {},
       maskOpacity,
       threeOpacity,
       threeShowBorders,

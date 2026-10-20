@@ -227,7 +227,7 @@ export function createWorkspacePersistenceController({
 
   function saveCurrentViewState() {
     if (!baseSaveId || !hasWriteAccess()) return false;
-    const project = buildProjectSnapshot(false),
+    const project = buildProjectSnapshot(false, { includeAppearance: true }),
       record = {
         version: 1,
         saveId: baseSaveId,
