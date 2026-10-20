@@ -246,8 +246,11 @@ export function buildContinuousMaterialSurfaceMesh(
     maxVoxels = 4000000,
     maxTriangles = 1500000,
     cubeTables = null,
+    excludeLayerIds = [],
   } = {},
 ) {
+  if (!Array.isArray(excludeLayerIds) || excludeLayerIds.some((id) => typeof id !== 'string'))
+    throw new RangeError('Invalid continuous display exclusion list');
   if (!owner?.sourceModel?.regions || !Array.isArray(owner.fronts))
     throw new RangeError('Continuous release requires validated source and fronts');
   if (![xyStepUm, zStepUm].every((v) => Number.isFinite(v) && v > 0))
@@ -324,6 +327,8 @@ export function buildContinuousMaterialSurfaceMesh(
   const results = [];
   let totalTriangles = 0;
   for (const layerId of layers) {
+    // Caller must provide exact substitute display material for each excluded layer.
+    if (excludeLayerIds.includes(layerId)) continue;
     const parts = solids.flatMap(({ layerId: ownedLayerId, segment }, ri) =>
       ownedLayerId === layerId ? [{ ri, segment }] : [],
     );

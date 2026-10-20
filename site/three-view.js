@@ -12,6 +12,10 @@ import { renderDepthAwareOutlines } from './three-outline-pass.js';
 import { shouldYieldDuringSceneAssembly } from './renderer-cooperative-assembly.js';
 import { buildContinuousMaterialSurfaceMesh } from './continuous-etch-mesh.js';
 import {
+  buildContinuousSiHeightfieldMesh,
+  canBuildContinuousSiHeightfield,
+} from './continuous-heightfield-mesh.js';
+import {
   CONTINUOUS_ETCH_MODEL_KERNEL,
   validateContinuousEtchModel,
 } from './continuous-etch-model.js';
@@ -3228,10 +3232,21 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
     disposeGroup();
     const { edgeTable, triTable } = await import('three/addons/objects/MarchingCubes.js');
+    // Exact continuous Si topography replaces full-volume voxelization only
+    // for a fully covered, non-through-etched rectangular substrate. Other
+    // materials and unsupported morphologies retain the generic extractor.
+    const silicon = canBuildContinuousSiHeightfield(owner)
+      ? buildContinuousSiHeightfieldMesh(owner, { xyStepUm: 1 })
+      : null;
     const data = buildContinuousMaterialSurfaceMesh(owner, {
       cubeTables: { edgeTable, triTable },
       xyStepUm: 1.75,
+      excludeLayerIds: silicon ? ['base'] : [],
     });
+    if (silicon) {
+      data.layers.unshift(silicon);
+      data.triangles += silicon.triangles;
+    }
     if (!data.layers.length) throw new RangeError('Continuous Etch has no visible solid');
     const exterior = { kind: 'material-exterior' };
     const materialState = presentationState(exterior, getInspection() || {}).materialState;
