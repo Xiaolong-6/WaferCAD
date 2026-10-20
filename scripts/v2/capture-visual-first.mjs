@@ -178,6 +178,14 @@ try {
         );
       }
       await waitForPaint(page);
+      const brandIcon = page.locator('.p-brand-icon');
+      if (await brandIcon.isVisible()) {
+        await page.waitForFunction(() => document.querySelector('.p-brand-icon')?.complete);
+        assert.ok(
+          await brandIcon.evaluate((image) => image.naturalWidth > 0),
+          'Workstation brand SVG must load and decode before capturing the desktop screenshot',
+        );
+      }
       await page.screenshot({ path: resolve(output, 'initial-' + width + '.png') });
       const initial = await page.evaluate(() => {
         const state = window.WaferCadV2Workstation.snapshot();
