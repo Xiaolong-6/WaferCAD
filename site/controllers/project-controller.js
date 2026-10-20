@@ -39,6 +39,8 @@ export function createProjectController({
   cancelHistoricalStepInsert = () => {},
   compactHistory = false,
   decorateHistoryMenu = () => {},
+  getStartingWafer = () => null,
+  openStartingWafer = () => {},
 }) {
   const $ = (id) => root.getElementById(id);
   const expandedHistoryVariants = new Set();
@@ -90,6 +92,21 @@ export function createProjectController({
 
     $('snapshotCount').textContent = String(historyNodes.length + legacyBookmarks.length);
     host.innerHTML = '';
+    const base = getStartingWafer();
+    if (base) {
+      const baseRow = root.createElement('button');
+      baseRow.type = 'button';
+      baseRow.className = 'snapshot-timeline-row snapshot-base-step';
+      const label = root.createElement('strong');
+      label.textContent = 'Step 0 · Starting Wafer';
+      const details = root.createElement('span');
+      details.textContent = `${base.shape} · ${base.width} × ${base.height} µm · ${base.thickness} µm`;
+      baseRow.append(label, details);
+      baseRow.setAttribute('aria-label', 'Edit Starting Wafer Step 0');
+      baseRow.title = 'Edit the Base dimensions or shape; optionally replay subsequent Steps.';
+      baseRow.onclick = openStartingWafer;
+      host.append(baseRow);
+    }
     const continuationHost = $('snapshotContinuation') || host;
     if (continuationHost !== host) continuationHost.replaceChildren();
 
@@ -227,7 +244,7 @@ export function createProjectController({
     if (!historyNodes.length && !legacyBookmarks.length) {
       const empty = root.createElement('div');
       empty.className = 'empty-list';
-      empty.textContent = 'Apply a process Step to start History.';
+      empty.textContent = 'Apply a process Step to extend Starting Wafer history.';
       host.append(empty);
       return;
     }

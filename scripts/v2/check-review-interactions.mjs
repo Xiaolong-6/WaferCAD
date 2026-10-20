@@ -62,40 +62,85 @@ try {
       await waitForPaint(page);
       assert.equal(await layers.getAttribute('aria-pressed'), 'true');
       assert.equal(await page.locator('#layerLegend').isVisible(), true);
-      const name = page.getByRole('button', { name: 'Rename TiO2', exact: true });
-      const fingerprint = () => page.locator('#sectionCanvas').evaluate((c) => c.toDataURL());
-      const normal = await fingerprint();
-      await name.click();
-      await waitForPaint(page);
-      assert.equal(
-        await page.getByRole('textbox', { name: 'Name for TiO2', exact: true }).isVisible(),
-        true,
+      // Material identity is owned by the creating Process Step. The Layers legend
+      // opens that Step for editing instead of changing the live model in-place.
+      const editInHistory = page.getByRole('button', {
+        name: 'Edit TiO2 in History',
+        exact: true,
+      });
+      const inspectCanvas = () =>
+        page.locator('#sectionCanvas').evaluate((canvas) => ({
+          width: canvas.width,
+          height: canvas.height,
+          png: canvas.toDataURL(),
+        }));
+      const normal = await inspectCanvas();
+      const inspectionBefore = await snapshot();
+      assert.equal(await page.getByRole('textbox', { name: 'Name for TiO2' }).count(), 0);
+      await editInHistory.click();
+      await page.waitForFunction(
+        () =>
+          document.querySelector('#applyOperationBtn')?.textContent?.trim() === 'Save edited Step',
+        null,
+        { timeout: 30000 },
       );
+      assert.equal(
+        await page.getByRole('textbox', { name: 'Name for TiO2' }).count(),
+        0,
+        'Layers never exposes an independent rename field',
+      );
+      await page.locator('[data-action="domain:history"]').click();
+      await page.getByRole('button', { name: 'Cancel edit', exact: true }).click();
+      await page.waitForFunction(
+        () => document.querySelector('#applyOperationBtn')?.textContent !== 'Save edited Step',
+      );
+      if (width <= 820) {
+        // A compact History editor is a real Edit workspace. Return to the
+        // View dock before asking for its Section button.
+        await page.locator('.p-nav [data-action="return-results"]').click();
+      }
+      await selectScientificView(page, 'section', width);
+      await waitForPaint(page);
       assert.deepEqual(
         (await snapshot()).model,
         initial.model,
-        'Focus never changes saved colors or geometry',
+        'Cancel History editing restores the original physical model',
       );
-      assert.notEqual(await fingerprint(), normal, 'Focus changes the actual Section rendering');
+      assert.deepEqual(
+        (await snapshot()).workflow.steps,
+        initial.workflow.steps,
+        'Opening and cancelling History editing adds no Process Steps',
+      );
+      const inspectionAfter = await snapshot();
+      assert.deepEqual(
+        inspectionAfter.section,
+        inspectionBefore.section,
+        'Cancel preserves the scientific Section A–B line',
+      );
+      assert.deepEqual(
+        inspectionAfter.planViews.section,
+        inspectionBefore.planViews.section,
+        'Cancel preserves the Section zoom and pan',
+      );
+      const restoredCanvas = await inspectCanvas();
+      assert.ok(restoredCanvas.width > 0 && restoredCanvas.height > 0);
+      assert.ok(restoredCanvas.png.length > 3000, 'Section still renders actual model content');
+      if (restoredCanvas.width === normal.width && restoredCanvas.height === normal.height) {
+        assert.equal(restoredCanvas.png, normal.png, 'Same-size Section rendering is unchanged');
+      } else {
+        // Compact workstation navigation changes available canvas height as
+        // the tool/status panels reflow. Bytewise PNG comparison across different
+        // backing dimensions is invalid even when Section geometry is unchanged.
+        console.log(
+          `Section canvas resized ${normal.width}x${normal.height} -> ${restoredCanvas.width}x${restoredCanvas.height}; scientific view restored`,
+        );
+      }
       assert.deepEqual(
         await page
           .locator('.v2-legend-row')
           .evaluateAll((rows) => rows.map((e) => getComputedStyle(e).opacity)),
         ['1', '1', '1', '1', '1'],
       );
-      await page.getByRole('textbox', { name: 'Name for TiO2', exact: true }).press('Escape');
-      await waitForPaint(page);
-      assert.ok((await fingerprint()) === normal, 'Cancel restores the actual Section colors');
-      assert.deepEqual((await snapshot()).model, initial.model);
-      await name.click();
-      await page.getByRole('textbox', { name: 'Name for TiO2', exact: true }).fill('TiO2 reviewed');
-      await page.getByRole('textbox', { name: 'Name for TiO2', exact: true }).press('Enter');
-      await waitForPaint(page);
-      const renamed = (await snapshot()).model;
-      const expected = structuredClone(initial.model);
-      expected.layers.find((l) => l.name === 'TiO2').name = 'TiO2 reviewed';
-      expected.revision++;
-      assert.deepEqual(renamed, expected, 'Rename only updates the name and model revision');
       const checks = await page
         .locator('.v2-legend-row > input[type="checkbox"]')
         .evaluateAll((es) => es.map((e) => e.getBoundingClientRect().right));
@@ -141,8 +186,8 @@ try {
       report.cases.push({
         width,
         hasTouch,
-        rename: true,
-        focusRestoresColors: true,
+        editViaHistory: true,
+        cancelRestoresModelAndColors: true,
         repeatedRandom: true,
         rightAligned: true,
         layersPersistedAfterReload: true,

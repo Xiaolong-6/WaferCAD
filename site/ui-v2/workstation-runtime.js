@@ -298,10 +298,76 @@ export function createWorkstationRuntime(project) {
       },
     });
   }
-  function restore(snapshot) {
+  const inspectionKeys = [
+    'roi',
+    'roiAnchor',
+    'section',
+    'planViews',
+    'activeFace',
+    'xyDisplayUnit',
+    'activeStructurePalette',
+    'customStructurePalette',
+    'maskOpacity',
+    'threeOpacity',
+    'threeShowBorders',
+    'threeFastMode',
+    'threeCamera',
+    'sectionScaleMode',
+    'sectionViewport',
+    'sectionShowBorders',
+    'sectionDetailRoi',
+    'sectionCollapse',
+    'layerAppearance',
+  ];
+  const layerAppearance = new Map(Object.entries(state.layerAppearance || {}));
+  const captureLayerAppearance = () => {
+    for (const kind of ['layers', 'implants', 'electricalRegions']) {
+      for (const item of state.model?.[kind] || []) {
+        if (!item?.id) continue;
+        layerAppearance.set(kind + ':' + item.id, {
+          color: item.color,
+          visible: item.visible !== false,
+        });
+      }
+    }
+    state.layerAppearance = Object.fromEntries(layerAppearance);
+  };
+  const applyLayerAppearance = () => {
+    for (const kind of ['layers', 'implants', 'electricalRegions']) {
+      for (const item of state.model?.[kind] || []) {
+        const appearance = layerAppearance.get(kind + ':' + item.id);
+        if (!appearance) continue;
+        if (appearance.color) item.color = appearance.color;
+        if (appearance.visible !== undefined) item.visible = appearance.visible;
+      }
+    }
+  };
+  // Apply project-level appearance before the first live Renderer frame.
+  applyLayerAppearance();
+
+  function restore(snapshot, { preserveInspection = false } = {}) {
+    // Capture all current and previously observed layer styles before taking
+    // the inspection snapshot; otherwise absent layers lose their latest color.
+    if (preserveInspection) captureLayerAppearance();
+    const inspection = preserveInspection
+      ? Object.fromEntries(inspectionKeys.map((key) => [key, structuredClone(state[key])]))
+      : null;
     views.get('section')?.resetTransient();
     views.get('main')?.runtime.roi.clearDrawingMode();
     projectState.loadProjectSnapshot(snapshot);
+    if (preserveInspection) {
+      Object.assign(state, inspection);
+      applyLayerAppearance();
+    } else {
+      const savedAppearance = state.layerAppearance || {};
+      layerAppearance.clear();
+      captureLayerAppearance();
+      for (const [key, value] of Object.entries(savedAppearance)) {
+        layerAppearance.set(key, value);
+      }
+      applyLayerAppearance();
+      state.layerAppearance = Object.fromEntries(layerAppearance);
+    }
     renameFocus = null;
     presentationModel = null;
     Object.assign(state, {
@@ -324,7 +390,7 @@ export function createWorkstationRuntime(project) {
   }
   history = createSnapshotManager({
     capture: () => projectState.buildProjectSnapshot(false),
-    restore,
+    restore: (snapshot) => restore(snapshot, { preserveInspection: true }),
     validateState: projectState.isValidSnapshotState,
     validateStates: projectState.isValidSnapshotStates,
     cooperativeValidateStates: true,
