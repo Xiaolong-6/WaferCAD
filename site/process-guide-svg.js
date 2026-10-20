@@ -54,7 +54,7 @@ export function processGuideSvg(id, after = false) {
         ? deposited(6, 46, 208, 11)
         : deposited(6, 20, 78, 37) + deposited(84, 36, 66, 21) + deposited(150, 46, 64, 11);
       shape += '<path d="M6 46H214" stroke="#ce913f" stroke-dasharray="5 4"/>';
-    } else if (id === 'etch-isotropic') {
+    } else if (id === 'etch-isotropic' || id === 'etch-continuous') {
       shape += deposited(6, 46, 82, 11, green) + deposited(132, 46, 82, 11, green);
       if (after)
         shape += '<path d="M88 57Q68 74 84 97Q110 114 136 97Q152 74 132 57Z" fill="' + pale + '"/>';

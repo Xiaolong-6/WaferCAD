@@ -113,6 +113,17 @@ export const PROCESS_GUIDE = Object.freeze([
     'geometry',
   ),
   guide(
+    'etch-continuous',
+    'Etch',
+    'Continuous release · experimental',
+    'Subtracts material with an analytic circular, elliptical or vertical release front.',
+    'Uses one exact physical material owner derived from exposed selected material and the active mask. No Z band count or stepped surrogate is saved.',
+    'Exposed target · Vertical depth · Lateral reach · Front shape · Face · Area',
+    'One release per lineage. Follow-on Process, 3D ROI clipping and planar Main material projection are not yet supported.',
+    'Suspended silica microdisk with an exact silicon undercut.',
+    'geometry',
+  ),
+  guide(
     'etch-undercut',
     'Etch',
     'Undercut release',
@@ -242,6 +253,7 @@ export function processGuideKey({
   }
   if (type === 'grow') return growth === 'conformal' ? 'extend-conformal' : 'extend-directional';
   if (type === 'etch') {
+    if (profile === 'continuous') return 'etch-continuous';
     if (profile === 'isotropic') return 'etch-isotropic';
     if (profile === 'undercut') return 'etch-undercut';
     if (profile === 'planarize') return 'etch-planarize';

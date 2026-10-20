@@ -8,7 +8,7 @@ import { processOperationsMarkdown } from '../../../scripts/build-process-guide.
 import { processWikiDiagramSvg } from '../../../scripts/build-wiki-diagrams.mjs';
 
 test('every Process variant has distinct catalog metadata and a valid diagram', () => {
-  assert.equal(PROCESS_GUIDE.length, 19);
+  assert.equal(PROCESS_GUIDE.length, 20);
   assert.equal(new Set(PROCESS_GUIDE.map((entry) => entry.id)).size, PROCESS_GUIDE.length);
   for (const entry of PROCESS_GUIDE) {
     assert.strictEqual(processGuideEntry(entry.id), entry);
@@ -82,6 +82,7 @@ test('all current manual selector combinations resolve to intended operation dia
       'etch-selective',
     ],
     [{ type: 'etch', profile: 'isotropic' }, 'etch-isotropic'],
+    [{ type: 'etch', profile: 'continuous' }, 'etch-continuous'],
     [{ type: 'etch', profile: 'undercut' }, 'etch-undercut'],
     [{ type: 'etch', profile: 'planarize' }, 'etch-planarize'],
     [{ type: 'etch', surface: 'rough', polarity: 'normal' }, 'etch-rough-normal'],
@@ -125,7 +126,7 @@ test('public guide and reusable Process diagrams use canonical catalog', async (
   assert.match(panel, /wiki\/Process-Operations#/);
 });
 
-test('portable v2 guide uses the canonical catalog and all 19 SVG pairs without module loading', async () => {
+test('portable v2 guide uses the canonical catalog and all 20 SVG pairs without module loading', async () => {
   const script = await readFile(
     new URL('../../ui-v2/process-guide.generated.js', import.meta.url),
     'utf8',

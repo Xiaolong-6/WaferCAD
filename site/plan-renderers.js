@@ -445,6 +445,10 @@ export function createPlanRenderers({
 
   function drawMaskStructureReference(ctx, v) {
     const { model, activeFace } = getState();
+    // The source 2.5D regions are not the post-release material. Until Main
+    // planar projection accepts exact continuous ownership, never draw them as
+    // a false structural Mask reference. The real Mask layout stays editable.
+    if (model?.kernel === 'vector-continuous-etch-v1') return;
     if (isArrayModel(model)) {
       drawArrayPlan(ctx, v, activeFace === 'back', true);
       return;
@@ -470,6 +474,7 @@ export function createPlanRenderers({
 
   function fillRoughPlanOverlay(ctx, v, back, alpha = 0.08) {
     const { model, activeFace } = getState();
+    if (model?.kernel === 'vector-continuous-etch-v1') return;
     if (isArrayModel(model)) return;
     ctx.save();
     ctx.fillStyle = `rgba(17,24,32,${Math.max(0, Math.min(0.2, alpha))})`;
@@ -556,6 +561,16 @@ export function createPlanRenderers({
 
   function renderMain() {
     const { model, activeFace, section, readOnlyPreview } = getState();
+    if (model?.kernel === 'vector-continuous-etch-v1') {
+      const canvas = $('mainCanvas');
+      const { ctx, w, h } = setupCanvas(canvas);
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = '#576b7a';
+      ctx.font = '12px system-ui';
+      ctx.fillText('Exact continuous material · inspect Section / 3D', 24, 36);
+      canvas.dataset.continuousPlanUnsupported = 'true';
+      return;
+    }
     if (validateExperimentalPhysicalFacetModel(model)) {
       // Never display the flat Base compatibility stack as physical Main.
       // The read-only laboratory route enables only 3D and Section.

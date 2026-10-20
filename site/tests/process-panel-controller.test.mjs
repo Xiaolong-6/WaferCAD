@@ -18,6 +18,8 @@ globalThis.Option ??= class Option {
 
 const { createModel } = await import('../model.js');
 const { createProcessPanelController } = await import('../controllers/process-panel-controller.js');
+const { applyContinuousRelease } = await import('../continuous-etch-process.js');
+const { validateContinuousEtchModel } = await import('../continuous-etch-model.js');
 
 function fakeElement(id, value = '') {
   return {
@@ -368,6 +370,47 @@ test('successful geometry Apply stores a deterministic replay request', async ()
   });
   assert.deepEqual(recorded[0].replay.maskContext, recorded[0].maskContext);
   assert.equal('areaRequest' in recorded[0].replay, false);
+});
+
+test('Continuous Etch UI commits exact circular/elliptical parameters into History and replay', async () => {
+  const events = [],
+    recorded = [];
+  const controller = controllerForTask(
+    (model, _workerModel, params, _label, request) => {
+      assert.equal(request.mode, 'full');
+      const next = applyContinuousRelease(model, params, model.boundary);
+      return { ...next, validated: true };
+    },
+    events,
+    { mode: 'etch', recorded },
+  );
+  const root = controller.__root;
+  root.getElementById('etchProfile').value = 'continuous';
+  root.getElementById('continuousShape').value = 'elliptical';
+  root.getElementById('continuousLateral').value = '4';
+  root.getElementById('operationThickness').value = '3';
+  controller.updateUi();
+  root.getElementById('etchTargetLayer').value = 'base';
+  await controller.applyOperation();
+  assert.equal(controller.__getModel().kernel, 'vector-continuous-etch-v1');
+  const owner = validateContinuousEtchModel(controller.__getModel());
+  assert.equal(owner.operation.lateralUm, 4);
+  assert.equal(owner.operation.verticalUm, 3);
+  assert.equal(owner.operation.shape, 'elliptical');
+  assert.deepEqual(events.slice(0, 5), [
+    'prepare-variant',
+    'run-worker',
+    'commit-variant',
+    'save-history',
+    'set-model',
+  ]);
+  assert.equal(recorded.length, 1);
+  assert.equal(recorded[0].replay.params.continuousShape, 'elliptical');
+  assert.equal(recorded[0].replay.params.continuousLateralUm, 4);
+  root.getElementById('continuousShape').value = 'vertical';
+  assert.equal(controller.loadOperationForEdit(recorded[0]), true);
+  assert.equal(root.getElementById('continuousShape').value, 'elliptical');
+  assert.equal(root.getElementById('continuousLateral').value, '4');
 });
 
 test('replayOperations re-runs saved geometry requests and preserves record-only Steps', async () => {

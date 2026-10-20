@@ -19,7 +19,11 @@ async ({ model: providedModel, demo = false, roiBounds = null, zBreak = null }) 
     model.layers.push({ id: 'offline-metal', name: 'Metal', color: '#d18c27', visible: true });
     model.layers.push({ id: 'offline-oxide', name: 'Oxide', color: '#508bbf', visible: true });
     model.regions = [
-      { id: 'base', geom: difference(model.boundary, unionGeometries([metal, oxide])), stack: [base] },
+      {
+        id: 'base',
+        geom: difference(model.boundary, unionGeometries([metal, oxide])),
+        stack: [base],
+      },
       { id: 'metal-pad', geom: metal, stack: [base, { layerId: 'offline-metal', z0: 5, z1: 17 }] },
       { id: 'oxide-pad', geom: oxide, stack: [base, { layerId: 'offline-oxide', z0: 5, z1: 12 }] },
     ];
@@ -31,13 +35,22 @@ async ({ model: providedModel, demo = false, roiBounds = null, zBreak = null }) 
   // unresolvable in the 7000-um-wide, 350-um-thick full-device overview.
   const clip = roiBounds
     ? (await import('https://wafercad.local/vector-geometry.js')).rectMulti(
-        roiBounds[2] - roiBounds[0], roiBounds[3] - roiBounds[1],
-        (roiBounds[2] + roiBounds[0]) / 2, (roiBounds[3] + roiBounds[1]) / 2)
+        roiBounds[2] - roiBounds[0],
+        roiBounds[3] - roiBounds[1],
+        (roiBounds[2] + roiBounds[0]) / 2,
+        (roiBounds[3] + roiBounds[1]) / 2,
+      )
     : null;
   const collapse = zBreak ? { enabled: true, top: zBreak[0], bottom: zBreak[1] } : null;
-  const plan = buildRenderSurfacePlan(model, clip);
-  if (!plan.caps?.length && !plan.sidewalls?.length) throw Error('No visible material geometry.');
-  rememberRenderSurfacePlan(model, clip, plan);
+  // Dedicated continuous material has no flat 2.5D surface plan. Its native
+  // ThreeView renderer consumes the exact owner directly and must not call
+  // the generic physical surface planner (which intentionally fails closed).
+  const continuous = model.kernel === 'vector-continuous-etch-v1';
+  const plan = continuous ? { caps: [], sidewalls: [] } : buildRenderSurfacePlan(model, clip);
+  if (!continuous) {
+    if (!plan.caps?.length && !plan.sidewalls?.length) throw Error('No visible material geometry.');
+    rememberRenderSurfacePlan(model, clip, plan);
+  }
 
   const overlay = document.createElement('div');
   overlay.style.cssText =
@@ -72,7 +85,8 @@ async ({ model: providedModel, demo = false, roiBounds = null, zBreak = null }) 
     roiBounds,
     zBreak,
     roughCaps: plan.caps.filter((cap) => cap.appearance?.kind === 'rough').length,
-    exposedRoughCaps: plan.caps.filter((cap) => !cap.buried && cap.appearance?.kind === 'rough').length,
+    exposedRoughCaps: plan.caps.filter((cap) => !cap.buried && cap.appearance?.kind === 'rough')
+      .length,
     layers: model.layers.length,
     regions: model.regions.length,
     caps: plan.caps.length,
@@ -80,4 +94,4 @@ async ({ model: providedModel, demo = false, roiBounds = null, zBreak = null }) 
     isolatedViewport: true,
     workstationStateLoaded: false,
   };
-}
+};

@@ -123,8 +123,7 @@ test('published Microdisk M07 continuous kernel round-trips the lossless .waferc
   const text = serializeProject(project);
   assert.deepEqual(JSON.parse(text), saved.stored);
   const file = { size: Buffer.byteLength(text), text: async () => text };
-  await assert.rejects(() => readProjectFile(file), /no flat import/);
-  const read = await readProjectFile(file, { experimentalContinuousEtchReadOnly: true });
+  const read = await readProjectFile(file);
   assert.deepEqual(continuousModelColumnAtXY(read.model, [50, 0]), materialBefore);
   assert.equal(continuousModelMaterialAt(read.model, [50, 0, 15]), null);
   assert.equal(continuousModelMaterialAt(read.model, [0, 0, 39]), 'base');
@@ -174,7 +173,7 @@ test('continuous release cannot inherit implicit or Workstation default Z Break'
   assert.ok(Math.abs(map.mapZ(25.59) - map.mapZ(4.349) - 21.241) < 1e-9);
 });
 
-test('Workstation import rejects continuous owners hidden in any History or Recovery state', async () => {
+test('Workstation import validates continuous owners hidden in any History or Recovery state', async () => {
   const { createHash } = await import('node:crypto');
   const { expandProjectStorage, prepareProjectForExport, readProjectFile } =
     await import('../project-io.js');
@@ -202,14 +201,16 @@ test('Workstation import rejects continuous owners hidden in any History or Reco
     assert.equal(exported.mode, 'lossless');
     const bytes = JSON.stringify(exported.stored);
     const file = new Blob([bytes], { type: 'application/json' });
-    // A staged trusted bundle bypasses redundant expensive strict validation,
-    // but must NEVER bypass the production continuous-material safety gate.
+    // A trusted receipt must not bypass exact continuous ownership validation.
     const sha256 = createHash('sha256').update(bytes).digest('hex');
-    await assert.rejects(
-      () => readProjectFile(file, { trustedBundledExample: { sha256 } }),
-      /Continuous Etch.*no flat import/,
-      `Unsafe ${variant} was accepted into the normal Workstation`,
-    );
+    const opened = await readProjectFile(file, { trustedBundledExample: { sha256 } });
+    const saved =
+      variant === 'snapshot'
+        ? opened.snapshots[0].state.model
+        : variant === 'historyNode'
+          ? opened.snapshotBranches.nodes[0].state.model
+          : opened.snapshotBranches.branches[0].headState.model;
+    assert.equal(validateContinuousEtchModel(saved).kind, 'wafercad-continuous-material-owner-v1');
   }
 });
 
@@ -300,10 +301,7 @@ test('History Manager restores M07 and exact continuous release across lossless 
   const packed = JSON.parse(text);
   assert.equal(packed.storage?.lossless, true);
   const serializedFile = new Blob([text], { type: 'application/json' });
-  await assert.rejects(() => readProjectFile(serializedFile), /no flat import/);
-  const reopened = await readProjectFile(serializedFile, {
-    experimentalContinuousEtchReadOnly: true,
-  });
+  const reopened = await readProjectFile(serializedFile);
   current = reopened;
   const revived = createSnapshotManager(options);
   revived.importRecords(reopened.snapshots, reopened.snapshotBranches);
@@ -384,10 +382,7 @@ test('process History nodes replay continuous M07 material across exact project 
   const packed = JSON.parse(bytes);
   assert.equal(packed.storage?.lossless, true);
   const file = new Blob([bytes], { type: 'application/json' });
-  await assert.rejects(() => readProjectFile(file), /no flat import/);
-  const reopened = await readProjectFile(file, {
-    experimentalContinuousEtchReadOnly: true,
-  });
+  const reopened = await readProjectFile(file);
   const savedState = JSON.stringify(reopened);
   active = reopened;
   const revived = createSnapshotManager(options);

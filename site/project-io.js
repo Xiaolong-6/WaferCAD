@@ -852,19 +852,19 @@ export async function readProjectFile(
       throw Error('Invalid bundled project header.');
   }
   expandProjectStorage(parsed);
-  const project = trustedBundledExample
-    ? migrateProjectFile(parsed)
-    : validateProjectFile(migrateProjectFile(parsed));
-  // History/Recovery may restore a different model from the active one.
-  // Refuse an unsupported continuous owner anywhere in the project, not only
-  // the active Model, before it can enter the production Workstation.
-  if (projectHasContinuousEtch(project) && !experimentalContinuousEtchReadOnly) {
-    throw new Error(
-      'Continuous Etch is not yet supported by the production Workstation; no flat import is permitted.',
-    );
-  }
-  // The opt-in owner is persisted and strictly validated, but the default
-  // Workstation must not draw its physical material as a flat surrogate.
+  const migrated = migrateProjectFile(parsed);
+  // Continuous physical ownership is new and must be checked in every
+  // restorable state even when the bundled-file hash matches an attestation.
+  const project =
+    trustedBundledExample && !projectHasContinuousEtch(migrated)
+      ? migrated
+      : validateProjectFile(migrated);
+  // Native Section/3D and the transactional Process worker consume the exact
+  // owner. Production Open/History/Recovery now admit it only after the normal
+  // strict model-and-snapshot validation above. Main deliberately refuses a
+  // misleading flat 2.5D projection; compact serialization stays disabled.
+  // Keep the historical opt-in parameter source-compatible for lab callers.
+  void experimentalContinuousEtchReadOnly;
   if (
     validateExperimentalPhysicalFacetModel(project.model) &&
     experimentalPhysicalFacetReadOnly !== true

@@ -278,6 +278,32 @@ def run(args):
             report['nativeThreeRendered'] = three_ok
             report['fourViewsVisible'] = all(bool(before[k] and before[k]['width'] > 100)
                                              for k in ('main', 'mask', 'three', 'section'))
+            if args.capture_continuous_ui:
+                # Capture the actual production Workstation form, not a mock.
+                # This is UI evidence only: a null-origin Worker cannot Apply.
+                page.get_by_text('Process', exact=True).first.click()
+                page.locator('#operationType').select_option('etch')
+                page.locator('#etchProfile').select_option('continuous')
+                page.locator('#continuousShape').select_option('elliptical')
+                page.locator('#operationThickness').fill('3')
+                page.locator('#continuousLateral').fill('5')
+                page.wait_for_timeout(350)
+                continuous_ui = out / 'continuous-etch-process-form.png'
+                page.screenshot(path=str(continuous_ui), animations='disabled')
+                report['images']['continuousEtchProcessForm'] = {
+                    'file': continuous_ui.name, 'sha256': snapshot_sha(continuous_ui)}
+                report['continuousEtchProcessForm'] = page.evaluate('''() => ({
+                  mode:document.querySelector('#operationType')?.value,
+                  profile:document.querySelector('#etchProfile')?.value,
+                  front:document.querySelector('#continuousShape')?.value,
+                  vertical:document.querySelector('#operationThickness')?.value,
+                  lateral:document.querySelector('#continuousLateral')?.value,
+                  shapeVisible:!document.querySelector('#continuousShapeRow')?.classList.contains('hidden'),
+                  lateralVisible:!document.querySelector('#continuousLateralRow')?.classList.contains('hidden')
+                })''')
+                if (report['continuousEtchProcessForm']['profile'] != 'continuous' or
+                    not report['continuousEtchProcessForm']['lateralVisible']):
+                    raise ValueError('Continuous Etch production form failed visibility diagnostics')
             if three_ok:
                 box = page.locator('[data-view="three"] canvas').bounding_box()
                 if box:
@@ -383,6 +409,24 @@ def run(args):
                     'geometry': details, 'renderer': state,
                     'source': input_evidence or 'production createModel three-material demo',
                     'workstationStateLoaded': False, 'recoveryVerified': False}
+                if model_input['model'] and model_input['model'].get('kernel') == 'vector-continuous-etch-v1':
+                    # Switch the *production* ThreeView camera to the underside
+                    # without repeated SwiftShader interactions or synthetic geometry.
+                    camera_state = page.evaluate('''() => {
+                      const renderer=window.__wafercadOfflineModel?.renderer;
+                      const state=renderer?.getViewState?.();
+                      if(!state) return null;
+                      const [x,y,z]=state.position, [tx,ty,tz]=state.target;
+                      return renderer.setViewState({
+                        ...state, position:[x,y,tz-Math.max(5,Math.abs(z-tz)*1.4)]
+                      });
+                    }''')
+                    if camera_state:
+                        page.wait_for_timeout(500)
+                        underside = out / 'continuous-release-underneath.png'
+                        page.screenshot(path=str(underside), animations='disabled')
+                        report['images']['continuousUnderside'] = {
+                            'file': underside.name, 'sha256': snapshot_sha(underside)}
                 report['limitations'].append(
                     'Isolated native Three.js viewport: Main/Mask/Section, History and Recovery are not synchronized.')
                 if not ready:
@@ -426,6 +470,8 @@ def main():
                              help='Strictly parse a real .wafercad in Node and render its model in isolated ThreeView')
     parser.add_argument('--inmemory-roi', help='xMin,yMin,xMax,yMax in physical micrometres; for --inmemory-project')
     parser.add_argument('--inmemory-z-break', help='top,bottom Z coordinates in physical micrometres; for --inmemory-project')
+    parser.add_argument('--capture-continuous-ui', action='store_true',
+                        help='Capture and inspect the real experimental Continuous Etch Process form')
     parser.add_argument('--wait-ms', type=int, default=5500)
     parser.add_argument('--width', type=int, default=1600)
     parser.add_argument('--height', type=int, default=1000)
