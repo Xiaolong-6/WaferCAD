@@ -655,8 +655,7 @@ function canonicalizeProcessPartition(model, regions, operation = 'Isotropic rel
     // Conformal must synchronize shared owners before the first persistence
     // snap to prevent fake full-depth void walls. Isotropic release uses its
     // independently validated partition/quantization contract.
-    synchronized =
-      operation === 'Conformal' ? nodeProcessPartitionEdges(canonical) : canonical,
+    synchronized = operation === 'Conformal' ? nodeProcessPartitionEdges(canonical) : canonical,
     snapped = synchronized.map((region) => ({
       ...region,
       geom: sanitizeProcessGeometry(snapProcessGeometry(region.geom)),
