@@ -1,6 +1,12 @@
 name: Process Recipe safety
 on:
   workflow_call:
+    inputs:
+      skip_shared_node_gate:
+        description: The caller already verifies the full lint, docs and Node test gate
+        required: false
+        type: boolean
+        default: false
   push:
     branches:
       - fix/process-recipe-safety-r1-r7
@@ -40,7 +46,11 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npx playwright install --with-deps chromium
-      - name: Unit regression and lint
+      # Ready PRs have the same full checks in Quality. Pages either runs its
+      # release Quality job or verifies the exact Ready PR Quality evidence.
+      # Keep this gate for standalone pushes and reusable callers by default.
+      - name: Shared lint, docs and Node test gate
+        if: ${{ github.event_name != 'pull_request' && !inputs.skip_shared_node_gate }}
         run: npm run check:ci
       - name: Start local app
         run: |

@@ -47,6 +47,22 @@ test('draft deferral never disables reusable production release acceptance', () 
   assert.ok(release.includes('run: node scripts/release/verified-pr-release.mjs'));
 });
 
+test('Recipe safety reuses the full Quality gate instead of running it twice', () => {
+  const recipe = workflow('process-recipe-safety.yml');
+  assert.match(recipe, /skip_shared_node_gate:[\s\S]*?default: false/);
+  assert.match(
+    recipe,
+    /name: Shared lint, docs and Node test gate\n        if: \$\{\{ github\.event_name != 'pull_request' && !inputs\.skip_shared_node_gate \}\}\n        run: npm run check:ci/,
+  );
+
+  const pages = workflow('pages.yml');
+  assert.match(
+    pages,
+    /release-recipe:[\s\S]*?uses: \.\/\.github\/workflows\/process-recipe-safety\.yml\n    with:\n      skip_shared_node_gate: true/,
+  );
+  assert.match(pages, /name: Release lint, format, docs and Node tests[\s\S]*?run: npm run check/);
+});
+
 test('Draft browser baseline retains UI smoke and scientific process gate', () => {
   const source = workflow('browser-regression.yml');
   assert.match(

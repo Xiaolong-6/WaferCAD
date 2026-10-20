@@ -143,6 +143,8 @@ jobs:
     needs: [release-evidence, release-impact]
     if: ${{ needs.release-evidence.outputs.fast != 'true' && needs.release-evidence.outputs.mode != 'superseded' && needs.release-impact.outputs.recipe == 'true' }}
     uses: ./.github/workflows/process-recipe-safety.yml
+    with:
+      skip_shared_node_gate: true
     permissions:
       contents: read
 
