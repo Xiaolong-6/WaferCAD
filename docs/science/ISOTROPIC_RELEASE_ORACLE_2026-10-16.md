@@ -329,13 +329,17 @@ IndexedDB readback, reload and History preservation before final acceptance.
 
 The native `renderContinuousEtch` path previously threw on **any** Main ROI,
 leaving the entire 3D view empty. Rectangle inspection now uses the exact
-physical XY bounds of a single axis-aligned rectangular ROI. Four native
-Three.js material clipping planes remove all geometry outside that footprint.
-The opened sides are filled by disposable native cut-face triangles generated
-from `continuousSectionContours()` and the same canonical analytic material
-owner as ordinary Section; the saved Model, History and physical front are never
-modified. Changing/clearing the ROI reuses the already built material meshes
-and regenerates only the presentation cut faces.
+physical XY bounds of a single axis-aligned rectangular ROI. The first
+implementation used GPU fragment-only clipping and left complete wafer meshes
+behind the cut planes; the result could show detached/stray surface fragments
+while passing the old cap-triangle-count smoke test. `continuous-etch-roi-mesh.js`
+now crops derived 3D triangles explicitly against each of the four XY bounds
+before they enter the GPU. The opened sides are filled by disposable cut-face
+triangles generated from `continuousSectionContours()` and the same canonical
+analytic material owner as ordinary Section. The saved Model, History and front
+are not modified. The full display meshes are retained for fast ROI changes;
+only presentation triangles/cut faces change, and a changed rectangle is reframed
+without resetting the user's camera orientation on unrelated rerenders.
 
 Continuous Section uses full physical Z by default, including when a generic
 wafer Z Break was previously enabled. The current visible/color state comes
@@ -352,3 +356,15 @@ produced by the existing `offline-native-app-capture.py` (with the true
 Origin Workstation/History/Recovery gate must cover Main ROI creation, 3D cut
 faces, Section Z and undo/redo/save, separately from isolated null-Origin
 rendering diagnostics.
+
+## Exact Continuous Etch Process Recipe replay (experimental)
+
+Process Recipes normalize `profile: "continuous"`, including exact `shape`
+(`circular`, `elliptical`, or `vertical`) and `lateral` micrometres alongside
+`depth`. Circular release enforces equal lateral and vertical reach; Front/Back
+only and an explicit target material are required. `Run All` passes the same
+canonical physical inputs to the Process Worker as manual Apply. Preflight
+rejects unsupported later material-changing Steps rather than silently using
+old isotropic Z bands. `record`/`snapshot` annotations may follow the release.
+The dedicated normal-Origin Workstation check must demonstrate Recipe Run All
+material/front parity with manual Apply, plus History and Recovery.

@@ -112,6 +112,8 @@ try {
         return (
           host?.dataset.renderState === 'ready' &&
           host.dataset.continuousEtchRoi === 'rect-clipped' &&
+          host.dataset.continuousEtchRoiMeshMode === 'geometry-clipped' &&
+          Number(host.dataset.continuousEtchRoiMeshTriangles) > 0 &&
           Number(host.dataset.continuousEtchRoiCapTriangles) > 0 &&
           !host.dataset.rendererBuildFailure
         );
@@ -124,6 +126,9 @@ try {
     assert.equal(clipped.workflow.steps.length, committed.workflow.steps.length);
     report.roiCapTriangles = Number(
       await page.locator('#threeHost').getAttribute('data-continuous-etch-roi-cap-triangles'),
+    );
+    report.roiMeshTriangles = Number(
+      await page.locator('#threeHost').getAttribute('data-continuous-etch-roi-mesh-triangles'),
     );
     await page.screenshot({ path: resolve(output, 'continuous-with-main-roi.png') });
 
@@ -173,9 +178,57 @@ try {
     assert.deepEqual(restored.model, model, 'Reload recovers exact physical owner');
     assert.equal(restored.workflow.steps.length, committed.workflow.steps.length);
     assert.equal(restored.projectName, 'Continuous Etch transaction acceptance');
+
+    // Recipe Run All must use the same exact front as a manual Process Apply.
+    // This replays from a real rebuilt Base, never substituting legacy N-band Etch.
+    await page.locator('[data-action="domain:process"]').click();
+    await page.locator('[data-action="process-mode:recipe"]').click();
+    await page.locator('#recipeCodeTab').click();
+    await page
+      .locator('#recipeCodeEditor')
+      .fill(
+        'etch({ target: "Base", depth: "2 µm", profile: "continuous", shape: "circular", face: "front", area: "full" });',
+      );
+    await page.locator('#recipeApplyCodeBtn').click();
+    assert.doesNotMatch(await page.locator('#recipeValidation').innerText(), /✕/);
+    await page.locator('#recipeRunStart').selectOption('new-base');
+    assert.doesNotMatch(await page.locator('#recipeValidation').innerText(), /✕/);
+    await page.locator('#recipeRunAllBtn').click();
+    await page.getByRole('button', { name: 'Clear history', exact: true }).click({
+      timeout: 30000,
+    });
+    await page.waitForFunction(
+      () => {
+        const summary = document.querySelector('#recipeRunSummary')?.textContent || '';
+        return /^(Completed|Failed|Stopped):/.test(summary);
+      },
+      null,
+      { timeout: 120000 },
+    );
+    report.recipeSummary = (await page.locator('#recipeRunSummary').innerText()).trim();
+    assert.match(report.recipeSummary, /^Completed: 1\/1 steps committed/);
+    const recipeReplayed = (await snapshot()).model;
+    assert.equal(recipeReplayed.kernel, 'vector-continuous-etch-v1');
+    assert.deepEqual(
+      recipeReplayed.continuousEtchOwner.fronts,
+      model.continuousEtchOwner.fronts,
+      'Run All must preserve the same exact analytic release, not a sampled surrogate',
+    );
+    const recipePhysical = await page.evaluate(async () => {
+      const { continuousModelMaterialAt, validateContinuousEtchModel } =
+        await import('/continuous-etch-model.js');
+      const current = window.WaferCadV2Workstation.snapshot().model;
+      validateContinuousEtchModel(current);
+      return {
+        removedTop: continuousModelMaterialAt(current, [0, 0, 4]),
+        retainedCore: continuousModelMaterialAt(current, [0, 0, 0]),
+      };
+    });
+    assert.deepEqual(recipePhysical, physical, 'Recipe and manual Apply must agree on material');
+    await page.screenshot({ path: resolve(output, 'continuous-after-recipe-runall.png') });
     assert.deepEqual(report.browserErrors, []);
     report.status = 'pass';
-    console.log('Continuous Etch Workstation: Process Worker, History, IndexedDB and reload PASS');
+    console.log('Continuous Etch Workstation: Process/ROI/History/Recovery/Recipe Run All PASS');
   } catch (error) {
     report.uiStatus = await page
       .locator('[data-slot="status.message"]')

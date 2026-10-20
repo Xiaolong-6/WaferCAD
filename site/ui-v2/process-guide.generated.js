@@ -121,7 +121,7 @@
       'Subtracts material with an analytic circular, elliptical or vertical release front.',
       'Uses one exact physical material owner derived from exposed selected material and the active mask. No Z band count or stepped surrogate is saved.',
       'Exposed target · Vertical depth · Lateral reach · Front shape · Face · Area',
-      'One release per lineage. Follow-on Process, 3D ROI clipping and planar Main material projection are not yet supported.',
+      'One release per lineage; additional physical Process operations and non-rectangular 3D ROI shapes are not yet supported. Rectangular Main ROI inspection, Main material projection, and exact Recipe Run All replay are available in the experimental mode.',
       'Suspended silica microdisk with an exact silicon undercut.',
       'geometry',
     ),

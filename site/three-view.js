@@ -1,4 +1,5 @@
-import { continuousRectRoiBounds, continuousRectRoiPlanes } from './continuous-etch-roi.js';
+import { continuousRectRoiBounds } from './continuous-etch-roi.js';
+import { clipContinuousSurfaceToRect } from './continuous-etch-roi-mesh.js';
 import { buildContinuousRectRoiCaps } from './continuous-etch-roi-cap.js';
 import { isArrayModel, resolveArrayModel, geometryBounds, arrayParts } from './model-array.js';
 import { annotationDepthFraction, IMPLANT_DEPTH_GRADIENT } from './annotation-rendering.js';
@@ -3287,12 +3288,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
   async function renderContinuousEtch(model) {
     const clip = getClipGeometry();
     const roiBounds = continuousRectRoiBounds(clip);
-    const clippingPlanes = continuousRectRoiPlanes(THREE, clip);
     const owner = validateContinuousEtchModel(model);
     if (!owner) throw new RangeError('Missing or invalid continuous material owner');
     const updateRoiCaps = () => {
       const signature = JSON.stringify(roiBounds);
-      if (continuousRoiCapSignature === signature) return;
+      if (continuousRoiCapSignature === signature) return false;
       for (const mesh of continuousRoiCapObjects) {
         group.remove(mesh);
         presentationObjects.delete(mesh);
@@ -3302,7 +3302,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
       }
       continuousRoiCapObjects = [];
       continuousRoiCapSignature = signature;
-      if (!roiBounds) return;
+      if (!roiBounds) {
+        host.dataset.continuousEtchRoiCapTriangles = '0';
+        return true;
+      }
       const exterior = { kind: 'material-exterior' };
       const state = presentationState(exterior, getInspection() || {}).materialState;
       for (const part of buildContinuousRectRoiCaps(THREE, model, roiBounds)) {
@@ -3330,26 +3333,50 @@ diffuseColor.a *= waferCadAlphaScale;`,
           0,
         ),
       );
+      return true;
+    };
+    // Rebuild only display triangles on an ROI change. The original native
+    // meshes are retained as immutable typed arrays, so zoom, color changes
+    // and Undo/Redo never mutate or resample the analytical material owner.
+    const cropMaterialMeshes = () => {
+      const signature = JSON.stringify(roiBounds);
+      let changed = false;
+      for (const mesh of presentationObjects) {
+        const source = mesh.userData?.continuousFullPart;
+        if (!source || mesh.userData.continuousMeshCropSignature === signature) continue;
+        const cropped = clipContinuousSurfaceToRect(source, roiBounds);
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(cropped.positions, 3));
+        geometry.setAttribute('normal', new THREE.BufferAttribute(cropped.normals, 3));
+        geometry.userData.analyticSurfaceNormals = true;
+        const oldGeometry = mesh.geometry;
+        mesh.geometry = geometry;
+        mesh.userData.continuousMeshCropSignature = signature;
+        mesh.userData.continuousRoiEmpty = cropped.triangles === 0;
+        trackZDisplayObject(mesh);
+        oldGeometry?.dispose?.();
+        changed = true;
+      }
+      if (changed) applyZDisplayState(model);
+      host.dataset.continuousEtchRoiMeshMode = roiBounds ? 'geometry-clipped' : 'full-mesh';
+      host.dataset.continuousEtchRoiMeshTriangles = String(
+        [...presentationObjects].reduce((count, mesh) => {
+          if (!mesh.userData?.continuousFullPart) return count;
+          return count + (mesh.geometry.getAttribute('position')?.count || 0) / 3;
+        }, 0),
+      );
+      return changed;
     };
     const updateMaterialAppearance = () => {
       for (const mesh of presentationObjects) {
         const layerId = mesh.userData?.continuousLayerId;
         if (!layerId) continue;
         const layer = layerById(model, layerId);
-        mesh.visible = layer?.visible !== false;
+        mesh.visible = layer?.visible !== false && !mesh.userData.continuousRoiEmpty;
         mesh.material?.color?.set(layer?.color || '#999');
-        // Reuse the same physical triangles when the ROI changes. Clipping is
-        // purely presentational and does not alter the material owner/History.
-        if (mesh.material) {
-          const wasClipped = Boolean(mesh.material.clippingPlanes?.length);
-          mesh.material.clippingPlanes =
-            !mesh.userData.continuousRoiCap && clippingPlanes.length ? clippingPlanes : null;
-          mesh.material.clipIntersection = false;
-          if (wasClipped !== Boolean(clippingPlanes.length)) mesh.material.needsUpdate = true;
-        }
       }
-      if (renderer) renderer.localClippingEnabled = clippingPlanes.length > 0;
-      host.dataset.continuousEtchRoi = clippingPlanes.length ? 'rect-clipped' : 'full-model';
+      if (renderer) renderer.localClippingEnabled = false;
+      host.dataset.continuousEtchRoi = roiBounds ? 'rect-clipped' : 'full-model';
       scheduleFrame();
     };
     if (
@@ -3358,8 +3385,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
       presentationObjects.size
     ) {
       applyPresentationState();
-      updateRoiCaps();
+      cropMaterialMeshes();
+      const roiChanged = updateRoiCaps();
       updateMaterialAppearance();
+      // The default camera still targets the full wafer after an ROI change.
+      // Reframe only when the actual rectangle changes; ordinary orbit/pan and
+      // layer restyling must not reset the user's view.
+      if (roiChanged) fit({ notify: false, preserveOrientation: true });
       return;
     }
 
@@ -3443,6 +3475,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
       if (mesh) {
         mesh.name = 'continuous-etch-' + part.layerId;
         mesh.userData.continuousLayerId = part.layerId;
+        mesh.userData.continuousFullPart = {
+          layerId: part.layerId,
+          positions: part.positions.slice(),
+          normals: part.normals.slice(),
+        };
       }
     }
     physicalSceneModel = model;
@@ -3459,6 +3496,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     delete host.dataset.rendererBuildFailure;
     applyZDisplayState(model);
     applyPresentationState({ profile: false, settle: true });
+    cropMaterialMeshes();
     updateRoiCaps();
     updateMaterialAppearance();
     host.dataset.renderState = 'ready';

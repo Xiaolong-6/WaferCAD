@@ -189,3 +189,20 @@ test('Both preflight rejects Lift-off and absolute-Z Planarize before Run All mu
   assert.match(report.errors[0], /Both is unsupported for Lift-off/);
   assert.match(report.errors[1], /Both is unsupported for absolute-Z Planarize/);
 });
+
+test('Recipe preflight rejects follow-on physical Process after exact Continuous Etch', () => {
+  const continuous = step('etch', { target: 'Base', depth: '2 µm', profile: 'continuous' });
+  const next = step('etch', { target: 'Base', depth: '1 µm' });
+  const record = step('record', { process: 'custom', label: 'Release verified' });
+  assert.deepEqual(validateRecipeExecution([continuous, record], { model }).errors, []);
+  assert.match(
+    validateRecipeExecution([continuous, next], { model }).errors.join(' '),
+    /follow-on Process/,
+  );
+  assert.match(
+    validateRecipeExecution([next], {
+      model: { ...model, kernel: 'vector-continuous-etch-v1' },
+    }).errors.join(' '),
+    /follow-on Process/,
+  );
+});
