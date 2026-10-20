@@ -47,8 +47,10 @@ import {
 } from './renderer-line-reduction.js';
 import {
   canUseGpuRoughTask,
+  checkGpuRoughHeightParity,
   decorateGpuRoughMaterial,
   decorateRoughFarFieldMaterial,
+  gpuRoughParitySamples,
   supportsPreciseGpuRoughDisplacement,
 } from './gpu-rough-surface.js?v=rough-farfield-v1';
 import { triangulatePolygon } from './polygon-triangulation.js';
@@ -2436,16 +2438,24 @@ diffuseColor.a *= waferCadAlphaScale;`,
     return Math.max(0, Math.min(1, visibleArea / modelArea));
   }
 
-  function gpuRoughTask(task) {
-    return (
+  function gpuRoughTask(task, zones) {
+    delete task.gpuHeightParity;
+    const candidate =
       preciseGpuRoughDisplacement &&
       canUseGpuRoughTask({
         appearance: task?.cap?.appearance,
         buried: task?.cap?.buried,
         implant: Boolean(task?.implant),
         zDisplay: currentZDisplay,
-      })
+      });
+    if (!candidate) return false;
+    task.gpuHeightParity = checkGpuRoughHeightParity(
+      THREE,
+      renderer,
+      task.cap.appearance,
+      gpuRoughParitySamples(zones),
     );
+    return task.gpuHeightParity.eligible;
   }
 
   function prepareAdaptiveRoughTasks({ interactive = false } = {}) {
@@ -2455,7 +2465,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
       focus = focusBounds(),
       requests = [],
       tasks = roughTasks.map((task) => {
-        const gpuDisplacement = gpuRoughTask(task),
+        const sourceZones = prepareRoughSpatialZones(task),
+          gpuDisplacement = gpuRoughTask(task, sourceZones),
           gpuGeometryDetail = gpuDisplacement
             ? interactive
               ? 0.35
@@ -2470,7 +2481,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
                 ? 8
                 : 6
             : policy.maxDepth,
-          zones = prepareRoughSpatialZones(task).map((zone) => {
+          zones = sourceZones.map((zone) => {
             const priority = roughZonePriority(zone.bounds, focus),
               roughnessDetail =
                 policy.roughnessDetail *
@@ -2535,6 +2546,14 @@ diffuseColor.a *= waferCadAlphaScale;`,
     // preserve thin conformal spacing between their independent layer caps.
     const conformalLodPairs = synchronizeConformalRoughLods(requests, allocations);
     host.dataset.roughConformalLodPairs = String(conformalLodPairs);
+    const parity = tasks.map((task) => task.gpuHeightParity).filter(Boolean);
+    host.dataset.roughGpuParityCheckedTasks = String(parity.length);
+    host.dataset.roughGpuParityFallbackTasks = String(
+      parity.filter((probe) => !probe.eligible).length,
+    );
+    host.dataset.roughGpuParityMaximumErrorUm = String(
+      Math.max(0, ...parity.map((probe) => probe.maximumErrorUm || 0)),
+    );
     // Anti-alias unresolved features in the *displayed* stochastic heightfield
     // without increasing the scene triangle budget or changing stored geometry.
     const sampling = roughTaskDisplaySampling(tasks);

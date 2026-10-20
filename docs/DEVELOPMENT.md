@@ -181,6 +181,27 @@ registration. Reported interpolation errors are diagnostics, not approved
 tolerances. Changing that physical heightfield requires an explicit scientific
 and project-compatibility contract, including physical GLB export.
 
+Hardware renderer names alone do not establish CPU/GPU height parity. Before
+using shader displacement, qualify the task with up to 64 Float32 XY samples
+across its prepared cap zones, executing the production profile in the vertex
+shader and reading a float target. A maximum error outside the existing
+`2e-5 µm` vertex-height contract, incomplete readback or unavailable float
+targets selects the existing CPU mesh. Cache up to 64 task results per
+renderer and dispose all temporary GPU resources; repeating an unchanged task
+must not draw or read back again. This bounded screen-independent probe does
+not prove unsampled or mesh-interior accuracy. Known software backends still
+select CPU directly. Physical morphology, Section and CPU GLB export are
+unchanged. The native offline diagnostic's `--check-rough-parity` compares the
+actual Photodetector coordinates with origin and constant-height controls.
+On Chromium 140/SwiftShader, the 58-point actual-coordinate probe measured a
+maximum `0.479321 µm` shader/CPU discrepancy; the origin control measured
+`0.0000214965 µm`, and the uniform-height control measured
+`0.0000000119209 µm`. These are reproducible diagnostic observations, not
+hardware guarantees or approved error tolerances. The independent physical
+cutline still reports approximately `0.133455 µm` RMS interpolation error at
+LOD 4; rejecting inaccurate shader displacement does not fix that legacy
+field/mesh-resolution mismatch.
+
 Exposed rough caps can use the GPU-hybrid renderer: the worker still owns adaptive topology and transferable buffers, while shader code applies deterministic surface displacement and micro-normal detail. Keep CPU fallback for buried interfaces, Implant morphology and non-unit front/back Z scaling, and keep physical GLB export on the CPU morphology path. Presentation-only 3D changes (currently opacity and borders) must not be added to the physical-scene cache key: with model/ROI/Z-collapse/layer identity/Fast policy unchanged, update existing scene objects and materials in place. Any change to this split must preserve `sceneGeneration`, `surfacePlanBuildCount` and stable scene resource counts under repeated presentation toggles.
 
 The historical [2026-10-07 pre-main audit](archive/PRE_MAIN_AUDIT_2026-10-07.md) records the complete branch review, repaired shared-asset budget accounting and browser ownership, and local integration evidence at that revision.

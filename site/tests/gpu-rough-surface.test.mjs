@@ -5,10 +5,12 @@ import { readFileSync } from 'node:fs';
 import {
   canUseGpuRoughPreview,
   canUseGpuRoughTask,
+  checkGpuRoughHeightParity,
   decorateGpuRoughMaterial,
   decorateRoughFarFieldMaterial,
   decorateGpuRoughLineMaterial,
   gpuRoughAppearanceUniforms,
+  gpuRoughParitySamples,
   supportsPreciseGpuRoughDisplacement,
 } from '../gpu-rough-surface.js';
 
@@ -24,6 +26,97 @@ const appearance = {
   seed: 0xfedcba98,
   sampleOrigin: [12.5, -7.25],
 };
+
+test('GPU qualification samples physical cap corners and interiors across zones within a fixed budget', () => {
+  const triangle = (x) => [
+    [x, -1, 0],
+    [x + 0.3, -1, 0],
+    [x, 1, 0],
+  ];
+  const zones = [
+    { baseTriangles: [] },
+    { baseTriangles: Array.from({ length: 33 }, (_, i) => triangle(2492 + i / 10)) },
+    { baseTriangles: [triangle(-3000)] },
+  ];
+  const before = JSON.stringify(zones);
+  const points = gpuRoughParitySamples(zones);
+  assert.ok(points.length > 16 && points.length <= 64);
+  assert.ok(points.some(([x]) => x === 2492));
+  assert.ok(points.some(([x]) => x === -3000));
+  assert.ok(
+    points.some(([, y]) => y !== -1 && y !== 1),
+    'Test cap interiors, not just corners',
+  );
+  assert.ok(points.every((point) => point.every((value) => value === Math.fround(value))));
+  assert.deepEqual(gpuRoughParitySamples(zones), points);
+  assert.deepEqual(gpuRoughParitySamples([]), []);
+  assert.equal(JSON.stringify(zones), before, 'Never modify physical mesh input');
+});
+
+test('GPU height qualification rejects inaccurate or missing readback and restores renderer state', async () => {
+  const THREE = await import('three');
+  const { roughDisplayProfileOffsetAtPoint } = await import('../surface-rendering.js');
+  const points = [
+    [2495.123, 0.125],
+    [2494.7, -0.3],
+  ].map((p) => p.map(Math.fround));
+  for (const fault of ['none', 'height-error', 'empty-readback', 'throw', 'no-float-target']) {
+    const previous = new THREE.WebGLRenderTarget(2, 2);
+    let target = previous,
+      reads = 0,
+      draws = 0,
+      disposed = 0;
+    const renderer = {
+      extensions: { has: () => fault !== 'no-float-target' },
+      getRenderTarget: () => target,
+      getActiveCubeFace: () => 2,
+      getActiveMipmapLevel: () => 1,
+      setRenderTarget(value, face, level) {
+        target = value;
+        if (value === previous) {
+          assert.equal(face, 2);
+          assert.equal(level, 1);
+        } else value.addEventListener('dispose', () => disposed++);
+      },
+      render(scene) {
+        draws++;
+        const mesh = scene.children[0];
+        mesh.geometry.addEventListener('dispose', () => disposed++);
+        mesh.material.addEventListener('dispose', () => disposed++);
+        assert.match(
+          mesh.material.vertexShader,
+          /sampleHeight = waferCadRoughProfile\(position.xy\)/,
+        );
+        assert.doesNotMatch(mesh.material.fragmentShader, /waferCadRoughProfile/);
+      },
+      readRenderTargetPixels(_target, _x, _y, _width, _height, data) {
+        reads++;
+        if (fault === 'throw') throw Error('Injected readback failure');
+        if (fault === 'empty-readback') return;
+        points.forEach(([x, y], i) => {
+          data[i * 4] =
+            roughDisplayProfileOffsetAtPoint(x, y, appearance) +
+            (fault === 'height-error' ? 0.001 : 0);
+          data[i * 4 + 3] = 1;
+        });
+      },
+    };
+    const result = checkGpuRoughHeightParity(THREE, renderer, appearance, points);
+    assert.equal(result.eligible, fault === 'none', fault);
+    assert.equal(target, previous, 'Never leave the qualification target bound');
+    assert.equal(
+      disposed,
+      fault === 'no-float-target' ? 0 : 3,
+      'Dispose all temporary GPU resources',
+    );
+    const oldReads = reads,
+      oldDraws = draws;
+    assert.equal(checkGpuRoughHeightParity(THREE, renderer, appearance, points), result);
+    assert.equal(reads, oldReads, 'Camera-only repeats reuse qualification');
+    assert.equal(draws, oldDraws, 'Cached qualification must not issue another GPU draw');
+    previous.dispose();
+  }
+});
 
 test('GPU rough uniforms preserve deterministic appearance identity', () => {
   const uniforms = gpuRoughAppearanceUniforms(appearance, {

@@ -430,6 +430,9 @@ def run(args):
                     'Isolated native Three.js viewport: Main/Mask/Section, History and Recovery are not synchronized.')
                 if not ready:
                     fail = True
+                if args.check_rough_parity:
+                    expression = (root / 'scripts/offline-native-rough-parity.js').read_text(encoding='utf-8')
+                    report['roughHeightParity'] = page.evaluate(expression, model_input['model'])
             report['httpRequestsAllowed'] = dict(counts)
             report['rejectedRequests'] = rejected
             # Only exact build-info.json is known harmless; any other denial needs review.
@@ -477,6 +480,7 @@ def main():
     parser.add_argument('--width', type=int, default=1600)
     parser.add_argument('--height', type=int, default=1000)
     parser.add_argument('--check-z-ui', action='store_true', help='Exercise real v2 display-only Z menu')
+    parser.add_argument('--check-rough-parity', action='store_true', help='Probe production GLSL at Photodetector physical coordinates')
     parser.add_argument('--headless', action='store_true', help='Opt out of headful/Xvfb; may disable WebGL')
     parser.add_argument('--require-origin', action='store_true', help='Fail rather than use null-origin diagnostic')
     args = parser.parse_args()
@@ -484,6 +488,8 @@ def main():
         parser.error('Invalid dimensions or wait interval')
     if (args.inmemory_roi or args.inmemory_z_break) and not args.inmemory_project:
         parser.error('ROI and Z break require --inmemory-project')
+    if args.check_rough_parity and not args.inmemory_project:
+        parser.error('Rough height parity requires --inmemory-project')
     try:
         args.inmemory_roi = parse_native_bounds(args.inmemory_roi, 'ROI', 4)
         args.inmemory_z_break = parse_native_bounds(args.inmemory_z_break, 'Z break', 2)

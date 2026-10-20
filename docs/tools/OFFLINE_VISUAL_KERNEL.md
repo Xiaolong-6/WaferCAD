@@ -263,6 +263,16 @@ Focused checks: `python3 scripts/offline-native-app-capture.test.py`.
 The real Chromium screenshot run is manual and intentionally not part of
 the ordinary unit-test/CI loop.
 
+Add `--check-rough-parity` together with the full Photodetector
+`--inmemory-project` to execute the production vertex-height qualification
+at the actual rough-region coordinates, plus origin and uniform-height
+controls. The evidence records maximum/RMS physical height error, initial
+probe time, cache reuse, render-target restoration and resource disposal.
+It deliberately measures the shader even on SwiftShader, where production
+already selects CPU; software results cannot establish hardware acceptance.
+This diagnostic does not change the physical heightfield or accept the
+remaining triangle-interior interpolation error.
+
 ### Source-backed in-memory native 3D: demo or validated project
 
 Worker-restricted browsers can still render real, validated model topology
