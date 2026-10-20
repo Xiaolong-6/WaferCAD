@@ -66,7 +66,7 @@ function topAt(mesh, x) {
     const det = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy);
     if (Math.abs(det) < 1e-9) continue;
     const u = ((by - cy) * (x - cx) + (cx - bx) * -cy) / det;
-    const v = ((cy - ay) * (x - cx) + (ax - cx) * cy) / det;
+    const v = ((cy - ay) * (x - cx) - (ax - cx) * cy) / det;
     if (u < -1e-6 || v < -1e-6 || u + v > 1 + 1e-6) continue;
     top = Math.max(top, u * az + v * bz + (1 - u - v) * cz);
   }
