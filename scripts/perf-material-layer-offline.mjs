@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Per-layer exact material topology cost attribution, never a browser/first-paint metric.
 // Usage: node scripts/perf-material-layer-offline.mjs [--example <catalog-id>]
-//        [--layer <layer-id>] [--verify] [--expected-sha256 <64 hex digits>]
+//        [--layer <layer-id>] [--verify] [--boolean-stats]
+//        [--expected-sha256 <64 hex digits>]
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { performance } from 'node:perf_hooks';
@@ -11,13 +12,14 @@ const options = {
   example: 'm3d-selfpowered-full-replay',
   layer: null,
   verify: false,
+  booleanStats: false,
   expected: null,
 };
 const names = { '--example': 'example', '--layer': 'layer', '--expected-sha256': 'expected' };
 for (let i = 2; i < process.argv.length; i++) {
   const arg = process.argv[i];
-  if (arg === '--verify') {
-    options.verify = true;
+  if (arg === '--verify' || arg === '--boolean-stats') {
+    options[arg === '--verify' ? 'verify' : 'booleanStats'] = true;
     continue;
   }
   if (!names[arg] || i + 1 >= process.argv.length) throw new Error('Invalid option: ' + arg);
@@ -34,6 +36,48 @@ if (options.expected && !/^[a-f0-9]{64}$/i.test(options.expected)) {
 }
 
 await loadGeometryKernel();
+// Optional operation-level timings only, with the real production Boolean
+// functions and no changed source geometry. Instrumented wall times include
+// profiler overhead and should not be compared to non-instrumented runs.
+const booleanMetrics = options.booleanStats
+  ? Object.fromEntries(
+      ['union', 'difference', 'intersection'].map((name) => [
+        name,
+        { calls: 0, kernelMs: 0, maxMs: 0 },
+      ]),
+    )
+  : null;
+const slowestBooleanCalls = [];
+if (booleanMetrics) {
+  const kernel = globalThis.polygonClipping;
+  for (const operation of Object.keys(booleanMetrics)) {
+    const original = kernel[operation];
+    kernel[operation] = (...operands) => {
+      const started = performance.now();
+      try {
+        return original(...operands);
+      } finally {
+        const ms = performance.now() - started;
+        const current = booleanMetrics[operation];
+        current.calls++;
+        current.kernelMs += ms;
+        current.maxMs = Math.max(current.maxMs, ms);
+        if (slowestBooleanCalls.length < 5 || ms > slowestBooleanCalls.at(-1).ms) {
+          slowestBooleanCalls.push({
+            operation,
+            ms,
+            polygons: operands.reduce(
+              (total, geom) => total + (Array.isArray(geom) ? geom.length : 0),
+              0,
+            ),
+          });
+          slowestBooleanCalls.sort((a, b) => b.ms - a.ms);
+          if (slowestBooleanCalls.length > 5) slowestBooleanCalls.pop();
+        }
+      }
+    };
+  }
+}
 const { expandProjectStorage } = await import('../site/project-io.js');
 const { migrateProjectFile } = await import('../site/project-schema.js');
 const { materialSolidsFromTopology } = await import('../site/process-topology.js');
@@ -62,6 +106,14 @@ function layerModel(layerId) {
 
 const measurements = [];
 for (const layerId of options.layer ? [options.layer] : ids) {
+  if (booleanMetrics) {
+    for (const stats of Object.values(booleanMetrics)) {
+      stats.calls = 0;
+      stats.kernelMs = 0;
+      stats.maxMs = 0;
+    }
+    slowestBooleanCalls.length = 0;
+  }
   const source = layerModel(layerId);
   const started = performance.now();
   const result = materialSolidsFromTopology(source);
@@ -76,6 +128,12 @@ for (const layerId of options.layer ? [options.layer] : ids) {
     caps: result[0].caps.length,
     sha256: hash(result[0]),
     elapsedMs,
+    ...(booleanMetrics
+      ? {
+          booleanMetrics: structuredClone(booleanMetrics),
+          slowestBooleanCalls: structuredClone(slowestBooleanCalls),
+        }
+      : {}),
   });
 }
 

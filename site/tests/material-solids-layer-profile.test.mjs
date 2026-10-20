@@ -45,3 +45,15 @@ test('wrong receipt and absent layer fail closed without inventing results', () 
   assert.notEqual(badLayer.status, 0);
   assert.match(badLayer.stderr, /Layer is absent/);
 });
+
+test('opt-in per-layer Boolean timings preserve pinned geometry and exclude full verification', () => {
+  const result = run('--layer', 'layer-6', '--boolean-stats', '--verify');
+  assert.equal(result.status, 0, result.stderr);
+  const data = JSON.parse(result.stdout);
+  assert.equal(data.layers[0].sha256, layerHash);
+  assert.equal(data.fullVerification.sha256, fullHash);
+  assert.ok(data.layers[0].booleanMetrics.union.calls > 0);
+  assert.ok(Number.isFinite(data.layers[0].booleanMetrics.union.kernelMs));
+  assert.ok(data.layers[0].booleanMetrics.union.maxMs >= 0);
+  assert.ok(data.layers[0].slowestBooleanCalls.length > 0);
+});
