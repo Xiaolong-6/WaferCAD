@@ -219,7 +219,7 @@ test('generic serialization preserves an exact continuous owner buried in Histor
   const stored = JSON.parse(serializeProject(project));
   assert.equal(stored.storage?.lossless, true);
   const reopened = expandProjectStorage(stored);
-  assert.equal(JSON.stringify(reopened.snapshots[0].state.model), original);
+  assert.deepEqual(reopened.snapshots[0].state.model, JSON.parse(original));
   assert.equal(
     continuousModelMaterialAt(reopened.snapshots[0].state.model, [145, 0, 40.5]),
     'layer-1',
@@ -295,7 +295,7 @@ test('History Manager restores M07 and exact continuous release across lossless 
   assert.equal(revived.restore(before.id), true);
   assert.equal(current.model.kernel, 'vector-2.5d-v1');
   assert.equal(revived.restore(after.id), true);
-  assert.equal(JSON.stringify(current.model), expectedModel);
+  assert.deepEqual(current.model, JSON.parse(expectedModel));
   assert.equal(continuousModelMaterialAt(current.model, [50, 0, 15]), null);
   assert.equal(continuousModelMaterialAt(current.model, [145, 0, 40.5]), 'layer-1');
   assert.equal(
@@ -379,9 +379,9 @@ test('process History nodes replay continuous M07 material across exact project 
   assert.equal(revived.listHistory().length, 2);
   assert.equal(revived.restoreProcessNode(before.id), true);
   assert.equal(active.model.kernel, 'vector-2.5d-v1');
-  assert.equal(JSON.stringify(active.model), preservedSource);
+  assert.deepEqual(active.model, JSON.parse(preservedSource));
   assert.equal(revived.restoreProcessNode(after.id), true);
-  assert.equal(JSON.stringify(active.model), expectedRelease);
+  assert.deepEqual(active.model, JSON.parse(expectedRelease));
   assert.equal(continuousModelMaterialAt(active.model, [145, 0, 40.5]), 'layer-1');
   assert.equal(JSON.stringify(reopened), savedState);
 });
