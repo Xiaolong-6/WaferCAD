@@ -1,6 +1,6 @@
 // Playwright page.evaluate expression. Independent production Three.js instance.
 // It does not assign live Workstation state, bypass Recovery or replace Worker.
-async ({ model: providedModel, demo = false, roiBounds = null, zBreak = null }) => {
+async ({ model: providedModel, demo = false, roiBounds = null, zBreak = null, zDisplayFactor = 1 }) => {
   const [{ createThreeView }, { buildRenderSurfacePlan, rememberRenderSurfacePlan }] =
     await Promise.all([
       import('https://wafercad.local/three-view.js'),
@@ -46,7 +46,7 @@ async ({ model: providedModel, demo = false, roiBounds = null, zBreak = null }) 
   const title = document.createElement('div');
   title.textContent = demo
     ? 'WaferCAD production Three.js — in-memory three-material demo'
-    : 'WaferCAD production Three.js — validated project model (isolated viewport)';
+    : `WaferCAD production Three.js — isolated validated model, display Z ×${zDisplayFactor}`;
   title.style.cssText = 'padding:10px 18px;color:#2a3035;font:600 18px sans-serif;';
   const host = document.createElement('div');
   host.style.cssText = 'position:relative;width:100%;height:calc(100% - 70px);';
@@ -61,6 +61,7 @@ async ({ model: providedModel, demo = false, roiBounds = null, zBreak = null }) 
     getModel: () => model,
     getClipGeometry: () => clip,
     getZCollapse: () => collapse,
+    getZDisplayFactor: () => zDisplayFactor,
     getInspection: () => ({ opacity: 1, borders: true, fast: true }),
   });
   const initialized = await renderer.init();
@@ -71,6 +72,7 @@ async ({ model: providedModel, demo = false, roiBounds = null, zBreak = null }) 
     initialized,
     roiBounds,
     zBreak,
+    zDisplayFactor,
     roughCaps: plan.caps.filter((cap) => cap.appearance?.kind === 'rough').length,
     exposedRoughCaps: plan.caps.filter((cap) => !cap.buried && cap.appearance?.kind === 'rough').length,
     layers: model.layers.length,

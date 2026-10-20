@@ -323,7 +323,8 @@ def run(args):
                     report['afterProject'] = runtime_probe(page)
             if args.inmemory_demo or args.inmemory_project:
                 model_input = {'model': None, 'demo': args.inmemory_demo,
-                               'roiBounds': args.inmemory_roi, 'zBreak': args.inmemory_z_break}
+                               'roiBounds': args.inmemory_roi, 'zBreak': args.inmemory_z_break,
+                               'zDisplayFactor': args.inmemory_z_scale}
                 input_evidence = None
                 if args.inmemory_project:
                     project_path = args.inmemory_project.resolve()
@@ -426,6 +427,8 @@ def main():
                              help='Strictly parse a real .wafercad in Node and render its model in isolated ThreeView')
     parser.add_argument('--inmemory-roi', help='xMin,yMin,xMax,yMax in physical micrometres; for --inmemory-project')
     parser.add_argument('--inmemory-z-break', help='top,bottom Z coordinates in physical micrometres; for --inmemory-project')
+    parser.add_argument('--inmemory-z-scale', type=int, choices=(1, 2, 5, 10), default=1,
+                        help='Diagnostic-only uniform 3D display Z multiplier')
     parser.add_argument('--wait-ms', type=int, default=5500)
     parser.add_argument('--width', type=int, default=1600)
     parser.add_argument('--height', type=int, default=1000)

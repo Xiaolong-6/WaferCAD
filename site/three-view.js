@@ -57,6 +57,7 @@ import {
   translatedSidewallInstanceGroups,
 } from './renderer-instancing.js';
 import { createCollapsedZDisplayTransform, resolveSectionCollapse } from './section-z-collapse.js';
+import { normalizeThreeZDisplayFactor, threeZDisplayScale } from './three-z-display.js';
 import { geometryFromRoughCap, geometryFromRoughMeshData } from './rough-mesh-geometry.js';
 import {
   boundaryProfileFromPositions,
@@ -113,6 +114,7 @@ export function createThreeView({
   getClipGeometry = () => null,
   getInspection = () => ({ opacity: 1, borders: false }),
   getZCollapse = () => null,
+  getZDisplayFactor = () => 1,
   onViewChanged = () => {},
 } = {}) {
   if (!host) throw new TypeError('3D host is required.');
@@ -345,11 +347,17 @@ export function createThreeView({
       }),
       bounds = visibleBounds(model, getClipGeometry()),
       xySpan = Math.max(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY, 1e-12),
-      scale = (xySpan * 0.12) / Math.max(transform.displaySpan, 1e-12);
+      baseScale = (xySpan * 0.12) / Math.max(transform.displaySpan, 1e-12),
+      // An opt-in, uniformly applied display multiplier. All mesh, border,
+      // sidewall and conformal geometry shares group.scale.z; Process and GLB
+      // export operate on the original unscaled physical model.
+      displayFactor = normalizeThreeZDisplayFactor(getZDisplayFactor()),
+      scale = threeZDisplayScale(baseScale, displayFactor);
 
     return {
       ...transform,
       scale,
+      displayFactor,
     };
   }
 
@@ -464,6 +472,8 @@ export function createThreeView({
     host.dataset.zCollapseBottomUm = String(currentZDisplay.bottom);
     host.dataset.zCollapseGapUm = String(currentZDisplay.gap);
     host.dataset.zDisplayScale = String(currentZDisplay.scale);
+    host.dataset.zDisplayFactor = String(currentZDisplay.displayFactor);
+    host.dataset.zDisplayOnly = 'true';
     host.dataset.zFrontScale = String(currentZDisplay.frontScale);
     host.dataset.zBackScale = String(currentZDisplay.backScale);
     host.dataset.zScaleLinked = String(currentZDisplay.scaleLinked !== false);

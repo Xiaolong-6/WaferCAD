@@ -2,12 +2,14 @@
 import { createThreeView } from '../three-view.js';
 import { mountToolPopover } from './view-kit/tool-popover.js';
 import { BORDER_CATEGORIES, BORDER_PRESETS, normalizeBorderSettings } from '../border-inspector.js';
+import { THREE_Z_DISPLAY_FACTORS, normalizeThreeZDisplayFactor } from '../three-z-display.js';
 
 export function createWorkstationThreeView({ store, workstation }) {
   const { el, button, toolbar } = window.WaferCadV2Components;
   const state = store.state;
   const local = store.local.three;
   local.borderSettings = normalizeBorderSettings(local.borderSettings);
+  local.zDisplayFactor = normalizeThreeZDisplayFactor(local.zDisplayFactor);
   const icon = (label, action, glyph) =>
     button('', action, glyph, {
       title: label,
@@ -20,6 +22,7 @@ export function createWorkstationThreeView({ store, workstation }) {
         'quality:three': 'three.quality',
         'opacity:three': 'three.opacity',
         'borders:three': 'three.borders',
+        'z-display:three': 'three.z-display',
         'maximize:three': 'shell.maximize',
       }[action],
     });
@@ -29,6 +32,12 @@ export function createWorkstationThreeView({ store, workstation }) {
     'data-v2-stage-host': '',
     'aria-label': 'Physical 3D model',
   });
+  const zDisplayIndicator = el('output', {
+    class: 'v2-three-z-display-indicator',
+    'aria-live': 'polite',
+    hidden: '',
+  });
+  host.append(zDisplayIndicator);
   const tools = toolbar(
     '3D',
     [
@@ -42,6 +51,7 @@ export function createWorkstationThreeView({ store, workstation }) {
         icon('Render mode', 'quality:three', 'quality'),
         icon('Opacity', 'opacity:three', 'eye'),
         icon('Borders', 'borders:three', 'rectangle'),
+        icon('Display Z scale', 'z-display:three', 'section'),
       ],
     ],
     [button('Export', 'three-export-menu', 'export', { 'data-help': 'view.export' })],
@@ -83,6 +93,7 @@ export function createWorkstationThreeView({ store, workstation }) {
       fast: startupPreview || state.threeFastMode,
     }),
     getZCollapse: () => state.sectionCollapse,
+    getZDisplayFactor: () => local.zDisplayFactor,
     onViewChanged: (camera) => {
       state.threeCamera = camera;
       workstation.changed('three');
@@ -218,6 +229,49 @@ export function createWorkstationThreeView({ store, workstation }) {
     opacityValue.textContent = `${Math.round(state.threeOpacity * 100)}%`;
     requestRender();
   };
+  // The complete 3D scene shares this presentation transform: physical
+  // Process geometry, export and thin-film Z ownership remain unchanged.
+  const zDisplayMenu = el('div', { class: 'p-form', 'data-three-z-display': '' });
+  const zDisplayButtons = THREE_Z_DISPLAY_FACTORS.map((factor) => {
+    const choice = el(
+      'button',
+      {
+        type: 'button',
+        class: 'wc-segment',
+        'data-three-z-factor': String(factor),
+        'aria-label': `3D display Z ×${factor}`,
+      },
+      `×${factor}`,
+    );
+    choice.onclick = () => {
+      local.zDisplayFactor = factor;
+      updateZDisplayControls();
+      renderer.updateZCollapse();
+      renderer.fit({ preserveOrientation: true });
+    };
+    return choice;
+  });
+  zDisplayMenu.append(
+    el('strong', {}, '3D vertical display scale'),
+    el('div', { class: 'v2-three-z-options' }, ...zDisplayButtons),
+    el(
+      'p',
+      {},
+      'Display only, not physical height. Scales caps, films, sidewalls and borders together. Unresolved roughness stays unresolved.',
+    ),
+  );
+  function updateZDisplayControls() {
+    local.zDisplayFactor = normalizeThreeZDisplayFactor(local.zDisplayFactor);
+    for (const choice of zDisplayButtons)
+      choice.setAttribute(
+        'aria-pressed',
+        String(Number(choice.dataset.threeZFactor) === local.zDisplayFactor),
+      );
+    host.dataset.zDisplayFactorSelected = String(local.zDisplayFactor);
+    zDisplayIndicator.hidden = local.zDisplayFactor === 1;
+    zDisplayIndicator.textContent = `Display Z ×${local.zDisplayFactor} · not physical`;
+  }
+
   const borderNames = {
     exterior: 'Exterior',
     interface: 'Material interfaces',
@@ -401,6 +455,7 @@ export function createWorkstationThreeView({ store, workstation }) {
     quality.setAttribute('aria-pressed', String(state.threeFastMode === false));
     host.dataset.v2Gesture = local.mode;
     host.dataset.wheelZoom = String(local.zoomEnabled);
+    updateZDisplayControls();
     panel
       .querySelector('[data-action="borders:three"]')
       .setAttribute('aria-pressed', String(state.threeShowBorders));
@@ -427,6 +482,13 @@ export function createWorkstationThreeView({ store, workstation }) {
       mountToolPopover(workstation.overlays, {
         label: '3D opacity',
         content: form,
+        trigger,
+      });
+    } else if (action === 'z-display:three') {
+      updateZDisplayControls();
+      mountToolPopover(workstation.overlays, {
+        label: '3D display-only vertical scale',
+        content: zDisplayMenu,
         trigger,
       });
     } else if (action === 'borders:three') {
