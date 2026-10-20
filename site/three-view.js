@@ -333,7 +333,18 @@ export function createThreeView({
   function zDisplayState(model) {
     const [idealLo, idealHi] = modelBoundsZ(model),
       [lo, hi] = roughVisualBoundsZ(model, [idealLo, idealHi]),
-      collapse = resolveSectionCollapse(getZCollapse(), model, [lo, hi]),
+      // A curved physical release cannot survive the implicit default Z Break:
+      // it would collapse the entire sub-disk silicon rise into a flat plane.
+      // Honor user-provided Z Break, but do not implicitly enable it for a
+      // continuous material owner without an explicit user selection.
+      requestedCollapse = getZCollapse(),
+      collapse = resolveSectionCollapse(
+        model?.kernel === CONTINUOUS_ETCH_MODEL_KERNEL && requestedCollapse == null
+          ? { enabled: false }
+          : requestedCollapse,
+        model,
+        [lo, hi],
+      ),
       transform = createCollapsedZDisplayTransform({
         zMin: lo,
         zMax: hi,
@@ -438,7 +449,12 @@ export function createThreeView({
     }
     positions.needsUpdate = true;
     if (object.isMesh && object.geometry.getAttribute('normal')) {
-      object.geometry.computeVertexNormals();
+      // Exact surface normals are display geometry too. Without Z Break,
+      // the group normal matrix already handles the global Z scale.
+      // Recomputing per-triangle normals on non-indexed meshes destroys
+      // analytic smoothing and can create artificial circumferential bands.
+      if (!object.geometry.userData?.analyticSurfaceNormals || state.enabled !== false)
+        object.geometry.computeVertexNormals();
     }
     refreshGeometryBounds(object);
     record.mode = 'mapped';
@@ -3221,6 +3237,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.BufferAttribute(part.positions, 3));
       geometry.setAttribute('normal', new THREE.BufferAttribute(part.normals, 3));
+      geometry.userData.analyticSurfaceNormals = true;
       const material = createSurfaceMaterial(
         layerById(model, part.layerId),
         materialState,
