@@ -77,6 +77,7 @@ export async function parallelMaterialSolids(
     WorkerClass = globalThis.Worker,
     hardwareConcurrency = globalThis.navigator?.hardwareConcurrency,
     deviceMemory = globalThis.navigator?.deviceMemory,
+    childTimeoutMs = 30_000,
   } = {},
 ) {
   if (typeof WorkerClass !== 'function') return null;
@@ -85,11 +86,20 @@ export async function parallelMaterialSolids(
   if (!partition) return null;
 
   let worker;
+  let timeoutId;
   try {
     const url = new URL('./renderer-material-solids-worker.js', import.meta.url);
     url.search = new URL(import.meta.url).search;
     worker = new WorkerClass(url);
     const heavyResult = new Promise((resolve, reject) => {
+      // A child may stay alive without responding (e.g. native OOM/thrashing).
+      // Never strand the owning Surface Plan worker waiting indefinitely.
+      const boundedTimeoutMs =
+        Number.isFinite(childTimeoutMs) && childTimeoutMs > 0 ? childTimeoutMs : 30_000;
+      timeoutId = setTimeout(
+        () => reject(new Error('Parallel material topology worker timed out.')),
+        boundedTimeoutMs,
+      );
       worker.onmessage = ({ data }) => {
         if (data?.id !== 1) return;
         if (data.type === 'done') resolve(data.solids);
@@ -111,6 +121,7 @@ export async function parallelMaterialSolids(
     console.warn('Parallel material solids unavailable; using exact serial topology.', error);
     return null;
   } finally {
+    clearTimeout(timeoutId);
     worker?.terminate();
   }
 }

@@ -103,6 +103,64 @@ test('worker branch returns exact serial solids and terminates child; worker err
   }
 });
 
+test('unresponsive child worker times out, terminates, and leaves serial ownership intact', async () => {
+  const model = largeSimpleModel();
+  const expected = materialSolidsFromTopology(model);
+  let instance;
+  class SilentWorker {
+    constructor() {
+      instance = this;
+    }
+    postMessage() {
+      // A live child can fail to respond without firing onerror.
+    }
+    terminate() {
+      this.terminated = true;
+    }
+  }
+  const warn = console.warn;
+  console.warn = () => {};
+  try {
+    const start = performance.now();
+    const missing = await parallelMaterialSolids(model, null, {
+      WorkerClass: SilentWorker,
+      hardwareConcurrency: 8,
+      deviceMemory: 8,
+      childTimeoutMs: 25,
+    });
+    assert.equal(missing, null, 'no partial geometry may be returned after a timeout');
+    assert.equal(instance.terminated, true, 'the timed-out child must be terminated');
+    assert.ok(performance.now() - start < 2_000, 'timeout cannot hang the parent');
+    // This is exactly what the production Surface Plan worker does on null.
+    assert.deepEqual(materialSolidsFromTopology(model), expected);
+  } finally {
+    console.warn = warn;
+  }
+});
+
+test('worker constructor failure falls back without publishing partial solids', async () => {
+  const model = largeSimpleModel();
+  const warn = console.warn;
+  console.warn = () => {};
+  class BrokenWorker {
+    constructor() {
+      throw new Error('worker unavailable');
+    }
+  }
+  try {
+    assert.equal(
+      await parallelMaterialSolids(model, null, {
+        WorkerClass: BrokenWorker,
+        hardwareConcurrency: 8,
+        deviceMemory: 8,
+      }),
+      null,
+    );
+  } finally {
+    console.warn = warn;
+  }
+});
+
 test('complete saved M3D partition reconstructs bit-exact solids and Surface Plan', async () => {
   const bytes = await readFile(
     new URL('../examples/m3d-selfpowered-full-replay.wafercad', import.meta.url),
