@@ -335,11 +335,13 @@ export function createThreeView({
       [lo, hi] = roughVisualBoundsZ(model, [idealLo, idealHi]),
       // A curved physical release cannot survive the implicit default Z Break:
       // it would collapse the entire sub-disk silicon rise into a flat plane.
-      // Honor user-provided Z Break, but do not implicitly enable it for a
-      // continuous material owner without an explicit user selection.
+      // Workstation startup already supplies enabled:true collapse defaults.
+      // A continuous owner must not inherit that destructive default. Future
+      // explicit opt-in requires a dedicated continuousEtchExplicit flag.
       requestedCollapse = getZCollapse(),
       collapse = resolveSectionCollapse(
-        model?.kernel === CONTINUOUS_ETCH_MODEL_KERNEL && requestedCollapse == null
+        model?.kernel === CONTINUOUS_ETCH_MODEL_KERNEL &&
+        requestedCollapse?.continuousEtchExplicit !== true
           ? { enabled: false }
           : requestedCollapse,
         model,
