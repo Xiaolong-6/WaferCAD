@@ -300,6 +300,26 @@ def run(args):
                         report['images']['maximized'] = {'file': maximized.name,
                              'sha256': snapshot_sha(maximized)}
                         report['afterMaximize'] = runtime_probe(page)
+            if args.check_z_ui and three_ok:
+                trigger = page.locator('#threePanel [data-action="z-display:three"]')
+                if trigger.count() != 1:
+                    raise RuntimeError('Display-only Z toolbar trigger is missing')
+                trigger.click()
+                page.locator('[data-three-z-factor="2"]').click()
+                page.wait_for_timeout(750)
+                selected = page.locator('#threeHost').get_attribute('data-z-display-factor')
+                indicator = page.locator('#threeHost .v2-three-z-display-indicator')
+                indicator_text = indicator.inner_text() if indicator.is_visible() else ''
+                image = out / 'three-z-display-ui.png'
+                page.screenshot(path=str(image), animations='disabled')
+                report['images']['zDisplayUi'] = {'file': image.name, 'sha256': snapshot_sha(image)}
+                page.locator('[data-three-z-factor="1"]').click()
+                page.wait_for_timeout(250)
+                reverted = page.locator('#threeHost').get_attribute('data-z-display-factor')
+                report['zDisplayUi'] = {'factor2': selected, 'indicator': indicator_text,
+                                        'factor1Reverted': reverted, 'nullOrigin': mode != 'https-origin'}
+                if selected != '2' or reverted != '1' or 'not physical' not in indicator_text:
+                    raise RuntimeError('3D display-only Z control failed to render and revert')
             if args.project:
                 if mode != 'https-origin':
                     report['exampleLoad'] = 'NOT ATTEMPTED: null origin prevents native Worker access'
@@ -432,6 +452,7 @@ def main():
     parser.add_argument('--wait-ms', type=int, default=5500)
     parser.add_argument('--width', type=int, default=1600)
     parser.add_argument('--height', type=int, default=1000)
+    parser.add_argument('--check-z-ui', action='store_true', help='Exercise real v2 display-only Z menu')
     parser.add_argument('--headless', action='store_true', help='Opt out of headful/Xvfb; may disable WebGL')
     parser.add_argument('--require-origin', action='store_true', help='Fail rather than use null-origin diagnostic')
     args = parser.parse_args()

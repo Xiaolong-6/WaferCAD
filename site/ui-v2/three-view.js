@@ -231,7 +231,7 @@ export function createWorkstationThreeView({ store, workstation }) {
   };
   // The complete 3D scene shares this presentation transform: physical
   // Process geometry, export and thin-film Z ownership remain unchanged.
-  const zDisplayMenu = el('div', { class: 'p-form', 'data-three-z-display': '' });
+  const zDisplayMenu = el('div', { class: 'p-form v2-three-z-menu', 'data-three-z-display': '' });
   const zDisplayButtons = THREE_Z_DISPLAY_FACTORS.map((factor) => {
     const choice = el(
       'button',
