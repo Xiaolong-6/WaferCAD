@@ -3,7 +3,8 @@ import test from 'node:test';
 import {
   classifyRelease,
   evaluateRelease,
-  PRODUCTION_GATES,
+  latestCheckRuns,
+  targetedProductionGates,
 } from '../../scripts/release/verified-pr-release.mjs';
 
 const sha = 'a'.repeat(40);
@@ -93,22 +94,142 @@ test('unknown, missing, stale, duplicated, skipped, and failed PR checks fail cl
   }
 });
 
-test('production code requires every mandatory science, renderer and UI owner', () => {
-  const snapshot = {
-    ...seed(),
-    paths: ['site/three-view.js', 'site/tests/three-outline-geometry.test.mjs'],
-    checks: PRODUCTION_GATES.map((name) => check(name)),
+test('Draft and Ready PR checks use only the newest attempt without masking red or pending', () => {
+  const draft = {
+    ...check('quality'),
+    id: 100,
+    started_at: '2026-10-19T14:00:00Z',
   };
+  const ready = {
+    ...check('quality'),
+    id: 101,
+    started_at: '2026-10-19T14:02:00Z',
+  };
+  const proof = { ...check('Release evidence contract'), id: 102, started_at: ready.started_at };
+  const latest = latestCheckRuns([ready, draft, proof]);
+  assert.equal(latest.length, 2);
+  assert.equal(latest.find((item) => item.name === 'quality').id, ready.id);
+  assert.equal(evaluateRelease({ ...seed(), checks: latest }).fast, true);
+
+  for (const conclusion of ['failure', 'cancelled', 'skipped']) {
+    const selected = latestCheckRuns([draft, { ...ready, conclusion }, proof]);
+    assert.equal(evaluateRelease({ ...seed(), checks: selected }).fast, false, conclusion);
+  }
+  const pending = latestCheckRuns([
+    draft,
+    { ...ready, status: 'in_progress', conclusion: null },
+    proof,
+  ]);
+  assert.equal(evaluateRelease({ ...seed(), checks: pending }).fast, false);
+  const queued = latestCheckRuns([
+    { ...draft, created_at: draft.started_at },
+    {
+      ...ready,
+      started_at: null,
+      created_at: ready.started_at,
+      status: 'queued',
+      conclusion: null,
+    },
+    proof,
+  ]);
+  assert.equal(queued.find((item) => item.name === 'quality').status, 'queued');
+  assert.equal(evaluateRelease({ ...seed(), checks: queued }).fast, false);
+  assert.equal(latestCheckRuns([draft, { ...draft }]), null);
+  assert.equal(latestCheckRuns([{ ...ready, id: null }]), null);
+  assert.equal(latestCheckRuns([{ ...draft, started_at: 'unparseable' }]), null);
+  assert.equal(latestCheckRuns([ready, { ...draft, conclusion: 'failure' }])[0].id, ready.id);
+});
+
+test('Photodetector Renderer changes require focused science and real browser owners', () => {
+  const paths = [
+    'site/gpu-rough-surface.js',
+    'site/surface-rendering.js',
+    'site/three-view.js',
+    'site/tests/gpu-rough-surface.test.mjs',
+  ];
+  const required = targetedProductionGates(paths);
+  for (const name of [
+    'quality',
+    'Plan browser suites',
+    'Chromium targeted regression',
+    'Native v2 Release renderer',
+    '625-site array renderer regression',
+    '625-site edge-on exact-wall restoration',
+    'Stage C shared runtime and M4 real projects',
+  ])
+    assert.ok(required.includes(name), name);
+  const snapshot = { ...seed(), paths, checks: required.map((name) => check(name)) };
   assert.equal(evaluateRelease(snapshot).fast, true);
-  for (const name of PRODUCTION_GATES) {
+  for (const name of required) {
     const without = snapshot.checks.filter((c) => c.name !== name);
     assert.equal(evaluateRelease({ ...snapshot, checks: without }).fast, false, name);
+    assert.equal(
+      evaluateRelease({
+        ...snapshot,
+        checks: snapshot.checks.map((c) => (c.name === name ? check(name, 'skipped') : c)),
+      }).fast,
+      false,
+      name,
+    );
   }
+});
+
+test('Mask onboarding PR requires its shared UI and Main/Mask browser gates', () => {
+  const paths = [
+    'scripts/v2/check-empty-canvas-hints.mjs',
+    'site/tests/ui-v2-empty-state.test.mjs',
+    'site/ui-v2/mask-view.js',
+    'site/ui-v2/view-kit/empty-state.js',
+  ];
+  const required = targetedProductionGates(paths);
+  assert.ok(required.includes('Native v2 Release workstation'));
+  assert.ok(required.includes('Main and Mask browser gates'));
+  assert.ok(required.includes('Stage C shared runtime and M4 real projects'));
+  assert.ok(!required.includes('625-site array renderer regression'));
+  const snapshot = { ...seed(), paths, checks: required.map((name) => check(name)) };
+  assert.equal(evaluateRelease(snapshot).fast, true);
   assert.equal(
     evaluateRelease({
       ...snapshot,
-      paths: ['site/three-view.js', '.github/workflows/pages.yml'],
+      checks: snapshot.checks.filter((c) => c.name !== 'Main and Mask browser gates'),
     }).fast,
+    false,
+  );
+});
+
+test('bundled Project IO, recovery, scientific and unknown scopes remain full release', () => {
+  for (const path of [
+    'site/project-io.js',
+    'site/project-worker.js',
+    'site/ui-v2/workstation-workflow.js',
+    'site/workspace-storage-worker.js',
+    'site/model.js',
+    'site/process-recipe.js',
+    'site/history-transaction.js',
+    'site/gds.js',
+    'scripts/build-pages-artifact.mjs',
+    'package-lock.json',
+  ]) {
+    assert.equal(targetedProductionGates([path]), null, path);
+    assert.equal(
+      evaluateRelease({
+        ...seed(),
+        paths: [path],
+        checks: ['quality', ...targetedProductionGates(['site/three-view.js'])].map((name) =>
+          check(name),
+        ),
+      }).fast,
+      false,
+      path,
+    );
+  }
+  assert.equal(
+    targetedProductionGates(['docs/science/ROUGHNESS_MORPHOLOGY.md']).join(','),
+    'quality',
+  );
+  assert.equal(
+    evaluateRelease({ ...seed(), paths: ['site/three-view.js', '.github/workflows/pages.yml'] })
+      .fast,
     false,
   );
 });
