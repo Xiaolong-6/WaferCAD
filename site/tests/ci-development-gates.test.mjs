@@ -74,7 +74,7 @@ test('Recipe reusable callers retain the shared gate unless they explicitly opt 
   )?.[1];
   assert.ok(expression, 'Shared gate condition must be present');
   const repository = 'Xiaolong-6/WaferCAD';
-  for (const [event, caller, skip, expected] of [
+  for (const [event, caller, skip, expected, base = 'main'] of [
     ['pull_request', 'process-recipe-safety.yml', false, false],
     ['push', 'process-recipe-safety.yml', false, true],
     ['pull_request', 'other.yml', false, true],
@@ -83,10 +83,13 @@ test('Recipe reusable callers retain the shared gate unless they explicitly opt 
     ['push', 'pages.yml', true, false],
     ['pull_request', '', false, true],
     ['pull_request', 'process-recipe-safety.yml.bak', false, true],
+    ['pull_request', 'process-recipe-safety.yml', false, true, 'feature-branch'],
+    ['pull_request', 'process-recipe-safety.yml', false, true, ''],
   ]) {
     const actual = runInNewContext(expression, {
       github: {
         event_name: event,
+        base_ref: base,
         repository,
         workflow_ref: caller
           ? repository + '/.github/workflows/' + caller + '@refs/heads/main'
@@ -96,7 +99,7 @@ test('Recipe reusable callers retain the shared gate unless they explicitly opt 
       startsWith: (value, prefix) => value.toLowerCase().startsWith(prefix.toLowerCase()),
       format: (template, value) => template.replace('{0}', value),
     });
-    assert.equal(actual, expected, event + '/' + caller + '/skip=' + skip);
+    assert.equal(actual, expected, event + '/' + caller + '/base=' + base + '/skip=' + skip);
   }
 });
 
