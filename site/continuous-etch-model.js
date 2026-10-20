@@ -10,6 +10,37 @@ import {
 
 export const CONTINUOUS_ETCH_MODEL_KERNEL = 'vector-continuous-etch-v1';
 const FIELD = 'continuousEtchOwner';
+
+// Workspace geometry dictionaries restore physical polygon values exactly,
+// but re-insert `geom` after other region keys. Object property insertion
+// order is not material identity. Compare every physical field and array item
+// strictly, including future scientific metadata, without ordering object keys.
+function sameMaterialStructure(left, right) {
+  if (Object.is(left, right)) return true;
+  if (!left || !right || typeof left !== 'object' || typeof right !== 'object') return false;
+  if (Array.isArray(left) || Array.isArray(right)) {
+    return (
+      Array.isArray(left) &&
+      Array.isArray(right) &&
+      left.length === right.length &&
+      left.every((item, index) => sameMaterialStructure(item, right[index]))
+    );
+  }
+  const isPlain = (value) => {
+    const prototype = Object.getPrototypeOf(value);
+    return prototype === Object.prototype || prototype === null;
+  };
+  if (!isPlain(left) || !isPlain(right)) return false;
+  const keys = Object.keys(left).sort();
+  const otherKeys = Object.keys(right).sort();
+  return (
+    keys.length === otherKeys.length &&
+    keys.every(
+      (key, index) => key === otherKeys[index] && sameMaterialStructure(left[key], right[key]),
+    )
+  );
+}
+
 export function validateContinuousEtchModel(model) {
   if (!model || typeof model !== 'object') return null;
   const hasOwner = Object.hasOwn(model, FIELD);
@@ -53,13 +84,13 @@ export function validateContinuousEtchModel(model) {
           (layer, index) =>
             JSON.stringify(Object.keys(layer).sort()) ===
               JSON.stringify(Object.keys(source[index]).sort()) &&
-            JSON.stringify(scienceFields(layer)) === JSON.stringify(scienceFields(source[index])),
+            sameMaterialStructure(scienceFields(layer), scienceFields(source[index])),
         );
       if (!sameLayerContract)
         throw new RangeError('Continuous etch reference material changed: layers');
       continue;
     }
-    if (JSON.stringify(model[key]) !== JSON.stringify(owner.sourceModel[key]))
+    if (!sameMaterialStructure(model[key], owner.sourceModel[key]))
       throw new RangeError('Continuous etch reference material changed: ' + key);
   }
   return owner;

@@ -300,3 +300,27 @@ regular Workstation Open/Save, History/Recovery, ROI and GLB export, general
 follow-on Process consumption, targeted CI and release Quality. No tolerance
 or baseline has been weakened; do not merge or replace the shipped Microdisk
 on this evidence alone.
+
+## Lossless Workspace material identity after polygon-dictionary expansion (2026-10-20)
+
+The normal-origin Process -> History -> IndexedDB acceptance exposed a
+serialization/validation mismatch in the dedicated continuous-material owner.
+Workspace storage deduplicates physical polygons by replacing `region.geom` with
+`geomRef`, then restores the exact geometry at the end of the region object.
+This alters JavaScript property insertion order (for example `id, geom, stack`
+becomes `id, stack, geom`), but not the physical polygon, layer or Z interval.
+The previous `JSON.stringify()` equality rejected this legitimate lossless
+round-trip as a changed material region.
+
+The continuous owner now compares **all** source-model fields recursively by
+exact keys and values, independent of object key insertion order. Ordered
+arrays (region owners, polygon vertices and stacks) remain order-sensitive,
+and scalar coordinates retain exact equality without tolerance, snapping,
+reorientation or baseline changes. Unknown future material fields are still
+compared and unauthorized field additions/deletions fail closed.
+
+The focused regression packs a canonical continuous Base using the production
+Workspace geometry dictionary, expands it, validates the entire project and
+rejects a subsequent deliberate physical polygon-coordinate modification.
+The corresponding real-Workstation CI must still prove completed Save,
+IndexedDB readback, reload and History preservation before final acceptance.

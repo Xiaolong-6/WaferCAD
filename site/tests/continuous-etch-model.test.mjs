@@ -13,7 +13,7 @@ globalThis.polygonClipping = vendor.exports;
 const modelApi = await import('../model.js');
 const { createModel } = modelApi;
 const { applyOperation } = await import('../model.js');
-const { validateProcessModel } = await import('../project-schema.js');
+const { validateProcessModel, validateProjectFile } = await import('../project-schema.js');
 const { resolveSectionCollapse, createCollapsedZDisplayTransform } =
   await import('../section-z-collapse.js');
 const {
@@ -72,6 +72,40 @@ test('serialized kernel preserves material, rejects tampered mask and source', (
   const wrongKernel = structuredClone(saved);
   wrongKernel.kernel = 'vector-2.5d-v1';
   assert.throws(() => validateProcessModel(wrongKernel), /dedicated/);
+});
+
+test('lossless Workspace geometry dictionaries preserve exact continuous material across key reorder', async () => {
+  const { expandProjectStorage, prepareProjectForWorkspaceStorage } =
+    await import('../project-io.js');
+  // Use a real project envelope while constructing a simple, physical region
+  // whose geom precedes stack. Packing moves geom after stack on expansion.
+  const project = expandProjectStorage(
+    JSON.parse(
+      readFileSync(new URL('../examples/suspended-silica-microdisks.wafercad', import.meta.url)),
+    ),
+  );
+  const released = attachContinuousEtchModel(fixture(), operation);
+  assert.deepEqual(Object.keys(released.regions[0]), ['id', 'geom', 'stack']);
+  project.model = released;
+  const stored = prepareProjectForWorkspaceStorage(project);
+  assert.equal(stored.storage.lossless, true);
+  const reopened = expandProjectStorage(structuredClone(stored));
+  assert.deepEqual(Object.keys(reopened.model.regions[0]), ['id', 'stack', 'geom']);
+  assert.deepEqual(reopened.model.regions, released.regions);
+  assert.doesNotThrow(() => validateProcessModel(reopened.model));
+  assert.doesNotThrow(() => validateProjectFile(reopened));
+  assert.equal(continuousModelMaterialAt(reopened.model, [0, 0, 7]), null);
+  assert.equal(continuousModelMaterialAt(reopened.model, [0, 0, 1]), 'base');
+  const tampered = structuredClone(reopened.model);
+  // The geometry dictionary may share immutable XY arrays between Boundary
+  // and regions. Detach the region before simulating a localized corruption.
+  tampered.regions[0].geom = structuredClone(tampered.regions[0].geom);
+  tampered.regions[0].geom[0][0][0][0] += 0.125;
+  assert.throws(
+    () => validateContinuousEtchModel(tampered),
+    /reference material changed: regions/,
+    'Lossless restoration may reorder object keys but cannot alter actual geometry',
+  );
 });
 
 test('continuous owner rejects changes to future physical fields beyond the legacy whitelist', () => {
