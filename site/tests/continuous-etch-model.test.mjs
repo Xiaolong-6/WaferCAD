@@ -153,3 +153,43 @@ test('continuous release cannot inherit implicit or Workstation default Z Break'
   // separated on screen. The implicit default previously mapped both to 0.
   assert.ok(Math.abs(map.mapZ(25.59) - map.mapZ(4.349) - 21.241) < 1e-9);
 });
+
+test('Workstation import rejects continuous owners hidden in any History or Recovery state', async () => {
+  const { createHash } = await import('node:crypto');
+  const { expandProjectStorage, prepareProjectForExport, readProjectFile } =
+    await import('../project-io.js');
+  const project = expandProjectStorage(
+    JSON.parse(
+      readFileSync(new URL('../examples/suspended-silica-microdisks.wafercad', import.meta.url)),
+    ),
+  );
+  const m07 = project.snapshots.find((s) => s.id === 'snapshot-microdisk-07')?.state?.model;
+  assert.ok(m07);
+  const released = attachContinuousEtchModel(m07, {
+    face: 'front',
+    targetLayerIds: ['base'],
+    lateralUm: 36,
+    verticalUm: 36,
+    shape: 'circular',
+  });
+  assert.equal(project.model.kernel, 'vector-2.5d-v1');
+  for (const variant of ['snapshot', 'historyNode', 'branchHead']) {
+    const candidate = structuredClone(project);
+    if (variant === 'snapshot') candidate.snapshots[0].state.model = released;
+    else if (variant === 'historyNode')
+      candidate.snapshotBranches.nodes[0].state.model = released;
+    else candidate.snapshotBranches.branches[0].headState.model = released;
+    const exported = prepareProjectForExport(candidate);
+    assert.equal(exported.mode, 'lossless');
+    const bytes = JSON.stringify(exported.stored);
+    const file = new Blob([bytes], { type: 'application/json' });
+    // A staged trusted bundle bypasses redundant expensive strict validation,
+    // but must NEVER bypass the production continuous-material safety gate.
+    const sha256 = createHash('sha256').update(bytes).digest('hex');
+    await assert.rejects(
+      () => readProjectFile(file, { trustedBundledExample: { sha256 } }),
+      /Continuous Etch.*no flat import/,
+      `Unsafe ${variant} was accepted into the normal Workstation`,
+    );
+  }
+});
