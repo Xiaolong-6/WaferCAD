@@ -28,6 +28,9 @@ test(
     assert.equal(exported.model.processRevision, 3);
     assert.equal(exported.model.layers.length, 4);
     assert.equal(exported.model.regions.length, 8);
-    assert.equal(exported.model.layers.some((layer) => /AlOx/i.test(layer.name)), false);
+    assert.equal(
+      exported.model.layers.some((layer) => /AlOx/i.test(layer.name)),
+      false,
+    );
   },
 );
