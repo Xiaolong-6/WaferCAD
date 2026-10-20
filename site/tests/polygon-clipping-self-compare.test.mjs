@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 // Fixed output receipt from unpatched polygon-clipping 0.15.7. This protects
-// the local Segment.compare identity fast path against changed geometry,
+// Segment/SweepEvent/point identity fast paths against changed geometry,
 // polygon ordering, ring ordering and near-contact Boolean behavior.
 const BASELINE_SHA256 = 'd345db180bd4887f207712a0e4fa36f07aa4aedd8ac7937805b422f53da21205';
 
@@ -67,7 +67,7 @@ function annulus(x, y, radius) {
   ];
 }
 
-test('vendored polygon Boolean comparator preserves 2100 exact upstream output receipts', () => {
+test('vendored segment and sweep identity paths preserve 2100 exact upstream receipts', () => {
   const boolean = kernel();
   let seed = 0x6b5fcad2;
   const random = () => {

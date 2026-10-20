@@ -1197,6 +1197,8 @@
     class SweepEvent {
       // for ordering sweep events in the sweep event queue
       static compare(a, b) {
+        // Comparing an event to itself cannot link or reorder its endpoints.
+        if (a === b) return 0;
         // favor event with a point that the sweep line hits first
         const ptCmp = SweepEvent.comparePoints(a.point, b.point);
         if (ptCmp !== 0) return ptCmp;
@@ -1214,6 +1216,8 @@
 
       // for ordering points in sweep line order
       static comparePoints(aPt, bPt) {
+        // Shared point instances have the same sweep-line coordinates.
+        if (aPt === bPt) return 0;
         if (aPt.x < bPt.x) return -1;
         if (aPt.x > bPt.x) return 1;
         if (aPt.y < bPt.y) return -1;
