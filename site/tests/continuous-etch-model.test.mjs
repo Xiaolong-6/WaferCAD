@@ -243,7 +243,9 @@ test('History Manager restores M07 and exact continuous release across lossless 
   let id = 0;
   const options = {
     capture: () => current,
-    restore: (state) => { current = structuredClone(state); },
+    restore: (state) => {
+      current = structuredClone(state);
+    },
     validateState: (state) => {
       try {
         validateProcessModel(state.model);
