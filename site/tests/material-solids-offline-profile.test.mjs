@@ -30,6 +30,11 @@ test('offline profiler retains exact production Surface Plan hash and kernel tim
   assert.equal(data.matchesExpected, true);
   assert.ok(data.elapsedMs > 0);
   assert.ok(Number.isFinite(data.gc.observedMs));
+  assert.ok(Number.isFinite(data.peakRssMiB) && data.peakRssMiB > 0);
+  assert.ok(Number.isFinite(data.rssMiB) && data.rssMiB > 0);
+  assert.ok(data.peakRssMiB >= data.rssMiB - 1);
+  assert.ok(Number.isFinite(data.heapUsedMiB) && data.heapUsedMiB > 0);
+  assert.ok(data.heapTotalMiB >= data.heapUsedMiB);
   assert.ok(data.kernelMetrics.union.calls > 0);
   assert.ok(data.counts.caps > 0);
 });

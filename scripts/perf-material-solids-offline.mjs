@@ -3,6 +3,8 @@
 // exclude Workstation bootstrap, 3D mesh assembly, WebGL and first paint.
 // Usage: node scripts/perf-material-solids-offline.mjs --example m3d-selfpowered-full-replay
 //        --expected-sha256 <full-plan-hash> [--mode plan|solids]
+// Peak RSS includes transient V8/geometry allocations; it is not a live-heap
+// measurement or a browser Worker memory limit.
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { PerformanceObserver, performance } from 'node:perf_hooks';
@@ -127,6 +129,11 @@ const elapsedMs = performance.now() - start;
 await new Promise((resolve) => setTimeout(resolve, 25));
 observer.disconnect();
 const sha256 = createHash('sha256').update(JSON.stringify(output)).digest('hex');
+const memory = process.memoryUsage();
+// Node reports maxRSS in KiB on Linux and bytes on macOS. Keep it separate
+// from the current RSS and live V8 heap to expose transient memory pressure.
+const maxRssUnit = process.platform === 'darwin' ? 1048576 : 1024;
+const peakRssMiB = process.resourceUsage().maxRSS / maxRssUnit;
 const report = {
   example: options.example,
   mode: options.mode,
@@ -134,7 +141,10 @@ const report = {
   outputSha256: sha256,
   matchesExpected: options.expected ? sha256 === options.expected : null,
   elapsedMs,
-  rssMiB: process.memoryUsage().rss / 1048576,
+  rssMiB: memory.rss / 1048576,
+  peakRssMiB,
+  heapUsedMiB: memory.heapUsed / 1048576,
+  heapTotalMiB: memory.heapTotal / 1048576,
   gc,
   counts:
     options.mode === 'plan'
