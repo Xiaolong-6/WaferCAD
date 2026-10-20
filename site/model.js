@@ -652,10 +652,11 @@ function canonicalizeProcessPartition(model, regions, operation = 'Isotropic rel
       model.width * model.height * 1e-15,
     ),
     canonical = partitionProcessRegions(regions, overlapTolerance, operation),
-    // Synchronize both material owners before the first persistence-grid snap.
-    // Independent rounding of a straight edge and its neighboring bend can
-    // otherwise introduce artificial uncovered XY slivers.
-    synchronized = nodeProcessPartitionEdges(canonical),
+    // Conformal must synchronize shared owners before the first persistence
+    // snap to prevent fake full-depth void walls. Isotropic release uses its
+    // independently validated partition/quantization contract.
+    synchronized =
+      operation === 'Conformal' ? nodeProcessPartitionEdges(canonical) : canonical,
     snapped = synchronized.map((region) => ({
       ...region,
       geom: sanitizeProcessGeometry(snapProcessGeometry(region.geom)),
