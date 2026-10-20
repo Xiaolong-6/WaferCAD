@@ -2,6 +2,10 @@
 // All domain lifecycle and visible business state arrive through an adapter/presentation API.
 (() => {
   const { el, button, divider } = window.WaferCadV2Components;
+  const brandIconUrl = new URL(
+    '../assets/brand/wafercad-icon.svg',
+    document.currentScript?.src || document.baseURI,
+  ).href;
   window.createWaferCadV2Workstation = ({
     root,
     state,
@@ -36,7 +40,12 @@
     const topbar = el(
       'header',
       { class: 'p-topbar' },
-      el('a', { class: 'p-brand', href: homeUrl, 'aria-label': 'WaferCAD home' }, 'WaferCAD'),
+      el(
+        'a',
+        { class: 'p-brand', href: homeUrl, 'aria-label': 'WaferCAD home' },
+        el('img', { class: 'p-brand-icon', src: brandIconUrl, alt: '', width: 26, height: 26 }),
+        el('span', {}, 'WaferCAD'),
+      ),
       slot('topbar.project', 'p-project-title', 'span'),
       standaloneMobileReturn,
       el('span', { class: 'p-review-badge' }),
