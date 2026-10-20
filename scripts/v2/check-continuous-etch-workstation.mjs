@@ -5,7 +5,6 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { launchBrowser, newUiPage } from '../test-helpers/ui.mjs';
 
-
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182';
 const output = resolve('test-results/continuous-etch-workstation');
 await mkdir(output, { recursive: true });
@@ -29,7 +28,6 @@ try {
     assert.equal(initial.workflow.writable, true, 'The isolated tab must own its workspace');
     assert.equal(initial.workflow.steps.length, 0, 'Start with a clean process timeline');
 
-
     await page.locator('[data-action="domain:project"]').click();
     if (!(await page.locator('#baseWidth').isVisible())) {
       await page.getByRole('heading', { name: 'Base', exact: true }).click();
@@ -48,7 +46,6 @@ try {
     const source = await snapshot();
     const beforeSteps = source.workflow.steps.length;
     assert.equal(source.model.kernel, 'vector-2.5d-v1');
-
 
     await page.locator('[data-action="domain:process"]').click();
     await page.locator('#operationType').selectOption('etch');
@@ -98,7 +95,6 @@ try {
     assert.equal(physical.retainedCore, 'base');
     report.physical = physical;
     await page.screenshot({ path: resolve(output, 'continuous-after-apply.png') });
-
 
     // A real Main rectangular ROI must keep the continuous 3D visible and
     // produce scientific cut faces. The Section must show the full physical-Z
@@ -154,7 +150,6 @@ try {
     await page.screenshot({ path: resolve(output, 'continuous-roi-three-maximized.png') });
     await page.locator('#threePanel [data-action="maximize:three"]').click();
 
-
     await page.locator('[data-action="domain:history"]').click();
     await page.locator('#undoBtn').click();
     await page.waitForFunction(
@@ -170,7 +165,6 @@ try {
       { timeout: 30000 },
     );
     assert.deepEqual((await snapshot()).model, model, 'Redo restores the exact analytic owner');
-
 
     await page.locator('[data-action="domain:project"]').click();
     await page.locator('#projectNameInput').fill('Continuous Etch transaction acceptance');
@@ -202,7 +196,6 @@ try {
     assert.deepEqual(restored.model, model, 'Reload recovers exact physical owner');
     assert.equal(restored.workflow.steps.length, committed.workflow.steps.length);
     assert.equal(restored.projectName, 'Continuous Etch transaction acceptance');
-
 
     // Recipe Run All must use the same exact front as a manual Process Apply.
     // This replays from a real rebuilt Base, never substituting legacy N-band Etch.
