@@ -107,17 +107,23 @@ try {
     await page.locator('[data-action="domain:project"]').click();
     await page.locator('#projectNameInput').fill('Continuous Etch transaction acceptance');
     await page.locator('#saveProjectBtn').click();
+    // Save is a two-phase transaction: the current workspace must commit and
+    // the Recovery checkpoint must be durable before the UI announces success.
+    // Polling IDB directly while that transaction is in flight can race with
+    // browser storage replacement. Wait for the public completion contract.
     await page.waitForFunction(
-      async () => {
-        const stored = await (await import('/workspace-persistence.js')).loadWorkspaceState();
-        return stored?.name === 'Continuous Etch transaction acceptance';
-      },
+      () =>
+        (document.querySelector('[data-slot="status.message"]')?.textContent || '').includes(
+          'Saved "Continuous Etch transaction acceptance" locally',
+        ),
       null,
       { timeout: 30000 },
     );
+    report.saveStatus = await page.locator('[data-slot="status.message"]').textContent();
     const persisted = await page.evaluate(async () =>
       (await import('/workspace-persistence.js')).loadWorkspaceState(),
     );
+    assert.ok(persisted, 'Save must retain an IndexedDB current project after checkpoint');
     assert.deepEqual(persisted.model, model, 'IndexedDB stores exact analytic geometry');
     report.savedSteps = committed.workflow.steps.length;
     await page.reload({ waitUntil: 'domcontentloaded' });
@@ -131,6 +137,13 @@ try {
     assert.deepEqual(report.browserErrors, []);
     report.status = 'pass';
     console.log('Continuous Etch Workstation: Process Worker, History, IndexedDB and reload PASS');
+  } catch (error) {
+    report.uiStatus = await page
+      .locator('[data-slot="status.message"]')
+      .textContent()
+      .catch(() => null);
+    await page.screenshot({ path: resolve(output, 'continuous-failure.png') }).catch(() => {});
+    throw error;
   } finally {
     await context.close();
   }
