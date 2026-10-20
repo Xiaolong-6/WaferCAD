@@ -125,3 +125,31 @@ test('Local relief only magnifies rough surfaces intersecting the selected ROI',
   assert.equal(createThreeRoughReliefDisplayTransform(base, rough, 30).reliefActive, true);
   assert.equal(JSON.stringify(model), snapshot, 'ROI diagnostics must not mutate physical owner');
 });
+
+test('3D dashed structural borders update cumulative visible distances after nonlinear relief Z', async () => {
+  const THREE = await import('three');
+  const { refreshThreeDashedBorderDistances } = await import('../three-z-display.js');
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute(
+    'position',
+    new THREE.Float32BufferAttribute([0, 0, 0, 3, 0, 4, 3, 0, 4, 6, 0, 4], 3),
+  );
+  const border = new THREE.LineSegments(geometry, new THREE.LineDashedMaterial());
+  border.computeLineDistances();
+  assert.equal(geometry.getAttribute('lineDistance').getX(1), 5);
+  assert.equal(refreshThreeDashedBorderDistances(border, 2), true);
+  const distances = geometry.getAttribute('lineDistance');
+  assert.ok(Math.abs(distances.getX(1) - Math.sqrt(73)) < 1e-6);
+  assert.equal(distances.getX(2), distances.getX(1), 'next border starts where prior ends');
+  assert.ok(Math.abs(distances.getX(3) - Math.sqrt(73) - 3) < 1e-6);
+  // Restore the same unchanged geometry at ×1, including dash frequencies.
+  assert.equal(refreshThreeDashedBorderDistances(border, 1), true);
+  assert.equal(distances.getX(1), 5);
+  assert.equal(distances.getX(3), 8);
+  const solid = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial());
+  assert.equal(refreshThreeDashedBorderDistances(solid, 30), false);
+  assert.equal(distances.getX(3), 8, 'solid borders must not be touched');
+  geometry.dispose();
+  border.material.dispose();
+  solid.material.dispose();
+});

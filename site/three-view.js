@@ -64,6 +64,7 @@ import {
   normalizeThreeZDisplayFactor,
   threeRoughReliefBands,
   threeZDisplayScale,
+  refreshThreeDashedBorderDistances,
 } from './three-z-display.js';
 import { geometryFromRoughCap, geometryFromRoughMeshData } from './rough-mesh-geometry.js';
 import {
@@ -472,6 +473,7 @@ export function createThreeView({
         restoreCanonicalZ(record, positions);
         refreshGeometryBounds(object);
       }
+      refreshThreeDashedBorderDistances(object, state.scale);
       const sample = fullyUpper ? record.minZ : record.maxZ;
       object.position.z = state.mapZ(sample) - sample;
       record.mode = 'translated';
@@ -488,6 +490,7 @@ export function createThreeView({
       object.geometry.computeVertexNormals();
     }
     refreshGeometryBounds(object);
+    refreshThreeDashedBorderDistances(object, state.scale);
     record.mode = 'mapped';
   }
 

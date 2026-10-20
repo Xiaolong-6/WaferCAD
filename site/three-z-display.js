@@ -97,3 +97,31 @@ export function createThreeRoughReliefDisplayTransform(base, bands = [], request
     reliefActive: true,
   };
 }
+
+// Three.js computes dash distances before this view applies its nonlinear
+// Z map. Rebuild the cumulative distance in displayed scene units so visible
+// and hidden structural borders keep the expected dash pitch after Relief.
+// No material geometry, persisted model, or export coordinates are changed.
+export function refreshThreeDashedBorderDistances(object, zScale = 1) {
+  if (!object?.isLineSegments || !object.material?.isLineDashedMaterial) return false;
+  const positions = object.geometry?.getAttribute?.('position');
+  if (!positions?.count || positions.count % 2 !== 0 || object.geometry.index) return false;
+  let distances = object.geometry.getAttribute('lineDistance');
+  if (!distances || distances.count !== positions.count) {
+    object.computeLineDistances();
+    distances = object.geometry.getAttribute('lineDistance');
+  }
+  const scale = Number.isFinite(Number(zScale)) && Number(zScale) > 0 ? Number(zScale) : 1;
+  let cumulative = 0;
+  for (let index = 0; index < positions.count; index += 2) {
+    distances.setX(index, cumulative);
+    cumulative += Math.hypot(
+      positions.getX(index + 1) - positions.getX(index),
+      positions.getY(index + 1) - positions.getY(index),
+      (positions.getZ(index + 1) - positions.getZ(index)) * scale,
+    );
+    distances.setX(index + 1, cumulative);
+  }
+  distances.needsUpdate = true;
+  return true;
+}
