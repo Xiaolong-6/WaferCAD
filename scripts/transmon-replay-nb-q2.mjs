@@ -4,17 +4,14 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { loadGeometryKernel } from './process-benchmarks.mjs';
-import { parseLayoutFile } from '../site/layout-io.js';
-import { createModel, applyOperation } from '../site/model.js';
-import {
-  intersection,
-  pointInMulti,
-  rectMulti,
-  transformMulti,
-  unionGeometries,
-} from '../site/vector-geometry.js';
-import { serializeProject } from '../site/project-io.js';
-import { validateProjectFile } from '../site/project-schema.js';
+// The branch's vector geometry module enforces early polygon-clipping setup.
+await loadGeometryKernel();
+const { parseLayoutFile } = await import('../site/layout-io.js');
+const { createModel, applyOperation } = await import('../site/model.js');
+const { intersection, pointInMulti, rectMulti, transformMulti, unionGeometries } =
+  await import('../site/vector-geometry.js');
+const { serializeProject } = await import('../site/project-io.js');
+const { validateProjectFile } = await import('../site/project-schema.js');
 
 const EXPECTED_Q2_SOURCE_SHA256 =
   '12e40565bab2f6c0841b5c3d051fcf38cc1e3c9deda5eaa53ab06cd70782f5e5';
