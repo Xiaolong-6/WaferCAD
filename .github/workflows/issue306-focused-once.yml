@@ -29,6 +29,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          git fetch --no-tags --depth=1 origin 8acb64006ac52597b3bf1801fe9ff3ccab815422
           cp site/model.js "${RUNNER_TEMP}/model-306-fixed.js"
           cp site/process-topology.js "${RUNNER_TEMP}/topology-306-fixed.js"
           git show 8acb64006ac52597b3bf1801fe9ff3ccab815422:site/model.js > site/model.js
