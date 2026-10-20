@@ -32,9 +32,7 @@ export function canonicalLineInterval(p, q) {
 
 export function lineIntervalKey(line, precision = 13) {
   if (!line) return '';
-  return [line.ux, line.uy, line.offset]
-    .map((value) => Number(value).toPrecision(precision))
-    .join('|');
+  return `${Number(line.ux).toPrecision(precision)}|${Number(line.uy).toPrecision(precision)}|${Number(line.offset).toPrecision(precision)}`;
 }
 
 export function pointAtLineT(line, t) {
