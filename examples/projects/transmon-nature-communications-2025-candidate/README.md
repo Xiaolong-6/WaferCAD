@@ -59,3 +59,48 @@ Supplementary Fig. S1(c) gives the Q2 Josephson junction mask size as 180 × 180
 - [ ] Final targeted CI, Quality and scientific release gates before requesting a merge.
 
 The initial audit was run against an older offline source snapshot; the current `main` copies of `site/gds.js` and `site/layout-io.js` were independently checked to have the **same Git blob hashes** (`78afaeddfcb28887d6134853f9aaa436faf7da9b`, `7100985c7ad579daf6ca0e90adbbc0789cd85a39`). A complete latest-main local checkout and Chromium acceptance are still outstanding.
+
+
+## Q2 original-GDS ROI and first native Nb Process replay
+
+**Status: source-backed research candidate, not a released Example.** The original dataset is published by the authors (Zenodo v4: https://zenodo.org/records/14651787). No original binary author GDS is checked into WaferCAD; obtain it from Zenodo.
+
+The `chip0`–`chip3` cells in the main GDS are *chip variants*, not transmons Q1–Q4. In author `chip2`, Q2 is the original SREF to `jj_width0p18` at **(1400, 2513) µm**, consistent with the 180 × 180 nm Q2 junction mask design in Supplementary Fig. S1. This has been checked against the source GDS cell hierarchy.
+
+```sh
+node scripts/transmon-gds-q2-roi.mjs \
+  --input sample.gds --output transmon-Q2-ROI.gds --radius 500 \
+  --expected-sha256 6e9db7d506e17f82fd22250db9a380a420b2a1088bac4a33b8c747930e9d5c02 \
+  --report transmon-Q2-ROI-report.json
+
+node scripts/transmon-replay-nb-q2.mjs \
+  --input transmon-Q2-ROI.gds \
+  --output Transmon-Q2-Nb-etch.wafercad \
+  --report Transmon-Q2-Nb-report.json
+```
+
+The author ROI selection does **not redraw any polygons**: it copies original GDS polygon records whose untransformed bounding boxes intersect the Q2 search window. Polygons crossing the requested ROI remain whole. Source SREF to Q2 and dependent structures are preserved. The resulting source-local Q2 GDS has SHA-256 `12e40565bab2f6c0841b5c3d051fcf38cc1e3c9deda5eaa53ab06cd70782f5e5`, **7 cells, 45 polygons**: 28 on `2/0`, 8 on `8/0`, and 9 on `8/1`; WaferCAD's own layout parser imports it. The exported bounding box can exceed the requested ROI because source polygon geometry is not clipped.
+
+The initial reconstruction uses the `2/0` source patterns as Nb *removal* regions, based on correspondence with the shaded Nb-removal design shown in Supplementary Fig. S1. The interpretation is still subject to a final overlay/author-process check. The two `8/*` datatypes are reserved for EBL junction lithography; their exposure-dose assignments have **not** been proven.
+
+### Verified first process checkpoint
+
+- Starting substrate: intrinsic Si (100), 675 µm.
+- Real native Process operation: blanket 200 nm Nb deposition.
+- Real native Process operation: 250 nm directional etch through the translated and geometrically clipped source `2/0` mask, i.e. 200 nm Nb removal plus 50 nm Si recess.
+- Model processRevision 2, 2 material regions. At model XY (0,0), Si top is 337.45 µm with no Nb; at (0,20), remaining Nb thickness is 0.2 µm above original Si top 337.5 µm.
+- Full output project successfully passed strict schema validation, export serialization, storage expansion, and scientific readback. Output project SHA-256: `5ba6debaf54c6f0ebd6c38b1bd9b16633983fac5059744a51b0d5fa1c5eedf8f`.
+- Focused tests with both author-provided GDS files: **8/8 passed**. Run them locally with:
+
+```sh
+WAFERCAD_TRANSMON_GDS=/path/to/sample.gds \
+WAFERCAD_TRANSMON_Q2_ROI_GDS=/path/to/transmon-Q2-ROI.gds \
+node --test site/tests/transmon-gds-chip-extract.test.mjs \
+  site/tests/transmon-gds-q2-roi.test.mjs \
+  site/tests/transmon-q2-nb-replay.test.mjs
+```
+
+- The existing `scripts/offline-native-app-capture.py` loaded the strictly validated project in an **isolated native Three.js** model viewport using Chromium + SwiftShader with ROI `[-125,-125,125,125]` µm and Z break `[337.7,336.8]` µm. Native mesh completed; 0 browser page errors. **Normal-origin loading was blocked by managed Chromium URL policy.** This is partial native Renderer evidence, **not** Mask/Section synchronization, Worker-backed Open, History/Recovery, or product visual acceptance.
+- This first local Kernel diagnostic ran against the previously mounted source snapshot because the current `main` exact-SHA checkout is not available locally; the current-`main` `gds.js` and `layout-io.js` Git blobs match the snapshot, but `model.js` does not. Targeted process/scientific tests on the actual new branch baseline remain required before merge.
+
+The project does not simulate Josephson shadow evaporation, lift-off, AlOx or the quantum electrical response. It is a **Nb + Si recess checkpoint** only. No manual CI or full Quality suite was run for this research iteration.
