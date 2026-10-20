@@ -73,6 +73,21 @@ test('serialized kernel preserves material, rejects tampered mask and source', (
   assert.throws(() => validateProcessModel(wrongKernel), /dedicated/);
 });
 
+test('continuous owner rejects changes to future physical fields beyond the legacy whitelist', () => {
+  const original = fixture();
+  // Optional forward-compatible scientific fields must be protected too.
+  original.futureMaterialExtension = { effectiveLayerThicknessUm: 1.8, mode: 'exact' };
+  const released = attachContinuousEtchModel(original, operation);
+  assert.doesNotThrow(() => validateContinuousEtchModel(released));
+  const restored = structuredClone(released);
+  restored.futureMaterialExtension.effectiveLayerThicknessUm = 0.8;
+  assert.throws(
+    () => validateContinuousEtchModel(restored),
+    /reference material changed: futureMaterialExtension/,
+  );
+  assert.equal(released.futureMaterialExtension.effectiveLayerThicknessUm, 1.8);
+});
+
 test('existing 2.5D model and its Process behavior remain unchanged', () => {
   const model = fixture();
   const before = structuredClone(model);
