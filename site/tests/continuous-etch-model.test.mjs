@@ -298,5 +298,9 @@ test('History Manager restores M07 and exact continuous release across lossless 
   assert.equal(JSON.stringify(current.model), expectedModel);
   assert.equal(continuousModelMaterialAt(current.model, [50, 0, 15]), null);
   assert.equal(continuousModelMaterialAt(current.model, [145, 0, 40.5]), 'layer-1');
-  assert.equal(JSON.stringify(reopened), savedBytes, 'Historical inspection must not modify saved data');
+  assert.equal(
+    JSON.stringify(reopened),
+    savedBytes,
+    'Historical inspection must not modify saved data',
+  );
 });
