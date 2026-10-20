@@ -137,9 +137,7 @@ if (process.argv[1]?.endsWith('transmon-shadow-al-preview.mjs')) {
   const sourcePath = valueArg(args, '--gds');
   const outPath = valueArg(args, '--output');
   if (!sourcePath || !outPath)
-    throw new Error(
-      'Usage: --gds sample.gds --output Al-preview.wafercad',
-    );
+    throw new Error('Usage: --gds sample.gds --output Al-preview.wafercad');
   const source = await readFile(sourcePath);
   const { project, report } = await produceAuthorShadowPreview(source);
   await writeFile(outPath, project);
