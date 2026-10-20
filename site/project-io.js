@@ -851,10 +851,10 @@ export async function readProjectFile(
   const project = trustedBundledExample
     ? migrateProjectFile(parsed)
     : validateProjectFile(migrateProjectFile(parsed));
-  if (
-    project.model.kernel === CONTINUOUS_ETCH_MODEL_KERNEL &&
-    !experimentalContinuousEtchReadOnly
-  ) {
+  // History/Recovery may restore a different model from the active one.
+  // Refuse an unsupported continuous owner anywhere in the project, not only
+  // the active Model, before it can enter the production Workstation.
+  if (projectHasContinuousEtch(project) && !experimentalContinuousEtchReadOnly) {
     throw new Error(
       'Continuous Etch is not yet supported by the production Workstation; no flat import is permitted.',
     );
