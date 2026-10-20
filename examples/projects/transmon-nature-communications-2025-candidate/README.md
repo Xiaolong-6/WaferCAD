@@ -124,3 +124,21 @@ WAFERCAD_TRANSMON_GDS=/path/to/Zenodo_files/sample.gds \
 Local offline validation on the source snapshot: **3/3 new targeted tests passed**, including incorrect-rotation and overlapping-datatype counterexamples; Prettier 3.9.9 check passed. GitHub copies of both files were verified by their exact Git blob hashes. The complete current-branch checkout, WebGL Workstation, resist undercut geometry, actual 45° shadow evaporation, thin AlOx and lift-off **remain unverified/not implemented for this paper**. No simulated junction 3D result is claimed.
 
 **Next scientific gate:** establish a generic material/process contract for two-layer MMA/PMMA relief, shadow occlusion and directional deposition at the specific `θ=45°`/`ϕ` angles in the paper, including selective clearing and bandage contact. Do not approximate this by non-shadowed conformal coating or falsely claim the existing Implant tilt models metal evaporation.
+
+## Sampled oblique shadow visibility — research kernel, not process deposition
+
+`site/shadow-exposure-geometry.js` adds a generic 2D **substrate visibility** calculation for beams incident through sequential resist apertures. For a beam with polar tilt `θ` and in-plane azimuth `φ`, visibility at a substrate point requires the ray `(x, y) + z tan(θ)(cos φ, sin φ)` to remain inside the aperture at all *sampled* heights of every resist layer. This calculation intersects translated openings using WaferCAD's own polygon Boolean kernel. The sampling interval is explicit, and arbitrary nonconvex openings are not claimed to be solved exactly in the continuum limit.
+
+The source-backed research hypothesis for Tuokkola Q2 is PMMA upper openings = `8/1` and MMA lower undercut openings = union(`8/1`, `8/0`). Use author-reported 0.5 µm MMA + 0.4 µm PMMA; test `θ=45°`, `φ=-45°, +45°, -135°`. These designations are provisional because author GDS does not encode dose-to-layer semantics or evaporator-stage coordinate mapping.
+
+**Actual source-GDS result:** the `-45°` / `+45°` visibility overlap was 0.0322763, 0.0322678, 0.0322625, and 0.0322592 µm² for resist-height sampling steps 0.15, 0.075, 0.0375, and 0.01875 µm. The 180 × 180 nm lithographic mask area quoted in Supplementary Fig. 1 is 0.0324 µm². This agreement is suggestive only. It is not a measured deposited junction area, tunnelling area or an independent validation of the assumed dose map. Detailed source SHA, convergence and explicit limitations are in `q2-oblique-shadow-evidence.json`.
+
+Focused local verification from the existing manifest-verified `9d8b7a98` source-only Artifact (1,118 files, all SHA-256 checked) with unchanged GDS, Boolean and benchmark module Git blobs relative to the target branch:
+
+```sh
+WAFERCAD_TRANSMON_GDS=/path/to/Zenodo_files/sample.gds \
+  node --test site/tests/shadow-exposure-geometry.test.mjs
+# 5 passed, 0 failed (includes author-GDS convergence and adversarial nonconvex aperture).
+```
+
+Prettier 3.9.9 passed for both new code files; branch Git blobs match the locally verified files exactly. A complete checkout of this branch remains outstanding, as do actual manufacturing geometry (resist wall shape, shadowed deposited metal volumes, alumina oxidation, lift-off), Worker/History/Recovery, and native normal-origin WaferCAD visual acceptance. No new CI was triggered for these local mathematical tests.
