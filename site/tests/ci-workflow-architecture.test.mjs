@@ -181,3 +181,20 @@ test('manual reconstruction runs cannot mutate main', () => {
     ),
   );
 });
+
+
+test('M3D baseline retains scientific and visual owners without duplicate generic Quality', () => {
+  const m3d = workflow('m3d-conformal-baseline');
+  assert.match(m3d, /^  scientific-baseline:/m);
+  assert.match(m3d, /^  approved-windows-visual-baseline:/m);
+  assert.doesNotMatch(m3d, /^  quality:/m);
+  assert.doesNotMatch(m3d, /npm run lint|npm run format:check|npm run docs:check/);
+  assert.doesNotMatch(m3d, /m3d-conformal-baseline\.yml/);
+});
+
+test('manual pre-main reuses local Quality proof and retains full real-browser acceptance', () => {
+  const preMain = workflow('pre-main-integration-validation');
+  assert.match(preMain, /node scripts\/local-verification\.mjs verify full/);
+  assert.doesNotMatch(preMain, /npm run check:ci|npm test/);
+  assert.match(preMain, /npm run test:ui:all/);
+});

@@ -31,8 +31,8 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Lint and Node tests
-        run: npm run check:ci
+      - name: Require full local Quality evidence
+        run: node scripts/local-verification.mjs verify full
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
