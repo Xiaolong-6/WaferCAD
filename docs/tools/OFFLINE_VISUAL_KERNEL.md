@@ -318,6 +318,32 @@ display Z scaling. This focused check expects explicit stable-scale front
 profiles; it does not replace the general GLB, History or Recovery suites.
 Reuse the installed Chromium path/headless options as appropriate above.
 
+For a **strictly validated, authored science fixture** that does not require
+Worker-backed Open, the repository also provides
+`tests/fixtures/project-io/stable-rough-conformal-glb.wafercad`. It contains
+explicit `stochastic-v2` matching Base and 50 nm film profiles and can be
+checked using the existing source-backed native renderer:
+
+```sh
+python3 scripts/offline-native-app-capture.py --root . \
+  --inmemory-project tests/fixtures/project-io/stable-rough-conformal-glb.wafercad \
+  --check-glb --output test-results/stable-conformal-glb
+node --test site/tests/section-three-rough-profile.test.mjs
+```
+
+This fixture is deliberately authored from a simple base (not produced by a
+Process Worker). It validates physical GLB vertices and matched conformal
+heights, **not** an executed process transaction, History/Recovery, sidewall
+process formation or real synchronized four-view acceptance. Do not call the
+unmodified `stable-rough-base.wafercad` a GLB Rough test: its Base is flat.
+
+The GPU qualification samples the inside and boundaries of up to 16 physical
+Rough spatial zones (no more than 144 unique Float32 XY probes). Every zone
+must be represented; a scene with more zones, or translated array instances
+whose physical coordinates were not actually probed, is ineligible for GPU
+height displacement and uses the CPU fallback. Passing these finite probes
+still does not prove unsampled interior parity or hardware GPU correctness.
+
 ### Source-backed in-memory native 3D: demo or validated project
 
 Worker-restricted browsers can still render real, validated model topology

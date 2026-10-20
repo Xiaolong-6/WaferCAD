@@ -11,23 +11,45 @@ export function gpuRoughParitySamples(zones) {
   const groups = (zones || []).filter((zone) => zone.baseTriangles?.length);
   const total = groups.reduce((sum, zone) => sum + zone.baseTriangles.length, 0);
   if (!total) return [];
+  const maxTriangleProbes = 16;
+  // The parity gate cannot qualify zones that it never observes. A large
+  // multi-zone field stays on the deterministic CPU path instead of silently
+  // claiming shader precision from samples in unrelated patches.
+  if (groups.length > maxTriangleProbes) return [];
   const points = new Map();
-  const count = Math.min(16, total);
+  const selected = new Set();
+  let offset = 0;
+  for (const group of groups) {
+    selected.add(offset + Math.floor((group.baseTriangles.length - 1) / 2));
+    offset += group.baseTriangles.length;
+  }
+  // Fill the remaining fixed budget by distributing probes across the scene,
+  // but never replace the guaranteed representative from each distinct zone.
+  for (let index = 0; index < maxTriangleProbes && selected.size < maxTriangleProbes; index++) {
+    selected.add(Math.floor((index * (total - 1)) / (maxTriangleProbes - 1)));
+  }
   let groupIndex = 0,
     first = 0;
-  for (let index = 0; index < count; index++) {
-    const ordinal = Math.floor((index * (total - 1)) / Math.max(1, count - 1));
+  for (const ordinal of [...selected].sort((a, b) => a - b)) {
     while (ordinal >= first + groups[groupIndex].baseTriangles.length) {
       first += groups[groupIndex++].baseTriangles.length;
     }
     const triangle = groups[groupIndex].baseTriangles[ordinal - first];
     // Include corners pinned by the CPU and nonvertex interior points. The
     // shader receives Float32 XY, exactly as the production vertex buffer does.
+    // Include the physical corners, all three edge interiors, and several
+    // independent barycentric locations. Passing only sparse corner probes
+    // cannot qualify an oscillatory rough heightfield between vertices.
     for (const weights of [
       [1, 0, 0],
       [0, 1, 0],
       [0, 0, 1],
+      [0.5, 0.5, 0],
+      [0, 0.5, 0.5],
+      [0.5, 0, 0.5],
       [0.23, 0.31, 0.46],
+      [0.13, 0.17, 0.7],
+      [0.65, 0.12, 0.23],
     ]) {
       const point = [0, 1].map((axis) =>
         Math.fround(triangle.reduce((sum, vertex, i) => sum + vertex[axis] * weights[i], 0)),
@@ -142,6 +164,7 @@ export function canUseGpuRoughTask({
   appearance,
   buried = false,
   implant = false,
+  instanceTranslations = null,
   zDisplay = null,
 } = {}) {
   const frontScale = Number(zDisplay?.frontScale),
@@ -150,7 +173,16 @@ export function canUseGpuRoughTask({
       !zDisplay?.reliefActive &&
       (!Number.isFinite(frontScale) || Math.abs(frontScale - 1) <= 1e-12) &&
       (!Number.isFinite(backScale) || Math.abs(backScale - 1) <= 1e-12);
-  return Boolean(!implant && !buried && scaleCompatible && canUseGpuRoughPreview(appearance));
+  // The probe samples the template's physical triangles, not every translated
+  // array instance. Do not qualify displaced shader heights for untested
+  // instance locations; retain the existing CPU morphology/export contract.
+  return Boolean(
+    !implant &&
+    !buried &&
+    !instanceTranslations?.length &&
+    scaleCompatible &&
+    canUseGpuRoughPreview(appearance),
+  );
 }
 
 const ROUGH_PROFILE_GLSL = `

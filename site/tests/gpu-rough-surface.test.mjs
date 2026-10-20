@@ -40,7 +40,7 @@ test('GPU qualification samples physical cap corners and interiors across zones 
   ];
   const before = JSON.stringify(zones);
   const points = gpuRoughParitySamples(zones);
-  assert.ok(points.length > 16 && points.length <= 64);
+  assert.ok(points.length > 64 && points.length <= 144);
   assert.ok(points.some(([x]) => x === 2492));
   assert.ok(points.some(([x]) => x === -3000));
   assert.ok(
@@ -51,6 +51,31 @@ test('GPU qualification samples physical cap corners and interiors across zones 
   assert.deepEqual(gpuRoughParitySamples(zones), points);
   assert.deepEqual(gpuRoughParitySamples([]), []);
   assert.equal(JSON.stringify(zones), before, 'Never modify physical mesh input');
+});
+
+test('GPU qualification covers every spatial zone or conservatively chooses CPU', () => {
+  const triangle = (x) => [
+    [x, -0.3, 0],
+    [x + 0.1, -0.3, 0],
+    [x, 0.3, 0],
+  ];
+  // The last zone has just one triangle and very different physical coordinates.
+  const groups = Array.from({ length: 16 }, (_, index) => ({
+    baseTriangles: Array.from({ length: index === 0 ? 128 : 1 }, (_, sub) =>
+      triangle(index * 10000 + sub * 0.01),
+    ),
+  }));
+  const snapshot = JSON.stringify(groups);
+  const probes = gpuRoughParitySamples(groups);
+  assert.ok(probes.length > 16 && probes.length <= 144);
+  for (let index = 0; index < 16; index++) {
+    assert.ok(
+      probes.some(([x]) => x >= index * 10000 && x < index * 10000 + 2),
+      `Missing GPU height sample for spatial zone ${index}`,
+    );
+  }
+  assert.deepEqual(gpuRoughParitySamples([...groups, { baseTriangles: [triangle(-9999)] }]), []);
+  assert.equal(JSON.stringify(groups), snapshot, 'Probe selection must not edit physical geometry');
 });
 
 test('GPU height qualification rejects inaccurate or missing readback and restores renderer state', async () => {
@@ -212,6 +237,17 @@ test('GPU rough task eligibility falls back for buried, implant, and scaled-Z pa
   assert.equal(canUseGpuRoughTask({ appearance }), true);
   assert.equal(canUseGpuRoughTask({ appearance, buried: true }), false);
   assert.equal(canUseGpuRoughTask({ appearance, implant: true }), false);
+  assert.equal(
+    canUseGpuRoughTask({
+      appearance,
+      instanceTranslations: [
+        [2500, 0],
+        [50000, 0],
+      ],
+    }),
+    false,
+    'Translated instances cannot be qualified by template-only GPU height probes',
+  );
   assert.equal(
     canUseGpuRoughTask({ appearance, zDisplay: { frontScale: 1.2, backScale: 1 } }),
     false,

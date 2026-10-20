@@ -2446,6 +2446,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         appearance: task?.cap?.appearance,
         buried: task?.cap?.buried,
         implant: Boolean(task?.implant),
+        instanceTranslations: task?.cap?.instanceTranslations,
         zDisplay: currentZDisplay,
       });
     if (!candidate) return false;
