@@ -5,6 +5,7 @@ on:
     paths:
       - 'scripts/v2/check-history-recovery-lease.mjs'
       - 'scripts/v2/check-history-base-replay-acceptance.mjs'
+      - 'scripts/v2/check-history-view-persistence.mjs'
       - 'site/controllers/workspace-persistence-controller.js'
       - 'site/controllers/workspace-session-controller.js'
       - 'site/ui-v2/workstation-workflow.js'
@@ -41,11 +42,15 @@ jobs:
         run: node scripts/v2/check-history-recovery-lease.mjs
       - name: Verify Starting Wafer Base Replay with real Workers
         run: node scripts/v2/check-history-base-replay-acceptance.mjs
+      - name: Verify History View State and mobile navigation
+        run: node scripts/v2/check-history-view-persistence.mjs
       - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: pr350-base-replay-browser-evidence
-          path: test-results/pr350-history-base/
+          path: |
+            test-results/pr350-history-base/
+            test-results/pr350-history-view/
           if-no-files-found: ignore
           retention-days: 14
       - uses: actions/upload-artifact@v6
