@@ -260,8 +260,8 @@
        * Adds a key, if it is not present in the tree
        */
       Tree.prototype.add = function (key, data) {
-        var node = new Node(key, data);
         if (this._root === null) {
+          var node = new Node(key, data);
           node.left = node.right = null;
           this._size++;
           this._root = node;
@@ -270,6 +270,9 @@
         var t = splay(key, this._root, comparator);
         var cmp = comparator(key, t.key);
         if (cmp === 0) this._root = t;else {
+          // Create a node only when the splay tree really inserts a new key.
+          // Existing-key lookups retain their original comparator/splay path.
+          var node = new Node(key, data);
           if (cmp < 0) {
             node.left = t.left;
             node.right = t;
