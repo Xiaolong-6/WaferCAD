@@ -52,6 +52,16 @@ export function clipContinuousSurfaceToRect(part, bounds) {
     if (polygon.length < 3) continue;
     for (let index = 1; index + 1 < polygon.length; index++) {
       const triangle = [polygon[0], polygon[index], polygon[index + 1]];
+      // A pre-existing material sidewall can coincide exactly with a crop
+      // plane. Keep that plane's physical area in the generated cut face,
+      // rather than rendering the old sidewall AND a cap over each other.
+      // The boundary of the remaining cropped mesh is the single cap owner.
+      if (
+        planes.some(([axis, limit]) =>
+          triangle.every((vertex) => Math.abs(vertex[axis] - limit) <= 1e-6),
+        )
+      )
+        continue;
       const [a, b, c] = triangle;
       const ux = b[0] - a[0],
         uy = b[1] - a[1],

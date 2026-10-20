@@ -110,6 +110,10 @@ test('Real Microdisk material shells close at centered and off-centre ROI bounda
   for (const bounds of [
     { minX: -170, minY: 0, maxX: 170, maxY: 75 },
     { minX: -90, minY: -20, maxX: 90, maxY: 60 },
+    // This ROI meets a native SiO2 sidewall at x=-5 um. The previous mesh
+    // crop kept that face and added overlapping cap triangles: one edge had
+    // four incident triangles despite the original source mesh being closed.
+    { minX: -75, minY: 56, maxX: -5, maxY: 114 },
   ])
     verifyClosed(parts, bounds);
   assert.equal(JSON.stringify(model), original, 'ROI inspection cannot modify exact material');

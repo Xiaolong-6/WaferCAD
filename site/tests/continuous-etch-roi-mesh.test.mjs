@@ -61,3 +61,19 @@ test('ROI crop rejects malformed geometry and invalid crop bounds', () => {
     /Invalid continuous triangle mesh/,
   );
 });
+
+test('ROI plane owns a coincident material sidewall exactly once', () => {
+  // A material sidewall exactly on x=minX has zero enclosed volume in the
+  // cropped mesh. Keeping its old triangles AND the derived ROI cap creates
+  // overlapping faces and nonmanifold edges at the mask/ROI intersection.
+  const wall = {
+    layerId: 'base',
+    positions: Float32Array.from([0, 0, 0, 0, 3, 0, 0, 0, 2]),
+    normals: Float32Array.from([-1, 0, 0, -1, 0, 0, -1, 0, 0]),
+  };
+  const original = Array.from(wall.positions);
+  const roi = { minX: 0, maxX: 5, minY: -1, maxY: 4 };
+  assert.equal(clipContinuousSurfaceToRect(wall, roi).triangles, 0);
+  assert.deepEqual(Array.from(wall.positions), original, 'Display cropping is read-only');
+  assert.equal(clipContinuousSurfaceToRect(wall, null), wall);
+});

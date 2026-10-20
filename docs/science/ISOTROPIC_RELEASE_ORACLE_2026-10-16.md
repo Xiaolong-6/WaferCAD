@@ -397,3 +397,12 @@ The visual evidence must additionally include a maximized native WebGL view:
 `continuous-roi-three-maximized.png` in the existing real-Origin
 Workstation CI artifact. Geometry closure alone does not prove usable lighting,
 camera framing, correct material colors, or a successful Recipe Run All.
+
+A native material sidewall may coincide exactly with an ROI plane. A larger
+Microdisk M07 sweep exposed one such case: retaining that zero-interior-volume
+wall while also triangulating its inspection cap gave one edge four incident
+triangles. The display crop now omits faces fully coplanar with any ROI plane,
+so the mesh-derived cap is the **single owner** of that plane. The original
+scientific mesh remains immutable. The focused regression includes the
+formerly failing `[-75, 56, -5, 114] µm` rectangle; an additional 18-ROI
+local sweep checked 70 intersecting material meshes with no nonmanifold edges.
