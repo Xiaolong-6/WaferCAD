@@ -5,6 +5,9 @@ import {
   boundsOverlap,
 } from './model-array.js';
 import { IMPLANT_DEPTH_GRADIENT } from './annotation-rendering.js';
+import { createContinuousPlanSampler } from './continuous-etch-plan.js';
+import { validateContinuousEtchModel } from './continuous-etch-model.js';
+import { visibleSurfaceGroups } from './process-topology.js';
 import { layerById, modelBoundsZ } from './model.js';
 import { drawPlanGrid } from './plan-grid.js';
 import { validateExperimentalPhysicalFacetModel } from './experimental/physical-facets/physical-facet-model.js';
@@ -559,18 +562,77 @@ export function createPlanRenderers({
     return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${alpha})`;
   }
 
+  let continuousMainCache = null;
+  function drawContinuousPlan(ctx, w, h, v, model, face) {
+    const back = face === 'back';
+    const visible = model.layers.map((layer) => `${layer.id}:${layer.visible !== false}`).join('|');
+    const key = [w, h, v.cx, v.cy, v.s, face, visible].join('|');
+    if (continuousMainCache?.model !== model || continuousMainCache.key !== key) {
+      const sample = createContinuousPlanSampler(model, face);
+      // Physical XY/Z columns remain exact; only the display raster is sampled.
+      // Cap the interactive Main projection to avoid rerunning geometry at device-pixel resolution.
+      const step = Math.max(2, Math.ceil(Math.sqrt((w * h) / 16000)));
+      const nx = Math.max(1, Math.ceil(w / step));
+      const ny = Math.max(1, Math.ceil(h / step));
+      const raster = document.createElement('canvas');
+      raster.width = nx;
+      raster.height = ny;
+      const rasterCtx = raster.getContext('2d');
+      const image = rasterCtx.createImageData(nx, ny);
+      const palette = new Map(
+        model.layers.map((layer) => {
+          const hex = /^#[0-9a-f]{6}$/i.test(layer.color) ? layer.color : '#a4adb7';
+          return [layer.id, [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))];
+        }),
+      );
+      for (let iy = 0; iy < ny; iy++) {
+        const y = ((iy + 0.5) * h) / ny;
+        for (let ix = 0; ix < nx; ix++) {
+          const x = ((ix + 0.5) * w) / nx;
+          const xy = [((back ? -1 : 1) * (x - v.cx)) / v.s, (v.cy - y) / v.s];
+          const exposed = sample(xy);
+          if (!exposed) continue;
+          const rgb = palette.get(exposed.layerId);
+          if (!rgb) continue;
+          const shade = Math.max(-12, Math.min(14, exposed.z * 0.8));
+          const pos = (iy * nx + ix) * 4;
+          for (let channel = 0; channel < 3; channel++)
+            image.data[pos + channel] = Math.max(0, Math.min(255, rgb[channel] + shade));
+          image.data[pos + 3] = 255;
+        }
+      }
+      rasterCtx.putImageData(image, 0, 0);
+      // Untouched exposed materials retain their exact source XY polygons.
+      // Draw them as true vector edges above the sampled release height field;
+      // sampled cells are used only for surfaces whose visibility may change.
+      const owner = validateContinuousEtchModel(model);
+      const targets = new Set(owner.fronts.map((front) => front.layerId));
+      const exactPatches = visibleSurfaceGroups(owner.sourceModel, { face }).filter(
+        (patch) =>
+          !targets.has(patch.layerId) &&
+          model.layers.some((layer) => layer.id === patch.layerId && layer.visible !== false),
+      );
+      continuousMainCache = { model, key, raster, exactPatches };
+    }
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(continuousMainCache.raster, 0, 0, w, h);
+    for (const patch of continuousMainCache.exactPatches) {
+      const layer = layerById(model, patch.layerId);
+      if (!layer) continue;
+      canvasPathMulti(ctx, patch.geom, v, back);
+      const shade = Math.max(-12, Math.min(14, patch.z * 0.8));
+      ctx.fillStyle = shadeColor(layer.color, shade);
+      ctx.fill('evenodd');
+      ctx.strokeStyle = 'rgba(36,46,56,.24)';
+      ctx.lineWidth = 0.65;
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   function renderMain() {
     const { model, activeFace, section, readOnlyPreview } = getState();
-    if (model?.kernel === 'vector-continuous-etch-v1') {
-      const canvas = $('mainCanvas');
-      const { ctx, w, h } = setupCanvas(canvas);
-      ctx.clearRect(0, 0, w, h);
-      ctx.fillStyle = '#576b7a';
-      ctx.font = '12px system-ui';
-      ctx.fillText('Exact continuous material · inspect Section / 3D', 24, 36);
-      canvas.dataset.continuousPlanUnsupported = 'true';
-      return;
-    }
     if (validateExperimentalPhysicalFacetModel(model)) {
       // Never display the flat Base compatibility stack as physical Main.
       // The read-only laboratory route enables only 3D and Section.
@@ -593,7 +655,10 @@ export function createPlanRenderers({
     ctx.clearRect(0, 0, w, h);
     if (canvasTheme) drawPlanGrid(ctx, v, w, h, worldToCanvas, colors);
     drawBaseOutline(ctx, v, { fill: false, back, colors });
-    if (isArrayModel(model)) drawArrayPlan(ctx, v, back);
+    if (model?.kernel === 'vector-continuous-etch-v1') {
+      delete c.dataset.continuousPlanUnsupported;
+      drawContinuousPlan(ctx, w, h, v, model, activeFace);
+    } else if (isArrayModel(model)) drawArrayPlan(ctx, v, back);
     else {
       const patches = surfaceGroups(model, activeFace);
       for (const patch of patches) {

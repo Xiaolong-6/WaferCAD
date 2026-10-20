@@ -364,6 +364,24 @@ def run(args):
                     model_input['model'] = validated.pop('model')
                     input_evidence = {**validated, 'validatedModelFile': model_path.name,
                                       'validatedModelSha256': snapshot_sha(model_path)}
+                if model_input['model'] and model_input['model'].get('kernel') == 'vector-continuous-etch-v1':
+                    # Real production 2D renderer on the native canvas, with an
+                    # isolated read-only model. This does not replace the Workstation
+                    # project/Worker/History state or claim transactional acceptance.
+                    main_expression = (root / 'scripts/offline-native-main-view.js').read_text(
+                        encoding='utf-8')
+                    restore = page.get_by_role('button', name='3D restore')
+                    if restore.count() and restore.is_visible():
+                        restore.click()
+                        page.wait_for_timeout(200)
+                    main_details = page.evaluate(main_expression, {'model': model_input['model']})
+                    main_image = out / 'continuous-main-native.png'
+                    page.locator('#mainCanvas').screenshot(path=str(main_image), animations='disabled')
+                    report['images']['continuousMainNative'] = {
+                        'file': main_image.name, 'sha256': snapshot_sha(main_image)}
+                    report['continuousMainNative'] = main_details
+                    if (main_details.get('unsupportedFlag') or not main_details.get('solidPixels')):
+                        raise ValueError('Continuous Main native projection failed')
                 expression = (root / 'scripts/offline-native-model-view.js').read_text(
                     encoding='utf-8')
                 details = page.evaluate(expression, model_input)
