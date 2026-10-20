@@ -124,8 +124,8 @@ try {
         near(value, manualThickness, displayUnit + ' Manual film Z'),
       );
       assert.equal(afterManual.workflow.steps.length, 1);
-      // In UI v2 the canonical model Undo/Redo buttons live in History;
-      // Process displays independent "Undo form edit" draft controls.
+      // Process and History now expose the same canonical model Undo/Redo.
+      // Unapplied Process form changes never create History transactions.
       await page.locator('[data-action="domain:history"]').click();
       await page.locator('#undoBtn').click();
       await page.waitForFunction(
