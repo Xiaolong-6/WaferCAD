@@ -249,6 +249,13 @@ Open-file UI attempt and records a screenshot/Worker errors, but it
 complete**. Independent review and the original targeted science gates
 are still required.
 
+For native UI shell diagnosis, add `--inspect-history` to the existing capture command.
+It records `history-step0.png`, `step0-base-editor.png`, and `process-undo.png`,
+and asserts that Step 0 opens the real Base editor and Process exposes model-level
+Undo/Redo controls. In null-origin mode these screenshots prove **only** native
+presentation and navigation; Step replay, Workers, autosave, and Recovery remain
+unverified.
+
 Focused checks: `python3 scripts/offline-native-app-capture.test.py`.
 The real Chromium screenshot run is manual and intentionally not part of
 the ordinary unit-test/CI loop.

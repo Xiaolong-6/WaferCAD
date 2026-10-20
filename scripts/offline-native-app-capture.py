@@ -270,6 +270,53 @@ def run(args):
             before = runtime_probe(page)
             report['beforeInteraction'] = before
             report['images'] = {'fourView': {'file': base.name, 'sha256': snapshot_sha(base)}}
+            if args.inspect_history:
+                # These are real app controls; null-origin remains diagnostic-only
+                # because process Workers and Recovery cannot operate there.
+                history_nav = page.locator('button[data-action="domain:history"]')
+                process_nav = page.locator('button[data-action="domain:process"]')
+                if history_nav.count() != 1 or process_nav.count() != 1:
+                    raise RuntimeError('Native History/Process navigation controls are missing')
+                history_nav.click()
+                page.wait_for_timeout(350)
+                base_step = page.locator('#snapshotList .snapshot-base-step')
+                history_visible = base_step.count() == 1 and base_step.is_visible()
+                history_img = out / 'history-step0.png'
+                page.mouse.move(args.width - 8, args.height - 8)
+                page.screenshot(path=str(history_img), animations='disabled')
+                report['images']['historyStep0'] = {
+                    'file': history_img.name, 'sha256': snapshot_sha(history_img)}
+                base_step.click()
+                page.wait_for_timeout(350)
+                project_selected = page.locator('button[data-action="domain:project"][aria-pressed="true"]')
+                base_editor_visible = page.locator('#applyBaseBtn').is_visible()
+                step0_opens_editor = bool(project_selected.count() == 1 and base_editor_visible)
+                editor_img = out / 'step0-base-editor.png'
+                page.mouse.move(args.width - 8, args.height - 8)
+                page.screenshot(path=str(editor_img), animations='disabled')
+                report['images']['step0BaseEditor'] = {
+                    'file': editor_img.name, 'sha256': snapshot_sha(editor_img)}
+                process_nav.click()
+                page.wait_for_timeout(350)
+                undo = page.get_by_role('button', name='Undo model operation')
+                redo = page.get_by_role('button', name='Redo model operation')
+                process_actions = undo.count() == 1 and redo.count() == 1
+                process_img = out / 'process-undo.png'
+                page.mouse.move(args.width - 8, args.height - 8)
+                page.screenshot(path=str(process_img), animations='disabled')
+                report['images']['processUndo'] = {
+                    'file': process_img.name, 'sha256': snapshot_sha(process_img)}
+                report['historyProcessDiagnostic'] = {
+                    'stepZeroVisible': history_visible,
+                    'processUndoRedoVisible': process_actions,
+                    'stepZeroOpensBaseEditor': step0_opens_editor,
+                    'historyRecoveryVerified': False,
+                }
+                fail = fail or not (history_visible and process_actions and step0_opens_editor)
+                project_nav = page.locator('button[data-action="domain:project"]')
+                if project_nav.count():
+                    project_nav.click()
+                    page.wait_for_timeout(200)
             three_rect = before.get('three')
             three_ok = (bool(before['webgl']['available'])
                         and bool(before['webgl']['nativeThreeContext'])
@@ -431,6 +478,8 @@ def main():
     parser.add_argument('--height', type=int, default=1000)
     parser.add_argument('--headless', action='store_true', help='Opt out of headful/Xvfb; may disable WebGL')
     parser.add_argument('--require-origin', action='store_true', help='Fail rather than use null-origin diagnostic')
+    parser.add_argument('--inspect-history', action='store_true',
+                        help='Capture real History Step 0 and Process Undo controls (visual only)')
     args = parser.parse_args()
     if not 300 <= args.width <= 4096 or not 300 <= args.height <= 4096 or not 500 <= args.wait_ms <= 60000:
         parser.error('Invalid dimensions or wait interval')
