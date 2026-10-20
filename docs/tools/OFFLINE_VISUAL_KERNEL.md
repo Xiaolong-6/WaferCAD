@@ -273,6 +273,24 @@ already selects CPU; software results cannot establish hardware acceptance.
 This diagnostic does not change the physical heightfield or accept the
 remaining triangle-interior interpolation error.
 
+To audit the **spatial** distinction between saved legacy `stochastic` and
+explicit `stochastic-v2` independently of display LOD, run:
+
+```sh
+node scripts/rough-morphology-statistics.mjs \
+  site/examples/photodetector-literature-examples.wafercad
+node --test site/tests/rough-morphology-statistics.test.mjs
+```
+
+The read-only diagnostic reports the source project SHA-256, seed, sampled
+height mean/standard deviation/bounds, and X/Y autocorrelation versus
+physical lag (default: 256×256 points, 0.025 µm pitch near the Photodetector
+rough region). The statistics quantify morphology semantics and legacy
+coordinate-dependent frequency; they are **not** a fitted Feature CV, a
+section raster, a shader-height parity test, or native 3D visual acceptance.
+Do not switch the saved morphology or weaken scientific tolerances based on
+these statistics alone.
+
 The probe also compares explicit `stochastic-v2` with the legacy stochastic
 field at the same coordinates; it never upgrades the supplied project.
 For reproducible normal-Origin stable-scale Process/Worker, 50 nm Conformal,
