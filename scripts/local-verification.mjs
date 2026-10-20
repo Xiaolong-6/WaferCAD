@@ -175,11 +175,15 @@ export function verifyQuality(root, requiredScope) {
 }
 
 function executeCheck(check, root) {
+  // Child test commands are independent runners, including in integration tests.
+  const environment = { ...process.env };
+  delete environment.NODE_TEST_CONTEXT;
   const executable = check.command === 'node' ? process.execPath : 'npm';
   return spawnSync(executable, check.args, {
     cwd: root,
     encoding: 'utf8',
     maxBuffer: MAX_LOG,
+    env: environment,
     shell: check.command === 'npm' && process.platform === 'win32',
   });
 }
@@ -227,7 +231,10 @@ export function runQuality(root, scope, execute = executeCheck) {
     transcript.push(log);
     report.checks.push({
       ...check,
-      status: log.exitCode === 0 && log.signal === null && !result.error ? 'pass' : 'fail',
+      status:
+        log.exitCode === 0 && log.signal === null && !result.error && log.stdout.length > 0
+          ? 'pass'
+          : 'fail',
       exitCode: log.exitCode,
       signal: log.signal,
       durationMs: Date.now() - started,

@@ -294,3 +294,18 @@ test('the runner executes real npm and Node child processes before issuing a rec
   assert.equal(report.checks.length, 1);
   assert.equal(report.checks[0].exitCode, 2);
 });
+
+test('a zero-exit process with no output cannot issue a passing report', (t) => {
+  const { root } = fixture(t);
+  assert.throws(
+    () =>
+      runQuality(root, 'draft', () => ({
+        status: 0,
+        signal: null,
+        stdout: '',
+        stderr: '',
+      })),
+    /Local Quality failed/,
+  );
+  assert.equal(JSON.parse(readFileSync(join(root, EVIDENCE_FILES[0]))).status, 'fail');
+});
