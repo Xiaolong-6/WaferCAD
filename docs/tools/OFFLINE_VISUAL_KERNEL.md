@@ -220,6 +220,16 @@ On Linux the default is **headful Chromium** with an existing X display
 or ephemeral **Xvfb**; ANGLE/SwiftShader software WebGL is enabled.
 Use `WAFERCAD_CHROMIUM` or `--browser` to pick the exact executable.
 `--headless` is optional but may be unable to initialize WebGL.
+If the execution host rejects Unix-domain sockets, headed Xvfb and the
+full Chromium executable may fail before navigation. The existing runner
+also accepts Playwright's installed `chromium_headless_shell` executable
+with `--headless`; try that normal launch before declaring rendering
+blocked. In the 2026-10-20 Work environment, Playwright 1.55.1's Chromium
+140 headless shell rendered the native app and validated Photodetector at
+the normal HTTPS origin with SwiftShader and no page errors. This is an
+environment-specific result, not a guarantee for every managed host.
+Check the evidence's actual origin and WebGL state; neither mode changes
+administrator policy or establishes hardware/History/Recovery acceptance.
 The tool captures `four-view.png`, a real pointer-drag
 `three-orbit.png`, `three-maximized.png`, and
 `native-app.evidence.json` containing Chromium path/version, WebGL

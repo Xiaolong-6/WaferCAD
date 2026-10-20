@@ -498,6 +498,42 @@ export function roughDisplayHeightBlend(featureSize, samplePitch) {
   return 0.12 + 0.88 * smoothstep(0.25, 1, feature / pitch);
 }
 
+// Estimate XY resolution per cap, not from the ROI area or a sum of triangles
+// across material layers. Repeated conformal caps do not add spatial samples.
+// A shared seeded field uses its coarsest cap pitch so thin interfaces and
+// their borders retain the same display displacement, including CPU fallback.
+export function roughTaskDisplaySampling(tasks) {
+  const fields = new Map();
+  const sampling = tasks.map((task) => {
+    const appearance = task.cap.appearance;
+    const key = JSON.stringify(
+      Object.fromEntries(
+        Object.entries(appearance || {})
+          .filter(([name]) => name !== 'displayRoughBlend')
+          .sort(([a], [b]) => a.localeCompare(b)),
+      ),
+    );
+    let area = 0;
+    let triangles = 0;
+    for (const zone of task.zones || []) {
+      for (const [a, b, c] of zone.baseTriangles || []) {
+        area += Math.abs((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])) / 2;
+      }
+      triangles += adaptiveRoughMeshLod({
+        triangleCount: zone.baseTriangles.length,
+        maxEdge: zone.maxEdge,
+        featureSize: appearance?.featureSize,
+        ...zone.lodContext,
+        triangleBudget: zone.triangleBudget,
+      }).estimatedTriangles;
+    }
+    const pitch = area > 0 && triangles > 0 ? Math.sqrt((2 * area) / triangles) : 0;
+    fields.set(key, Math.max(fields.get(key) || 0, pitch));
+    return key;
+  });
+  return sampling.map((key) => ({ pitch: fields.get(key) }));
+}
+
 export function roughDisplayProfileOffsetAtPoint(x, y, appearance) {
   const original = roughProfileOffsetAtPoint(x, y, appearance),
     weight = Number(appearance?.displayRoughBlend);

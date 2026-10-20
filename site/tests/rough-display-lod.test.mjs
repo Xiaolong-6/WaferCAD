@@ -5,6 +5,7 @@ import {
   roughFarFieldContrast,
   roughDisplayProfileOffsetAtPoint,
   roughProfileOffsetAtPoint,
+  roughTaskDisplaySampling,
 } from '../surface-rendering.js';
 
 const appearance = {
@@ -18,6 +19,57 @@ const appearance = {
   heightCv: 0.3,
   seed: 20261015,
 };
+
+test('3D profile filtering uses cap XY density independently of ROI and repeated films', () => {
+  const task = (size, budget, profile = appearance) => ({
+    cap: { appearance: profile },
+    zones: [
+      {
+        baseTriangles: [
+          [
+            [0, 0],
+            [size, 0],
+            [size, size],
+          ],
+          [
+            [0, 0],
+            [size, size],
+            [0, size],
+          ],
+        ],
+        maxEdge: size * Math.SQRT2,
+        triangleBudget: budget,
+        lodContext: { distance: 1, viewportWidth: 1100, viewportHeight: 800, maxDepth: 8 },
+      },
+    ],
+  });
+  const substrate = task(4, 128);
+  const film = structuredClone(substrate);
+  const before = JSON.stringify([substrate, film]);
+  const one = roughTaskDisplaySampling([substrate])[0];
+  const pair = roughTaskDisplaySampling([substrate, film]);
+  assert.equal(one.pitch, 0.5);
+  assert.deepEqual(pair, [one, one], 'A coating cannot improve substrate XY resolution');
+  const originalBlend = roughDisplayHeightBlend(appearance.featureSize, one.pitch);
+  assert.ok(originalBlend > 0.12 && originalBlend < 1, 'Exercise the filter transition');
+  for (const sample of pair) {
+    assert.equal(roughDisplayHeightBlend(appearance.featureSize, sample.pitch), originalBlend);
+  }
+  const other = task(100, 128, { ...appearance, seed: appearance.seed + 1 });
+  assert.deepEqual(
+    roughTaskDisplaySampling([substrate, other])[0],
+    one,
+    'An unrelated distant rough field cannot change this profile',
+  );
+  const coarseFilm = task(4, 8);
+  const coarse = roughTaskDisplaySampling([substrate, coarseFilm]);
+  assert.deepEqual(
+    coarse.map((entry) => entry.pitch),
+    [2, 2],
+    'A shared seeded field must remain equally filtered on both sides of a film',
+  );
+  assert.equal(JSON.stringify([substrate, film]), before);
+});
 
 test('coarse macro features are display-filtered but resolved microfeatures are exact', () => {
   assert.equal(roughDisplayHeightBlend(0.3, 2), 0.12);

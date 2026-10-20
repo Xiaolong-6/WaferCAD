@@ -77,6 +77,7 @@ import { buildRoughSpatialZones, prepareMorphologyExportTasks } from './morpholo
 import {
   adaptiveRoughMeshLod,
   roughDisplayHeightBlend,
+  roughTaskDisplaySampling,
   roughFarFieldContrast,
   allocateRoughTriangleBudgets,
   projectedPixelsPerUnit,
@@ -2536,31 +2537,19 @@ diffuseColor.a *= waferCadAlphaScale;`,
     host.dataset.roughConformalLodPairs = String(conformalLodPairs);
     // Anti-alias unresolved features in the *displayed* stochastic heightfield
     // without increasing the scene triangle budget or changing stored geometry.
-    const visibleArea = Math.max(1e-12, boundsArea(visibleBounds(context.model, context.clip))),
-      triangles = requests.reduce((sum, request) => {
-        const zone = request.zone;
-        return (
-          sum +
-          adaptiveRoughMeshLod({
-            triangleCount: request.baseTriangles,
-            maxEdge: zone.maxEdge,
-            featureSize: request.appearance?.featureSize,
-            ...zone.lodContext,
-            triangleBudget: zone.triangleBudget,
-          }).estimatedTriangles
-        );
-      }, 0),
-      pitch = Math.sqrt((2 * visibleArea) / Math.max(1, triangles));
+    const sampling = roughTaskDisplaySampling(tasks);
     tasks.forEach((task, index) => {
       const appearance = task.cap.appearance,
         blend =
           appearance?.kind === 'rough' && appearance.morphology === 'stochastic'
-            ? roughDisplayHeightBlend(appearance.featureSize, pitch)
+            ? roughDisplayHeightBlend(appearance.featureSize, sampling[index].pitch)
             : 1;
       task.visualAppearance = blend < 1 ? { ...appearance, displayRoughBlend: blend } : appearance;
       roughTasks[index].visualAppearance = task.visualAppearance;
     });
-    host.dataset.roughDisplaySamplePitchUm = String(pitch);
+    host.dataset.roughDisplaySamplePitchUm = String(
+      Math.max(0, ...sampling.map((item) => item.pitch)),
+    );
     host.dataset.roughDisplayBlendMin = String(
       Math.min(1, ...tasks.map((task) => task.visualAppearance?.displayRoughBlend ?? 1)),
     );

@@ -167,6 +167,20 @@ UI orchestration that does not own canonical geometry lives under `site/controll
 
 3D Fast Mode defaults on. Fast, Quality and temporary Interactive are render-mesh budgets over the same canonical surface ownership and morphology field; `display.threeFastMode` is a view preference and uses lightweight view autosave. Rough sampling, normals, sidewall subdivision, pixel ratio and transparency sort frequency may vary, while topology, annotation envelopes, Main/Section and physical GLB export remain unchanged. See [3D Fast acceptance](archive/THREE_FAST_MODE_2026-10-07.md) and run `node scripts/three-fast-mode-regression.mjs` (or `--inspection-only` for transparent/ROI checks).
 
+Rough display filtering estimates XY sample pitch from each cap's actual
+triangulated area and allocated LOD, independently of the ROI bounding box
+and repeated material layers. Caps with the same seeded appearance use the
+coarsest shared pitch to preserve conformal registration. This display-only
+filter does not establish Section/3D interior height parity. The legacy
+variable-feature stochastic field evaluates noise using a spatially varying
+feature size; at large world coordinates it can vary much faster than its
+nominal `featureSize`. `section-three-rough-profile.test.mjs` audits actual
+Three.js triangle/cutline intersections, reports interpolation and Float32 XY
+rounding errors separately, and enforces physical vertex and 50 nm film
+registration. Reported interpolation errors are diagnostics, not approved
+tolerances. Changing that physical heightfield requires an explicit scientific
+and project-compatibility contract, including physical GLB export.
+
 Exposed rough caps can use the GPU-hybrid renderer: the worker still owns adaptive topology and transferable buffers, while shader code applies deterministic surface displacement and micro-normal detail. Keep CPU fallback for buried interfaces, Implant morphology and non-unit front/back Z scaling, and keep physical GLB export on the CPU morphology path. Presentation-only 3D changes (currently opacity and borders) must not be added to the physical-scene cache key: with model/ROI/Z-collapse/layer identity/Fast policy unchanged, update existing scene objects and materials in place. Any change to this split must preserve `sceneGeneration`, `surfacePlanBuildCount` and stable scene resource counts under repeated presentation toggles.
 
 The historical [2026-10-07 pre-main audit](archive/PRE_MAIN_AUDIT_2026-10-07.md) records the complete branch review, repaired shared-asset budget accounting and browser ownership, and local integration evidence at that revision.

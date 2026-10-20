@@ -404,6 +404,8 @@ def run(args):
                     roughMeshMode:canvas?.dataset?.roughMeshMode || 'none',
                     roughMeshBackend:canvas?.dataset?.roughMeshBackend || null,
                     roughTriangleCount:Number(canvas?.dataset?.roughTriangleCount || 0),
+                    roughDisplaySamplePitchUm:Number(item?.host?.dataset?.roughDisplaySamplePitchUm || 0),
+                    roughDisplayBlendMin:Number(item?.host?.dataset?.roughDisplayBlendMin ?? 1),
                     roughRebuildCount:Number(canvas?.dataset?.roughRebuildCount || 0),
                     width:bounds?.width || 0,height:bounds?.height || 0};
                 }''')

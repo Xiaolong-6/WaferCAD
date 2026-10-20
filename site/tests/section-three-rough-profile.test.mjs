@@ -95,6 +95,112 @@ test('Section and 3D share physical heights when resolved; coarse views have exp
   assert.equal(roughProfileOffsetAtPoint(x, y, appearance), original);
 });
 
+test('Actual 3D cutline audits distinguish unresolved profile error from conformal registration', async (t) => {
+  const THREE = await import('three');
+  const {
+    geometryFromRoughMeshData,
+    roughBoundaryEdgesFromTriangles,
+    roughMeshDataFromPreparedCap,
+  } = await import('../rough-mesh-geometry.js');
+  const x0 = 2494.7,
+    x1 = 2495.3,
+    y0 = -0.3,
+    y1 = 0.3;
+  const triangles = [
+    [
+      [x0, y0, 0],
+      [x1, y0, 0],
+      [x1, y1, 0],
+    ],
+    [
+      [x0, y0, 0],
+      [x1, y1, 0],
+      [x0, y1, 0],
+    ],
+  ];
+  const before = JSON.stringify(region);
+  const rms = [];
+  for (const depth of [0, 2, 4]) {
+    const zone = {
+      baseTriangles: triangles,
+      edges: roughBoundaryEdgesFromTriangles(triangles),
+      maxEdge: Math.hypot(x1 - x0, y1 - y0),
+      triangleBudget: 2 * 4 ** depth,
+      lodContext: { distance: 0.1, viewportWidth: 1100, viewportHeight: 800, maxDepth: depth },
+    };
+    const meshes = [si.z1, oxide.z1].map((z) => {
+      const data = roughMeshDataFromPreparedCap({
+        z,
+        normal: 1,
+        appearance,
+        closeToIdeal: false,
+        gpuDisplacement: false,
+        lodZones: [zone],
+      });
+      assert.equal(data.metadata.roughSubdivisionDepth, depth);
+      for (let index = 0; index < data.positions.length; index += 3) {
+        const [x, y, height] = data.positions.slice(index, index + 3);
+        const sectionHeight =
+          z + roughProfileOffsetAtPixelFootprint(x, y, appearance, { pixelsPerUm: 100 });
+        assert.ok(
+          Math.abs(height - sectionHeight) < 2e-5,
+          'Matched Float32 vertices must retain physical Section height',
+        );
+      }
+      return new THREE.Mesh(geometryFromRoughMeshData(THREE, data), new THREE.MeshBasicMaterial());
+    });
+    const ray = new THREE.Raycaster();
+    let squared = 0,
+      maximum = 0,
+      filmError = 0;
+    for (let i = 0; i < 65; i++) {
+      const x = x0 + ((x1 - x0) * (i + 0.5)) / 65,
+        y = 0.123;
+      ray.set(
+        new THREE.Vector3(x, y, oxide.z1 + appearance.etchDepth + 1),
+        new THREE.Vector3(0, 0, -1),
+      );
+      const heights = meshes.map((mesh) => {
+        const hit = ray.intersectObject(mesh, false)[0];
+        assert.ok(hit, 'The physical cutline must hit the rendered cap');
+        return hit.point.z;
+      });
+      const section =
+        si.z1 + roughProfileOffsetAtPixelFootprint(x, y, appearance, { pixelsPerUm: 100 });
+      const error = Math.abs(heights[0] - section);
+      squared += error ** 2;
+      maximum = Math.max(maximum, error);
+      filmError = Math.max(filmError, Math.abs(heights[1] - heights[0] - (oxide.z1 - si.z1)));
+    }
+    rms.push(Math.sqrt(squared / 65));
+    assert.ok(filmError < 2e-5, `Actual cap-interior film error ${filmError} um`);
+    t.diagnostic(
+      `cutline LOD ${depth}: RMS ${rms.at(-1)} um; max ${maximum} um; film error ${filmError} um`,
+    );
+    for (const mesh of meshes) {
+      mesh.geometry.dispose();
+      mesh.material.dispose();
+    }
+  }
+  // Interpolation error is diagnostic, not an accepted pixel/height tolerance.
+  // This legacy variable-feature field is not band-limited by featureSize:
+  // comparing vertices alone cannot establish interior cross-view acceptance.
+  const x = 2495.0123,
+    y = 0.123;
+  const roundingError = Math.abs(
+    roughProfileOffsetAtPoint(x, y, appearance) -
+      roughProfileOffsetAtPoint(Math.fround(x), Math.fround(y), appearance),
+  );
+  t.diagnostic(
+    `physical field change after Float32 XY rounding at (${x}, ${y}): ${roundingError} um`,
+  );
+  assert.equal(
+    JSON.stringify(region),
+    before,
+    'Cutline inspection cannot mutate the Process model',
+  );
+});
+
 test('Seed-matched conformal interfaces retain 50 nm physical separation at both views and Z factors', () => {
   assert.deepEqual(appearance, oxide.frontSurface);
   const film = oxide.z1 - si.z1;
