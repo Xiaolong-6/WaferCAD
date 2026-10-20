@@ -143,6 +143,24 @@ function withoutInspectionView(state) {
     if (INSPECTION_ONLY_KEYS.has(key)) continue;
     core[key] = value;
   }
+
+  // Layer color and visibility are inspection properties, not process edits.
+  // Model.revision also advances for these presentation-only changes; compare
+  // the actual model contents and processRevision instead of its cache counter.
+  if (core.model && typeof core.model === 'object') {
+    const model = { ...core.model };
+    delete model.revision;
+    for (const kind of ['layers', 'implants', 'electricalRegions']) {
+      if (!Array.isArray(model[kind])) continue;
+      model[kind] = model[kind].map((source) => {
+        const item = { ...source };
+        delete item.color;
+        delete item.visible;
+        return item;
+      });
+    }
+    core.model = model;
+  }
   return core;
 }
 
