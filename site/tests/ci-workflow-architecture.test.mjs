@@ -20,7 +20,7 @@ test('production Pages requires quality, browser and UI acceptance before publis
   assert.ok(pages.includes('run: node --test site/tests/release-evidence.test.mjs'));
   assert.match(pages, /if: .*needs.release-evidence.outputs.fast != 'true'/);
   assert.match(pages, /needs: \[stage-pages\]/);
-  assert.match(pages, /run: npm run check/);
+  assert.match(pages, /run: node scripts\/local-verification\.mjs verify full/);
   assert.match(pages, /uses: \.\/\.github\/workflows\/browser-regression\.yml/);
   assert.match(pages, /uses: \.\/\.github\/workflows\/ui-v2-stage-c-m4\.yml/);
   assert.match(
@@ -157,11 +157,12 @@ test('retired preview cannot publish from the obsolete branch', () => {
   );
 });
 
-test('Quality covers docs-only PRs and enforces pinned formatter', () => {
+test('Quality covers docs-only PRs and requires complete local evidence', () => {
   const quality = workflow('quality');
   assert.match(quality, /branches: \[main\]/);
   assert.doesNotMatch(quality, /paths-ignore:/);
-  assert.match(quality, /run: npm run check\n/);
+  assert.match(quality, /run: node scripts\/local-verification\.mjs verify/);
+  assert.doesNotMatch(quality, /npm ci|npm run check/);
 });
 
 test('manual reconstruction runs cannot mutate main', () => {

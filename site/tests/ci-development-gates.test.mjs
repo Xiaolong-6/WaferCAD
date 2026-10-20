@@ -7,19 +7,23 @@ function workflow(name) {
   return readFileSync(new URL('../../.github/workflows/' + name, import.meta.url), 'utf8');
 }
 
-test('stable Quality job performs full checks on ready PRs and manual runs', () => {
+test('Quality verifies source-bound local evidence without repeating local checks', () => {
   const source = workflow('quality.yml');
   assert.match(source, /name: Quality/);
-  assert.match(source, /run: npm run check\n/);
+  assert.match(source, /run: node scripts\/local-verification\.mjs verify full/);
   assert.match(
     source,
     /github\.event_name != 'pull_request' \|\| !github\.event\.pull_request\.draft/,
   );
-  assert.ok(source.includes('set -euo pipefail'));
-  assert.ok(source.includes('          npm run lint'));
-  assert.ok(source.includes('          npm run format:check'));
-  assert.ok(source.includes('          npm run docs:check'));
-  assert.ok(!source.includes('npm run lint && npm run format:check'));
+  assert.doesNotMatch(
+    source,
+    /npm ci|npm run check|npm run lint|npm run format:check|npm run docs:check/,
+  );
+  const release = workflow('pages.yml')
+    .split('  release-quality:\n')[1]
+    ?.split('  release-browser:\n')[0];
+  assert.match(release, /run: node scripts\/local-verification\.mjs verify full/);
+  assert.doesNotMatch(release, /npm ci|npm run check/);
 });
 
 test('draft deferral never disables reusable production release acceptance', () => {
@@ -57,7 +61,10 @@ test('Recipe safety reuses the full Quality gate instead of running it twice', (
     pages,
     /release-recipe:[\s\S]*?uses: \.\/\.github\/workflows\/process-recipe-safety\.yml\n    with:\n      skip_shared_node_gate: true/,
   );
-  assert.match(pages, /name: Release lint, format, docs and Node tests[\s\S]*?run: npm run check/);
+  assert.match(
+    pages,
+    /name: Release local Quality evidence[\s\S]*?run: node scripts\/local-verification\.mjs verify full/,
+  );
 });
 
 test('Recipe reusable callers retain the shared gate unless they explicitly opt out', () => {
@@ -135,4 +142,17 @@ test('heavy PR scopes ignore documentation tests and isolated screenshot collect
   assert.ok(browser.includes('      - "!examples/**/README.md"'));
   assert.ok(browser.includes('--base=${{ github.event.pull_request.base.sha }}'));
   assert.ok(browser.includes('--head=${{ github.event.pull_request.head.sha }}'));
+});
+
+test('documentation contracts have one automatic local Quality owner', () => {
+  const docs = workflow('documentation-wiki-targeted.yml');
+  assert.match(docs, /workflow_dispatch:/);
+  assert.doesNotMatch(docs, /pull_request:|npm ci|node --test/);
+  assert.match(docs, /run: node scripts\/local-verification\.mjs verify full/);
+  const local = readFileSync(
+    new URL('../../scripts/local-verification.mjs', import.meta.url),
+    'utf8',
+  );
+  assert.ok(local.includes("'site/tests/documentation-suite.test.mjs'"));
+  assert.ok(local.includes("{ id: 'node', command: 'npm', args: ['test'] }"));
 });
