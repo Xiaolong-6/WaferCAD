@@ -13,6 +13,8 @@ globalThis.polygonClipping = vendor.exports;
 const { createModel } = await import('../model.js');
 const { applyOperation } = await import('../model.js');
 const { validateProcessModel } = await import('../project-schema.js');
+const { resolveSectionCollapse, createCollapsedZDisplayTransform } =
+  await import('../section-z-collapse.js');
 const {
   attachContinuousEtchModel,
   validateContinuousEtchModel,
@@ -136,4 +138,18 @@ test('continuous release cannot inherit implicit or Workstation default Z Break'
   assert.equal(continuousEtchDisplayCollapse(plain, workstationDefault), workstationDefault);
   const explicit = { ...workstationDefault, continuousEtchExplicit: true };
   assert.equal(continuousEtchDisplayCollapse(continuous, explicit), explicit);
+  const resolved = resolveSectionCollapse(
+    continuousEtchDisplayCollapse(continuous, workstationDefault),
+    continuous,
+    [-40, 41.8],
+  );
+  const map = createCollapsedZDisplayTransform({
+    zMin: -40,
+    zMax: 41.8,
+    collapse: resolved,
+    breakFraction: 0,
+  });
+  // The real outer residual Si hill and cavity valley must remain physically
+  // separated on screen. The implicit default previously mapped both to 0.
+  assert.ok(Math.abs(map.mapZ(25.59) - map.mapZ(4.349) - 21.241) < 1e-9);
 });
