@@ -211,6 +211,12 @@ There is no application bundling step. `node scripts/build-pages-artifact.mjs` s
 30. When insertion causes replayed Deposit Steps to receive new layer IDs, all downstream replayable layer references must be remapped before the worker request is issued.
 31. Project schema migrations must preserve morphology/polarity semantics across v12→v13 and older supported formats.
 32. Editing a Step shared by dependent Variants must use copy-on-write rather than becoming a dead end: preserve the source/dependent histories, commit the edited Step on a new active Variant, and carry replayable downstream Steps when requested. Failed carry/replay restores the original graph transactionally.
+33. History Step restore, Undo/Redo and Variant navigation replace physical process state while preserving the current inspection camera, zoom/pan, Section line and display settings. Mask/process replay inputs remain attached to their originating Step.
+34. Layer color and visibility are project-level appearance properties, keyed by stable entity ID and serialized under `display.layerAppearance`. Historical Step snapshots must not accumulate per-step appearance maps; an absent material must regain the latest appearance when it reappears.
+35. Process toolbar Undo/Redo and History Undo/Redo operate the same committed model transactions. Unapplied Process field changes do not append History.
+36. Starting Wafer is displayed as Step 0, backed by a distinguished Base root rather than a synthetic ordinary Process node. Replace Base & Replay archives the old Main, validates original replay inputs, creates a Recovery checkpoint, and commits the full recalculation as one Undo transaction; failures must roll back geometry and History.
+37. Layers legend names open the originating History Step editor. Editing a layer's scientific process identity directly from an inspection legend is prohibited.
+38. Status severity must survive the v2 controller-to-shell boundary. No-change Process execution reports an accessible, visually distinguishable Warning without committing History.
 
 ## Source style
 
