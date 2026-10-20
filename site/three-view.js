@@ -1,6 +1,6 @@
 import { continuousRectRoiBounds } from './continuous-etch-roi.js';
 import { clipContinuousSurfaceToRect } from './continuous-etch-roi-mesh.js';
-import { buildContinuousRectRoiCaps } from './continuous-etch-roi-cap.js';
+import { buildContinuousRectMeshCaps } from './continuous-etch-roi-mesh-cap.js';
 import { isArrayModel, resolveArrayModel, geometryBounds, arrayParts } from './model-array.js';
 import { annotationDepthFraction, IMPLANT_DEPTH_GRADIENT } from './annotation-rendering.js';
 import { threeRenderPolicy } from './render-quality-policy.js';
@@ -3308,7 +3308,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
       }
       const exterior = { kind: 'material-exterior' };
       const state = presentationState(exterior, getInspection() || {}).materialState;
-      for (const part of buildContinuousRectRoiCaps(THREE, model, roiBounds)) {
+      const clippedParts = [...presentationObjects]
+        .map((mesh) => mesh.userData?.continuousCroppedPart)
+        .filter(Boolean);
+      for (const part of buildContinuousRectMeshCaps(THREE, clippedParts, roiBounds)) {
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute('position', new THREE.BufferAttribute(part.positions, 3));
         geometry.setAttribute('normal', new THREE.BufferAttribute(part.normals, 3));
@@ -3352,6 +3355,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         const oldGeometry = mesh.geometry;
         mesh.geometry = geometry;
         mesh.userData.continuousMeshCropSignature = signature;
+        mesh.userData.continuousCroppedPart = cropped;
         mesh.userData.continuousRoiEmpty = cropped.triangles === 0;
         trackZDisplayObject(mesh);
         oldGeometry?.dispose?.();

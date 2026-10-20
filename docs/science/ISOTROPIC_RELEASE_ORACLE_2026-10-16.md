@@ -368,3 +368,32 @@ rejects unsupported later material-changing Steps rather than silently using
 old isotropic Z bands. `record`/`snapshot` annotations may follow the release.
 The dedicated normal-Origin Workstation check must demonstrate Recipe Run All
 material/front parity with manual Apply, plus History and Recovery.
+
+## ROI closure follows the actual native display mesh (2026-10-20)
+
+The first rectangular-ROI implementation clipped each 3D triangle but built
+four separate Section-sampled cut faces. Even when both visualizations queried
+the same exact analytical material, their **sampled boundary vertices did not
+match**, leaving open edges and detached slivers. A passing Renderer-ready flag
+and positive cut-face triangle count did not detect the problem.
+
+`continuous-etch-roi-mesh-cap.js` constructs caps from the **open boundary edges
+of the already-cropped Three.js display triangles**. It closes each clipped
+layer-shell along each ROI plane and reuses the exact existing boundary
+vertices, including the corners shared by neighboring planes. Face normals
+and triangle winding are consistently outward. It does not resample the
+scientific owner, write any polygon to History, or change the Section sampler.
+
+Scientific regression `continuous-etch-roi-mesh-cap.test.mjs` counts all
+undirected and directed triangle edges. It requires **zero open edges, zero
+nonmanifold edges and zero inconsistent-winding edges**, separately for the
+20 µm Base and every intersecting material shell of the actual Microdisk M07
+under both centered and off-center rectangular ROI bounds. The initial
+20 µm diagnostic had 128 open clipped edges and 276 after the independent
+Section caps; the mesh-derived cap closes all 128. The tests use 0.1 nm
+Float32 display-vertex grouping, not a relaxed physical-material tolerance.
+
+The visual evidence must additionally include a maximized native WebGL view:
+`continuous-roi-three-maximized.png` in the existing real-Origin
+Workstation CI artifact. Geometry closure alone does not prove usable lighting,
+camera framing, correct material colors, or a successful Recipe Run All.

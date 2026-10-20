@@ -131,6 +131,16 @@ try {
       await page.locator('#threeHost').getAttribute('data-continuous-etch-roi-mesh-triangles'),
     );
     await page.screenshot({ path: resolve(output, 'continuous-with-main-roi.png') });
+    // The four-panel screenshot makes a broken cut easy to miss. Capture the
+    // same actual 3D WebGL view maximized for independent visual review.
+    await page.locator('#threePanel [data-action="maximize:three"]').click();
+    await page.waitForFunction(
+      () => document.querySelector('#threeHost canvas')?.getBoundingClientRect().width > 800,
+      null,
+      { timeout: 30000 },
+    );
+    await page.screenshot({ path: resolve(output, 'continuous-roi-three-maximized.png') });
+    await page.locator('#threePanel [data-action="maximize:three"]').click();
 
     await page.locator('[data-action="domain:history"]').click();
     await page.locator('#undoBtn').click();
