@@ -462,6 +462,34 @@ export function roughProfileOffsetAtPoint(x, y, appearance) {
   return Object.is(offset, -0) ? 0 : offset;
 }
 
+// Sample the *physical* seeded heightfield on the Section screen lattice.
+// This is deliberately independent of the 3D mesh-LOD display attenuation:
+// a Section pixel and a 3D triangle do not generally resolve the same area.
+// Expose the common operator so cross-view audits can compare matched physical
+// points and measure the aliasing, instead of mistaking it for a Z-scale error.
+export function roughProfileOffsetAtPixelFootprint(
+  x,
+  y,
+  appearance,
+  { pixelsPerUm = 1, unitX = 1, unitY = 0 } = {},
+) {
+  const density = Number(pixelsPerUm),
+    feature = Number(appearance?.featureSize);
+  if (!(density > 0) || !Number.isFinite(density) || !(feature > 0) || feature * density >= 2) {
+    return roughProfileOffsetAtPoint(x, y, appearance);
+  }
+  const halfPixelPhysical = 0.5 / Math.max(density, 1e-12);
+  let sum = 0;
+  for (const offset of [-1, -0.5, 0, 0.5, 1]) {
+    sum += roughProfileOffsetAtPoint(
+      x + unitX * halfPixelPhysical * offset,
+      y + unitY * halfPixelPhysical * offset,
+      appearance,
+    );
+  }
+  return sum / 5;
+}
+
 // These overrides affect displayed geometry only, never the canonical profile.
 export function roughDisplayHeightBlend(featureSize, samplePitch) {
   const feature = Number(featureSize),

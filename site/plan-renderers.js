@@ -19,7 +19,11 @@ import {
   surfaceGroups,
 } from './model-view-geometry.js';
 import { sectorAngleHandlePoints, sectorBoundaryPoints, roiHandlePoints } from './roi-editor.js';
-import { roughLod, roughProfileOffsetAtPoint, roughVisualBoundsZ } from './surface-rendering.js';
+import {
+  roughLod,
+  roughProfileOffsetAtPixelFootprint,
+  roughVisualBoundsZ,
+} from './surface-rendering.js';
 import { unionGeometries } from './vector-geometry.js';
 import {
   createSectionZTransform,
@@ -780,24 +784,12 @@ export function createPlanRenderers({
       sectionDy = section.b[1] - section.a[1],
       sectionUnitX = sectionDx / sectionSpan,
       sectionUnitY = sectionDy / sectionSpan,
-      filteredSectionRoughRelief = (appearance, worldX, worldY) => {
-        const featurePixels = appearance.featureSize * effectiveXScale;
-        if (featurePixels >= 2) return roughProfileOffsetAtPoint(worldX, worldY, appearance);
-
-        // Pixel-footprint filtering is a display anti-aliasing step. Keep every
-        // renderer that traces the same physical profile on this shared sampler
-        // so material, conformal coating and Implant remain visually registered.
-        const halfPixelPhysical = 0.5 / Math.max(effectiveXScale, 1e-12);
-        let sum = 0;
-        for (const offset of [-1, -0.5, 0, 0.5, 1]) {
-          sum += roughProfileOffsetAtPoint(
-            worldX + sectionUnitX * halfPixelPhysical * offset,
-            worldY + sectionUnitY * halfPixelPhysical * offset,
-            appearance,
-          );
-        }
-        return sum / 5;
-      };
+      filteredSectionRoughRelief = (appearance, worldX, worldY) =>
+        roughProfileOffsetAtPixelFootprint(worldX, worldY, appearance, {
+          pixelsPerUm: effectiveXScale,
+          unitX: sectionUnitX,
+          unitY: sectionUnitY,
+        });
 
     // Use one screen-space lattice for material and annotation profiles. Detail
     // sampling stays within the visible interval instead of spending its budget
