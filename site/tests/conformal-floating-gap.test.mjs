@@ -84,3 +84,64 @@ test('Issue #306: conformal on floating caps never bridges real internal air gap
     );
   }
 });
+
+test('Issue #306: shared bent edges are noded before 0.1 nm persistence snapping', () => {
+  // These two material owners share a diagonal. Only the lower owner has
+  // an additional on-edge vertex at sub-grid precision. Independently
+  // snapping the two boundaries used to invent a 0.00005 um² void column.
+  const x = 0.123456789;
+  const polygon = (vertices) => [[[...vertices, vertices[0]]]];
+  const model = createModel({ shape: 'rect', width: 2, height: 1, thickness: 10 });
+  model.regions = [
+    {
+      id: 'upper',
+      geom: polygon([
+        [-1, -0.5],
+        [1, 0.5],
+        [-1, 0.5],
+      ]),
+      stack: [{ layerId: 'base', z0: -5, z1: 5 }],
+    },
+    {
+      id: 'lower',
+      geom: polygon([
+        [-1, -0.5],
+        [1, -0.5],
+        [1, 0.5],
+        [x, x / 2],
+      ]),
+      stack: [{ layerId: 'base', z0: -5, z1: 4 }],
+    },
+  ];
+  model.nextRegionId = 3;
+  validateProcessModel(model);
+
+  const coating = applyOperation(model, {
+    type: 'add',
+    name: 'Conformal quantization probe',
+    thickness: 0.05,
+    growth: 'conformal',
+    face: 'front',
+    area: model.boundary,
+  });
+  assert.equal(coating.changed, true, coating.error);
+  validateProcessModel(model);
+
+  // Every original XY column has a Base owner; no new void-wall column is
+  // physically eligible. A post-snap synthetic gap must not be interpreted
+  // as an exposed through-hole and filled with full-depth conformal film.
+  for (const region of model.regions) {
+    assert.ok(
+      region.stack.some((segment) => segment.layerId === 'base'),
+      'Persistence snapping created a spurious full-depth coating-only owner',
+    );
+    for (const segment of region.stack) {
+      if (segment.layerId === coating.layerId) {
+        assert.ok(
+          segment.z0 >= 4 - 1e-9,
+          'Persistence snapping turned a numerical XY crack into a full-depth conformal wall',
+        );
+      }
+    }
+  }
+});
