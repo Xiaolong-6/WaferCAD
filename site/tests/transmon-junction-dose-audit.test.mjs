@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
@@ -126,5 +127,19 @@ test(
     assert.equal(audit.layer8Datatype0.areaUm2, 11.2);
     assert.equal(audit.layer8Datatype1.areaUm2, 11.201288);
     assert.equal(audit.datatypesOverlapAreaUm2, 0);
+  },
+);
+
+test(
+  'junction CLI initializes polygon-clipping from a fresh Node process',
+  { skip: !process.env.WAFERCAD_TRANSMON_GDS },
+  () => {
+    const script = new URL('../../scripts/transmon-junction-dose-audit.mjs', import.meta.url);
+    const out = execFileSync(
+      process.execPath,
+      [script.pathname, '--input', process.env.WAFERCAD_TRANSMON_GDS],
+      { encoding: 'utf8', timeout: 10000 },
+    );
+    assert.equal(JSON.parse(out).selectedAbsoluteChipPolygons, 17);
   },
 );
