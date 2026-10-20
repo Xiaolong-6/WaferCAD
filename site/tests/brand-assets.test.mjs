@@ -3,13 +3,14 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const root = new URL('../', import.meta.url);
-const [icon, welcome, app, shell, welcomeCss, workstationCss] = await Promise.all([
+const [icon, welcome, app, shell, welcomeCss, workstationCss, previewServer] = await Promise.all([
   readFile(new URL('assets/brand/wafercad-icon.svg', root), 'utf8'),
   readFile(new URL('index.html', root), 'utf8'),
   readFile(new URL('app.html', root), 'utf8'),
   readFile(new URL('ui-v2/workstation-v2.js', root), 'utf8'),
   readFile(new URL('welcome.css', root), 'utf8'),
   readFile(new URL('ui-v2/workstation-v2.css', root), 'utf8'),
+  readFile(new URL('../scripts/v2/serve-v2.mjs', root), 'utf8'),
 ]);
 
 test('Welcome and production Workstation use the same bundled SVG icon', () => {
@@ -29,4 +30,9 @@ test('the icon is transparent, vector-based, and contains no embedded metadata',
   assert.match(icon, /fill="#2563EB"/);
   assert.doesNotMatch(icon, /<metadata|c2pa:|<script|<foreignObject/i);
   assert.doesNotMatch(icon, /<rect\b/);
+});
+
+test('native v2 preview serves SVG with the MIME required by nosniff Chromium', () => {
+  assert.match(previewServer, /'\.svg': 'image\/svg\+xml'/);
+  assert.match(previewServer, /'X-Content-Type-Options': 'nosniff'/);
 });
