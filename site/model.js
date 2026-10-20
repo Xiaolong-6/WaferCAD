@@ -1,7 +1,10 @@
 import { indexedIntersectionInputs } from './process-boundary-index.js';
 import { addQualitativeDopantRegion, resolveQualitativeDopantRegion } from './dopant-regions.js';
 import { adaptiveReleaseDepthBands } from './isotropic-release-oracle.js';
-import { assertContinuousEtchNotProcessed, assertContinuousEtchNotRendered } from './continuous-etch-model.js';
+import {
+  assertContinuousEtchNotProcessed,
+  assertContinuousEtchNotRendered,
+} from './continuous-etch-model.js';
 import {
   assertExperimentalPhysicalFacetNotProcessed,
   applyExperimentalPhysicalFacetConformal,
@@ -237,7 +240,9 @@ export function recolorLayer(model, id, color) {
   const layer = layerById(model, id);
   if (!layer || !/^#[0-9a-f]{6}$/i.test(color || '')) return false;
   layer.color = color;
-  model.revision++;
+  // Continuous release owns a frozen physical predecessor: styling does not
+  // advance its canonical process revision or invalidate the exact material.
+  if (model.kernel !== 'vector-continuous-etch-v1') model.revision++;
   return true;
 }
 
@@ -245,7 +250,7 @@ export function setLayerVisible(model, id, visible) {
   const layer = layerById(model, id);
   if (!layer) return false;
   layer.visible = Boolean(visible);
-  model.revision++;
+  if (model.kernel !== 'vector-continuous-etch-v1') model.revision++;
   return true;
 }
 

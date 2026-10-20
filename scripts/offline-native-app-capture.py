@@ -427,6 +427,48 @@ def run(args):
                     'geometry': details, 'renderer': state,
                     'source': input_evidence or 'production createModel three-material demo',
                     'workstationStateLoaded': False, 'recoveryVerified': False}
+                if args.capture_continuous_appearance:
+                    appearance = page.evaluate('''async () => {
+                      const {model, renderer, host} = window.__wafercadOfflineModel;
+                      const api = await import('https://wafercad.local/model.js');
+                      const {validateContinuousEtchModel} = await import('https://wafercad.local/continuous-etch-model.js');
+                      const oldRevision = model.revision;
+                      const originalTriangles = host.dataset.continuousEtchTriangles;
+                      const oxide = model.layers.find(l => l.id !== 'base');
+                      if (!oxide) throw Error('Missing physical oxide in continuous presentation');
+                      api.recolorLayer(model, oxide.id, '#ef852f');
+                      api.setLayerVisible(model, 'base', false);
+                      validateContinuousEtchModel(model);
+                      await renderer.render();
+                      if (model.revision !== oldRevision) throw Error('Display edit changed physical revision');
+                      if (host.dataset.continuousEtchTriangles !== originalTriangles)
+                        throw Error('Display edit rebuilt canonical continuous geometry');
+                      return {modelRevision: model.revision, triangleCount: originalTriangles,
+                        hiddenBase: model.layers.find(l=>l.id==='base').visible===false,
+                        oxideColor: oxide.color, renderState:host.dataset.renderState};
+                    }''')
+                    page.wait_for_timeout(350)
+                    appearance_image = out / 'continuous-appearance-hidden-base.png'
+                    page.screenshot(path=str(appearance_image), animations='disabled')
+                    report['images']['continuousAppearanceHidden'] = {
+                        'file': appearance_image.name, 'sha256': snapshot_sha(appearance_image)}
+                    report['continuousAppearance'] = appearance
+                    restored = page.evaluate('''async () => {
+                      const {model, renderer, host} = window.__wafercadOfflineModel;
+                      const api = await import('https://wafercad.local/model.js');
+                      api.setLayerVisible(model, 'base', true);
+                      await renderer.render();
+                      return {visible: model.layers.find(l=>l.id==='base').visible,
+                        renderState: host.dataset.renderState};
+                    }''')
+                    page.wait_for_timeout(350)
+                    restored_image = out / 'continuous-appearance-restored.png'
+                    page.screenshot(path=str(restored_image), animations='disabled')
+                    report['images']['continuousAppearanceRestored'] = {
+                        'file': restored_image.name, 'sha256': snapshot_sha(restored_image)}
+                    report['continuousAppearanceRestored'] = restored
+                    if not (appearance['hiddenBase'] and restored['visible']):
+                        raise ValueError('Continuous display toggle failed')
                 if model_input['model'] and model_input['model'].get('kernel') == 'vector-continuous-etch-v1':
                     # Switch the *production* ThreeView camera to the underside
                     # without repeated SwiftShader interactions or synthetic geometry.
@@ -488,6 +530,8 @@ def main():
                              help='Strictly parse a real .wafercad in Node and render its model in isolated ThreeView')
     parser.add_argument('--inmemory-roi', help='xMin,yMin,xMax,yMax in physical micrometres; for --inmemory-project')
     parser.add_argument('--inmemory-z-break', help='top,bottom Z coordinates in physical micrometres; for --inmemory-project')
+    parser.add_argument('--capture-continuous-appearance', action='store_true',
+                        help='Test real continuous-material layer color and visibility without rebuilding mesh')
     parser.add_argument('--capture-continuous-ui', action='store_true',
                         help='Capture and inspect the real experimental Continuous Etch Process form')
     parser.add_argument('--wait-ms', type=int, default=5500)
@@ -498,6 +542,8 @@ def main():
     args = parser.parse_args()
     if not 300 <= args.width <= 4096 or not 300 <= args.height <= 4096 or not 500 <= args.wait_ms <= 60000:
         parser.error('Invalid dimensions or wait interval')
+    if args.capture_continuous_appearance and not args.inmemory_project:
+        parser.error('Continuous appearance capture requires an in-memory project')
     if (args.inmemory_roi or args.inmemory_z_break) and not args.inmemory_project:
         parser.error('ROI and Z break require --inmemory-project')
     try:

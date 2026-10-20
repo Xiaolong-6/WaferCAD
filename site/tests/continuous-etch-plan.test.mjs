@@ -57,7 +57,7 @@ test('Main projection is face-specific and refuses mutated persistent physical o
     z: -2,
   });
   released.layers[0].visible = false;
-  assert.throws(() => createContinuousPlanSampler(released, 'front'), /reference material changed/);
+  assert.equal(createContinuousPlanSampler(released, 'front')([0, 0]), null);
   released.layers[0].visible = true;
   assert.equal(JSON.stringify(released), before);
   assert.throws(() => createContinuousPlanSampler(released, 'both'), /Invalid/);

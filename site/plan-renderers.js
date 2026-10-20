@@ -565,8 +565,10 @@ export function createPlanRenderers({
   let continuousMainCache = null;
   function drawContinuousPlan(ctx, w, h, v, model, face) {
     const back = face === 'back';
-    const visible = model.layers.map((layer) => `${layer.id}:${layer.visible !== false}`).join('|');
-    const key = [w, h, v.cx, v.cy, v.s, face, visible].join('|');
+    const appearance = model.layers
+      .map((layer) => `${layer.id}:${layer.visible !== false}:${layer.color}`)
+      .join('|');
+    const key = [w, h, v.cx, v.cy, v.s, face, appearance].join('|');
     if (continuousMainCache?.model !== model || continuousMainCache.key !== key) {
       const sample = createContinuousPlanSampler(model, face);
       // Physical XY/Z columns remain exact; only the display raster is sampled.

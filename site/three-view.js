@@ -3283,12 +3283,23 @@ diffuseColor.a *= waferCadAlphaScale;`,
     if (clip) throw new RangeError('Continuous Etch ROI 3D clipping is not yet supported');
     const owner = validateContinuousEtchModel(model);
     if (!owner) throw new RangeError('Missing or invalid continuous material owner');
+    const updateMaterialAppearance = () => {
+      for (const mesh of presentationObjects) {
+        const layerId = mesh.userData?.continuousLayerId;
+        if (!layerId) continue;
+        const layer = layerById(model, layerId);
+        mesh.visible = layer?.visible !== false;
+        mesh.material?.color?.set(layer?.color || '#999');
+      }
+      scheduleFrame();
+    };
     if (
       physicalSceneModel === model &&
       physicalSceneSignature === 'continuous-etch-v1' &&
       presentationObjects.size
     ) {
       applyPresentationState();
+      updateMaterialAppearance();
       return;
     }
 
@@ -3346,12 +3357,19 @@ diffuseColor.a *= waferCadAlphaScale;`,
       geometry.setAttribute('position', new THREE.BufferAttribute(part.positions, 3));
       geometry.setAttribute('normal', new THREE.BufferAttribute(part.normals, 3));
       geometry.userData.analyticSurfaceNormals = true;
-      const material = createSurfaceMaterial(
+      let material = createSurfaceMaterial(
         layerById(model, part.layerId),
         materialState,
         null,
         exterior,
       );
+      // Continuous meshes can restyle without a multi-second geometry rebuild.
+      // Keep their material private rather than mutating the pooled material
+      // shared with other scenes or display variants.
+      if (material.userData?.waferCadPooledPresentationMaterial) {
+        material = material.clone();
+        material.userData.waferCadPooledPresentationMaterial = false;
+      }
       const mesh = addSurfaceMesh(
         geometry,
         material,
@@ -3362,7 +3380,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
         null,
         exterior,
       );
-      if (mesh) mesh.name = 'continuous-etch-' + part.layerId;
+      if (mesh) {
+        mesh.name = 'continuous-etch-' + part.layerId;
+        mesh.userData.continuousLayerId = part.layerId;
+      }
     }
     physicalSceneModel = model;
     physicalSceneSignature = 'continuous-etch-v1';
@@ -3378,6 +3399,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     delete host.dataset.rendererBuildFailure;
     applyZDisplayState(model);
     applyPresentationState({ profile: false, settle: true });
+    updateMaterialAppearance();
     host.dataset.renderState = 'ready';
     stats.textContent = 'Continuous Etch · analytic material, sampled display mesh';
     fit({ notify: false });
@@ -3393,10 +3415,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     }
     const model = getModel();
     if (!model) return;
-    if (
-      model.kernel === CONTINUOUS_ETCH_MODEL_KERNEL ||
-      model.continuousEtchOwner != null
-    ) {
+    if (model.kernel === CONTINUOUS_ETCH_MODEL_KERNEL || model.continuousEtchOwner != null) {
       try {
         await renderContinuousEtch(model);
       } catch (error) {

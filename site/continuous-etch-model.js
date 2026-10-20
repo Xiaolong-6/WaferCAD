@@ -36,6 +36,29 @@ export function validateContinuousEtchModel(model) {
     throw new RangeError('Continuous etch result contains an unexpected physical field');
   for (const key of originalKeys) {
     if (key === 'kernel' || key === 'revision' || key === 'processRevision') continue;
+    if (key === 'layers') {
+      // Color and visibility are presentation-only. Preserve every other
+      // source layer field, including future scientific/material metadata.
+      const current = model.layers;
+      const source = owner.sourceModel.layers;
+      const scienceFields = (layer) =>
+        Object.fromEntries(
+          Object.entries(layer).filter(([name]) => !['color', 'visible'].includes(name)),
+        );
+      const sameLayerContract =
+        Array.isArray(current) &&
+        Array.isArray(source) &&
+        current.length === source.length &&
+        current.every(
+          (layer, index) =>
+            JSON.stringify(Object.keys(layer).sort()) ===
+              JSON.stringify(Object.keys(source[index]).sort()) &&
+            JSON.stringify(scienceFields(layer)) === JSON.stringify(scienceFields(source[index])),
+        );
+      if (!sameLayerContract)
+        throw new RangeError('Continuous etch reference material changed: layers');
+      continue;
+    }
     if (JSON.stringify(model[key]) !== JSON.stringify(owner.sourceModel[key]))
       throw new RangeError('Continuous etch reference material changed: ' + key);
   }

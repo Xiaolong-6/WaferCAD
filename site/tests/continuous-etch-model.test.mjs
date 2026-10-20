@@ -10,7 +10,8 @@ new Function(
 )(vendor, vendor.exports);
 globalThis.polygonClipping = vendor.exports;
 
-const { createModel } = await import('../model.js');
+const modelApi = await import('../model.js');
+const { createModel } = modelApi;
 const { applyOperation } = await import('../model.js');
 const { validateProcessModel } = await import('../project-schema.js');
 const { resolveSectionCollapse, createCollapsedZDisplayTransform } =
@@ -88,6 +89,41 @@ test('continuous owner rejects changes to future physical fields beyond the lega
   assert.equal(released.futureMaterialExtension.effectiveLayerThicknessUm, 1.8);
 });
 
+test('continuous appearance edits preserve physical revisions, round-trip and scientific guard', () => {
+  const released = attachContinuousEtchModel(fixture(), operation);
+  const initialRevision = released.revision;
+  const initialProcessRevision = released.processRevision;
+  const columns = continuousModelColumnAtXY(released, [0, 0]);
+  const source = JSON.stringify(released.continuousEtchOwner.sourceModel);
+  assert.equal(modelApi.setLayerVisible(released, 'base', false), true);
+  assert.equal(modelApi.recolorLayer(released, 'base', '#123abc'), true);
+  assert.equal(released.revision, initialRevision);
+  assert.equal(released.processRevision, initialProcessRevision);
+  assert.equal(JSON.stringify(released.continuousEtchOwner.sourceModel), source);
+  assert.deepEqual(continuousModelColumnAtXY(released, [0, 0]), columns);
+  const restored = JSON.parse(JSON.stringify(released));
+  assert.doesNotThrow(() => validateProcessModel(restored));
+  assert.equal(modelApi.setLayerVisible(restored, 'base', true), true);
+  assert.equal(modelApi.recolorLayer(restored, 'base', '#abcdef'), true);
+  assert.equal(restored.revision, initialRevision);
+  assert.deepEqual(continuousModelColumnAtXY(restored, [0, 0]), columns);
+  const changedName = structuredClone(restored);
+  changedName.layers[0].name = 'material identity changed';
+  assert.throws(
+    () => validateContinuousEtchModel(changedName),
+    /reference material changed: layers/,
+  );
+  const changedFields = structuredClone(restored);
+  changedFields.layers[0].futureMaterialProperty = 'silicon';
+  assert.throws(
+    () => validateContinuousEtchModel(changedFields),
+    /reference material changed: layers/,
+  );
+  const changedSource = structuredClone(restored);
+  changedSource.continuousEtchOwner.sourceModel.regions[0].stack[0].z1 -= 0.25;
+  assert.throws(() => validateContinuousEtchModel(changedSource), /disagrees|reference|material/);
+});
+
 test('existing 2.5D model and its Process behavior remain unchanged', () => {
   const model = fixture();
   const before = structuredClone(model);
@@ -115,6 +151,10 @@ test('published Microdisk M07 continuous kernel round-trips the lossless .waferc
     verticalUm: 36,
     shape: 'circular',
   });
+  const scienceRevision = project.model.revision;
+  modelApi.recolorLayer(project.model, 'layer-1', '#ef852f');
+  modelApi.setLayerVisible(project.model, 'base', false);
+  assert.equal(project.model.revision, scienceRevision);
   const materialBefore = continuousModelColumnAtXY(project.model, [50, 0]);
   const saved = prepareProjectForExport(project);
   assert.equal(saved.mode, 'lossless');
@@ -124,6 +164,9 @@ test('published Microdisk M07 continuous kernel round-trips the lossless .waferc
   assert.deepEqual(JSON.parse(text), saved.stored);
   const file = { size: Buffer.byteLength(text), text: async () => text };
   const read = await readProjectFile(file);
+  assert.equal(read.model.layers.find((layer) => layer.id === 'layer-1').color, '#ef852f');
+  assert.equal(read.model.layers.find((layer) => layer.id === 'base').visible, false);
+  assert.equal(read.model.revision, scienceRevision);
   assert.deepEqual(continuousModelColumnAtXY(read.model, [50, 0]), materialBefore);
   assert.equal(continuousModelMaterialAt(read.model, [50, 0, 15]), null);
   assert.equal(continuousModelMaterialAt(read.model, [0, 0, 39]), 'base');
