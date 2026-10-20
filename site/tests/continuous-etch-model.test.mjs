@@ -225,3 +225,76 @@ test('generic serialization preserves an exact continuous owner buried in Histor
     'layer-1',
   );
 });
+
+test('History Manager restores M07 and exact continuous release across lossless reload', async () => {
+  const { createSnapshotManager } = await import('../workspace-snapshots.js');
+  const { expandProjectStorage, serializeProject, readProjectFile } =
+    await import('../project-io.js');
+  const project = expandProjectStorage(
+    JSON.parse(
+      readFileSync(new URL('../examples/suspended-silica-microdisks.wafercad', import.meta.url)),
+    ),
+  );
+  const originalM07 = project.snapshots.find((s) => s.id === 'snapshot-microdisk-07')?.state?.model;
+  assert.ok(originalM07);
+  let current = structuredClone({ ...project, model: originalM07 });
+  delete current.snapshots;
+  delete current.snapshotBranches;
+  let id = 0;
+  const options = {
+    capture: () => current,
+    restore: (state) => { current = structuredClone(state); },
+    validateState: (state) => {
+      try {
+        validateProcessModel(state.model);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    now: () => new Date('2026-10-20T00:00:00.000Z'),
+    idFactory: () => 'continuous-snapshot-' + ++id,
+  };
+  const manager = createSnapshotManager(options);
+  const before = manager.create('M07 before release');
+  current.model = attachContinuousEtchModel(current.model, {
+    face: 'front',
+    targetLayerIds: ['base'],
+    lateralUm: 36,
+    verticalUm: 36,
+    shape: 'circular',
+  });
+  const after = manager.create('M08 continuous release');
+  const expectedModel = JSON.stringify(current.model);
+  assert.equal(continuousModelMaterialAt(current.model, [50, 0, 15]), null);
+  assert.equal(manager.restore(before.id), true);
+  assert.equal(current.model.kernel, 'vector-2.5d-v1');
+  assert.equal(manager.restore(after.id), true);
+  assert.equal(JSON.stringify(current.model), expectedModel);
+  assert.equal(continuousModelMaterialAt(current.model, [0, 0, 39]), 'base');
+
+  const saved = {
+    ...current,
+    snapshots: manager.exportRecords(),
+    snapshotBranches: manager.exportBranchState(),
+  };
+  const text = serializeProject(saved);
+  const packed = JSON.parse(text);
+  assert.equal(packed.storage?.lossless, true);
+  const serializedFile = new Blob([text], { type: 'application/json' });
+  await assert.rejects(() => readProjectFile(serializedFile), /no flat import/);
+  const reopened = await readProjectFile(serializedFile, {
+    experimentalContinuousEtchReadOnly: true,
+  });
+  current = reopened;
+  const revived = createSnapshotManager(options);
+  revived.importRecords(reopened.snapshots, reopened.snapshotBranches);
+  const savedBytes = JSON.stringify(reopened);
+  assert.equal(revived.restore(before.id), true);
+  assert.equal(current.model.kernel, 'vector-2.5d-v1');
+  assert.equal(revived.restore(after.id), true);
+  assert.equal(JSON.stringify(current.model), expectedModel);
+  assert.equal(continuousModelMaterialAt(current.model, [50, 0, 15]), null);
+  assert.equal(continuousModelMaterialAt(current.model, [145, 0, 40.5]), 'layer-1');
+  assert.equal(JSON.stringify(reopened), savedBytes, 'Historical inspection must not modify saved data');
+});
