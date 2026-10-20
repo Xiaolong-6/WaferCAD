@@ -16,6 +16,7 @@ import {
 } from './border-inspector.js';
 import { shouldYieldDuringSceneAssembly } from './renderer-cooperative-assembly.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
+import { intersection, multiBounds } from './vector-geometry.js';
 import {
   annotationInspectionCutSegments,
   electricalRegionSolids,
@@ -353,9 +354,32 @@ export function createThreeView({
         breakFraction: 0,
       }),
       reliefFactor = normalizeThreeRoughReliefFactor(getRoughReliefFactor()),
+      clip = reliefFactor > 1 ? getClipGeometry() : null,
+      clipBounds = clip?.length ? multiBounds(clip) : null,
       display = createThreeRoughReliefDisplayTransform(
         transform,
-        reliefFactor > 1 ? threeRoughReliefBands(model) : [],
+        reliefFactor > 1
+          ? threeRoughReliefBands(
+              model,
+              0.12,
+              clipBounds
+                ? (region) => {
+                    const bounds = multiBounds(region.geom);
+                    // Reject nonoverlapping owners without invoking the robust
+                    // Boolean kernel. A bbox hit alone is insufficient for a
+                    // clipped hole or disconnected polygon component.
+                    if (
+                      bounds.maxX <= clipBounds.minX ||
+                      bounds.minX >= clipBounds.maxX ||
+                      bounds.maxY <= clipBounds.minY ||
+                      bounds.minY >= clipBounds.maxY
+                    )
+                      return false;
+                    return intersection(region.geom, clip).length > 0;
+                  }
+                : null,
+            )
+          : [],
         reliefFactor,
       ),
       bounds = visibleBounds(model, getClipGeometry()),

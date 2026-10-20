@@ -25,13 +25,22 @@ export function normalizeThreeRoughReliefFactor(value) {
   return THREE_ROUGH_RELIEF_FACTORS.includes(factor) ? factor : 1;
 }
 
-export function threeRoughReliefBands(model, marginUm = 0.12) {
+export function threeRoughReliefBands(model, marginUm = 0.12, regionIntersectsRoi = null) {
   const bands = [];
   // Very large array models have no inexpensive enumerable slab set. Leave
   // the optional presentation mode disabled instead of expanding templates.
   if (!Array.isArray(model?.regions) || model.regions.length > 20000) return bands;
   const margin = Math.max(0, Math.min(1, Number(marginUm) || 0));
   for (const region of model.regions) {
+    // Most Process owners have no rough surfaces. Reject them before any
+    // polygon Boolean against the ROI; this is a display-time operation.
+    if (
+      !(region.stack || []).some(
+        (slab) => slab.frontSurface?.kind === 'rough' || slab.backSurface?.kind === 'rough',
+      )
+    )
+      continue;
+    if (regionIntersectsRoi && !regionIntersectsRoi(region)) continue;
     for (const slab of region.stack || []) {
       for (const [appearance, z, normal] of [
         [slab.frontSurface, slab.z1, 1],

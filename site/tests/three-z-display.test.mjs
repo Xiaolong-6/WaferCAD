@@ -6,6 +6,9 @@ import {
   threeZDisplayScale,
 } from '../three-z-display.js';
 import { createCollapsedZDisplayTransform } from '../section-z-collapse.js';
+import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
+
+await loadGeometryKernel();
 
 // A shared monotone map cannot open artificial air gaps at a conformal edge.
 test('3D display-only factors are finite, bounded and reversible', () => {
@@ -77,4 +80,48 @@ test('Relief mapping cannot enable GPU-only displacement without remapping its v
     canUseGpuRoughTask({ appearance: surface, zDisplay: { reliefActive: true } }),
     false,
   );
+});
+
+test('Local relief only magnifies rough surfaces intersecting the selected ROI', async () => {
+  const { difference, rectMulti, intersection } = await import('../vector-geometry.js');
+  const { threeRoughReliefBands, createThreeRoughReliefDisplayTransform } =
+    await import('../three-z-display.js');
+  const patch = { kind: 'rough', morphology: 'stochastic', etchDepth: 0.7 };
+  const model = {
+    regions: [
+      {
+        geom: rectMulti(20, 20, -30, 0),
+        stack: [{ z0: -5, z1: 5, frontSurface: patch }],
+      },
+      { geom: rectMulti(20, 20, 30, 0), stack: [{ z0: -5, z1: 5 }] },
+      {
+        geom: difference(rectMulti(20, 20, 0, 30), rectMulti(10, 10, 0, 30)),
+        stack: [{ z0: -5, z1: 5, frontSurface: patch }],
+      },
+    ],
+  };
+  const emptyRoi = rectMulti(5, 5, 30, 0);
+  const roughRoi = rectMulti(5, 5, -30, 0);
+  const holeRoi = rectMulti(3, 3, 0, 30);
+  const base = createCollapsedZDisplayTransform({
+    zMin: -5,
+    zMax: 6,
+    collapse: { enabled: false },
+  });
+  const snapshot = JSON.stringify(model);
+  let polygonChecks = 0;
+  const matchesRoi = (roi) => (region) => {
+    polygonChecks++;
+    return intersection(region.geom, roi).length > 0;
+  };
+  assert.equal(threeRoughReliefBands(model, 0.12, matchesRoi(emptyRoi)).length, 0);
+  assert.equal(polygonChecks, 2, 'Smooth owners must not trigger ROI Booleans');
+  assert.equal(threeRoughReliefBands(model, 0.12, matchesRoi(holeRoi)).length, 0);
+  const rough = threeRoughReliefBands(model, 0.12, matchesRoi(roughRoi));
+  assert.equal(rough.length, 1);
+  assert.ok(Math.abs(rough[0][0] - 4.88) < 1e-10);
+  assert.ok(Math.abs(rough[0][1] - 5.82) < 1e-10);
+  assert.equal(createThreeRoughReliefDisplayTransform(base, [], 30).reliefActive, false);
+  assert.equal(createThreeRoughReliefDisplayTransform(base, rough, 30).reliefActive, true);
+  assert.equal(JSON.stringify(model), snapshot, 'ROI diagnostics must not mutate physical owner');
 });
