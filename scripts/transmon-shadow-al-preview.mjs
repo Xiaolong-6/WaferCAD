@@ -16,7 +16,42 @@ const valueArg = (args, name) => {
   return index >= 0 ? args[index + 1] : null;
 };
 
-export async function produceAuthorShadowPreview(source, template) {
+function blankResearchProject() {
+  return {
+    format: 'WaferCAD-vector',
+    version: 14,
+    name: 'Transmon Q2 Al shadow geometry PREVIEW (no tunnel barrier)',
+    model: null,
+    layout: null,
+    selectedLayerKeys: [],
+    activeCell: '',
+    maskTransform: { x: 0, y: 0, scale: 1, rotation: 0 },
+    maskSourceMode: 'file',
+    drawMask: { nextShapeId: 1, shapes: [] },
+    activeFace: 'front',
+    roi: null,
+    maskRoi: null,
+    roiAnchor: 'center',
+    maskRoiAnchor: 'center',
+    section: { a: [-2, 5], b: [2, 5] },
+    planViews: {
+      main: { zoom: 1, panX: 0, panY: 0 },
+      mask: { zoom: 1, panX: 0, panY: 0 },
+    },
+    display: {
+      xyUnit: 'um',
+      structurePalette: 'balanced',
+      sectionScaleMode: 'auto',
+      sectionShowBorders: true,
+      threeShowBorders: true,
+      threeOpacity: 1,
+      maskOpacity: 0.8,
+    },
+    snapshots: [],
+  };
+}
+
+export async function produceAuthorShadowPreview(source) {
   if (sha(source) !== SOURCE_SHA256) throw new Error('Author GDS SHA-256 mismatch.');
   const parsed = parseGDS(
     source.buffer.slice(source.byteOffset, source.byteOffset + source.byteLength),
@@ -53,8 +88,7 @@ export async function produceAuthorShadowPreview(source, template) {
     substrateThicknessUm: 675,
     sampleStepUm: 0.0375,
   });
-  const project = structuredClone(template);
-  expandProjectStorage(project);
+  const project = blankResearchProject();
   project.name = 'Transmon Q2 Al shadow geometry PREVIEW (no tunnel barrier)';
   project.model = simulated.model;
   project.layout = {
@@ -69,8 +103,6 @@ export async function produceAuthorShadowPreview(source, template) {
   project.section = { a: [-2, 5], b: [2, 5] };
   project.roi = null;
   project.maskRoi = null;
-  delete project.storage;
-  delete project.sharedGeometries;
   validateProjectFile(project);
   const exported = prepareProjectForExport(project);
   const json = JSON.stringify(exported.stored);
@@ -103,15 +135,13 @@ export async function produceAuthorShadowPreview(source, template) {
 if (process.argv[1]?.endsWith('transmon-shadow-al-preview.mjs')) {
   const args = process.argv.slice(2);
   const sourcePath = valueArg(args, '--gds');
-  const templatePath = valueArg(args, '--template');
   const outPath = valueArg(args, '--output');
-  if (!sourcePath || !templatePath || !outPath)
+  if (!sourcePath || !outPath)
     throw new Error(
-      'Usage: --gds sample.gds --template existing.wafercad --output Al-preview.wafercad',
+      'Usage: --gds sample.gds --output Al-preview.wafercad',
     );
   const source = await readFile(sourcePath);
-  const template = JSON.parse(await readFile(templatePath, 'utf8'));
-  const { project, report } = await produceAuthorShadowPreview(source, template);
+  const { project, report } = await produceAuthorShadowPreview(source);
   await writeFile(outPath, project);
   if (valueArg(args, '--report'))
     await writeFile(valueArg(args, '--report'), JSON.stringify(report, null, 2) + '\n');
