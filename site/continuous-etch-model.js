@@ -10,23 +10,6 @@ import {
 
 export const CONTINUOUS_ETCH_MODEL_KERNEL = 'vector-continuous-etch-v1';
 const FIELD = 'continuousEtchOwner';
-const REFERENCE_KEYS = [
-  'shape',
-  'width',
-  'height',
-  'thickness',
-  'boundary',
-  'units',
-  'layers',
-  'regions',
-  'implants',
-  'electricalRegions',
-  'nextImplantId',
-  'nextElectricalRegionId',
-  'nextLayerId',
-  'nextRegionId',
-];
-
 export function validateContinuousEtchModel(model) {
   if (!model || typeof model !== 'object') return null;
   const hasOwner = Object.hasOwn(model, FIELD);
@@ -41,17 +24,21 @@ export function validateContinuousEtchModel(model) {
     model.processRevision !== owner.sourceModel.processRevision + 1
   )
     throw new RangeError('Continuous etch revision must represent exactly one release operation');
-  for (const key of REFERENCE_KEYS) {
-    if (JSON.stringify(model[key]) !== JSON.stringify(owner.sourceModel[key]))
-      throw new RangeError('Continuous etch reference material changed: ' + key);
-  }
-  // Reject hidden extra physical state even if the caller changes both copies.
+  // A release may change only its kernel identity, process revision and
+  // analytic owner. All other predecessor fields, including future physical
+  // extensions, must remain byte-equivalent. A fixed whitelist would silently
+  // accept modifications to a newly introduced material field.
   const originalKeys = Object.keys(owner.sourceModel).sort();
   const resultKeys = Object.keys(model)
     .filter((key) => key !== FIELD)
     .sort();
   if (JSON.stringify(originalKeys) !== JSON.stringify(resultKeys))
     throw new RangeError('Continuous etch result contains an unexpected physical field');
+  for (const key of originalKeys) {
+    if (key === 'kernel' || key === 'revision' || key === 'processRevision') continue;
+    if (JSON.stringify(model[key]) !== JSON.stringify(owner.sourceModel[key]))
+      throw new RangeError('Continuous etch reference material changed: ' + key);
+  }
   return owner;
 }
 
