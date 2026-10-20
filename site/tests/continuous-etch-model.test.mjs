@@ -84,7 +84,7 @@ test('existing 2.5D model and its Process behavior remain unchanged', () => {
 
 test('published Microdisk M07 continuous kernel round-trips the lossless .wafercad codec', async () => {
   const { readFileSync } = await import('node:fs');
-  const { expandProjectStorage, prepareProjectForExport, readProjectFile } =
+  const { expandProjectStorage, prepareProjectForExport, readProjectFile, serializeProject } =
     await import('../project-io.js');
   const project = expandProjectStorage(
     JSON.parse(
@@ -103,7 +103,10 @@ test('published Microdisk M07 continuous kernel round-trips the lossless .waferc
   const materialBefore = continuousModelColumnAtXY(project.model, [50, 0]);
   const saved = prepareProjectForExport(project);
   assert.equal(saved.mode, 'lossless');
-  const text = JSON.stringify(saved.stored);
+  // Generic serialization is used by Workstation and History callers too.
+  // The exact analytical owner must never enter the compact 2.5D codec.
+  const text = serializeProject(project);
+  assert.deepEqual(JSON.parse(text), saved.stored);
   const file = { size: Buffer.byteLength(text), text: async () => text };
   await assert.rejects(() => readProjectFile(file), /no flat import/);
   const read = await readProjectFile(file, { experimentalContinuousEtchReadOnly: true });
@@ -192,4 +195,33 @@ test('Workstation import rejects continuous owners hidden in any History or Reco
       `Unsafe ${variant} was accepted into the normal Workstation`,
     );
   }
+});
+
+test('generic serialization preserves an exact continuous owner buried in History', async () => {
+  const { expandProjectStorage, serializeProject } = await import('../project-io.js');
+  const project = expandProjectStorage(
+    JSON.parse(
+      readFileSync(new URL('../examples/suspended-silica-microdisks.wafercad', import.meta.url)),
+    ),
+  );
+  const m07 = project.snapshots.find((s) => s.id === 'snapshot-microdisk-07')?.state?.model;
+  assert.ok(m07);
+  const released = attachContinuousEtchModel(m07, {
+    face: 'front',
+    targetLayerIds: ['base'],
+    lateralUm: 36,
+    verticalUm: 36,
+    shape: 'circular',
+  });
+  assert.equal(project.model.kernel, 'vector-2.5d-v1');
+  const original = JSON.stringify(released);
+  project.snapshots[0].state.model = released;
+  const stored = JSON.parse(serializeProject(project));
+  assert.equal(stored.storage?.lossless, true);
+  const reopened = expandProjectStorage(stored);
+  assert.equal(JSON.stringify(reopened.snapshots[0].state.model), original);
+  assert.equal(
+    continuousModelMaterialAt(reopened.snapshots[0].state.model, [145, 0, 40.5]),
+    'layer-1',
+  );
 });
