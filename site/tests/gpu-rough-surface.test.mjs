@@ -122,17 +122,17 @@ test('GPU rough decorator chains existing material shader hooks', () => {
   assert.match(shader.fragmentShader, /waferCadFarValueNoise/);
   assert.match(
     shader.fragmentShader,
-    /vec2 footprint = max\\(abs\\(dFdx\\(xy\\)\\), abs\\(dFdy\\(xy\\)\\)\\)/,
+    /vec2 footprint = max\(abs\(dFdx\(xy\)\), abs\(dFdy\(xy\)\)\)/,
   );
-  assert.match(shader.fragmentShader, /vec2 displayCell = max\\(/);
-  assert.match(shader.fragmentShader, /footprint \\* 5\\.0/);
+  assert.match(shader.fragmentShader, /vec2 displayCell = max\(/);
+  assert.match(shader.fragmentShader, /footprint \* 5\.0/);
   assert.doesNotMatch(
     shader.fragmentShader,
-    /float footprint = max\\(length\\(dFdx/,
+    /float footprint = max\(length\(dFdx/,
     'Grazing-angle filtering must not collapse both UV axes into one footprint',
   );
-  assert.match(shader.fragmentShader, /2\\.0 \\* visual - 1\\.0/);
-  assert.match(shader.fragmentShader, /return clamp\\(shade, 0\\.65, 1\\.35\\)/);
+  assert.match(shader.fragmentShader, /2\.0 \* visual - 1\.0/);
+  assert.match(shader.fragmentShader, /return clamp\(shade, 0\.65, 1\.35\)/);
 
   assert.match(
     shader.fragmentShader,
@@ -189,17 +189,17 @@ test('software roughness visibility shader changes only color, not displaced geo
   assert.match(shader.fragmentShader, /waferCadFarValueNoise/);
   assert.match(
     shader.fragmentShader,
-    /vec2 footprint = max\\(abs\\(dFdx\\(xy\\)\\), abs\\(dFdy\\(xy\\)\\)\\)/,
+    /vec2 footprint = max\(abs\(dFdx\(xy\)\), abs\(dFdy\(xy\)\)\)/,
   );
-  assert.match(shader.fragmentShader, /vec2 displayCell = max\\(/);
-  assert.match(shader.fragmentShader, /footprint \\* 5\\.0/);
+  assert.match(shader.fragmentShader, /vec2 displayCell = max\(/);
+  assert.match(shader.fragmentShader, /footprint \* 5\.0/);
   assert.doesNotMatch(
     shader.fragmentShader,
-    /float footprint = max\\(length\\(dFdx/,
+    /float footprint = max\(length\(dFdx/,
     'Grazing-angle filtering must not collapse both UV axes into one footprint',
   );
-  assert.match(shader.fragmentShader, /2\\.0 \\* visual - 1\\.0/);
-  assert.match(shader.fragmentShader, /return clamp\\(shade, 0\\.65, 1\\.35\\)/);
+  assert.match(shader.fragmentShader, /2\.0 \* visual - 1\.0/);
+  assert.match(shader.fragmentShader, /return clamp\(shade, 0\.65, 1\.35\)/);
 
   assert.match(
     shader.fragmentShader,
