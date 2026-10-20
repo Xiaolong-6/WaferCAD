@@ -160,8 +160,9 @@ export function createProjectStateController({
     const state = getState();
     // Appearance is project-level state; historical Process nodes must not store
     // a growing copy of all layer colors for every Step.
-    const appearance = { ...(state.layerAppearance || {}) };
+    let appearance = null;
     if (includeSnapshots || includeAppearance) {
+      appearance = { ...(state.layerAppearance || {}) };
       for (const kind of ['layers', 'implants', 'electricalRegions']) {
         for (const item of state.model?.[kind] || []) {
           if (!item?.id) continue;
