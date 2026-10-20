@@ -109,7 +109,7 @@ test('GPU rough decorator chains existing material shader hooks', () => {
   assert.equal(priorCompileCalls, 1);
   assert.equal(material.needsUpdate, true);
   assert.equal(material.userData.waferCadGpuRough.normalStrengthBase, 1);
-  assert.match(material.customProgramCacheKey(), /wafercad-gpu-rough-v7/);
+  assert.match(material.customProgramCacheKey(), /wafercad-gpu-rough-v8/);
   assert.match(shader.vertexShader, /waferCadGpuDisplace/);
   assert.doesNotMatch(shader.vertexShader, /instanceMatrix\[3\]\.xy/);
   assert.match(shader.vertexShader, /transformed\.z \+= waferCadRoughProfileNormal/);
@@ -120,6 +120,20 @@ test('GPU rough decorator chains existing material shader hooks', () => {
   assert.match(shader.fragmentShader, /waferCadScreenDx/);
   assert.match(shader.fragmentShader, /waferCadFarFieldShade\(vWaferCadRoughXY\)/);
   assert.match(shader.fragmentShader, /waferCadFarValueNoise/);
+  assert.match(
+    shader.fragmentShader,
+    /vec2 footprint = max\\(abs\\(dFdx\\(xy\\)\\), abs\\(dFdy\\(xy\\)\\)\\)/,
+  );
+  assert.match(shader.fragmentShader, /vec2 displayCell = max\\(/);
+  assert.match(shader.fragmentShader, /footprint \\* 5\\.0/);
+  assert.doesNotMatch(
+    shader.fragmentShader,
+    /float footprint = max\\(length\\(dFdx/,
+    'Grazing-angle filtering must not collapse both UV axes into one footprint',
+  );
+  assert.match(shader.fragmentShader, /2\\.0 \\* visual - 1\\.0/);
+  assert.match(shader.fragmentShader, /return clamp\\(shade, 0\\.65, 1\\.35\\)/);
+
   assert.match(
     shader.fragmentShader,
     /unresolved = 1\.0 - smoothstep\(0\.75, 8\.0, featurePixels\)/,
@@ -175,9 +189,23 @@ test('software roughness visibility shader changes only color, not displaced geo
   assert.match(shader.fragmentShader, /waferCadFarValueNoise/);
   assert.match(
     shader.fragmentShader,
+    /vec2 footprint = max\\(abs\\(dFdx\\(xy\\)\\), abs\\(dFdy\\(xy\\)\\)\\)/,
+  );
+  assert.match(shader.fragmentShader, /vec2 displayCell = max\\(/);
+  assert.match(shader.fragmentShader, /footprint \\* 5\\.0/);
+  assert.doesNotMatch(
+    shader.fragmentShader,
+    /float footprint = max\\(length\\(dFdx/,
+    'Grazing-angle filtering must not collapse both UV axes into one footprint',
+  );
+  assert.match(shader.fragmentShader, /2\\.0 \\* visual - 1\\.0/);
+  assert.match(shader.fragmentShader, /return clamp\\(shade, 0\\.65, 1\\.35\\)/);
+
+  assert.match(
+    shader.fragmentShader,
     /unresolved = 1\.0 - smoothstep\(0\.75, 8\.0, featurePixels\)/,
   );
-  assert.match(material.customProgramCacheKey(), /wafercad-rough-farfield-v1/);
+  assert.match(material.customProgramCacheKey(), /wafercad-rough-farfield-v2/);
   assert.equal(shader.uniforms.waferCadRoughFarFieldContrast.value, 0);
   assert.equal(shader.uniforms.waferCadRoughFarFieldFeatureSize.value, 0.8);
   assert.equal(shader.uniforms.waferCadRoughFarFieldSeed.value, 0xba98);
