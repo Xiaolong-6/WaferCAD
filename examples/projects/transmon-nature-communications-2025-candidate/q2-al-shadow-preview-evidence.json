@@ -1,0 +1,87 @@
+{
+  "status": "research-only geometric Al shadow preview; NOT a Josephson-junction process simulation",
+  "source": "Tuokkola et al., Nature Communications 16, 5421 (2025), original Zenodo sample.gds",
+  "sourceSha256": "6e9db7d506e17f82fd22250db9a380a420b2a1088bac4a33b8c747930e9d5c02",
+  "cell": "jj_width0p18",
+  "model": {
+    "type": "native vector-2.5d-v1",
+    "wafer": {
+      "material": "intrinsic Si (100)",
+      "thicknessUm": 675
+    },
+    "layers": [
+      "Si",
+      "Al 40 nm",
+      "Al 30 nm, +45 deg",
+      "Al 30 nm, -135 deg"
+    ],
+    "regionCount": 8,
+    "processRevision": 3,
+    "oxideLayerPresent": false
+  },
+  "doseMap": "hypothesis: GDS 8/1 upper PMMA opening; 8/0 adds MMA undercut",
+  "geom": {
+    "heightStepUm": 0.0375,
+    "thetaDeg": 45,
+    "azimuthsDeg": [
+      -45,
+      45,
+      -135
+    ],
+    "alThicknessesUm": [
+      0.04,
+      0.03,
+      0.03
+    ],
+    "footprintAreasUm2": [
+      2.5562181539081563,
+      1.9981521692450015,
+      1.990327747428015
+    ],
+    "firstTwoOverlapUm2": 0.03226249030201542
+  },
+  "nativeStackAtCrossing": {
+    "xyUm": [
+      0,
+      5
+    ],
+    "substrateTopUm": 337.5,
+    "bottomAlTopUm": 337.54,
+    "secondAlTopUm": 337.57,
+    "thirdAlTopUm": 337.6,
+    "barrierThicknessUm": null,
+    "notes": "Al layers directly touch in preview; NOT a physical insulating tunnel junction."
+  },
+  "project": {
+    "sha256": "6f2dba879b57326deee55f9523f5a3b19159e498ea212a77803d8094204d157e",
+    "codec": "lossless",
+    "schemaValidation": "passed after export and expansion",
+    "source": "recreate with scripts/transmon-shadow-al-preview.mjs --gds /path/to/sample.gds --output Al-preview.wafercad"
+  },
+  "localTests": {
+    "command": "WAFERCAD_TRANSMON_GDS=/path/to/sample.gds node --test site/tests/shadow-exposure-geometry.test.mjs site/tests/shadow-deposition-preview.test.mjs site/tests/transmon-shadow-al-preview.test.mjs",
+    "passed": 10,
+    "failed": 0,
+    "skipped": 0,
+    "prettier": "passed"
+  },
+  "renderer": {
+    "script": "scripts/offline-native-app-capture.py",
+    "browser": "Chromium 144, SwiftShader",
+    "projectValidation": "native Three.js rendered, no pageErrors",
+    "origin": "about:blank, managed normal-origin navigation blocked",
+    "viewport": "ROI [-0.4,4.6,0.4,5.4] um, Z break [337.61,337.48] um",
+    "visualReview": "not accepted: material appears as thin walls/unclear crossing; improve native 3D presentation",
+    "historyRecovery": "not tested",
+    "workerOpen": "not tested"
+  },
+  "limitations": [
+    "Shadow visibility sampled, not continuous exact 3D deposition",
+    "Undercut/PMMA geometry assumed and vertical walled, not SEM measured",
+    "No sidewall coating or dynamic deposition",
+    "Oxide thickness not provided, no AlOx represented",
+    "Idealized lift-off filter only",
+    "No electrical or quantum simulation",
+    "Full exact-HEAD branch local acceptance outstanding"
+  ]
+}
