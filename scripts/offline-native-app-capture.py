@@ -382,6 +382,18 @@ def run(args):
                     report['continuousMainNative'] = main_details
                     if (main_details.get('unsupportedFlag') or not main_details.get('solidPixels')):
                         raise ValueError('Continuous Main native projection failed')
+                    section_expression = (root / 'scripts/offline-native-section-view.js').read_text(
+                        encoding='utf-8')
+                    section_a_b = {'a': [-170, 0], 'b': [170, 0]}
+                    section_result = page.evaluate(section_expression, {
+                        'model': model_input['model'], 'section': section_a_b})
+                    section_image = out / 'continuous-section-native.png'
+                    page.locator('#wc-offline-section-capture').screenshot(
+                        path=str(section_image), animations='disabled')
+                    report['images']['continuousSectionNative'] = {
+                        'file': section_image.name, 'sha256': snapshot_sha(section_image)}
+                    report['continuousSectionNative'] = section_result
+                    page.locator('#wc-offline-section-capture').evaluate('(el) => el.remove()')
                 expression = (root / 'scripts/offline-native-model-view.js').read_text(
                     encoding='utf-8')
                 details = page.evaluate(expression, model_input)

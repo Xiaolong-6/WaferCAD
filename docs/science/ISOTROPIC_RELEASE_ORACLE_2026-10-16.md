@@ -324,3 +324,31 @@ Workspace geometry dictionary, expands it, validates the entire project and
 rejects a subsequent deliberate physical polygon-coordinate modification.
 The corresponding real-Workstation CI must still prove completed Save,
 IndexedDB readback, reload and History preservation before final acceptance.
+
+## Continuous release rectangular ROI / Section alignment (2026-10-20)
+
+The native `renderContinuousEtch` path previously threw on **any** Main ROI,
+leaving the entire 3D view empty. Rectangle inspection now uses the exact
+physical XY bounds of a single axis-aligned rectangular ROI. Four native
+Three.js material clipping planes remove all geometry outside that footprint.
+The opened sides are filled by disposable native cut-face triangles generated
+from `continuousSectionContours()` and the same canonical analytic material
+owner as ordinary Section; the saved Model, History and physical front are never
+modified. Changing/clearing the ROI reuses the already built material meshes
+and regenerates only the presentation cut faces.
+
+Continuous Section uses full physical Z by default, including when a generic
+wafer Z Break was previously enabled. The current visible/color state comes
+from the active Model rather than the immutable pre-release source. The ROI cut
+faces and Section are sampled displays; neither creates stepped stored solid
+geometry. Polygonal, circular, sector and multiply connected 3D ROI clipping
+are not yet accepted. Those shapes must fail explicitly rather than showing
+an incorrectly cropped scientific surface.
+
+Scientific owners: `continuous-etch-roi.test.mjs`,
+`continuous-etch-section.test.mjs`; actual native Chromium visual evidence is
+produced by the existing `offline-native-app-capture.py` (with the true
+`site/three-view.js` and `site/plan-renderers.js` rendering paths). The normal
+Origin Workstation/History/Recovery gate must cover Main ROI creation, 3D cut
+faces, Section Z and undo/redo/save, separately from isolated null-Origin
+rendering diagnostics.

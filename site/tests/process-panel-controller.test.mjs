@@ -390,7 +390,11 @@ test('Continuous Etch UI commits exact circular/elliptical parameters into Histo
   root.getElementById('continuousLateral').value = '4';
   root.getElementById('operationThickness').value = '3';
   controller.updateUi();
+  assert.equal(root.getElementById('etchTargetLayer').options[0].textContent, 'Select material…');
+  assert.equal(root.getElementById('applyOperationBtn').disabled, true);
   root.getElementById('etchTargetLayer').value = 'base';
+  controller.updateUi();
+  assert.equal(root.getElementById('applyOperationBtn').disabled, false);
   await controller.applyOperation();
   assert.equal(controller.__getModel().kernel, 'vector-continuous-etch-v1');
   const owner = validateContinuousEtchModel(controller.__getModel());

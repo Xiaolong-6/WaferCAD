@@ -35,9 +35,7 @@ export function continuousSectionContours(
   const length = Math.hypot(b[0] - a[0], b[1] - a[1]);
   if (!(length > 0)) return [];
   const owner = restoreContinuousMaterialOwner(model.continuousEtchOwner);
-  const layers = new Map(
-    owner.sourceModel.layers.map((layer) => [layer.id, layer.visible !== false]),
-  );
+  const layers = new Map(model.layers.map((layer) => [layer.id, layer.visible !== false]));
   const byLayer = new Map();
   const at = (t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
   const append = ({ layerId, points }) => {

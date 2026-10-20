@@ -88,6 +88,45 @@ try {
     report.physical = physical;
     await page.screenshot({ path: resolve(output, 'continuous-after-apply.png') });
 
+    // A real Main rectangular ROI must keep the continuous 3D visible and
+    // produce scientific cut faces. The Section must show the full physical-Z
+    // profile instead of the generic wafer Z Break that hides curved release.
+    await page.waitForFunction(
+      () => document.querySelector('#sectionCanvas')?.dataset.sectionCollapseEnabled === 'false',
+      null,
+      { timeout: 30000 },
+    );
+    await page.locator('#mainPanel [data-action="roi"]').click();
+    await page.locator('#mainRoiTools [aria-label="Rectangle"]').click();
+    const mainBox = await page.locator('#mainCanvas').boundingBox();
+    assert.ok(mainBox?.width > 100 && mainBox?.height > 100);
+    const xa = mainBox.x + mainBox.width * 0.31;
+    const ya = mainBox.y + mainBox.height * 0.28;
+    await page.mouse.move(xa, ya);
+    await page.mouse.down();
+    await page.mouse.move(xa + mainBox.width * 0.35, ya + mainBox.height * 0.43, { steps: 8 });
+    await page.mouse.up();
+    await page.waitForFunction(
+      () => {
+        const host = document.querySelector('#threeHost');
+        return (
+          host?.dataset.renderState === 'ready' &&
+          host.dataset.continuousEtchRoi === 'rect-clipped' &&
+          Number(host.dataset.continuousEtchRoiCapTriangles) > 0 &&
+          !host.dataset.rendererBuildFailure
+        );
+      },
+      null,
+      { timeout: 120000 },
+    );
+    const clipped = await snapshot();
+    assert.deepEqual(clipped.model, model, '3D ROI remains strictly view-only');
+    assert.equal(clipped.workflow.steps.length, committed.workflow.steps.length);
+    report.roiCapTriangles = Number(
+      await page.locator('#threeHost').getAttribute('data-continuous-etch-roi-cap-triangles'),
+    );
+    await page.screenshot({ path: resolve(output, 'continuous-with-main-roi.png') });
+
     await page.locator('[data-action="domain:history"]').click();
     await page.locator('#undoBtn').click();
     await page.waitForFunction(

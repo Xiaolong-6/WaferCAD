@@ -6,7 +6,10 @@ import {
 } from './model-array.js';
 import { IMPLANT_DEPTH_GRADIENT } from './annotation-rendering.js';
 import { createContinuousPlanSampler } from './continuous-etch-plan.js';
-import { validateContinuousEtchModel } from './continuous-etch-model.js';
+import {
+  continuousEtchDisplayCollapse,
+  validateContinuousEtchModel,
+} from './continuous-etch-model.js';
 import { visibleSurfaceGroups } from './process-topology.js';
 import { layerById, modelBoundsZ } from './model.js';
 import { drawPlanGrid } from './plan-grid.js';
@@ -738,7 +741,11 @@ export function createPlanRenderers({
 
     const [idealLo, idealHi] = modelBoundsZ(model),
       [lo, hi] = roughVisualBoundsZ(model, [idealLo, idealHi]),
-      collapse = resolveSectionCollapse(sectionCollapse, model, [lo, hi]),
+      collapse = resolveSectionCollapse(
+        continuousEtchDisplayCollapse(model, sectionCollapse),
+        model,
+        [lo, hi],
+      ),
       collapseEnabled = collapse.enabled !== false,
       edgeSpan = collapseEnabled
         ? Math.max(hi - collapse.top, collapse.bottom - lo, (hi - lo) * 0.005)

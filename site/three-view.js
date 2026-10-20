@@ -1,3 +1,5 @@
+import { continuousRectRoiBounds, continuousRectRoiPlanes } from './continuous-etch-roi.js';
+import { buildContinuousRectRoiCaps } from './continuous-etch-roi-cap.js';
 import { isArrayModel, resolveArrayModel, geometryBounds, arrayParts } from './model-array.js';
 import { annotationDepthFraction, IMPLANT_DEPTH_GRADIENT } from './annotation-rendering.js';
 import { threeRenderPolicy } from './render-quality-policy.js';
@@ -184,6 +186,8 @@ export function createThreeView({
   let surfaceMaterialPool = new Map();
   let presentationUpdateCount = 0;
   let physicalSceneModel = null;
+  let continuousRoiCapObjects = [];
+  let continuousRoiCapSignature = null;
   let physicalSceneSignature = null;
   let physicalSurfacePlan = null;
   let activeSceneVariant = null;
@@ -954,6 +958,8 @@ export function createThreeView({
     clearSceneVariantCache();
     activeSceneVariant = null;
     physicalSceneModel = null;
+    continuousRoiCapObjects = [];
+    continuousRoiCapSignature = null;
     physicalSceneSignature = null;
     physicalSurfacePlan = null;
   }
@@ -3280,9 +3286,51 @@ diffuseColor.a *= waferCadAlphaScale;`,
   // displayed triangles are derived: the persisted owner remains analytic.
   async function renderContinuousEtch(model) {
     const clip = getClipGeometry();
-    if (clip) throw new RangeError('Continuous Etch ROI 3D clipping is not yet supported');
+    const roiBounds = continuousRectRoiBounds(clip);
+    const clippingPlanes = continuousRectRoiPlanes(THREE, clip);
     const owner = validateContinuousEtchModel(model);
     if (!owner) throw new RangeError('Missing or invalid continuous material owner');
+    const updateRoiCaps = () => {
+      const signature = JSON.stringify(roiBounds);
+      if (continuousRoiCapSignature === signature) return;
+      for (const mesh of continuousRoiCapObjects) {
+        group.remove(mesh);
+        presentationObjects.delete(mesh);
+        zDisplayObjects.delete(mesh);
+        mesh.geometry?.dispose?.();
+        mesh.material?.dispose?.();
+      }
+      continuousRoiCapObjects = [];
+      continuousRoiCapSignature = signature;
+      if (!roiBounds) return;
+      const exterior = { kind: 'material-exterior' };
+      const state = presentationState(exterior, getInspection() || {}).materialState;
+      for (const part of buildContinuousRectRoiCaps(THREE, model, roiBounds)) {
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(part.positions, 3));
+        geometry.setAttribute('normal', new THREE.BufferAttribute(part.normals, 3));
+        let material = createSurfaceMaterial(layerById(model, part.layerId), state, null, exterior);
+        if (material.userData?.waferCadPooledPresentationMaterial) {
+          material = material.clone();
+          material.userData.waferCadPooledPresentationMaterial = false;
+        }
+        material.side = THREE.DoubleSide;
+        const mesh = addSurfaceMesh(geometry, material, state, null, 0, false, null, exterior);
+        if (mesh) {
+          mesh.userData.continuousLayerId = part.layerId;
+          mesh.userData.continuousRoiCap = true;
+          continuousRoiCapObjects.push(mesh);
+        }
+      }
+      // New cut faces need the same physical Z transform as the original mesh.
+      applyZDisplayState(model);
+      host.dataset.continuousEtchRoiCapTriangles = String(
+        continuousRoiCapObjects.reduce(
+          (total, m) => total + m.geometry.getAttribute('position').count / 3,
+          0,
+        ),
+      );
+    };
     const updateMaterialAppearance = () => {
       for (const mesh of presentationObjects) {
         const layerId = mesh.userData?.continuousLayerId;
@@ -3290,7 +3338,18 @@ diffuseColor.a *= waferCadAlphaScale;`,
         const layer = layerById(model, layerId);
         mesh.visible = layer?.visible !== false;
         mesh.material?.color?.set(layer?.color || '#999');
+        // Reuse the same physical triangles when the ROI changes. Clipping is
+        // purely presentational and does not alter the material owner/History.
+        if (mesh.material) {
+          const wasClipped = Boolean(mesh.material.clippingPlanes?.length);
+          mesh.material.clippingPlanes =
+            !mesh.userData.continuousRoiCap && clippingPlanes.length ? clippingPlanes : null;
+          mesh.material.clipIntersection = false;
+          if (wasClipped !== Boolean(clippingPlanes.length)) mesh.material.needsUpdate = true;
+        }
       }
+      if (renderer) renderer.localClippingEnabled = clippingPlanes.length > 0;
+      host.dataset.continuousEtchRoi = clippingPlanes.length ? 'rect-clipped' : 'full-model';
       scheduleFrame();
     };
     if (
@@ -3299,6 +3358,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       presentationObjects.size
     ) {
       applyPresentationState();
+      updateRoiCaps();
       updateMaterialAppearance();
       return;
     }
@@ -3399,6 +3459,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     delete host.dataset.rendererBuildFailure;
     applyZDisplayState(model);
     applyPresentationState({ profile: false, settle: true });
+    updateRoiCaps();
     updateMaterialAppearance();
     host.dataset.renderState = 'ready';
     stats.textContent = 'Continuous Etch · analytic material, sampled display mesh';

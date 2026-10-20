@@ -174,7 +174,8 @@ export function createProcessPanelController({
     const previous = select.value;
     select.innerHTML = '';
     const profile = selectedEtchProfile(),
-      requiresMaterial = profile === 'isotropic' || profile === 'undercut';
+      requiresMaterial =
+        profile === 'isotropic' || profile === 'undercut' || profile === 'continuous';
     select.add(new Option(requiresMaterial ? 'Select material…' : 'All exposed materials', ''));
 
     const model = getModel(),
@@ -288,10 +289,12 @@ export function createProcessPanelController({
       activeFace = getActiveFace(),
       materialExists = hasMaterial(model);
     const missingSacrificial = liftoff && !$('liftoffTargetLayer').value,
+      missingContinuousMaterial = continuousEtch && !$('etchTargetLayer').value,
       unsupportedBoth = activeFace === 'both' && (liftoff || planarizeEtch || continuousEtch);
     $('applyOperationBtn').disabled =
       (!materialExists && !recordOnly) ||
       missingSacrificial ||
+      missingContinuousMaterial ||
       unsupportedBoth ||
       Boolean(processTaskController?.isBusy());
     if (liftoff) {
@@ -436,7 +439,7 @@ export function createProcessPanelController({
                       ? 'Isotropic release propagates from the selected exposed material into the solid with the chosen radius, including lateral undercut beneath other materials. The selected etch material is removed; masks and stop materials remain.'
                       : 'Choose one exposed material for Isotropic release. This mode creates physical undercut/cavity geometry and does not combine with Rough/Pyramid display morphology.'
                     : continuousEtch
-                      ? 'Experimental exact continuous release: choose circular, elliptical or vertical front and physical lateral/vertical lengths. One release only; follow-on Process and ROI-clipped 3D are not supported.'
+                      ? 'Experimental exact continuous release: choose circular, elliptical or vertical front and physical lateral/vertical lengths. One release only; follow-on Process is unsupported. 3D supports rectangular ROI cutaway; other ROI shapes remain unsupported.'
                       : stochasticEtch
                         ? `Depth is the maximum etch depth; Height and Feature XY are means, with CV controlling their spread. ${$('roughPolarity').value === 'normal' ? 'Normal points features outward (peaks).' : 'Inverted keeps the existing inward pit/valley orientation.'} Display morphology only for process simulation: the canonical process stack remains ideal, while 3D and GLB inspection surfaces include the deterministic morphology.`
                         : pyramidEtch
