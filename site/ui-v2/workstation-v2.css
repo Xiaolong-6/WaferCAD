@@ -429,6 +429,13 @@ body[data-workstation] .p-workbench {
   padding: var(--wc-space-1) var(--wc-space-2);
   margin-left: calc(-1 * var(--wc-space-2));
   letter-spacing: -0.025em;
+  gap: 8px;
+}
+.p-brand-icon {
+  display: block;
+  width: 26px;
+  height: 26px;
+  flex: none;
 }
 .p-brand:visited {
   color: var(--wc-text);
