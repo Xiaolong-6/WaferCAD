@@ -5,7 +5,6 @@ import { fileURLToPath } from 'node:url';
 
 import { loadGeometryKernel } from './process-benchmarks.mjs';
 import { flattenGDS, parseGDS } from '../site/gds.js';
-import { intersection, unionGeometries } from '../site/vector-geometry.js';
 
 const AUTHOR_SHA256 = '6e9db7d506e17f82fd22250db9a380a420b2a1088bac4a33b8c747930e9d5c02';
 const Q2_REF = [1400, 2513];
@@ -42,6 +41,7 @@ function selectedShape(polygon) {
 /** Strictly audits geometry and reticle transforms; process-dose labels are a hypothesis. */
 export async function auditAuthorQ2Junction(bytes, options = {}) {
   await loadGeometryKernel();
+  const { intersection, unionGeometries } = await import('../site/vector-geometry.js');
   const input = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
   const parsed = parseGDS(input);
   if (
