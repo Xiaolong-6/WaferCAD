@@ -64,6 +64,15 @@ jobs:
         if: always()
         with:
           name: m3d-example-integration
-          path: test-results/m3d/
+          # Temporary exact-source transport for local Prettier repair in
+          # a managed environment without a full Git checkout. Remove after
+          # the five inspected files have been locally formatted and verified.
+          path: |
+            test-results/m3d/
+            scripts/m3d-progressive-ab-benchmark.mjs
+            scripts/m3d-welcome-regression.mjs
+            site/three-view.js
+            site/ui-v2/three-view.js
+            site/tests/renderer-progressive-preview.test.mjs
           retention-days: 14
           if-no-files-found: warn
