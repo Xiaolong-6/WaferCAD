@@ -97,3 +97,40 @@ test('large scenes use a disposable worker and cache the exact completed result'
     globalThis.Worker = original;
   }
 });
+
+test('pre-aborted requests reject before synchronous work or cached plan reuse', async () => {
+  const previousWorker = globalThis.Worker;
+  globalThis.Worker = undefined;
+  try {
+    const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 2 });
+    const controller = new AbortController();
+    controller.abort();
+    await assert.rejects(buildRenderSurfacePlanAsync(model, null, { signal: controller.signal }), {
+      name: 'AbortError',
+    });
+    const completed = buildRenderSurfacePlan(model);
+    assert.strictEqual(cachedRenderSurfacePlan(model), completed);
+    await assert.rejects(buildRenderSurfacePlanAsync(model, null, { signal: controller.signal }), {
+      name: 'AbortError',
+    });
+    assert.strictEqual(cachedRenderSurfacePlan(model), completed);
+    // The already-cached asynchronous Worker route must obey the same signal.
+    model.layers.push(
+      ...Array.from({ length: 5 }, (_, i) => ({
+        id: `abort-test-${i}`,
+        name: 'No geometry',
+        color: '#000000',
+      })),
+    );
+    globalThis.Worker = class {
+      constructor() {
+        throw Error('A pre-aborted request must never spawn a Worker');
+      }
+    };
+    await assert.rejects(buildRenderSurfacePlanAsync(model, null, { signal: controller.signal }), {
+      name: 'AbortError',
+    });
+  } finally {
+    globalThis.Worker = previousWorker;
+  }
+});
