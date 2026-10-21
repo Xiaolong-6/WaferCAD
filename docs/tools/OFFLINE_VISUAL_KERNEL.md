@@ -311,8 +311,9 @@ would report a false physical height error. A buried Base must not be treated
 as the visible cap when an oxide lies above it. Shader-displaced and instanced
 rough meshes are explicitly excluded from the CPU triangle-raycast metric.
 
-The current report also separates two *signed*, physically equivalent
+The current report also separates two _signed_, physically equivalent
 height residuals at each sample:
+
 - `meshInterpolationErrorUm`: native CPU triangle raycast minus the 3D
   LOD-filtered analytic height (mesh/tessellation residual).
 - `displayAttenuationErrorUm`: 3D LOD-filtered height minus the Section
@@ -331,13 +332,12 @@ Fast and Quality reach the minimum 0.12 display blend; increasing triangle
 budget alone need not improve the physical Section/3D comparison. Do not
 claim numerical convergence solely because a mesh budget increases.
 
-This is a *null-Origin native Renderer diagnostic*. Its Section reference is
+This is a _null-Origin native Renderer diagnostic_. Its Section reference is
 the production sampler, not a captured synchronized Section raster.
 It does not prove complete Workstation, Worker-backed project Open,
 History/Recovery, or untested GPU-shader vertex heights. Do not silently
 label a partial or missed cutline as a pass; do not change scientific
 tolerances or default morphology based on this diagnostic alone.
-
 
 Add `--check-rough-parity` together with the full Photodetector
 `--inmemory-project` to execute the production vertex-height qualification
