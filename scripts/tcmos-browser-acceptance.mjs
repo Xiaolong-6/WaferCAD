@@ -642,9 +642,9 @@ try {
     ].filter((item) => !item.name.includes(selectedName));
     for (const annotation of hiddenAnnotations) {
       const toggle = page.locator(
-        '#sectionPanel [data-annotation-id="' + annotation.id + '"] input[type="checkbox"]',
+        '#sectionPanel [data-annotation-id="' + annotation.id + '"] .v2-visibility-button',
       );
-      await toggle.uncheck();
+      if ((await toggle.getAttribute('aria-pressed')) === 'true') await toggle.click();
     }
     const isolatedModel = (await snap()).model;
     assert.deepEqual(isolatedModel.regions, opened.model.regions);

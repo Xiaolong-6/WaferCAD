@@ -187,8 +187,7 @@ if any cohort's blend would change. This is only a performance/presentation
 tradeoff: the mesh interpolation residual can change, and it is **not** a
 Section/3D scientific convergence fix. The read-only native cutline runner
 must quantify both interpolation and display attenuation before promotion.
-This display-only
-filter does not establish Section/3D interior height parity.
+This display-only filter does not establish Section/3D interior height parity.
 
 **Rejected Aligned inspection must not be restored.** The v2 Section must
 render the production physical pixel-footprint profile. Do not replace it with
@@ -201,16 +200,17 @@ native-mesh cutline evidence rather than flattening the scientific Section.
 
 The 2026-10-21 local recovery snapshot retired the Aligned/Physical toggle and
 the nonlinear local Relief inspector. The intended v2 3D control is a
-continuous, *uniform scene-wide*, display-only Z factor (0.25–20, slider and
+continuous, _uniform scene-wide_, display-only Z factor (0.25–20, slider and
 numeric input), applied equally to caps, conformal layers, sidewalls and
 borders, not selectively to rough peaks. It must not mutate Process, History,
 physical GLB export or canonical layer heights. The low-level nonlinear
 Relief diagnostic is not an endorsed Workstation feature.
 
-**Integration warning:** This documentation records the approved direction
-and the locally verified recovery, NOT completion on the remote PR branch.
-The existing remote source still contains the rejected Aligned implementation.
-Reconcile the exact remote HEAD before claiming functional acceptance.
+**Integration status:** PR #353 has restored the native physical Section and
+removed the rejected Aligned preview control. The branch was synchronized
+with main without squashing on 2026-10-21. Scientific Section/3D mesh
+convergence remains unproven; the measured 60 µm Photodetector cutline
+differed by 125.720 nm RMS in Fast and 145.219 nm RMS in Quality.
 Normal-Origin synchronized Section/3D/Border acceptance remains mandatory;
 null-Origin native probes alone cannot validate Worker, History or Recovery.
 
