@@ -4,21 +4,33 @@ WaferCAD keeps the full regression inventory, but pull requests do not run every
 
 ## Local Quality evidence
 
-Run the existing checks locally and commit their source-bound report:
+Run the existing checks locally and commit their source-bound report.
+Neither **Node 24 exclusively** nor a complete Git checkout/staged index is
+mandatory. Both Node **22 and 24 LTS** are accepted for local proof; the exact
+pinned package versions must still match. In an ordinary Git workspace the
+verifier enumerates tracked source paths but hashes the **actual working bytes**
+(no staging needed). For a source-only package, it requires the standard
+`wafercad-source-manifest.json`, rejects missing and unlisted source files, and
+hashes every listed source file independently. This is a source inventory,
+**not** blind trust in the manifest's old per-file hashes. A complete clean
+package is required; an outdated/incomplete recovery bundle cannot certify a
+new merged source tree.
 
 ```sh
-git add <changed-source-files>
+# Prefer local tests where the tools exist (Node 22 or 24):
 node scripts/local-verification.mjs run draft
-# Before Ready for Review or final merge acceptance:
 node scripts/local-verification.mjs run full
+# In a Git checkout, if evidence was generated, commit only these two files:
 git add .verification/quality/report.json .verification/quality/transcript.json.gz
-
 ```
 
-Use Node 24 and the pinned installed devDependencies. Stage source changes
-before running the command. The runner refuses untracked or unstaged source,
-sparse/assumed-unchanged entries, conflicting index stages and non-regular
-source files. It does not modify source, stage files, commit or push.
+The v2 source fingerprint covers sorted path names and SHA-256 of the actual
+file contents, excluding only the two generated proof files. The CI checkout
+computes the same digest from its authoritative tracked inventory. Old v1
+Git-index evidence remains readable and valid when its original source tree
+matches. Reports record the actual Node version; both supported LTS majors are
+accepted. Logs, exact command plan, pinned tools and fingerprints remain
+mandatory. An evidence-only commit leaves the content digest unchanged.
 
 Both scopes retain ESLint, Prettier and generated-document checks. Draft runs
 the focused planner/workflow/evidence and documentation Node contracts; full
@@ -43,13 +55,10 @@ validation and manual pre-main integration, the same proof-first/full-execution
 fallback applies to the exact checked-out source. Neither path skips the
 existing browser, scientific, staged-artifact or publishing gates.
 
-The SHA-256 source identity covers sorted Git index paths, modes and blob IDs,
-excluding only the two generated evidence files. A clean staged source check
-binds the tested checkout to those Git objects, while canonical Git identity
-avoids platform newline differences. An evidence-only commit does not create a
-commit-hash cycle. Any other tracked source, test, workflow, dependency or
-documentation change invalidates the current report. This first version is
-conservative; it does not claim per-suite incremental evidence reuse.
+A source or test change invalidates blanket Quality proof for the previous
+snapshot; previous results remain useful as historical diagnostics, but must not
+be presented as an acceptance of different bytes. Draft and Full checks remain
+unchanged. Complete source inventory coverage is required in either mode.
 
 Reports include exact commands, exit codes, signals, durations, Node/tool
 versions, timestamps, source revision, plan digest and transcript hashes.

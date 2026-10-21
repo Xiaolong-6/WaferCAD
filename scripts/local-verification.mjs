@@ -1,6 +1,14 @@
 import { createHash } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, lstatSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync, gunzipSync } from 'node:zlib';
@@ -11,7 +19,19 @@ export const EVIDENCE_FILES = [
 ];
 const MAX_LOG = 64 * 1024 * 1024;
 const MAX_REPORT = 128 * 1024;
-const VERSION = 1;
+const VERSION = 2;
+const SUPPORTED_NODE = /^v(?:22|24)\.\d+\.\d+(?:[-+].+)?$/;
+const SOURCE_MANIFEST = 'wafercad-source-manifest.json';
+const PINNED_ARCHIVE = 'vendor/npm/three-0.179.1.tgz';
+const GENERATED_DIRECTORIES = new Set([
+  '.git',
+  'node_modules',
+  '.offline',
+  'test-results',
+  'build',
+  'coverage',
+  '.cache',
+]);
 
 export function qualityPlan(scope) {
   if (scope !== 'draft' && scope !== 'full') throw new Error('Scope must be draft or full');
@@ -44,7 +64,7 @@ function git(root, args) {
   return execFileSync('git', args, { cwd: root, encoding: 'utf8', maxBuffer: MAX_LOG });
 }
 
-export function sourceSnapshot(root) {
+function legacyIndexSnapshot(root) {
   const untracked = git(root, ['ls-files', '--others', '--exclude-standard', '-z'])
     .split('\0')
     .filter((path) => path && !EVIDENCE_FILES.includes(path));
@@ -81,6 +101,132 @@ export function sourceSnapshot(root) {
   return { digest: hash.digest('hex'), fileCount };
 }
 
+
+function gitInventory(root) {
+  const files = git(root, ['ls-files', '--stage', '-z']).split('\0').filter(Boolean);
+  const flags = git(root, ['ls-files', '-v', '-z']).split('\0').filter(Boolean);
+  requireValue(
+    flags.every((entry) => entry.startsWith('H ')),
+    'Sparse or assumed-unchanged files are unsupported',
+  );
+  const untracked = git(root, ['ls-files', '--others', '--exclude-standard', '-z'])
+    .split('\0')
+    .filter((path) => path && !EVIDENCE_FILES.includes(path));
+  requireValue(!untracked.length, 'Untracked source files: ' + untracked.join(', '));
+  return files.map((entry) => {
+    const match = entry.match(/^(\d+) ([a-f0-9]+) (\d)\t([\s\S]+)$/);
+    requireValue(match && match[3] === '0', 'Unmerged or invalid Git index');
+    requireValue(['100644', '100755'].includes(match[1]), 'Source must be a regular file');
+    return match[4];
+  });
+}
+
+function packagedInventory(root) {
+  const location = join(root, SOURCE_MANIFEST);
+  requireValue(existsSync(location), 'A source-only workspace needs ' + SOURCE_MANIFEST);
+  requireValue(lstatSync(location).isFile(), 'Source manifest must be a regular file');
+  const manifest = JSON.parse(readBounded(location, MAX_LOG));
+  requireValue(
+    manifest.schema === 'wafercad-source-only-v1' &&
+      manifest.files &&
+      typeof manifest.files === 'object' &&
+      !Array.isArray(manifest.files),
+    'Invalid source-only manifest',
+  );
+  const names = Object.keys(manifest.files);
+  requireValue(names.length > 0, 'Source manifest is empty');
+  requireValue(
+    names.every((name) => /^[0-9a-f]{64}$/.test(manifest.files[name])),
+    'Invalid source-only manifest hashes',
+  );
+
+  // The package manifest is an inventory, not an authority to assert content
+  // unchanged. Independently hash the current bytes of every listed file.
+  // Extra unlisted sources are rejected rather than silently excluded.
+  const found = [];
+  const walk = (dir, prefix = '') => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const name = prefix ? prefix + '/' + entry.name : entry.name;
+      if (entry.isDirectory() && GENERATED_DIRECTORIES.has(entry.name) && !prefix) continue;
+      if (entry.isDirectory()) walk(join(dir, entry.name), name);
+      else if (
+        name !== SOURCE_MANIFEST &&
+        name !== 'recovery_manifest.json' &&
+        !EVIDENCE_FILES.includes(name)
+      ) {
+        found.push(name);
+      }
+    }
+  };
+  walk(root);
+  const omitted = manifest.excludedDependencyArchives || [];
+  requireValue(
+    Array.isArray(omitted) &&
+      omitted.every((name) => name === PINNED_ARCHIVE) &&
+      new Set(omitted).size === omitted.length,
+    'Unsupported omitted dependency archive',
+  );
+  const expected = new Set([...names, ...omitted]);
+  const unexpected = found.filter((name) => !expected.has(name));
+  requireValue(
+    !unexpected.length,
+    'Source-only package has unlisted files: ' + unexpected.join(', '),
+  );
+  return [...expected];
+}
+
+function pinnedArchiveDigest(root) {
+  const lock = JSON.parse(readFileSync(join(root, 'package-lock.json'), 'utf8'));
+  const integrity = lock.packages?.['node_modules/three']?.integrity;
+  requireValue(
+    /^sha512-[A-Za-z0-9+/]+={0,2}$/.test(integrity || ''),
+    'Missing pinned Three.js integrity',
+  );
+  const archive = join(root, PINNED_ARCHIVE);
+  if (existsSync(archive)) {
+    requireValue(lstatSync(archive).isFile(), 'Pinned archive must be a regular file');
+    const hash = createHash('sha512').update(readFileSync(archive)).digest('base64');
+    requireValue(integrity === 'sha512-' + hash, 'Pinned Three.js archive integrity mismatch');
+  }
+  return integrity;
+}
+
+export function sourceSnapshot(root, scheme = 'files-sha256-v2') {
+  if (scheme === 'git-index-v1') return legacyIndexSnapshot(root);
+  requireValue(scheme === 'files-sha256-v2', 'Unsupported source fingerprint scheme');
+  const files = existsSync(join(root, '.git')) ? gitInventory(root) : packagedInventory(root);
+  const hash = createHash('sha256');
+  let count = 0;
+  for (const path of [...files].sort()) {
+    if (EVIDENCE_FILES.includes(path)) continue;
+    requireValue(
+      path && !path.startsWith('/') && !path.includes('\\') &&
+        path.split('/').every((part) => part && part !== '.' && part !== '..'),
+      'Unsafe source path: ' + path,
+    );
+    const file = join(root, path);
+    if (path === PINNED_ARCHIVE) {
+      if (!existsSync(file)) {
+        const allowedOmission =
+          !existsSync(join(root, '.git')) &&
+          JSON.parse(readBounded(join(root, SOURCE_MANIFEST), MAX_LOG))
+            .excludedDependencyArchives?.includes(path);
+        requireValue(allowedOmission, 'Pinned archive missing without explicit manifest omission');
+      }
+      hash.update(JSON.stringify([path, pinnedArchiveDigest(root)]) + '\n');
+    } else {
+      requireValue(
+        existsSync(file) && lstatSync(file).isFile(),
+        'Missing or invalid source: ' + path,
+      );
+      hash.update(JSON.stringify([path, digest(readFileSync(file))]) + '\n');
+    }
+    count++;
+  }
+  requireValue(count > 0, 'Source inventory is empty');
+  return { digest: hash.digest('hex'), fileCount: count };
+}
+
 function requireValue(condition, message) {
   if (!condition) throw new Error(message);
 }
@@ -93,7 +239,10 @@ function readBounded(path, limit) {
 
 export function validateEvidence(report, transcript, source, requiredScope, dependencies) {
   qualityPlan(requiredScope);
-  requireValue(report?.version === VERSION, 'Unsupported evidence version');
+  requireValue(
+    report?.version === VERSION || report?.version === 1,
+    'Unsupported evidence version',
+  );
   requireValue(report.provenance === 'developer-reported', 'Missing evidence provenance');
   requireValue(report.scope === 'full' || report.scope === requiredScope, 'Full evidence required');
   const plan = qualityPlan(report.scope);
@@ -103,7 +252,10 @@ export function validateEvidence(report, transcript, source, requiredScope, depe
     'Evidence is stale: source changed',
   );
   requireValue(report.planDigest === digest(JSON.stringify(plan)), 'Test plan changed');
-  requireValue(/^v24\./.test(report.environment?.node || ''), 'Node 24 evidence required');
+  requireValue(
+    SUPPORTED_NODE.test(report.environment?.node || ''),
+    'Unsupported Node LTS evidence version',
+  );
   for (const [name, version] of Object.entries(dependencies)) {
     requireValue(
       report.environment.dependencies?.[name] === version,
@@ -163,14 +315,18 @@ function evidenceDirectory(root, create = false) {
 
 export function verifyQuality(root, requiredScope) {
   evidenceDirectory(root);
-  const source = sourceSnapshot(root);
   const report = JSON.parse(readBounded(join(root, EVIDENCE_FILES[0]), MAX_REPORT));
+  const source = sourceSnapshot(root, report.version === 1 ? 'git-index-v1' : 'files-sha256-v2');
   const archive = readBounded(join(root, EVIDENCE_FILES[1]), MAX_LOG);
   requireValue(digest(archive) === report.transcriptDigest, 'Transcript hash mismatch');
   const transcript = JSON.parse(gunzipSync(archive, { maxOutputLength: MAX_LOG }));
   const dependencies = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).devDependencies;
   const result = validateEvidence(report, transcript, source, requiredScope, dependencies);
-  requireValue(sourceSnapshot(root).digest === source.digest, 'Source changed while verifying');
+  requireValue(
+    sourceSnapshot(root, report.version === 1 ? 'git-index-v1' : 'files-sha256-v2').digest ===
+      source.digest,
+    'Source changed while verifying',
+  );
   return result;
 }
 
@@ -201,14 +357,16 @@ export function runQuality(root, scope, execute = executeCheck) {
     ).version;
     requireValue(installed[name] === version, 'Install pinned tools before verifying: ' + name);
   }
-  requireValue(/^v24\./.test(process.version), 'Use Node 24 for local Quality');
+  requireValue(SUPPORTED_NODE.test(process.version), 'Use a supported Node LTS release (22 or 24)');
   const report = {
     version: VERSION,
     provenance: 'developer-reported',
     scope,
     status: 'fail',
     source,
-    sourceRevision: git(root, ['rev-parse', 'HEAD']).trim(),
+    sourceRevision: existsSync(join(root, '.git'))
+      ? git(root, ['rev-parse', 'HEAD']).trim()
+      : JSON.parse(readBounded(join(root, SOURCE_MANIFEST), MAX_LOG)).revision || null,
     planDigest: digest(JSON.stringify(plan)),
     environment: { node: process.version, platform: process.platform, dependencies: installed },
     startedAt: new Date().toISOString(),
