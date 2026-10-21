@@ -542,6 +542,10 @@ export function createWorkstationThreeView({ store, workstation }) {
     panel,
     renderer,
     task,
-    runtime: { render: requestRender, updateZCollapse: renderer.updateZCollapse },
+    runtime: {
+      render: requestRender,
+      updateZCollapse: renderer.updateZCollapse,
+      highlightLayer: renderer.highlightLayer,
+    },
   };
 }

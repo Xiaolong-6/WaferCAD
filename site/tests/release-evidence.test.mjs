@@ -251,16 +251,25 @@ test('release requires successful full Quality proof', () => {
     name: 'Final lint, formatting, generated documentation and Node tests',
     conclusion: 'success',
   };
+  const localSkipped = { ...local, conclusion: 'skipped' };
+  const executedSkipped = { ...executed, conclusion: 'skipped' };
   assert.equal(fullQualityVerification([local]), 'local-evidence');
   assert.equal(fullQualityVerification([executed]), 'executed');
+  assert.equal(fullQualityVerification([local, executedSkipped]), 'local-evidence');
+  assert.equal(fullQualityVerification([localSkipped, executed]), 'executed');
   for (const steps of [
     null,
     [],
     [{ name: 'Require Draft local Quality evidence', conclusion: 'success' }],
-    [{ ...local, conclusion: 'skipped' }],
+    [localSkipped],
     [{ ...local, conclusion: 'failure' }],
     [local, local],
     [local, executed],
+    [localSkipped, executedSkipped],
+    [local, { ...executed, conclusion: 'failure' }],
+    [{ ...local, conclusion: 'failure' }, executed],
+    [{ ...local, conclusion: 'cancelled' }, executed],
+    [local, executedSkipped, executedSkipped],
   ]) {
     assert.equal(fullQualityVerification(steps), null);
   }

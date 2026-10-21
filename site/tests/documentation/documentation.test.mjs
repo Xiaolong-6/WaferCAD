@@ -19,6 +19,33 @@ async function fixture(t, entries) {
   return auditDocumentation({ rootDir, files: Object.keys(entries) });
 }
 
+test('source-only documentation audit uses the full source manifest when Git is unavailable', async (t) => {
+  const rootDir = await mkdtemp(join(tmpdir(), 'wafercad-docs-portable-'));
+  t.after(() => rm(rootDir, { recursive: true, force: true }));
+  await mkdir(join(rootDir, 'docs'), { recursive: true });
+  await writeFile(join(rootDir, 'README.md'), '# Root\n[Manual](docs/Manual.md)\n');
+  await writeFile(join(rootDir, 'docs/README.md'), '# Docs\n[Manual](Manual.md)\n');
+  await writeFile(join(rootDir, 'docs/Manual.md'), '# Manual\n');
+  await writeFile(
+    join(rootDir, 'wafercad-source-manifest.json'),
+    JSON.stringify({
+      schema: 'wafercad-source-only-v1',
+      files: {
+        'README.md': '0'.repeat(64),
+        'docs/README.md': '2'.repeat(64),
+        'docs/Manual.md': '1'.repeat(64),
+      },
+    }),
+  );
+  const result = await auditDocumentation({ rootDir });
+  assert.deepEqual(result.errors, []);
+  await rm(join(rootDir, 'wafercad-source-manifest.json'));
+  await assert.rejects(
+    () => auditDocumentation({ rootDir }),
+    /Documentation audit needs Git or wafercad-source-manifest.json/,
+  );
+});
+
 test('all documentation PRs retain automatic local Quality ownership and manual diagnostics', async () => {
   const quality = await readFile(
     new URL('../../../.github/workflows/quality.yml', import.meta.url),
@@ -34,7 +61,10 @@ test('all documentation PRs retain automatic local Quality ownership and manual 
     /^\s+paths(?:-ignore)?:/m,
     'Quality must include every PR source path',
   );
-  assert.match(quality, /node scripts\/local-verification\.mjs verify draft/);
+  assert.match(quality, /QUALITY_SCOPE: .*'draft'.*'full'/);
+  assert.ok(quality.includes('run: node scripts/local-verification.mjs verify "$QUALITY_SCOPE"'));
+  assert.match(quality, /name: Execute Draft Quality fallback/);
+  assert.match(quality, /site\/tests\/documentation-suite\.test\.mjs/);
   assert.match(quality, /node scripts\/local-verification\.mjs verify full/);
   assert.ok(
     qualityPlan('draft').at(-1).args.includes('site/tests/documentation-suite.test.mjs'),
