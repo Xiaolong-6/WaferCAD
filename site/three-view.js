@@ -882,14 +882,22 @@ export function createThreeView({
       host.dataset.rendererFrameArrayLodTier = host.dataset.transparentArrayLodTier || 'exact';
       host.dataset.rendererFrameSceneGeneration = host.dataset.sceneGeneration || '0';
       host.dataset.rendererFrameMs = String(performance.now() - frameStartedAt);
-      if (
-        host.dataset.renderPhase === 'progressive-preview' &&
-        !host.dataset.rendererProgressiveFirstFrameMs &&
-        Number.isFinite(progressiveProfileStart)
-      ) {
-        host.dataset.rendererProgressiveFirstFrameMs = String(
-          performance.now() - progressiveProfileStart,
-        );
+      if (Number.isFinite(progressiveProfileStart)) {
+        if (
+          host.dataset.renderFidelity === 'approximate' &&
+          !host.dataset.rendererProgressiveFirstFrameMs
+        ) {
+          host.dataset.rendererProgressiveFirstFrameMs = String(
+            performance.now() - progressiveProfileStart,
+          );
+        } else if (
+          host.dataset.renderFidelity === 'exact-surface-plan' &&
+          !host.dataset.rendererExactFirstFrameMs
+        ) {
+          host.dataset.rendererExactFirstFrameMs = String(
+            performance.now() - progressiveProfileStart,
+          );
+        }
       }
       host.dataset.rendererDrawCalls = String(renderer.info?.render?.calls || 0);
       host.dataset.rendererDrawTriangles = String(renderer.info?.render?.triangles || 0);
@@ -3299,10 +3307,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
           opaque, null, 0, false, null, presentation,
         );
       }
-      addBorderPositions(preview.borderLines.flat(2), {
-        includeHidden: false,
-        presentation: { kind: 'border', category: 'progressive-preview' },
-      });
+      if (getInspection()?.borders !== false) {
+        addBorderPositions(preview.borderLines.flat(2), {
+          includeHidden: false,
+          presentation: { kind: 'border', category: 'progressive-preview' },
+        });
+      }
       applyZDisplayState(model);
       progressiveProfileStart = startedAt;
       host.dataset.renderFidelity = 'approximate';
@@ -3424,8 +3434,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
       delete host.dataset.rendererProgressiveFirstFrameMs;
       delete host.dataset.rendererProgressiveBuildMs;
       delete host.dataset.rendererExactSceneMs;
+      delete host.dataset.rendererExactFirstFrameMs;
       host.dataset.renderFidelity = 'pending-exact';
-      progressiveProfileStart = null;
+      progressiveProfileStart = rendererProfileStart;
     }
 
     rendering = true;
