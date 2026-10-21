@@ -3367,6 +3367,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       targetVariant = presentationMode(inspection);
     let variantBuild = false;
     let previousVariantGroup = null;
+    let progressivePreviousGroup = null;
     let rebuildAborted = false;
     let buildStageStartedAt = 0;
     const recordVariantStage = (name) => {
@@ -3482,7 +3483,14 @@ diffuseColor.a *= waferCadAlphaScale;`,
         throw superseded;
       }
       if (!variantBuild) {
-        disposeGroup();
+        if (host.dataset.renderFidelity === 'approximate' && group?.children.length) {
+          // Preserve the usable sketch while the exact scene triangulates and
+          // assembles. It is not an owned variant and must be retired on commit.
+          progressivePreviousGroup = group;
+          previousVariantGroup = startSceneVariantBuild(targetVariant);
+        } else {
+          disposeGroup();
+        }
         physicalSurfacePlan = plan;
       }
       group.userData.waferCadSurfacePlan = plan;
@@ -3514,7 +3522,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       let sceneAssemblyYields = 0,
         nextAssemblyYieldAt = performance.now() + 8;
       const cancelSupersededVariant = () => {
-        if (!variantBuild || !pendingRender) return;
+        if (!pendingRender) return;
         const error = new Error('Superseded by a newer 3D presentation request');
         error.name = 'SceneVariantSuperseded';
         throw error;
@@ -4290,6 +4298,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
       // Keep the retired group cached but detached for fast future switches.
       if (previousVariantGroup && previousVariantGroup !== group) {
         scene.remove(previousVariantGroup);
+        if (progressivePreviousGroup === previousVariantGroup) {
+          disposeSceneGroup(previousVariantGroup);
+        }
         host.dataset.rendererRetainedCompleteVisible = 'false';
         host.dataset.rendererCommittedVariantSwaps = String(
           Number(host.dataset.rendererCommittedVariantSwaps || 0) + 1,
@@ -4319,6 +4330,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           if (group.parent !== scene) scene.add(group);
         }
         host.dataset.renderState = 'ready';
+        if (progressivePreviousGroup) host.dataset.renderFidelity = 'approximate';
         host.dataset.rendererRetainedCompleteVisible = 'false';
         host.dataset.rendererVariantRollbacks = String(
           Number(host.dataset.rendererVariantRollbacks || 0) + 1,
