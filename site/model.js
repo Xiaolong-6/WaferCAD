@@ -1502,7 +1502,13 @@ function applyOperationImpl(
   let active = intersection(area, model.boundary);
   if (incidence != null) {
     const exposure = directIncidenceArea(model, active, incidence, { face });
-    active = exposure.area;
+    // Align only opt-in oblique/height-resolved visibility to the existing
+    // 0.1 nm process grid before material partitioning, preserving old Direct.
+    const requiresShadowPartition =
+      incidence.tiltDeg !== 0 || (incidence.apertureStack?.length ?? 0) > 0;
+    active = requiresShadowPartition
+      ? sanitizeProcessGeometry(snapProcessGeometry(exposure.area))
+      : exposure.area;
   }
   if (isEmpty(active)) return { changed: false };
   if (!hasMaterial(model)) {
@@ -1819,6 +1825,10 @@ function applyOperationImpl(
     healConformalCoverageCracks(model, protectedVoids);
   }
 
+  // Reject a real duplicate material owner rather than return an invalid model.
+  // The incidence transaction rollback restores the entire predecessor.
+  if (incidence != null && incidence.tiltDeg > 0)
+    model.regions = canonicalizeProcessPartition(model, model.regions, 'Fixed-angle Direct');
   model.revision++;
   model.processRevision = (model.processRevision || 0) + 1;
   return { changed: true, layerId: layer?.id || targetLayerId || null };

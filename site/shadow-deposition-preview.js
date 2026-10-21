@@ -1,5 +1,5 @@
 import { applyOperation, createModel } from './model.js';
-import { intersection, isEmpty, rectMulti } from './vector-geometry.js';
+import { intersection, isEmpty, rectMulti, unionGeometries } from './vector-geometry.js';
 import { polygonAreaUm2, substrateShadowFootprint } from './shadow-exposure-geometry.js';
 
 /**
@@ -21,6 +21,7 @@ export function makeShadowAlPreview({
   substrateHeightUm = 30,
   substrateThicknessUm = 675,
   sampleStepUm = 0.0375,
+  transport = 'precomputed',
 } = {}) {
   if (!Array.isArray(beams) || beams.length === 0)
     throw new RangeError('At least one Al deposition beam is required.');
@@ -43,6 +44,8 @@ export function makeShadowAlPreview({
       throw new RangeError('Oxide thickness provenance source is required.');
   }
 
+  if (!['precomputed', 'native-direct'].includes(transport))
+    throw new RangeError('Unsupported shadow transport mode.');
   const model = createModel({
     shape: 'rect',
     width: substrateWidthUm,
@@ -54,12 +57,15 @@ export function makeShadowAlPreview({
   const exposures = [];
   let barrierLayerId = null;
   for (const [i, beam] of beams.entries()) {
-    const visible = substrateShadowFootprint(layers, {
-      thetaDeg: beam.thetaDeg,
-      azimuthDeg: beam.azimuthDeg,
-      heightStepUm: sampleStepUm,
-    });
-    const inside = intersection(visible.footprint, domain);
+    const native = transport === 'native-direct';
+    const visible = native
+      ? { heightStepUm: sampleStepUm, sampleCount: null, method: 'native-direct' }
+      : substrateShadowFootprint(layers, {
+          thetaDeg: beam.thetaDeg,
+          azimuthDeg: beam.azimuthDeg,
+          heightStepUm: sampleStepUm,
+        });
+    const inside = native ? domain : intersection(visible.footprint, domain);
     if (isEmpty(inside)) throw new Error('Shadow exposure ' + i + ' has no substrate footprint.');
     const outcome = applyOperation(model, {
       type: 'add',
@@ -69,15 +75,36 @@ export function makeShadowAlPreview({
       face: 'front',
       growth: 'direct',
       area: inside,
+      ...(native
+        ? {
+            incidence: {
+              tiltDeg: beam.thetaDeg,
+              azimuthDeg: beam.azimuthDeg,
+              heightStepUm: sampleStepUm,
+              apertureStack: layers.map(({ bottomUm, topUm, opening }) => ({
+                bottomZUm: substrateThicknessUm / 2 + bottomUm,
+                topZUm: substrateThicknessUm / 2 + topUm,
+                opening,
+              })),
+            },
+          }
+        : {}),
     });
     if (!outcome.changed) throw new Error('Shadow Al preview failed: ' + (outcome.error || i));
+    const footprint = native
+      ? unionGeometries(
+          model.regions
+            .filter((region) => region.stack.some((segment) => segment.layerId === outcome.layerId))
+            .map((region) => region.geom),
+        )
+      : inside;
     exposures.push({
       ...visible,
       label: beam.label || 'Al exposure ' + (i + 1),
       layerId: outcome.layerId,
       nominalThicknessUm: beam.nominalThicknessUm,
-      areaUm2: polygonAreaUm2(inside),
-      footprint: inside,
+      areaUm2: polygonAreaUm2(footprint),
+      footprint,
     });
     if (i === 0 && barrier !== null) {
       const oxide = applyOperation(model, {
@@ -87,7 +114,7 @@ export function makeShadowAlPreview({
         thickness: barrier.thicknessUm,
         face: 'front',
         growth: 'direct',
-        area: inside,
+        area: footprint,
       });
       if (!oxide.changed)
         throw new Error('AlOx geometric spacer failed: ' + (oxide.error || 'unknown'));
@@ -97,6 +124,7 @@ export function makeShadowAlPreview({
   const sharedFirstTwo =
     exposures.length >= 2 ? intersection(exposures[0].footprint, exposures[1].footprint) : [];
   const summary = {
+    transport,
     status:
       barrier === null
         ? 'idealized-lift-off geometry preview; NO tunnel barrier or deposition physics'

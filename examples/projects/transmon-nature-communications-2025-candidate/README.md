@@ -142,3 +142,25 @@ WAFERCAD_TRANSMON_GDS=/path/to/Zenodo_files/sample.gds \
 ```
 
 Prettier 3.9.9 passed for both new code files; branch Git blobs match the locally verified files exactly. A complete checkout of this branch remains outstanding, as do actual manufacturing geometry (resist wall shape, shadowed deposited metal volumes, alumina oxidation, lift-off), Worker/History/Recovery, and native normal-origin WaferCAD visual acceptance. No new CI was triggered for these local mathematical tests.
+
+## Native fixed-angle Direct replay and XY material ownership gate
+
+The Q2 research builder now supports `--native-direct` as an opt-in execution path in `scripts/transmon-shadow-al-preview.mjs`. It uses ordinary `growth: 'direct'` with explicit `incidence: { tiltDeg, azimuthDeg, heightStepUm, apertureStack }`; it does **not** define a PVD operation or empirical sidewall fraction.
+
+```sh
+node scripts/transmon-shadow-al-preview.mjs \
+  --gds /path/to/author/sample.gds \
+  --native-direct \
+  --output Transmon-Q2-Direct.wafercad \
+  --report Transmon-Q2-Direct-report.json
+# Optional *explicit and sourced hypothesis* only:
+# --oxide-thickness-um 0.002 --oxide-source "Illustrative value, not author measured"
+```
+
+Unlike precomputing all three XY footprints on a flat substrate, native Direct recalculates ballistic visibility against the **current** material stack for each Al dose. The substrate is 675 µm Si, the hypothetical resist aperture is 0.5 µm MMA plus 0.4 µm PMMA, and the fixed beams are 40 nm at (45°, −45°), 30 nm at (45°, +45°), and 30 nm at (45°, −135°). The 8/0 versus 8/1 resist interpretation remains **unverified**.
+
+An important correctness failure was reproduced: applying unsnapped fractional XY illumination footprints across all three original-GDS exposures returned successful native Process operations but later failed strict project schema because two material regions occupied the same XY area (~0.0000843 µm²). The repair is **restricted to opt-in angle/physical-aperture Direct**: canonicalize the calculated incoming footprint on the existing 0.1 nm physical persistence grid *before* partitioning the material columns. A further strict per-operation ownership gate rejects larger residual overlaps and uses the existing incidence transactional rollback; global tolerances and historical 0° Direct are unchanged. A coarse 75 nm height step is now rejected rather than allowed to generate invalid material ownership.
+
+With the 37.5 nm sampling interval, the author GDS native Direct replay passes strict save / expansion / schema validation: three Al exposures, 8 distinct XY material regions, an optional separately identified hypothetical AlOx spacer, and a two-dose footprint overlap around **0.0322630 µm²**. At 18.75 nm the overlap agrees within 0.0001 µm². The earlier unsnapped multi-dose preview and the corrected native model are not physically calibrated evaporator or tunnel-barrier models. Sidewall flux, time-resolved thickness growth, deposition on already formed sidewalls, actual PMMA/MMA wall shape, real oxidation kinetics and full Workstation/History/Recovery acceptance remain open.
+
+Current local targeted science/Process/Project/History selection: **115/115 passing**, including the real author source GDS. Local pinned Prettier 3.9.9 check passed. Chromium 144/SwiftShader rendered the validated project in the documented null-origin isolated Three.js viewport (0 page errors); nanometre Al/AlOx interfaces were still not visually discernible, so full visual acceptance is **not passed**. Source-bound full Quality and the complete exact merged-branch checkout remain outstanding.

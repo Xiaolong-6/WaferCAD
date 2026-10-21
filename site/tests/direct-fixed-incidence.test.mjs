@@ -145,5 +145,17 @@ test('original Q2 author GDS produces the same fixed-direction substrate exposur
   const film = unionGeometries(m.regions
     .filter((r) => r.stack.some((s) => s.layerId === result.layerId))
     .map((r) => r.geom));
-  assert.ok(Math.abs(polygonAreaUm2(film) - polygonAreaUm2(ref.footprint)) < 1e-7);
+  // Compare the stored film to the independently grid-quantized visibility.
+  // The unquantized analytical oracle is checked above at its original tolerance.
+  const grid = 1e-4;
+  const quantized = visible.area.map((polygon) =>
+    polygon.map((ring) =>
+      ring.map(([x, y]) => [
+        Number((Math.round(x / grid) * grid).toFixed(4)),
+        Number((Math.round(y / grid) * grid).toFixed(4)),
+      ]),
+    ),
+  );
+  assert.ok(Math.abs(polygonAreaUm2(film) - polygonAreaUm2(quantized)) < 1e-9);
+  assert.ok(Math.abs(polygonAreaUm2(film) - polygonAreaUm2(ref.footprint)) < 2e-4);
 });

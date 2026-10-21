@@ -62,3 +62,34 @@ test(
     assert.ok(Math.abs(crossing.stack[2].z1 - crossing.stack[2].z0 - 0.002) < 1e-9);
   },
 );
+
+test(
+  'author Q2 native Direct recomputes visibility for the current material height and restores all layers',
+  { skip: !process.env.WAFERCAD_TRANSMON_GDS },
+  async () => {
+    const original = readFileSync(process.env.WAFERCAD_TRANSMON_GDS);
+    const barrier = {
+      thicknessUm: 0.002,
+      provenance: 'hypothesis',
+      source: 'Illustrative thickness only; not a published or calibrated oxide measurement',
+    };
+    const { project, report } = await produceAuthorShadowPreview(original, {
+      barrier,
+      transport: 'native-direct',
+    });
+    assert.equal(report.transport, 'native-direct');
+    assert.equal(report.processRevision, 4);
+    assert.equal(report.regionCount, 8);
+    assert.equal(report.layerCount, 5);
+    assert.equal(report.alOxPresent, true);
+    assert.equal(report.tunnelJunctionValidated, false);
+    assert.ok(Math.abs(report.firstTwoOverlapAreaUm2 - 0.03226302) < 1e-5);
+    assert.ok(Math.abs(report.exposures[0].substrateFootprintAreaUm2 - 2.55611647) < 1e-5);
+    const restored = JSON.parse(project);
+    expandProjectStorage(restored);
+    validateProjectFile(restored);
+    const junction = restored.model.regions.find((region) => region.stack.length === 5);
+    assert.ok(junction);
+    assert.ok(Math.abs(junction.stack[2].z1 - junction.stack[2].z0 - 0.002) < 1e-9);
+  },
+);

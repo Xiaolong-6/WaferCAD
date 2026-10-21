@@ -51,7 +51,10 @@ function blankResearchProject() {
   };
 }
 
-export async function produceAuthorShadowPreview(source, { barrier = null } = {}) {
+export async function produceAuthorShadowPreview(
+  source,
+  { barrier = null, transport = 'precomputed' } = {},
+) {
   if (sha(source) !== SOURCE_SHA256) throw new Error('Author GDS SHA-256 mismatch.');
   const parsed = parseGDS(
     source.buffer.slice(source.byteOffset, source.byteOffset + source.byteLength),
@@ -84,6 +87,7 @@ export async function produceAuthorShadowPreview(source, { barrier = null } = {}
     layers,
     beams,
     barrier,
+    transport,
     substrateWidthUm: 40,
     substrateHeightUm: 30,
     substrateThicknessUm: 675,
@@ -154,7 +158,8 @@ if (process.argv[1]?.endsWith('transmon-shadow-al-preview.mjs')) {
         provenance: 'hypothesis',
         source: sourceNote || '',
       };
-  const { project, report } = await produceAuthorShadowPreview(source, { barrier });
+  const transport = args.includes('--native-direct') ? 'native-direct' : 'precomputed';
+  const { project, report } = await produceAuthorShadowPreview(source, { barrier, transport });
   await writeFile(outPath, project);
   if (valueArg(args, '--report'))
     await writeFile(valueArg(args, '--report'), JSON.stringify(report, null, 2) + '\n');
