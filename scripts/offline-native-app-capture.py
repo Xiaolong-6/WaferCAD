@@ -577,11 +577,21 @@ def run(args):
                     roi = args.inmemory_roi
                     density = 1100 / (roi[2] - roi[0]) if roi else 100
                     report['physicalRoughCutline'] = page.evaluate('''(params) => {
-                      return window.__wafercadOfflineModel.renderer.sampleRoughCutline(params);
+                      const instance = window.__wafercadOfflineModel;
+                      const before = JSON.stringify(instance.model);
+                      const result = instance.renderer.sampleRoughCutline(params);
+                      if (before !== JSON.stringify(instance.model)) {
+                        throw Error('Read-only cutline probe mutated project data');
+                      }
+                      return { ...result, modelUnchanged: true };
                     }''', {'xMin': args.rough_cutline[0], 'xMax': args.rough_cutline[1],
                            'y': args.rough_cutline[2], 'pixelsPerUm': density, 'samples': 65})
                     if report['physicalRoughCutline']['missingCount']:
-                        raise RuntimeError('Rough cutline missed actual displayed mesh positions')
+                        raise RuntimeError('Rough cutline missed real mesh positions')
+                    for point in report['physicalRoughCutline']['points']:
+                        if abs(point['errorUm'] - point['meshInterpolationErrorUm'] -
+                               point['displayAttenuationErrorUm']) > 1e-9:
+                            raise RuntimeError('Rough error decomposition violated signed sum')
             report['httpRequestsAllowed'] = dict(counts)
             report['rejectedRequests'] = rejected
             # Only exact build-info.json is known harmless; any other denial needs review.

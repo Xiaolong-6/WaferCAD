@@ -311,6 +311,26 @@ would report a false physical height error. A buried Base must not be treated
 as the visible cap when an oxide lies above it. Shader-displaced and instanced
 rough meshes are explicitly excluded from the CPU triangle-raycast metric.
 
+The current report also separates two *signed*, physically equivalent
+height residuals at each sample:
+- `meshInterpolationErrorUm`: native CPU triangle raycast minus the 3D
+  LOD-filtered analytic height (mesh/tessellation residual).
+- `displayAttenuationErrorUm`: 3D LOD-filtered height minus the Section
+  pixel-footprint physical height (display-filtering difference).
+
+Their signed sum **must** equal `errorUm` at every sample (1e-9 µm
+numerical tolerance), and the report checks that the project model is
+unchanged. The corresponding RMS components are **not generally additive**.
+The diagnostic also reports `displayHeightBlend` for each matched cap;
+a blend below 1 intentionally reduces visible 3D rough displacement
+without altering stored physics or the Section sampling formula.
+
+On the Photodetector at 60 µm the native Quality mode exposes more height
+frequency than its finite CPU mesh can resolve. At 240/6,800 µm both
+Fast and Quality reach the minimum 0.12 display blend; increasing triangle
+budget alone need not improve the physical Section/3D comparison. Do not
+claim numerical convergence solely because a mesh budget increases.
+
 This is a *null-Origin native Renderer diagnostic*. Its Section reference is
 the production sampler, not a captured synchronized Section raster.
 It does not prove complete Workstation, Worker-backed project Open,

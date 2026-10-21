@@ -2680,6 +2680,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           z: cap.z,
           profileNormal: cap.profileNormal ?? cap.normal,
           appearance: cap.appearance,
+          displayAppearance: task.visualAppearance || cap.appearance,
         };
         if (task.name) mesh.name = task.name;
       }
@@ -3014,6 +3015,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
             z: cap.z,
             profileNormal: cap.profileNormal ?? cap.normal,
             appearance: cap.appearance,
+            displayAppearance: task.visualAppearance || cap.appearance,
           };
           if (task.name) mesh.name = task.name;
         }
@@ -4835,6 +4837,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
         });
         const physicalZ = info.z + (Number(info.profileNormal) || 1) * height;
         const expectedZ = currentZDisplay.mapZ(physicalZ) * scale;
+        const displayHeight = roughDisplayProfileOffsetAtPoint(x, y, info.displayAppearance);
+        const visualZ = info.z + (Number(info.profileNormal) || 1) * displayHeight;
+        const visualExpectedZ = currentZDisplay.mapZ(visualZ) * scale;
         const bounds = new THREE.Box3().setFromObject(source);
         if (x < bounds.min.x || x > bounds.max.x || y < bounds.min.y || y > bounds.max.y) continue;
         ray.set(
@@ -4855,6 +4860,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
           expectedDisplayZ: expectedZ,
           actualDisplayZ: hit.point.z,
           errorUm: (hit.point.z - expectedZ) / (scale * derivative),
+          meshInterpolationErrorUm: (hit.point.z - visualExpectedZ) / (scale * derivative),
+          displayAttenuationErrorUm: (visualExpectedZ - expectedZ) / (scale * derivative),
+          displayHeightBlend: info.displayAppearance?.displayRoughBlend ?? 1,
         };
         if (!best || Math.abs(result.errorUm) < Math.abs(best.errorUm)) best = result;
       }
@@ -4876,6 +4884,16 @@ diffuseColor.a *= waferCadAlphaScale;`,
       displayScale: scale,
       roiLine: [xMin, xMax, y],
       clippedTriangleCount,
+      meshInterpolationRmsUm: valid.length
+        ? Math.sqrt(
+            valid.reduce((sum, p) => sum + p.meshInterpolationErrorUm ** 2, 0) / valid.length,
+          )
+        : null,
+      displayAttenuationRmsUm: valid.length
+        ? Math.sqrt(
+            valid.reduce((sum, p) => sum + p.displayAttenuationErrorUm ** 2, 0) / valid.length,
+          )
+        : null,
       points,
     };
   }
