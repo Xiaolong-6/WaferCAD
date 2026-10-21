@@ -183,23 +183,33 @@ must quantify both interpolation and display attenuation before promotion.
 This display-only
 filter does not establish Section/3D interior height parity.
 
-The explicit display-aligned Section preview and the 3D rough CPU mesh use
-one world-anchored, area-integrated inspection lattice for unresolved legacy
-`stochastic` morphology far from its physical sample origin. Grid nodes
-average 4×4 original physical heights within their footprint, and adjacent
-seed-matched layers share the same lattice coordinates. This avoids converting
-isolated high-frequency physical spikes into fabricated large-scale peaks.
-The Section header's `Physical` control switches back to the unmodified
-physical pixel-footprint profile; saved Process data, physical Section sampling,
-GLB export and the separate `stochastic-v2` field remain unchanged. The
-reconstruction may attenuate visually unresolved texture; its lower preview
-RMS cannot be claimed as convergence to the unfiltered scientific heightfield.
-A normal-Origin synchronized Section canvas/3D/Border acceptance is still
-required. Native renderer diagnostics and 50 nm conformal GLB checks are
-scientific evidence for their respective scope only. The legacy
-variable-feature stochastic field evaluates noise using a spatially varying
-feature size; at large world coordinates it can vary much faster than its
-nominal `featureSize`. `section-three-rough-profile.test.mjs` audits actual
+**Rejected Aligned inspection must not be restored.** The v2 Section must
+render the production physical pixel-footprint profile. Do not replace it with
+an area-averaged or interpolated inspection lattice, and do not label a
+smoothed Section/3D preview as physical mesh convergence. The legacy
+`stochastic` field can vary faster than its nominal feature size far from its
+saved `sampleOrigin`; bounded CPU triangulation can therefore diverge from
+the physical Section at some ROIs. Preserve this difference explicitly in
+native-mesh cutline evidence rather than flattening the scientific Section.
+
+The 2026-10-21 local recovery snapshot retired the Aligned/Physical toggle and
+the nonlinear local Relief inspector. The intended v2 3D control is a
+continuous, *uniform scene-wide*, display-only Z factor (0.25–20, slider and
+numeric input), applied equally to caps, conformal layers, sidewalls and
+borders, not selectively to rough peaks. It must not mutate Process, History,
+physical GLB export or canonical layer heights. The low-level nonlinear
+Relief diagnostic is not an endorsed Workstation feature.
+
+**Integration warning:** This documentation records the approved direction
+and the locally verified recovery, NOT completion on the remote PR branch.
+The existing remote source still contains the rejected Aligned implementation.
+Reconcile the exact remote HEAD before claiming functional acceptance.
+Normal-Origin synchronized Section/3D/Border acceptance remains mandatory;
+null-Origin native probes alone cannot validate Worker, History or Recovery.
+
+The legacy variable-feature stochastic field evaluates noise using a spatially
+varying feature size; at large world coordinates it can vary much faster than
+its nominal `featureSize`. `section-three-rough-profile.test.mjs` audits actual
 Three.js triangle/cutline intersections, reports interpolation and Float32 XY
 rounding errors separately, and enforces physical vertex and 50 nm film
 registration. Reported interpolation errors are diagnostics, not approved
