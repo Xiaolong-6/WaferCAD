@@ -46,3 +46,39 @@ test('invalid thickness fails closed instead of mutating a material model', () =
     /positive nominal/,
   );
 });
+
+test('explicit AlOx spacer separates intersecting Al solids at physical nanometre thickness', () => {
+  const barrier = {
+    thicknessUm: 0.002,
+    provenance: 'hypothesis',
+    source: 'Illustrative 2 nm only; not an author-reported film thickness',
+  };
+  const { model, exposures, summary } = makeShadowAlPreview({ layers, beams, barrier });
+  assert.equal(model.processRevision, 3);
+  assert.equal(model.layers.length, 4);
+  assert.equal(summary.alOxPresent, true);
+  assert.equal(summary.alOxProvenance, 'hypothesis');
+  assert.equal(summary.tunnelJunctionValidated, false);
+  const crossing = model.regions.find((r) => r.stack.length === 4);
+  assert.ok(crossing, 'A distinct Si / Al / AlOx / Al stack must exist.');
+  assert.deepEqual(
+    crossing.stack.map((s) => s.layerId),
+    ['base', exposures[0].layerId, summary.alOxLayerId, exposures[1].layerId],
+  );
+  assert.ok(Math.abs(crossing.stack[2].z1 - crossing.stack[2].z0 - 0.002) < 1e-9);
+  assert.ok(Math.abs(crossing.stack[2].z0 - crossing.stack[1].z1) < 1e-9);
+  assert.ok(Math.abs(crossing.stack[3].z0 - crossing.stack[2].z1) < 1e-9);
+});
+
+test('missing, zero, or unattributed AlOx thickness fails closed', () => {
+  const plain = makeShadowAlPreview({ layers, beams });
+  assert.equal(plain.summary.alOxPresent, false);
+  const invalid = [
+    { thicknessUm: 0.002 },
+    { thicknessUm: 0, provenance: 'hypothesis', source: 'example' },
+    { thicknessUm: 0.002, provenance: 'measurement', source: '' },
+  ];
+  for (const barrier of invalid) {
+    assert.throws(() => makeShadowAlPreview({ layers, beams, barrier }), RangeError);
+  }
+});
