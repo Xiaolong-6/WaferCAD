@@ -184,7 +184,7 @@ test('legacy v1 Git-index receipts are still verifiable', (t) => {
 test('source-only manifests and Git checkouts have identical content fingerprints', (t) => {
   const { root, git } = fixture(t);
   const before = sourceSnapshot(root);
-  const filenames = git('ls-files', '-z').split('\\0').filter(Boolean);
+  const filenames = git('ls-files', '-z').split('\0').filter(Boolean);
   const files = Object.fromEntries(
     filenames.map((path) => [path, digest(readFileSync(join(root, path)))]),
   );
@@ -230,7 +230,7 @@ test('pinned archive omission is portable only when the checked-in archive match
   const expected = sourceSnapshot(root);
   const files = Object.fromEntries(
     git('ls-files', '-z')
-      .split('\\0')
+      .split('\0')
       .filter((path) => path && path !== archiveName)
       .map((path) => [path, digest(readFileSync(join(root, path)))]),
   );
