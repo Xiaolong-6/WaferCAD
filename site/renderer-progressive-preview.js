@@ -13,7 +13,10 @@ export function buildProgressiveSurfacePreview(model, clip = null) {
     (model.layers || []).filter((layer) => layer.visible !== false).map((layer) => layer.id),
   );
   const caps = [];
-  const borderLines = [];
+  // Transferable display buffer: avoid thousands of nested JS line arrays
+  // and their expensive Worker structured clone.
+  const borderPositions = [];
+  let lineCount = 0;
   let pointCount = 0;
   for (const region of model.regions) {
     const stack = (region.stack || []).filter((segment) => visible.has(segment.layerId));
@@ -42,19 +45,15 @@ export function buildProgressiveSurfacePreview(model, clip = null) {
         for (let i = 1; i < ring.length; i++) {
           const a = ring[i - 1],
             b = ring[i];
-          borderLines.push([
-            [a[0], a[1], top.z1],
-            [b[0], b[1], top.z1],
-          ]);
+          borderPositions.push(a[0], a[1], top.z1, b[0], b[1], top.z1);
+          lineCount++;
           // The vertical strokes communicate height but are not Boolean-owned
           // exterior walls. Use each polygon vertex once, not a sidewall mesh.
           if (top.z1 !== bottom.z0 && (i - 1) % verticalStride === 0) {
-            borderLines.push([
-              [a[0], a[1], bottom.z0],
-              [a[0], a[1], top.z1],
-            ]);
+            borderPositions.push(a[0], a[1], bottom.z0, a[0], a[1], top.z1);
+            lineCount++;
           }
-          if (borderLines.length > MAX_PREVIEW_LINES) return null;
+          if (lineCount > MAX_PREVIEW_LINES) return null;
         }
       }
     }
@@ -62,5 +61,10 @@ export function buildProgressiveSurfacePreview(model, clip = null) {
     caps.push({ layerId: bottom.layerId, z: bottom.z0, normal: -1, polys });
   }
   if (!caps.length) return null;
-  return { kind: 'approximate-caps-preview', caps, borderLines };
+  return {
+    kind: 'approximate-caps-preview',
+    caps,
+    borderPositions: new Float32Array(borderPositions),
+    lineCount,
+  };
 }
