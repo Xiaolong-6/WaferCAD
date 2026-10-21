@@ -223,9 +223,15 @@ test('optional worker sketch is delivered before exact ownership without caching
   let worker;
   let requested;
   globalThis.Worker = class {
-    constructor() { worker = this; }
-    postMessage(data) { requested = data; }
-    terminate() { this.terminated = true; }
+    constructor() {
+      worker = this;
+    }
+    postMessage(data) {
+      requested = data;
+    }
+    terminate() {
+      this.terminated = true;
+    }
   };
   try {
     const sketch = {
