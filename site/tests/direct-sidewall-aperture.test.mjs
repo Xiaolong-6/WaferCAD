@@ -66,19 +66,24 @@ test('native Direct deposits sidewall only when upper Z-resolved aperture fully 
   validateProcessModel(m);
 });
 
-test('partial sidewall visibility rejects transaction without mutating source geometry', () => {
-  const m = model(),
-    before = structuredClone(m);
+test('partial Z exposure becomes a material slab with real Z gaps, not a full-height wall', () => {
+  const m = model();
   const result = applyOperation(m, {
     type: 'add',
     name: 'Al',
     thickness: 0.04,
     area: m.boundary,
-    incidence: inc(rectMulti(1.05, 2, 2.5)),
+    incidence: inc(rectMulti(1.2, 3, 2.8)),
   });
-  assert.equal(result.changed, false);
-  assert.match(result.error, /Partially illuminated/);
-  assert.deepEqual(m, before);
+  assert.equal(result.changed, true, result.error);
+  const bands = m.regions.flatMap((region) =>
+    region.stack.filter((segment) => segment.layerId === result.layerId && segment.role === 'direct-sidewall'),
+  );
+  assert.equal(bands.length, 1);
+  assert.ok(Math.abs(bands[0].z0 - 5.2) < 1e-7);
+  assert.ok(Math.abs(bands[0].z1 - 5.8) < 1e-7);
+  assert.equal(bands[0].z1 < 6, true);
+  validateProcessModel(m);
 });
 
 test('unsupported wall intersecting resist is rejected transactionally', () => {

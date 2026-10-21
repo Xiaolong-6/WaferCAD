@@ -1,5 +1,5 @@
 import { difference, intersection, isEmpty, pointInMulti, rectMulti } from './vector-geometry.js';
-import { sidewallApertureCoverage } from './direct-sidewall-aperture.js';
+import { sidewallVisibleHeightIntervals } from './direct-sidewall-aperture.js';
 
 const TOL = 1e-8;
 
@@ -60,12 +60,11 @@ export function isolatedDirectSidewallPlan(model, area, incidence, thicknessUm) 
     }
     const flux = nx * incidentX + ny * incidentY;
     if (flux <= TOL) continue;
-    const apertureCoverage = sidewallApertureCoverage({ a, b, lowZ, highZ }, incidence);
-    if (apertureCoverage === 'blocked') continue;
-    if (apertureCoverage === 'partial')
-      throw new RangeError(
-        'Partially illuminated resist-covered sidewall requires Z-varying 3D geometry.',
-      );
+    const visibleHeightIntervals = sidewallVisibleHeightIntervals(
+      { a, b, normal: [nx, ny], lowZ, highZ },
+      incidence,
+    );
+    if (!visibleHeightIntervals.length) continue;
     const width = travelWidth * flux;
     if (width < 1e-4)
       throw new RangeError('Projected sidewall thickness is below the 0.1 nm XY grid.');
@@ -74,7 +73,8 @@ export function isolatedDirectSidewallPlan(model, area, incidence, thicknessUm) 
         ? rectMulti(width, length, midpoint[0] + (nx * width) / 2, midpoint[1])
         : rectMulti(length, width, midpoint[0], midpoint[1] + (ny * width) / 2);
     const clipped = intersection(intersection(strip, low.geom), area);
-    if (!isEmpty(clipped)) strips.push({ area: clipped, lowZ, highZ, projectedWidthUm: width });
+    if (!isEmpty(clipped))
+      strips.push({ area: clipped, lowZ, highZ, visibleHeightIntervals, projectedWidthUm: width });
   }
   if (!strips.length) throw new Error('No illuminated sidewall with exposed lower material.');
   return strips;

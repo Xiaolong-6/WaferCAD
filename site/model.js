@@ -1790,10 +1790,16 @@ function applyOperationImpl(
     splitByArea(model, wall.area, (stack) => {
       const z = surfaceZ(stack, face);
       if (z == null || z < wall.lowZ - 1e-6 || z >= wall.highZ - 1e-9) return stack;
-      return normalizeStack([
-        ...stack,
-        { layerId: layer.id, z0: z, z1: wall.highZ, role: 'direct-sidewall' },
-      ]);
+      const bands = wall.visibleHeightIntervals || [[wall.lowZ, wall.highZ]];
+      const segments = bands
+        .map(([bottom, top]) => ({
+          layerId: layer.id,
+          z0: Math.max(z, bottom),
+          z1: top,
+          role: 'direct-sidewall',
+        }))
+        .filter((segment) => segment.z1 > segment.z0 + 1e-9);
+      return normalizeStack([...stack, ...segments]);
     }, false);
   }
   model.regions = mergeRegions(model, model.regions);

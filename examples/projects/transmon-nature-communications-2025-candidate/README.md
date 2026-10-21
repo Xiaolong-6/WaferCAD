@@ -208,3 +208,40 @@ with ROI around the step at x = 2 µm, and Z break 6.08–4.90 µm. The sidewall
 band is visible after correcting an initially misplaced ROI; this is native
 Three.js null-origin diagnostic evidence, **not** a full Workstation,
 Worker/History/Recovery or Section/3D quantitative acceptance.
+
+
+## Fixed Direct: partial-Z sidewall deposition through upper rectangular openings
+
+The isolated rectangular-step Direct sidewall solver can now represent **height-limited**
+metal deposition without inventing a full-height wall. For fixed angle θ/φ,
+the ray from a wall point at Z to an upper resist height Zₐ has coordinates
+(x,y) + (Zₐ−Z)tan(θ)(cosφ,sinφ). Rectangular aperture bounds produce exact
+linear inequalities in the wall Z coordinate; intersecting all aperture
+faces yields the visible Z interval. The resulting film has independent
+physical XY width and actual stored material Z bounds.
+
+Example: a 1 µm wall (Z=5–6 µm), 45° Direct and an upper resist aperture
+at Z=6–6.6 µm yield **Z=5.2–5.8 µm** of metal, leaving 0.2 µm
+uncoated at each end. This is canonical material geometry, not display cropping.
+The 0.1 nm project quantum is applied conservatively, snapping the visible
+Z interval inward. New and legacy Direct use the same native Process and
+project serialization pathways. Multiple rectangular upper apertures are
+intersected; nonrectangular masks still use the former exact fully visible
+or fully blocked check, while partially visible nonrectangular masks fail closed.
+
+This is deliberately not a general Josephson junction solver. The current
+2.5D representation assumes the entire rectangular wall *length* has
+the same Z visibility; tangentially partial opening, openings intersecting
+the step wall, and competing material shadows remain unsupported. It does
+not yet solve the actual sub-µm Manhattan resist undercut/AlOx/sidewall
+cross-section from the Q2 paper. Do not enable this mode for the full
+author Q2 replay until the partial-X/Z facet-owner geometry contract exists.
+
+Focused local verification on the aligned offline source: **107 passed, 0 failed**,
+including Process, Conformal, strict project geometry/storage, History and
+new partial-Z tests; Prettier 3.9.9 passed. A schema-validated output was
+rendered using the existing real native Chromium + SwiftShader offline
+capture with zero page errors; two actual 0.2 µm uncoated intervals remain
+hard to resolve in the current 3D view, so final visual acceptance is
+**not passed**. Normal-origin Workstation/Worker/History/Recovery and
+the exact Git HEAD full release Quality gate remain unverified.
