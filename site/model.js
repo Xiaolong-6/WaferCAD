@@ -17,6 +17,7 @@ import {
 } from './process-numerical-contract.js';
 import { applyProcessFaces } from './process-face-execution.js';
 import { directIncidenceArea } from './direct-incidence-geometry.js';
+import { isolatedDirectSidewallPlan } from './direct-sidewall-geometry.js';
 import { localGeometry } from './model-array-context.js';
 import { applyArrayOperation } from './model-array-process.js';
 import {
@@ -486,6 +487,8 @@ export function normalizeStack(stack) {
       else delete prev.frontSurface;
       if (prev.role === 'conformal-sidewall' || seg.role === 'conformal-sidewall')
         prev.role = 'conformal-sidewall';
+      else if (prev.role === 'direct-sidewall' || seg.role === 'direct-sidewall')
+        prev.role = 'direct-sidewall';
     } else out.push(seg);
   }
   return out;
@@ -1499,6 +1502,9 @@ function applyOperationImpl(
   // Preserve legacy Direct exactly unless fixed incidence was requested.
   if (incidence != null && (type !== 'add' || growth !== 'direct'))
     return { changed: false, error: 'Fixed incidence is available only for Direct Deposit.' };
+  const sidewallPlans = incidence?.sidewallGeometry != null
+    ? isolatedDirectSidewallPlan(model, intersection(area, model.boundary), incidence, amount)
+    : [];
   let active = intersection(area, model.boundary);
   if (incidence != null) {
     const exposure = directIncidenceArea(model, active, incidence, { face });
@@ -1697,7 +1703,7 @@ function applyOperationImpl(
       const exposed = surfaceSegment(region.stack, face);
       return (
         exposed &&
-        exposed.role !== 'conformal-sidewall' &&
+        !['conformal-sidewall', 'direct-sidewall'].includes(exposed.role) &&
         (type !== 'grow' || exposed.layerId === targetLayerId) &&
         !isEmpty(intersection(active, region.geom))
       );
@@ -1776,9 +1782,19 @@ function applyOperationImpl(
       // A conformal-sidewall segment is a finite-width surrogate for a vertical
       // film. Its outward Z cap is not a physical horizontal process surface, so
       // directional Deposit/Extend must not grow another layer from that cap.
-      if (!exposed || exposed.role === 'conformal-sidewall') return stack;
+      if (!exposed || ['conformal-sidewall', 'direct-sidewall'].includes(exposed.role)) return stack;
       return mutateStack(stack, { type, layerId: layer?.id, targetLayerId, amount, face });
     });
+  }
+  for (const wall of sidewallPlans) {
+    splitByArea(model, wall.area, (stack) => {
+      const z = surfaceZ(stack, face);
+      if (z == null || z < wall.lowZ - 1e-6 || z >= wall.highZ - 1e-9) return stack;
+      return normalizeStack([
+        ...stack,
+        { layerId: layer.id, z0: z, z1: wall.highZ, role: 'direct-sidewall' },
+      ]);
+    }, false);
   }
   model.regions = mergeRegions(model, model.regions);
   if (growth === 'conformal') {

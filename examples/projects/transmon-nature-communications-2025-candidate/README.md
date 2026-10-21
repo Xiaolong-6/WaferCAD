@@ -164,3 +164,18 @@ An important correctness failure was reproduced: applying unsnapped fractional X
 With the 37.5 nm sampling interval, the author GDS native Direct replay passes strict save / expansion / schema validation: three Al exposures, 8 distinct XY material regions, an optional separately identified hypothetical AlOx spacer, and a two-dose footprint overlap around **0.0322630 µm²**. At 18.75 nm the overlap agrees within 0.0001 µm². The earlier unsnapped multi-dose preview and the corrected native model are not physically calibrated evaporator or tunnel-barrier models. Sidewall flux, time-resolved thickness growth, deposition on already formed sidewalls, actual PMMA/MMA wall shape, real oxidation kinetics and full Workstation/History/Recovery acceptance remain open.
 
 Current local targeted science/Process/Project/History selection: **115/115 passing**, including the real author source GDS. Local pinned Prettier 3.9.9 check passed. Chromium 144/SwiftShader rendered the validated project in the documented null-origin isolated Three.js viewport (0 page errors); nanometre Al/AlOx interfaces were still not visually discernible, so full visual acceptance is **not passed**. Source-bound full Quality and the complete exact merged-branch checkout remain outstanding.
+
+## Isolated fixed-angle Direct sidewall: safe geometry contract
+
+Direct supports an **explicit opt-in** `incidence.sidewallGeometry = 'isolated-step'` for an isolated, axis-aligned rectangular material step without resist or other blocking structures. No separate deposition process mode is introduced. On an illuminated vertical facet with outward XY normal `n`, a beam of fixed tilt `θ` and azimuth `φ` deposits a finite lateral material width
+
+```text
+sidewall width (um) = nominal horizontal thickness (um) * tan(theta) *
+                      max(0, dot(outwardNormal, [cos(phi), sin(phi)]))
+```
+
+This is the ballistic projected-flux relation for an ideal vertical step, not a general evaporator or arbitrary-3D shadow solver. The resulting native 2.5D material occupies a narrow band **outside the raised solid** from the lower to the upper physical Z surface, with an explicit `direct-sidewall` role. Later Direct deposition must not use the artificial top of this vertical film as a horizontal physical source. Existing angle-less Direct and existing optional angle-only Direct are unchanged.
+
+**Scientific scope is intentionally narrow:** the solver requires exactly two physical surface-height regions, a single axis-aligned rectangular raised region, the complete wafer face, no Z-resolved resist aperture, and a lateral width resolvable on the 0.1 nm persistence XY grid. Unsupported geometry/angles/masks fail with the transactional rollback; no empirical coverage factor, broadening of tolerance or rotating target is introduced. This does **not** yet support original Q2 junction resist walls, arbitrary three-dimensional occlusion, competing tall features, sloped facets or dynamic self-shadowing.
+
+Verified with offline source-backed Process/Conformal/author-Q2 tests: **25/25 passed**; strict `validateProcessModel`, save/export/expand/`validateProjectFile`, positive and reversed azimuth, diagonal two-wall illumination, unsupported-mode rollback, and subsequent Direct exclusion of the artificial wall cap. Prettier 3.9.9 passed. The real native Three.js model was rendered under headed Chromium + SwiftShader using the standard `offline-native-app-capture.py` null-origin diagnostic with 0 page errors. Thin sidewall geometry was not visually distinguishable at the chosen scale, therefore **visual acceptance is incomplete**; normal-origin Workstation/History/Recovery and exact branch-HEAD final Quality also remain unverified.

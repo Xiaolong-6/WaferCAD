@@ -58,7 +58,7 @@ export function directIncidenceArea(model, area, incidence, { face = 'front' } =
     if (!Number.isFinite(top) || isEmpty(intersection(region.geom, area))) continue;
     // A vertical-wall surrogate is not a physical horizontal deposition target.
     const exposed = stack.find((seg) => Math.abs(seg.z1 - top) <= EPS);
-    if (exposed?.role === 'conformal-sidewall') continue;
+    if (['conformal-sidewall', 'direct-sidewall'].includes(exposed?.role)) continue;
     const key = top.toPrecision(14);
     if (!byHeight.has(key)) byHeight.set(key, { z: top, targets: [] });
     byHeight.get(key).targets.push(region.geom);
