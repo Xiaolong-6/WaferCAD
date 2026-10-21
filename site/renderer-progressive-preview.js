@@ -2,7 +2,7 @@
 // canonical geometry, collision/query input, or export geometry. In particular,
 // intersecting regions and buried interfaces are not Boolean-resolved here.
 const MAX_PREVIEW_CAPS = 4096;
-const MAX_PREVIEW_POINTS = 80000;
+const MAX_PREVIEW_POINTS = 120000;
 const MAX_PREVIEW_LINES = 120000;
 
 export function buildProgressiveSurfacePreview(model, clip = null) {
@@ -36,6 +36,9 @@ export function buildProgressiveSurfacePreview(model, clip = null) {
           if (!Array.isArray(point) || !Number.isFinite(point[0]) || !Number.isFinite(point[1]))
             return null;
         }
+        // Dense contours are accurate caps, but their illustrative vertical
+        // strokes are sampled to keep the approximate first frame responsive.
+        const verticalStride = Math.max(1, Math.ceil((ring.length - 1) / 8));
         for (let i = 1; i < ring.length; i++) {
           const a = ring[i - 1],
             b = ring[i];
@@ -45,7 +48,7 @@ export function buildProgressiveSurfacePreview(model, clip = null) {
           ]);
           // The vertical strokes communicate height but are not Boolean-owned
           // exterior walls. Use each polygon vertex once, not a sidewall mesh.
-          if (top.z1 !== bottom.z0) {
+          if (top.z1 !== bottom.z0 && (i - 1) % verticalStride === 0) {
             borderLines.push([
               [a[0], a[1], bottom.z0],
               [a[0], a[1], top.z1],
