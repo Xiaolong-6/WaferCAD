@@ -228,7 +228,12 @@ test('optional worker sketch is delivered before exact ownership without caching
     terminate() { this.terminated = true; }
   };
   try {
-    const sketch = { kind: 'approximate-caps-preview', caps: [], borderLines: [] };
+    const sketch = {
+      kind: 'approximate-caps-preview',
+      caps: [],
+      borderPositions: new Float32Array(0),
+      lineCount: 0,
+    };
     const exact = largeSurfacePlan();
     const published = [];
     const pending = buildRenderSurfacePlanAsync(model, null, {
