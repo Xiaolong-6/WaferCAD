@@ -169,6 +169,21 @@
         menu.focus({ preventScroll: true });
       }
     });
+    // Choosing a command in More dismisses the menu just like a toolbar
+    // command. The original button and its click event still bubble to the
+    // owning view controller; no duplicate command state is introduced.
+    menu.addEventListener('click', (event) => {
+      const command = event.target.closest('button[data-action]');
+      if (command && menu.contains(command) && !command.disabled && menu.matches(':popover-open')) {
+        menu.hidePopover();
+        // View controllers update aria-pressed later in this same bubbling
+        // click. Keep the menuitemcheckbox mirror correct on reopening.
+        requestAnimationFrame(() => {
+          if (command.hasAttribute('aria-pressed'))
+            command.setAttribute('aria-checked', command.getAttribute('aria-pressed'));
+        });
+      }
+    });
     menu.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') {
         event.preventDefault();

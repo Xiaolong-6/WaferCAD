@@ -182,7 +182,23 @@ def inspect_native_ui_controls(page, out: Path):
         page.wait_for_timeout(100)
         result['controls']['mainMoreOpen'] = page.locator('.p-overflow[popover]:popover-open').count() > 0
         record('main-more')
-        page.keyboard.press('Escape')
+        if result['controls']['mainMoreOpen']:
+            pan = page.locator('[data-action="tool:pan:main"]')
+            original_pressed = pan.get_attribute('aria-pressed')
+            pan.click()
+            page.wait_for_timeout(80)
+            result['controls']['mainMoreCommandCloses'] = (
+                page.locator('#p-overflow-main:popover-open').count() == 0
+                and pan.get_attribute('aria-pressed') != original_pressed
+                and pan.get_attribute('aria-checked') == pan.get_attribute('aria-pressed'))
+            # Restore the original Pan mode via the same menu command.
+            main_more.click()
+            pan.click()
+            result['controls']['mainPanRestored'] = (
+                pan.get_attribute('aria-pressed') == original_pressed
+                and page.locator('#p-overflow-main:popover-open').count() == 0)
+        else:
+            page.keyboard.press('Escape')
     section_nav = page.locator('[data-action="mobile-section"]')
     if section_nav.count() == 1 and section_nav.is_visible():
         section_nav.click()

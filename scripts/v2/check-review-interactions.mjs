@@ -247,6 +247,11 @@ try {
     await depth.click();
     await waitForPaint(page);
     await page.getByRole('button', { name: `Hide ${item.name}`, exact: true }).click();
+    // Visibility redraw is requestAnimationFrame-driven. Check the rendered
+    // replacement control, not the previous button in the same event turn.
+    await page.getByRole('button', { name: `Show ${item.name}`, exact: true }).waitFor({
+      state: 'visible',
+    });
     assert.equal(
       await page.getByRole('button', { name: `Show ${item.name}`, exact: true }).count(),
       1,
