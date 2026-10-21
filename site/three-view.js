@@ -1028,7 +1028,8 @@ export function createThreeView({
       (activeSceneVariant !== 'opaque' && activeSceneVariant !== 'transparent') ||
       !group ||
       !physicalSceneModel
-    ) return;
+    )
+      return;
     sceneVariantCache.set(activeSceneVariant, snapshotSceneVariant(activeSceneVariant));
   }
 
