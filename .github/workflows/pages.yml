@@ -61,14 +61,27 @@ jobs:
     needs: release-evidence
     if: ${{ needs.release-evidence.outputs.fast != 'true' && needs.release-evidence.outputs.mode != 'superseded' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
-      - name: Require full local Quality for this release tree
+      # Prefer the exact-release-tree proof. If absent or stale, run the
+      # complete real checks instead of allowing an unverified publication.
+      - name: Probe full local Quality for this release tree
+        id: evidence
+        continue-on-error: true
         run: node scripts/local-verification.mjs verify full
+      - name: Require full local Quality for this release tree
+        if: ${{ steps.evidence.outcome == 'success' }}
+        run: node scripts/local-verification.mjs verify full
+      - name: Install locked dependencies for release Quality fallback
+        if: ${{ !cancelled() && steps.evidence.outcome != 'success' }}
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Final lint, formatting, generated documentation and Node tests
+        if: ${{ !cancelled() && steps.evidence.outcome != 'success' }}
+        run: npm run check
 
   release-browser:
     name: Release targeted browser regression

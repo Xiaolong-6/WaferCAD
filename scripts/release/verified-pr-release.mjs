@@ -168,8 +168,26 @@ export function fullQualityVerification(steps) {
       'Require full local Quality evidence',
     ].includes(step?.name),
   );
-  if (owners.length !== 1 || owners[0].conclusion !== 'success') return null;
-  return owners[0].name === 'Require full local Quality evidence' ? 'local-evidence' : 'executed';
+  // New Quality runs list both mutually exclusive routes. Exactly one must
+  // complete successfully, with the other explicitly skipped. Legacy runs
+  // that contain only one successful full owner remain recognizable.
+  if (
+    owners.length < 1 ||
+    owners.length > 2 ||
+    new Set(owners.map((step) => step.name)).size !== owners.length ||
+    owners.some((step) => !['success', 'skipped'].includes(step.conclusion))
+  ) {
+    return null;
+  }
+  const completed = owners.filter((step) => step.conclusion === 'success');
+  if (completed.length !== 1) return null;
+  if (
+    owners.length === 2 &&
+    owners.find((step) => step !== completed[0])?.conclusion !== 'skipped'
+  ) {
+    return null;
+  }
+  return completed[0].name === 'Require full local Quality evidence' ? 'local-evidence' : 'executed';
 }
 
 function git(...args) {
