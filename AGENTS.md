@@ -37,6 +37,13 @@ For any visual change involving UI, Renderer, Examples, Mask, 3D or Section, def
 
 Minimize redundant CI without lowering final acceptance standards.
 
+**Local Quality ownership:** Stage source changes, run `node scripts/local-verification.mjs run draft`
+while developing and `node scripts/local-verification.mjs run full` before Ready/final acceptance,
+then commit both `.verification/quality/` output files. Quality and Pages validate
+that source-bound report; missing, failed or stale proof must return to local
+verification rather than trigger duplicate checks. See `docs/CI.md` for report
+coverage and the independent release-safety contract.
+
 - Keep approved platform-specific visual baselines separate. Do not replace an approved baseline merely to hide a failed comparison.
 - Preserve other developers' uncommitted work. Inspect branch, HEAD and working tree before changing Git state; integrate concurrent upstream changes without force pushing.
 - Update durable engineering/scientific contracts in the repository. For PR-specific progress, failures and handoff, maintain the PR description as the current status and comments as chronological evidence; do not create dated audit/handoff Markdown by default. Keep essential scientific provenance, fixtures and safety-critical evidence in version control. Chats and ignored artifacts are not authoritative.
