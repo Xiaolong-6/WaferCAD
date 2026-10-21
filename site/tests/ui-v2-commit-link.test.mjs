@@ -14,5 +14,9 @@ test('Workstation commit link uses validated deployment metadata and survives sh
   assert.match(shell, /href: `https:\/\/github\.com\/Xiaolong-6\/WaferCAD\/commit\/\$\{commit\}`/);
   assert.match(shell, /rel: 'noopener noreferrer'/);
   assert.match(shell, /target: '_blank'/);
+  assert.match(shell, /window\.WaferCadV2Icons\.icon\('github'\)/);
+  assert.match(shell, /window\.WaferCadV2Icons\.icon\('bookOpen'\)/);
+  assert.match(shell, /commit\.slice\(0, 7\)/);
+  assert.doesNotMatch(shell, /`commit \${commit\.slice/);
   assert.match(shell, /host\.textContent = info\.version \|\| ''/);
 });

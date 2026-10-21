@@ -74,10 +74,15 @@ try {
           canvasCount: document.querySelectorAll('canvas').length,
           overflow: document.documentElement.scrollWidth - innerWidth,
           headerOverflow: header.scrollWidth - header.clientWidth,
-          labels: buttons.map((action) =>
-            document.querySelector(`#mainPanel [data-action="${action}"]`).textContent.trim(),
-          ),
+          labels: buttons.map((action) => {
+            const command = document.querySelector(`#mainPanel [data-action="${action}"]`);
+            return {
+              text: command.textContent.trim(),
+              inMore: Boolean(command.closest('.p-overflow')),
+            };
+          }),
           headerHeight: header.getBoundingClientRect().height,
+          moreVisible: !document.querySelector('#mainPanel .p-overflow-anchor').hidden,
           calls: performance
             .getEntriesByType('resource')
             .map((entry) => entry.name)
@@ -107,7 +112,26 @@ try {
       }
       assert.equal(values.overflow, 0);
       assert.equal(values.headerOverflow, 0);
-      assert.deepEqual(values.labels, ['', '', '', '']);
+      // Overflow follows the actual header width, never the viewport orientation.
+      // An exposed command stays icon-only; the same button gains a label in More.
+      assert.equal(values.labels[0].inMore, false, 'Fit has the highest priority');
+      assert.equal(values.labels[3].inMore, false, 'ROI remains a primary Main action');
+      for (const [index, name] of [
+        [1, 'Pan'],
+        [2, 'Zoom'],
+      ]) {
+        assert.equal(values.labels[index].text, values.labels[index].inMore ? name : '');
+      }
+      assert.equal(
+        values.moreVisible,
+        values.labels.some((entry) => entry.inMore),
+      );
+      if (width === 768) {
+        // This Main panel has room for both controls despite a portrait viewport.
+        // Catch regressions that force-collapse Pan/Zoom merely for orientation.
+        assert.equal(values.labels[1].inMore, false);
+        assert.equal(values.labels[2].inMore, false);
+      }
       assert.deepEqual(values.calls, []);
       const box = await page.locator('#mainCanvas').boundingBox();
       const clickExposedCanvas = async () => {
@@ -138,8 +162,21 @@ try {
       const before = await page.evaluate(() => window.WaferCadV2Main.snapshot());
       const panButton = page.locator('[data-action="tool:pan:main"]');
       const zoomButton = page.locator('[data-action="tool:zoom:main"]');
+      const clickTool = async (control) => {
+        if (await control.evaluate((node) => Boolean(node.closest('.p-overflow')))) {
+          const more = page.getByRole('button', { name: 'Main more tools', exact: true });
+          await more.click();
+          assert.equal(await more.getAttribute('aria-expanded'), 'true');
+        }
+        await control.click();
+        assert.equal(
+          await page.locator('#p-overflow-main:popover-open').count(),
+          0,
+          'Selecting a More command must dismiss the menu',
+        );
+      };
       assert.equal(await zoomButton.getAttribute('aria-pressed'), 'true', 'Default 2D Zoom');
-      await zoomButton.click();
+      await clickTool(zoomButton);
       assert.equal(await zoomButton.getAttribute('aria-pressed'), 'false');
       const dragPan = () =>
         drag(
@@ -148,7 +185,7 @@ try {
           box.x + box.width * 0.2 + 24,
           box.y + box.height * 0.2 + 16,
         );
-      await panButton.click();
+      await clickTool(panButton);
       assert.equal(await panButton.getAttribute('aria-pressed'), 'false');
       await dragPan();
       await page.mouse.wheel(0, -100);
@@ -158,7 +195,7 @@ try {
         before.plan,
         'Unselected Pan/Zoom must not move/scale the view',
       );
-      await panButton.click();
+      await clickTool(panButton);
       await dragPan();
       const pan = await page.evaluate(() => window.WaferCadV2Main.snapshot().plan);
       assert.ok(Math.abs(pan.panX - before.plan.panX - 24) < 0.01, 'Pan moves 24 px in X');
@@ -170,7 +207,7 @@ try {
         pan,
         'Pan alone must not enable wheel zoom',
       );
-      await zoomButton.click();
+      await clickTool(zoomButton);
       assert.equal(await panButton.getAttribute('aria-pressed'), 'true');
       assert.equal(await zoomButton.getAttribute('aria-pressed'), 'true');
       assert.equal(
@@ -187,7 +224,7 @@ try {
       await waitForPaint(page);
       const wheelZoom = await page.evaluate(() => window.WaferCadV2Main.snapshot().plan.zoom);
       assert.ok(wheelZoom > both.zoom);
-      await panButton.click();
+      await clickTool(panButton);
       assert.equal(
         await zoomButton.getAttribute('aria-pressed'),
         'true',
@@ -205,13 +242,13 @@ try {
       assert.ok(
         (await page.evaluate(() => window.WaferCadV2Main.snapshot().plan.zoom)) > wheelZoom,
       );
-      await zoomButton.click();
+      await clickTool(zoomButton);
       const zoomOff = await page.evaluate(() => window.WaferCadV2Main.snapshot().plan);
       await dragPan();
       await page.mouse.wheel(0, -100);
       await waitForPaint(page);
       assert.deepEqual(await page.evaluate(() => window.WaferCadV2Main.snapshot().plan), zoomOff);
-      await page.locator('[data-action="fit:main"]').click();
+      await clickTool(page.locator('[data-action="fit:main"]'));
       assert.deepEqual(await page.evaluate(() => window.WaferCadV2Main.snapshot().plan), {
         zoom: 1,
         panX: 0,
@@ -219,7 +256,7 @@ try {
       });
       const roiButton = page.locator('[data-action="roi"]');
       assert.equal(await page.locator('#mainRoiTools').isVisible(), false);
-      await roiButton.click();
+      await clickTool(roiButton);
       assert.equal(await roiButton.getAttribute('aria-pressed'), 'true');
       assert.equal(await page.locator('#mainRoiTools').isVisible(), true);
       const floating = await page.locator('#mainRoiTools button').evaluateAll((nodes) =>
@@ -400,7 +437,7 @@ try {
         path: resolve(output, `main-floating-${width}.png`),
         fullPage: true,
       });
-      await roiButton.click();
+      await clickTool(roiButton);
       assert.equal(await page.locator('.v2-main-floating').count(), 0);
       assert.equal(await page.locator('#mainRoiTools').isVisible(), false);
       assert.equal(await roiButton.getAttribute('aria-pressed'), 'false');

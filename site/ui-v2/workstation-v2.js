@@ -173,19 +173,23 @@
           'a',
           {
             href: 'https://github.com/Xiaolong-6/WaferCAD',
+            'aria-label': 'GitHub repository',
+            title: 'GitHub repository',
             target: '_blank',
             rel: 'noopener noreferrer',
           },
-          'GitHub',
+          window.WaferCadV2Icons.icon('github'),
         ),
         el(
           'a',
           {
             href: 'https://github.com/Xiaolong-6/WaferCAD/wiki',
+            'aria-label': 'User manual (Wiki)',
+            title: 'User manual (Wiki)',
             target: '_blank',
             rel: 'noopener noreferrer',
           },
-          'Wiki',
+          window.WaferCadV2Icons.icon('bookOpen'),
         ),
       ),
     );
@@ -570,7 +574,7 @@
             rel: 'noopener noreferrer',
             title: `Open deployed commit ${commit} on GitHub`,
           },
-          `commit ${commit.slice(0, 7)}`,
+          commit.slice(0, 7),
         ),
       );
     }
