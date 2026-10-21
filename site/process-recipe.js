@@ -188,6 +188,27 @@ function normalizeStep(command, input, index = 0) {
     const thicknessError = validateMaterialThicknessUm(params.thicknessUm, 'deposit.thickness');
     if (thicknessError) throw new Error(thicknessError);
     params.coverage = normalizeCoverage(params.coverage || params.mode, { allowTransfer: true });
+    if (params.tiltDeg != null || params.azimuthDeg != null) {
+      const tilt = Number(params.tiltDeg ?? 0);
+      const azimuth = Number(params.azimuthDeg ?? 0);
+      if (
+        params.coverage !== 'direct' ||
+        params.face === 'both' ||
+        params.face === 'back' ||
+        !Number.isFinite(tilt) ||
+        tilt < 0 ||
+        tilt >= 89 ||
+        !Number.isFinite(azimuth)
+      )
+        throw new Error('Angled Direct needs front-face Direct and finite angles (tilt 0–<89°).');
+      if (tilt > 0) {
+        params.tiltDeg = tilt;
+        params.azimuthDeg = azimuth;
+      } else {
+        delete params.tiltDeg;
+        delete params.azimuthDeg;
+      }
+    }
     params.placement =
       params.coverage === 'transfer'
         ? ['flat', 'follow'].includes(cleanText(params.placement || params.transferMode, 'follow'))
@@ -699,6 +720,10 @@ export function serializeProcessRecipe(recipeValue) {
         add('material', p.material);
         add('thickness', displayLength(p.thicknessUm));
         add('coverage', p.coverage === 'direct' ? 'directional' : p.coverage);
+        if (p.tiltDeg != null) {
+          add('tiltDeg', p.tiltDeg, true);
+          add('azimuthDeg', p.azimuthDeg, true);
+        }
         if (p.coverage === 'transfer') add('placement', p.placement || 'follow');
       } else if (step.command === 'extend') {
         add('material', p.material);
@@ -775,7 +800,7 @@ export function recipeStepSummary(step) {
         : p.coverage === 'transfer'
           ? `Transfer · ${p.placement === 'flat' ? 'Flat bridge' : 'Follow surface'}`
           : p.coverage;
-    return `${displayLength(p.thicknessUm)} · ${coverage}${area}`;
+    return `${displayLength(p.thicknessUm)} · ${coverage}${p.tiltDeg ? ` · θ ${p.tiltDeg}° φ ${p.azimuthDeg}°` : ''}${area}`;
   }
   if (step?.command === 'etch') return `${displayLength(p.thicknessUm)} · ${p.profile}${area}`;
   if (step?.command === 'liftoff') return `Sacrificial layer: ${p.sacrificial}${area}`;

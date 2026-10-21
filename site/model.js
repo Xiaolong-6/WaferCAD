@@ -16,6 +16,7 @@ import {
   validateMaterialThicknessUm,
 } from './process-numerical-contract.js';
 import { applyProcessFaces } from './process-face-execution.js';
+import { directIncidenceArea } from './direct-incidence-geometry.js';
 import { localGeometry } from './model-array-context.js';
 import { applyArrayOperation } from './model-array-process.js';
 import {
@@ -1390,6 +1391,7 @@ function applyOperationImpl(
     face = 'front',
     area,
     growth = 'direct',
+    incidence = null,
     surface,
     color,
     tilt = 0,
@@ -1494,7 +1496,14 @@ function applyOperationImpl(
     type === 'etch'
       ? normalizedRoughSurface(surface, (model.processRevision || 0) + 1, amount)
       : null;
+  // Preserve legacy Direct exactly unless fixed incidence was requested.
+  if (incidence != null && (type !== 'add' || growth !== 'direct'))
+    return { changed: false, error: 'Fixed incidence is available only for Direct Deposit.' };
   let active = intersection(area, model.boundary);
+  if (incidence != null) {
+    const exposure = directIncidenceArea(model, active, incidence, { face });
+    active = exposure.area;
+  }
   if (isEmpty(active)) return { changed: false };
   if (!hasMaterial(model)) {
     return {
@@ -1839,9 +1848,12 @@ export function applyOperation(model, params) {
       error: 'Opt-in adaptive isotropic release does not yet support array Model topology.',
     };
   }
+  if (isArrayModel(model) && params?.incidence != null)
+    return { changed: false, error: 'Angled Direct does not yet support array model topology.' };
   if (isArrayModel(model)) return applyArrayOperation(model, params, applyOperation);
   const safeGeometryOperation =
       params?.growth === 'conformal' ||
+      params?.incidence != null ||
       (params?.type === 'etch' && params?.etchProfile === 'isotropic'),
     rollback = safeGeometryOperation ? cloneModel(model) : null;
   try {
@@ -1853,7 +1865,9 @@ export function applyOperation(model, params) {
     const prefix =
       params?.growth === 'conformal'
         ? 'Conformal geometry failed safely'
-        : 'Isotropic etch geometry failed safely';
+        : params?.incidence != null
+          ? 'Fixed-angle Direct geometry failed safely'
+          : 'Isotropic etch geometry failed safely';
     return {
       changed: false,
       error: `${prefix}: ${error?.message || 'unknown geometry error'}`,

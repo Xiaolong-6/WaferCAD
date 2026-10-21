@@ -232,6 +232,8 @@ export function createProcessPanelController({
       t === 'etch' || liftoff || t === 'implant' || electrical || recordOnly,
     );
     $('transferModeRow')?.classList.toggle('hidden', !transfer);
+    $('directTiltRow')?.classList.toggle('hidden', t !== 'add' || growthMode !== 'direct');
+    $('directAzimuthRow')?.classList.toggle('hidden', t !== 'add' || growthMode !== 'direct');
     $('operationAreaRow').classList.toggle('hidden', recordOnly);
     $('operationThicknessRow').classList.toggle('hidden', recordOnly || liftoff);
     $('recordProcessParams').classList.toggle('hidden', !recordOnly);
@@ -511,6 +513,8 @@ export function createProcessPanelController({
     if (kind === 'add') {
       $('layerName').value = params.name || operation.name || '';
       $('growthMode').value = params.growth || operation.growth || 'direct';
+      if ($('directTilt')) $('directTilt').value = String(params.incidence?.tiltDeg ?? 0);
+      if ($('directAzimuth')) $('directAzimuth').value = String(params.incidence?.azimuthDeg ?? 0);
       if ((params.growth || operation.growth) === 'transfer' && $('transferMode')) {
         // Missing transferMode identifies a legacy flat-bridge operation.
         $('transferMode').value = params.transferMode || operation.transferMode || 'flat';
@@ -1079,6 +1083,24 @@ export function createProcessPanelController({
       params.electricalRegionSource = $('electricalRegionSource').value;
     } else {
       params.growth = $('growthMode').value;
+      if (type === 'add' && params.growth === 'direct') {
+        const theta = Number($('directTilt')?.value || 0);
+        const phi = Number($('directAzimuth')?.value || 0);
+        if (!Number.isFinite(theta) || theta < 0 || theta >= 89 || !Number.isFinite(phi))
+          return status('Direct tilt must be 0–<89° and azimuth must be finite.', 'error');
+        if (theta > 0) {
+          if (areaMode !== 'full')
+            return status(
+              'Angled Direct with a 2D Mask needs a physical Z-resolved aperture. Use full face for topography shadowing.',
+              'error',
+            );
+          if (isArrayModel(model))
+            return status('Angled Direct on array templates is not yet supported.', 'error');
+          if (processFace !== 'front')
+            return status('Angled Direct currently supports Front only.', 'error');
+          params.incidence = { tiltDeg: theta, azimuthDeg: phi };
+        }
+      }
       if (type === 'add' && params.growth === 'transfer') {
         params.transferMode = $('transferMode')?.value === 'flat' ? 'flat' : 'follow';
       }
@@ -1232,6 +1254,7 @@ export function createProcessPanelController({
       continuousShape: etchProfile === 'continuous' ? params.continuousShape : null,
       continuousLateralUm: etchProfile === 'continuous' ? params.continuousLateralUm : null,
       sacrificialLayerId: type === 'liftoff' ? params.sacrificialLayerId : null,
+      incidence: params.incidence ? structuredClone(params.incidence) : null,
       growth:
         type === 'etch' || type === 'liftoff' || type === 'implant' || type === 'electrical'
           ? null
