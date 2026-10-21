@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildProgressiveSurfacePreview } from '../renderer-progressive-preview.js';
+import {
+  buildProgressiveSurfacePreview,
+  visibleProgressivePreviewCaps,
+} from '../renderer-progressive-preview.js';
 
 const polygon = [
   [
@@ -116,4 +119,13 @@ test('preview data is presentation-only and has no owned sidewalls or solids', (
   assert.equal('solids' in preview, false);
   assert.equal('slabs' in preview, false);
   assert.ok(preview.borderPositions instanceof Float32Array);
+});
+
+test('preview limits displayed caps to the camera-facing plane without altering model geometry', () => {
+  const caps = buildProgressiveSurfacePreview(twoLayerModel()).caps;
+  assert.deepEqual(visibleProgressivePreviewCaps(caps, 0.6).map((cap) => cap.normal), [1]);
+  assert.deepEqual(visibleProgressivePreviewCaps(caps, -0.6).map((cap) => cap.normal), [-1]);
+  assert.equal(visibleProgressivePreviewCaps(caps, 0).length, caps.length);
+  assert.equal(visibleProgressivePreviewCaps(caps, NaN).length, caps.length);
+  assert.equal(caps.length, 2);
 });

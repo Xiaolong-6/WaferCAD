@@ -15,6 +15,7 @@ import {
   borderPresentationState,
 } from './border-inspector.js';
 import { shouldYieldDuringSceneAssembly } from './renderer-cooperative-assembly.js';
+import { visibleProgressivePreviewCaps } from './renderer-progressive-preview.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
   LAYER_INSPECTION_NEUTRAL,
@@ -3376,7 +3377,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
     try {
       disposeGroup();
       const buckets = new Map();
-      for (const cap of preview.caps) {
+      const viewDistance = camera && controls ? camera.position.distanceTo(controls.target) : 0;
+      const viewZFraction =
+        viewDistance > 0 ? (camera.position.z - controls.target.z) / viewDistance : 1;
+      for (const cap of visibleProgressivePreviewCaps(preview.caps, viewZFraction)) {
         if (!buckets.has(cap.layerId)) buckets.set(cap.layerId, []);
         buckets.get(cap.layerId).push(cap);
       }

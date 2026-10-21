@@ -19,7 +19,8 @@ export function buildProgressiveSurfacePreview(model, clip = null) {
   const caps = [];
   // Transferable display buffer: avoid thousands of nested JS line arrays
   // and their expensive Worker structured clone.
-  const borderPositions = [];
+  // A bounded typed writer avoids a large JS array plus a second conversion.
+  const borderPositions = new Float32Array(MAX_PREVIEW_LINES * 6);
   let lineCount = 0;
   let pointCount = 0;
   for (const region of model.regions) {
@@ -56,15 +57,26 @@ export function buildProgressiveSurfacePreview(model, clip = null) {
         for (let i = 1; i < ring.length; i++) {
           const a = ring[i - 1],
             b = ring[i];
-          borderPositions.push(a[0], a[1], top.z1, b[0], b[1], top.z1);
-          lineCount++;
+          if (lineCount >= MAX_PREVIEW_LINES) return null;
+          let offset = lineCount++ * 6;
+          borderPositions[offset] = a[0];
+          borderPositions[offset + 1] = a[1];
+          borderPositions[offset + 2] = top.z1;
+          borderPositions[offset + 3] = b[0];
+          borderPositions[offset + 4] = b[1];
+          borderPositions[offset + 5] = top.z1;
           // The vertical strokes communicate height but are not Boolean-owned
           // exterior walls. Use each polygon vertex once, not a sidewall mesh.
           if (top.z1 !== bottom.z0 && (i - 1) % verticalStride === 0) {
-            borderPositions.push(a[0], a[1], bottom.z0, a[0], a[1], top.z1);
-            lineCount++;
+            if (lineCount >= MAX_PREVIEW_LINES) return null;
+            offset = lineCount++ * 6;
+            borderPositions[offset] = a[0];
+            borderPositions[offset + 1] = a[1];
+            borderPositions[offset + 2] = bottom.z0;
+            borderPositions[offset + 3] = a[0];
+            borderPositions[offset + 4] = a[1];
+            borderPositions[offset + 5] = top.z1;
           }
-          if (lineCount > MAX_PREVIEW_LINES) return null;
         }
       }
     }
@@ -75,7 +87,16 @@ export function buildProgressiveSurfacePreview(model, clip = null) {
   return {
     kind: 'approximate-caps-preview',
     caps,
-    borderPositions: new Float32Array(borderPositions),
+    borderPositions: borderPositions.slice(0, lineCount * 6),
     lineCount,
   };
+}
+
+export function visibleProgressivePreviewCaps(caps, viewZFraction) {
+  // For an oblique view only the outward-facing plane contributes to an opaque
+  // sketch. Preserve both sides for edge-on views; a true exact scene still
+  // replaces the entire preview after Boolean ownership resolves.
+  if (!Number.isFinite(viewZFraction) || Math.abs(viewZFraction) < 0.2) return caps;
+  const normal = viewZFraction > 0 ? 1 : -1;
+  return caps.filter((cap) => cap.normal === normal);
 }
