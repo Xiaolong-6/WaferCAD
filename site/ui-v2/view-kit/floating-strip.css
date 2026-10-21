@@ -1,7 +1,0 @@
-/* M2 p-mask-* primitives supply the single shared strip appearance. */
-.v2-floating-strip[hidden] {
-  display: none;
-}
-.v2-floating-strip .p-mask-tools {
-  flex-wrap: wrap;
-}

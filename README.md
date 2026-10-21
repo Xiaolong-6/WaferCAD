@@ -1,152 +1,43 @@
-# WaferCAD
+# Curated WaferCAD PR assets
 
-WaferCAD is a browser-based **Visual Process CAD** and geometric process emulator for mask-driven micro- and nanofabrication. It is positioned between layout viewers/static 2.5D layer extruders and physics-based process TCAD: the goal is rapid, interactive construction and inspection of process topology without implying predictive fabrication physics.
+**Archive only, not a runnable application checkout.** The branch contains **18 small text files**: necessary standalone source/tests, narrow original diff excerpts and this provenance index. It does NOT contain the old application tree, generated projects, GDS/masks, screenshots, npm dependencies, workflows, or anything from rejected models as a deliverable. It must not be merged as a whole.
 
-Its core question is practical: **given this mask and this sequence of process steps, what layered structure should I expect geometrically?** The intended uses are process-flow sketching, device-structure review, teaching, communication, and geometry handoff. WaferCAD is not a replacement for a full layout editor or a calibrated TCAD process simulator.
+## Frozen provenance
+PR [#226](https://github.com/Xiaolong-6/WaferCAD/pull/226) `d6c2b574a5c2a80f6207092a4eda88cd6c35277f`
+PR [#228](https://github.com/Xiaolong-6/WaferCAD/pull/228) `91bc6540314d1d706a4dcc840d431b23215d3fd2`
+PR [#229](https://github.com/Xiaolong-6/WaferCAD/pull/229) `69bdf8d0b7f73db31342ae5cb221931121984852`
+PR [#340](https://github.com/Xiaolong-6/WaferCAD/pull/340) `ae26ad84bc337a1a68a8d3793e282dadfd38f5a7` (no files retained).
 
-## Open WaferCAD
+## User-approved decisions
+| Item | Decision | Saved files | Scope |
+|---|---|---|---|
+| 2 | retain | `keep/02-pvd-step/pvd-step-focused.diff` | Opt-in experimental partial PVD coverage; integrate only with parameter validation and science tests. |
+| 3 | retain | `keep/03-benes/swx-benes64-network.mjs`, `keep/03-benes/swx-benes64-network.test.mjs` | 64x64 Benes logical topology; neither foundry routing nor approved optical mask. |
+| 5 | reference-only | `reference/05-metal-connectivity/m3d-ml-conductive-graph.py` | Independent metal component test for rejected M3D-LIME fixture; no integration. |
+| 6 | reference-only | `reference/06-wire-bond/assembly-wire-geometry.js` | Assembly wire record geometry and validator; no assembly UI or GLB feature integration. |
+| 7 | retain-after-science-reproduction | `keep/07-conformal/conformal-grid-overlap-focused.diff`, `keep/07-conformal/conformal-crack-repair.test.mjs` | Numerical Conformal corner fragments; never widen global tolerances or mask genuine overlaps. |
+| 8 | retain | `keep/08-section/section-preserve-focused.diff`, `keep/08-section/base-section-rebuild.test.mjs` | Preserve authored physical A-B slice through Recipe Base reset if valid. |
+| 9 | retain-after-transaction-validation | `keep/09-recovery/recovery-lease-focused.diff` | Owner-only lease refresh during Recovery checkpoint; requires normal-origin multi-tab checks. |
+| 11 | retain-after-Chromium-reproduction | `keep/11-renderer/scene-variant-cache-focused.diff` | Invalidate stale scene-variant aliases after in-place material state mutation. |
+| 12 | retain-tool-reference | `keep/12-layout-xor/swx-mems-klayout-verify.py` | KLayout XOR verifying actual native GDS/OAS output; generalize existing local verifier. |
+| 13 | retain-algorithm | `keep/13-release/swx-mems-posthf-perimeter-audit.mjs`, `keep/13-release/swx-mems-posthf-perimeter-audit.test.mjs` | BOX support/release spans against real post-HF process geometry; not FEM. |
+| 14 | reference-only | `reference/14-waveguide/filletPolyline.mjs` | Only generic circular fillet routine; excluded inaccurate SWX hairpin placement. |
+| 15 | reference-only | `reference/15-sem-paper/swx-mems-sem-registration.mjs` | SEM topology failure audit; dependencies on rejected SWX design are not included. |
 
-**[Launch WaferCAD](https://xiaolong-6.github.io/WaferCAD/)** — no installation or account required for the browser editor.
+**Development candidates (8):** #2, #3, #7, #8, #9, #11, #12, #13.
 
-- [Open the default Workstation (UI v2)](https://xiaolong-6.github.io/WaferCAD/app.html) — the released four-view workspace.
-- [Start with a blank project](https://xiaolong-6.github.io/WaferCAD/app.html?start=empty) — intentionally create a new Base; ordinary opening of the Workstation may instead restore existing browser state.
+**Reference-only (4):** #5, #6, #14, #15. Do not implement without a separate decision.
 
-The Workstation footer links the deployed short commit SHA to its GitHub commit (full SHA on hover); local builds show non-clickable `commit local`. The historical `app-legacy.html` URL redirects to the current v2 Workstation in published Pages; no separate Legacy editor is shipped. Existing `.wafercad` project files and browser Recovery remain supported.
+**Not retained:** #1 Si microchannel interposer; #4 SWX S8 Mask; #10 M3D-LIME reconstruction. Although reference #5 mentions M3D-LIME and references #12/#15 mention SWX, no rejected Example/Mask/Recipe is included.
 
-The Welcome page also offers **eight shipped example projects**, each with its own Mask, structure, and process/History context. The v2 Workstation is the default application since the [M5-Lite release](docs/archive/ui-v2/M5_LITE_HANDOFF_2026-10-12.md).
+## Migration rules
+- `*.diff` files are selected hunks of historical diffs, not patches guaranteed to apply to current `main`. Study exact current source/AGENTS.md; transplant only relevant changes.
+- Algorithm/test files preserve their original interfaces/import paths and may refer to absent old fixtures. They are **not runnable from this stripped archive**. Reattach tests to the correct current test owner during implementation.
+- #7 requires strict material ownership, real vs numerical overlap discrimination, Z continuity, process/serialization scientific invariants.
+- #9 requires real normal-origin multi-tab History/Recovery and IndexedDB transaction tests, including takeover/lease-loss during save.
+- #11 requires reproducing and inspecting actual native Chromium scenes and state before integration.
+- #2 is experimental-only; #3 network topology is not manufacturable mask; #12 script still uses SWX-specific file names/layers; #13 is material-support geometry only, not a mechanics prediction.
+- Integrate #12 by upgrading existing LOCAL KLayout validation; do not create redundant CI workflows. For all items, run minimum necessary local tests first, then appropriate final scientific/quality/release checks if the feature is implemented.
+- Preserve commit history; do not merge this archive branch into `main`. A tracking GitHub Issue owns separate integration decisions and eventual closure.
 
-## Your first five steps
-
-1. On the Welcome page, choose **Start empty** or open one of the [eight examples](docs/wiki/Examples-and-Modeling-Limits.md).
-2. In **Project → Base**, choose the substrate shape and dimensions, then **Rebuild Base**. Rebuilding an existing processed project has History implications; follow the confirmation.
-3. In **Mask**, import a GDSII/OASIS file or switch the source to **Draw**. Inspect Cell, Layer/Datatype and Mask ROI before patterned processing.
-4. In **Process → Manual**, choose Surface, Operation, Area and thickness/depth, then **Apply**. Use **Process → Recipe** for an ordered flow or **Process → Code** for supported declarative Recipe syntax.
-5. Move the **A–B** line through the feature, check **Section** and **3D**, then **Export** a portable `.wafercad` project. **Save** stores a browser-local Recovery checkpoint, not a downloaded backup.
-
-For concrete dimensions and expected results, follow the [10-minute hands-on tutorial](docs/wiki/First-10-Minutes.md).
-
-## Four synchronized views
-
-- **Mask** — switch between imported **File** masks (GDSII/OASIS hierarchy, global layer/datatype selection and alignment) and project-local **Draw** masks (Rectangle/Circle/Polygon/Ring/Ring Sector), with adjustable opacity above the current active-face topography outline and filtered **SVG/GDSII/OASIS** export; an active Mask ROI crops every export format.
-- **3D** — vector extrusion of the current structure with global opacity, transparency-aware interface borders, geometry-displaced rough/pyramid surfaces, conformal display shells that preserve inherited rough interfaces, depth-gradient Implant overlays, opaque ROI cut-face visibility for buried implants, **Fast / Quality** render-mesh modes with temporary Interactive LOD during camera motion, morphology-aware physical GLB export with a bounded tessellation budget, and 3× PNG capture.
-- **Main** — front/back surface view with XY axes, an A–B coordinate editor, SVG export, and in-page maximize.
-- **Section A–B** — cross-section generated from the same vector geometry model, with Auto/1:1 scaling, SVG export, and in-page maximize.
-
-```mermaid
-flowchart LR
-  Model["One physical geometry model"] --> Main["Main: surface and A–B"]
-  Model --> Mask["Mask: File or Draw"]
-  Model --> ThreeD["3D: material stack and transparency"]
-  Main --> Section["Section: physical slice along A–B"]
-```
-
-_This is a relationship diagram, not a current UI screenshot. For actual example-specific render previews, see [Examples and Modeling Limits](docs/wiki/Examples-and-Modeling-Limits.md). Thumbnail images are not suitable for reading workstation controls at full size._
-
-## Geometry model
-
-XY geometry stays vector. WaferCAD stores non-overlapping polygon regions and a Z stack for each region. Process Geometry Kernel v2 derives one runtime surface topology from that canonical model: exposed faces, buried material interfaces, true voids, genuine vertical walls, Section slices, and 3D slab/cap boundaries share the same geometry facts. Deposit, Extend, Etch, Selected/Invert/Whole-face area selection, 3D rendering, and section generation therefore remain tied to one canonical material geometry. Rough/Pyramid surface morphology is stored as deterministic appearance metadata, while Implant is stored separately as a structural annotation volume. These display layers deliberately enrich inspection without redefining the canonical ideal 2.5D process solid.
-
-Repeated full-wafer structures may remain compact as **canonical translation arrays**: shared physical model templates plus translated instances and exclusive tile domains. Array-aware Process, Main, Section and 3D paths preserve the same physical region-stack contract without eagerly duplicating every site. Copy-on-write creates a new template only when a physical context actually diverges.
-
-- **X, Y and Z** are stored internally in micrometres. Imported GDSII database units are converted from the file's `UNITS` record; OASIS database units are converted from the `START` record. The global display/input unit can be switched between nm, µm, and mm without changing geometry.
-- Section and 3D may stretch Z for visibility; that display scaling never changes the saved physical Z coordinates.
-- Layers use stable internal IDs. Their names are editable; colors come from curated structure palettes or a generated harmonious palette.
-
-## Mask model
-
-Cells and Layers are separate concepts:
-
-WaferCAD accepts `.gds`, `.gdsii`, `.oas`, and `.oasis` mask files. OASIS import supports the common cell/placement, rectangle, polygon, path, circle, modal-coordinate, repetition, and CBLOCK records used by the browser editor; unsupported extension geometry is rejected explicitly instead of being silently misread.
-
-- **Cells** follows the imported GDSII/OASIS hierarchy.
-- **Layers** is a global unique `layer/datatype` list.
-- Selecting a cell defines the active hierarchy scope.
-- Layers that do not exist in the active cell/subtree remain visible but are visually de-emphasized.
-- Zero-width linework may be displayed but is not treated as an operable mask area.
-
-## Product manual
-
-The [GitHub Wiki](https://github.com/Xiaolong-6/WaferCAD/wiki) is the product user manual. The tracked Markdown sources are available in [docs/wiki](docs/wiki/Home.md), so documentation updates can be reviewed in a branch before Wiki publication.
-
-- [Getting Started](docs/wiki/Getting-Started.md) — the workspace, first Process step and safety basics.
-- [Using WaferCAD with AI](docs/wiki/AI-Assisted-Workflows.md) — paper/supplementary information to Mask and Recipe, external GDS/OAS generation, process-flow prompts and validation.
-- [Recipe Code Tutorial](docs/wiki/Recipe-Code-Tutorial.md) — supported commands and executable-style examples.
-- [Masks and ROI](docs/wiki/Masks-and-ROI.md) — the difference between processing bounds and 3D inspection bounds.
-- [History, Variants and Recovery](docs/wiki/History-Variants-and-Recovery.md) — reversible work, browser recovery and backups.
-- [Illustrated Process Operations](docs/wiki/Process-Operations.md) — 19 canonical Before → After operation schematics, generated from the same catalog as the in-app guide.
-
-These diagrams are conceptual process-geometry explanations, **not** predictions of deposition kinetics or fabrication yield.
-
-Source pages in `docs/wiki/` are checked on every `main` push and synchronized to the Wiki only if their content changed. The detailed Process chapter is generated from the same catalog used by the UI. First-time Wiki initialization and any required write token are documented in [Wiki sync](docs/WIKI_SYNC.md).
-
-## Operations
-
-The current v2 **Process → Manual → Surface** selector offers **Front / Back / Both**. Compatible Both operations execute **Front → Back** atomically as one logical History Step. One Both-face Deposit creates **two distinct, paired Layer IDs** (Front and Back), even for the same material name; paired Extend or selective Etch requires an eligible material on both faces. **Both Lift-off and absolute-Z Planarize/CMP are unsupported**, and choosing Both does not change the Front/Back inspection face. Recipe Code also supports `face: 'both'`; the historical Legacy UI is preserved at the `legacy-frozen` tag. See the [Both-face Kernel contract](docs/science/PROCESS_BOTH_FACE_2026-10-11.md) and [v2 Manual Both acceptance](docs/ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md).
-
-Process operations use one of three areas:
-
-- Selected mask
-- Invert mask
-- Whole face
-
-Available actions:
-
-- Deposit new layer — directional, conformal, or Transfer / Laminate
-- Extend existing layer — directional or conformal
-- Etch / subtract — directional, material-selective, isotropic release, Planarize / CMP, and Undercut release
-- Implant
-- Electrical Region (non-material induced/doped/interface annotation)
-- Record process step (non-geometric fabrication metadata)
-
-Deposit and Extend support Directional and Conformal coverage. Conformal Extend reuses the same coating kernel as Conformal Deposit but keeps the selected existing layer id, while Directional Extend only thickens already exposed target material. Transfer / Laminate defaults to **Follow surface**, which places the transferred film on each local exposed horizontal surface without coating sidewalls or inventing film inside true voids. **Flat bridge** retains the membrane behavior at one global exposed plane and can bridge openings without filling the void beneath. Legacy saved Transfer steps without a placement mode replay with the historical Flat-bridge semantics. Directional Etch is vertical subtraction and can either remove exposed materials in stack order or target one currently exposed material and stop when the next different material is reached. Planarize / CMP trims material to an absolute target Z plane without adding fill, while Undercut release laterally removes one exposed sacrificial material. Directional Etch Surface can remain Smooth or attach Stochastic Rough / Pyramid morphology with Normal or Inverted orientation. Surface morphology changes rendering, not the canonical material stack.
-
-**Process Recipe** is a guided programming mode in the Process panel. Switch from Manual to Recipe to add and reorder typed operations, edit parameters in an inspector, or use the restricted, non-evaluating Code editor. Templates, validation, per-step execution, stop controls, and Recipe-only Undo/Redo share the existing process worker/Kernel. The Recipe is saved inside the `.wafercad` project. **Start** defaults to _Continue current model_: existing Process revisions require confirmation, because applying the same Recipe again changes geometry again. Choose _Rebuild Base first (new Main)_ for a fresh process lineage using the Base panel dimensions; this prompts to archive the previous Main History as a restorable Variant or clear it. Successful Manual operations can optionally be recorded into the Recipe.
-
-**Record** adds fabrication metadata such as Anneal, Clean, Oxidation, Surface treatment, Activation, or a custom process directly to History without changing material geometry. This keeps literature/process-flow reconstructions chronological without pretending that WaferCAD simulates thermal chemistry or diffusion.
-
-Electrical Region is a separate non-material annotation for schematic p/n regions, inversion, accumulation, depletion, and interface/induced/doped regions. It is anchored to the selected exposed process surface, uses a display depth, follows later Etch by clipping against surviving material, and can be renamed/recolored/hidden from Layers. It does not solve electrostatics, carrier concentration, junction fields, or transport.
-
-The Implant action is intentionally structural rather than physical: it marks the outermost mask-selected surface and creates a user-named implant zone with an empirical depth and signed X tilt. Color is assigned after Apply from the active 20-color structure palette and can be changed from the Layers legend. Main uses a light overlay; Section and 3D share one normalized surface-to-depth gradient convention. In opaque 3D the buried volume stays hidden, while an active ROI that cuts the implant exposes only its gradient cut face; transparent inspection additionally reveals the internal volume. Later Etch operations geometrically clip that existing implant, including rough-profile display, without modeling dopant species, dose, energy, range straggle, channeling, activation, diffusion, or electrical behavior. See `docs/science/IMPLANT.md`.
-
-## Safety
-
-Rebuilding Base after Process edits requires an explicit History decision: keep the previous Main as a restorable Variant or clear History. Review the confirmation before proceeding; **do not assume Undo can recover data after intentionally clearing History**. Save browser checkpoints for local recovery and export `.wafercad` for a portable backup.
-
-## Repository layout
-
-- `site/` — browser application source, including `app.html` (default UI v2), eight Welcome example families and bundled editable examples. Pages stages a filtered runtime with `scripts/build-pages-artifact.mjs`: it generates the legacy bookmark redirect at `app-legacy.html`, without restoring retired editor JS/CSS. The immutable `legacy-frozen` tag retains the historical editor and DOM-specific tests. Developer prototypes and tests are excluded from Pages; Welcome previews run on read-only v2.
-- `docs/wiki/` — tracked product manual source, including the AI and Recipe guides
-- `docs/` — maintained technical contracts, development documentation and [documentation map](docs/README.md)
-- `docs/archive/` — [revision-specific historical evidence](docs/archive/README.md); completed plans and old audit records are not current product contracts
-- `.github/workflows/pages.yml` — GitHub Pages deployment
-
-## Local preview
-
-```bash
-python -m http.server 8000 --directory site
-```
-
-Then open `http://localhost:8000`.
-
-For development checks:
-
-```bash
-npm ci
-npm run check
-```
-
-`npm run check` runs ESLint, the current Prettier gate, documentation generation/link checks, and the focused Node geometry/project-format regression tests. Use `npm run format` to format the active application and current documentation. See the [documentation map](docs/README.md) for current contracts, [Testing](docs/testing.md) for browser groups and approved platform-specific baselines, and [Development handoff](docs/COLLABORATION.md) for shared ChatGPT/Codex workflow. Dated validation files such as [2026-10-05 validation](docs/archive/VALIDATION_2026-10-05.md) are historical evidence for their recorded revision, not a claim about the latest `main`.
-
-## Project-file safety
-
-Project JSON is versioned and migrated before it can replace the current editor state. The current format is **v14**. The **Project** tab opens first; **Save** creates a local browser Recovery checkpoint, while **Export** downloads the `.wafercad` file. Validation covers the vector model, non-overlapping region geometry, Z stacks, layer references, surface morphology, Implant records, Electrical Region records, mask layout, hierarchy, transforms, ROI/section/view state, display settings, and conservative size limits. Earlier formats, including the v6 File/Draw-mask introduction and v12 stochastic-surface format, migrate forward deterministically; v13 adds Pyramid morphology and v14 adds first-class Electrical Region annotations. Repeated snapshot layout/model assets are shared. Compact export uses a 0.1 nm grid and validates the expanded result; export automatically selects lossless storage when that grid would change canonical Z/depth/profile lengths in the model or any restorable History state, or would invalidate geometry. Autosave and Recovery remain lossless. Repetitive canonical-array projects use `shared-assets-v4`, which stores shared model templates and array instance lists; older readers that do not support v4 must reject those files rather than silently dropping array geometry. Save and Open share the same 256 MB project limit, and invalid or damaged files fail at the file boundary rather than later during rendering.
-
-See `THIRD_PARTY_NOTICES.md` and `site/vendor/README.md` for active third-party dependencies.
-
-## License
-
-WaferCAD is released under the MIT License. See `LICENSE`.
-
-### Product verification
-
-The historical [interaction and visual regression report](docs/archive/PRODUCT_REVIEW.md) records wide, intermediate and phone layouts, actual A/B/ROI editing and generated browser artifacts at its tested revision. For the released v2 startup/Legacy behavior and verification boundaries, consult the [M5-Lite handoff](docs/archive/ui-v2/M5_LITE_HANDOFF_2026-10-12.md). [Process benchmarks](docs/science/PROCESS_BENCHMARKS.md) specify and test the current 2.5D Directional/Conformal/Etch semantics and their limits. [Process Geometry Kernel v2](docs/science/PROCESS_GEOMETRY_KERNEL_V2.md) defines the shared topology contract used by Process, Section, and 3D.
+See `SOURCE_MANIFEST.json` for machine-readable source refs and selected file paths.

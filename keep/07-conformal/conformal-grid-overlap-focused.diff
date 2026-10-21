@@ -1,0 +1,99 @@
+diff --git a/site/model.js b/site/model.js
+--- a/site/model.js
++++ b/site/model.js
+@@ -542,6 +543,26 @@ function processGeometryArea(geom) {
+   return Math.max(0, total);
+ }
+ 
++// Separate sub-grid corner slivers must not be summed into a fictitious
++// wafer-scale material intersection. This is deliberately narrower than
++// raising the global overlap tolerance: only independent grid-sized corner
++// components from Conformal postcoat normalization qualify. Their XY owner
++// is assigned by the existing deterministic region partition.
++export function isConformalGridFragmentOverlap(overlap, limit, operation) {
++  const grid = PROCESS_GEOMETRY_GRID_UM;
++  if (operation !== 'Conformal postcoat normalization' || overlap.length < 2) return false;
++  return overlap.every((polygon) => {
++    const box = multiBounds([polygon]);
++    return (
++      processGeometryArea([polygon]) <= limit + grid * grid * 1e-5 &&
++      // A Boolean retry can return a zero-area, folded ring whose bounding
++      // rectangle is wider than its physical intersection. Reject any
++      // genuinely extended seam even when its signed area cancels to zero.
++      Math.max(box.width, box.height) <= grid * 32 * (1 + 1e-6)
++    );
++  });
++}
++
+ function partitionProcessRegions(
+   regions,
+   rejectOverlapAbove = null,
+
+@@ -558,8 +579,50 @@ function partitionProcessRegions(
+       const overlap = intersection(left, right);
+       if (isEmpty(overlap)) continue;
+       const overlapArea = processGeometryArea(overlap);
+-      if (rejectOverlapAbove != null && overlapArea > rejectOverlapAbove) {
+-        throw new Error(`${operation} produced overlapping regions (${overlapArea} µm²).`);
++      // A fallback union may leave the same complete physical stack in two
++      // overlapping computational regions. Assigning that duplicate overlap
++      // to one owner preserves material/Z exactly; a different stack must
++      // still fail the strict persistence-grid geometry threshold.
++      if (
++        rejectOverlapAbove != null &&
++        overlapArea > rejectOverlapAbove &&
++        stackKey(previous.stack) !== stackKey(region.stack) &&
++        !isConformalGridFragmentOverlap(overlap, rejectOverlapAbove, operation)
++      ) {
++        const witness = {
++          box: multiBounds(overlap),
++          componentCount: overlap.length,
++          largestComponents: overlap
++            .map((polygon) => ({
++              area: processGeometryArea([polygon]),
++              box: multiBounds([polygon]),
++            }))
++            .sort((a, b) => b.area - a.area)
++            .slice(0, 3),
++          rejectedComponents: overlap
++            .map((polygon) => ({
++              area: processGeometryArea([polygon]),
++              box: multiBounds([polygon]),
++            }))
++            .filter(
++              ({ area, box }) =>
++                area > rejectOverlapAbove + PROCESS_GEOMETRY_GRID_UM ** 2 * 1e-5 ||
++                Math.max(box.width, box.height) > PROCESS_GEOMETRY_GRID_UM * 32 * (1 + 1e-6),
++            )
++            .slice(0, 5),
++          owners: [previous, region].map(({ id, stack }) => ({
++            id,
++            segments: stack.map(({ layerId, z0, z1, role }) => ({
++              layerId,
++              z0,
++              z1,
++              ...(role ? { role } : {}),
++            })),
++          })),
++        };
++        throw new Error(
++          `${operation} produced overlapping regions (${overlapArea} µm²); witness=${JSON.stringify(witness)}`,
++        );
+       }
+       geom = sanitizeProcessGeometry(difference(geom, previous.geom));
+       if (isEmpty(geom)) break;
+
+@@ -1750,7 +1856,11 @@ function applyOperationImpl(
+       crackTolerance: COVERAGE_CRACK_TOLERANCE_UM,
+     });
+     if (cracks.length || processPartitionHasFractionalBoundary(model.regions)) {
+-      model.regions = canonicalizeProcessPartition(model, model.regions, 'Conformal');
++      model.regions = canonicalizeProcessPartition(
++        model,
++        model.regions,
++        'Conformal postcoat normalization',
++      );
+     }
+     healConformalCoverageCracks(model, conformalOriginalVoids);
+   } else if (healNumericalCoverageCracks(model)) {
+

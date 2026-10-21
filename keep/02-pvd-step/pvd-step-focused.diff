@@ -1,0 +1,238 @@
+diff --git a/site/model.js b/site/model.js
+--- a/site/model.js
++++ b/site/model.js
+@@ -1365,6 +1440,7 @@ function applyOperationImpl(
+     face = 'front',
+     area,
+     growth = 'direct',
++    stepCoverageFraction = null,
+     surface,
+     color,
+     tilt = 0,
+
+@@ -1377,6 +1453,19 @@ function applyOperationImpl(
+     electricalRegionSource = 'custom',
+   },
+ ) {
++  // PVD has finite angular spread: optional, explicitly modelled partial
++  // coverage on narrow pre-existing oxide sidewall columns. This is NOT ALD:
++  // horizontal film receives the nominal thickness; sidewall cap receives
++  // only a declared fraction, with a grid-resolved width bound.
++  if (growth === 'pvd-step') {
++    const fraction = Number(stepCoverageFraction);
++    if (type !== 'add' || !Number.isFinite(fraction) || fraction <= 0 || fraction > 1) {
++      return {
++        changed: false,
++        error: 'PVD step coverage requires a finite fraction in (0, 1] on Deposit.',
++      };
++    }
++  }
+   // Use the actual requested physical value. Previously this clamped every
+   // positive thickness below 0.01 nm up to 0.01 nm without informing the user.
+   const amount = Number(thickness);
+
+@@ -1731,14 +1820,31 @@ function applyOperationImpl(
+       face,
+     );
+   } else {
+-    splitByArea(model, active, (stack) => {
+-      const exposed = surfaceSegment(stack, face);
+-      // A conformal-sidewall segment is a finite-width surrogate for a vertical
+-      // film. Its outward Z cap is not a physical horizontal process surface, so
+-      // directional Deposit/Extend must not grow another layer from that cap.
+-      if (!exposed || exposed.role === 'conformal-sidewall') return stack;
+-      return mutateStack(stack, { type, layerId: layer?.id, targetLayerId, amount, face });
+-    });
++    splitByArea(
++      model,
++      active,
++      (stack, _region, fragment) => {
++        const exposed = surfaceSegment(stack, face);
++        // Directional evaporation cannot grow from an artificial sidewall cap.
++        // Explicit PVD-step mode grants finite-angle coverage only to narrow,
++        // masked physical wall strips. Bounds of their parent owner or polygon
++        // are misleading: the 10 nm strips can have 0.56 µm-wide boundary
++        // skirts after Boolean clipping.
++        if (!exposed) return stack;
++        if (exposed.role === 'conformal-sidewall') {
++          if (growth !== 'pvd-step') return stack;
++          const stepThickness = amount * Number(stepCoverageFraction);
++          const { width, height } = multiBounds(fragment);
++          const longAxis = Math.max(width, height);
++          const effectiveWidth = longAxis > 0 ? geometryArea(fragment) / longAxis : Infinity;
++          if (!(effectiveWidth > 0 && effectiveWidth <= stepThickness + 1e-9)) return stack;
++          return addLayerToSurface(stack, layer?.id, stepThickness, face);
++        }
++        return mutateStack(stack, { type, layerId: layer?.id, targetLayerId, amount, face });
++      },
++      true,
++      growth === 'pvd-step',
++    );
+   }
+   model.regions = mergeRegions(model, model.regions);
+   if (growth === 'conformal') {
+
+@@ -1814,7 +1924,7 @@ export function applyOperation(model, params) {
+   }
+   if (isArrayModel(model)) return applyArrayOperation(model, params, applyOperation);
+   const safeGeometryOperation =
+-      params?.growth === 'conformal' ||
++      ['conformal', 'pvd-step'].includes(params?.growth) ||
+       (params?.type === 'etch' && params?.etchProfile === 'isotropic'),
+     rollback = safeGeometryOperation ? cloneModel(model) : null;
+   try {
+
+@@ -1826,7 +1936,9 @@ export function applyOperation(model, params) {
+     const prefix =
+       params?.growth === 'conformal'
+         ? 'Conformal geometry failed safely'
+-        : 'Isotropic etch geometry failed safely';
++        : params?.growth === 'pvd-step'
++          ? 'PVD step geometry failed safely'
++          : 'Isotropic etch geometry failed safely';
+     return {
+       changed: false,
+       error: `${prefix}: ${error?.message || 'unknown geometry error'}`,
+
+diff --git a/site/process-recipe.js b/site/process-recipe.js
+--- a/site/process-recipe.js
++++ b/site/process-recipe.js
+@@ -59,6 +59,7 @@ function normalizeCoverage(value, { allowTransfer = false } = {}) {
+   const mode = cleanText(value, 'directional').toLowerCase();
+   if (['directional', 'direct'].includes(mode)) return 'direct';
+   if (mode === 'conformal') return 'conformal';
++  if (allowTransfer && mode === 'pvd-step') return 'pvd-step';
+   if (allowTransfer && ['transfer', 'laminate'].includes(mode)) return 'transfer';
+   throw new Error(`Unsupported coverage "${value}".`);
+ }
+
+@@ -188,6 +189,16 @@ function normalizeStep(command, input, index = 0) {
+     const thicknessError = validateMaterialThicknessUm(params.thicknessUm, 'deposit.thickness');
+     if (thicknessError) throw new Error(thicknessError);
+     params.coverage = normalizeCoverage(params.coverage || params.mode, { allowTransfer: true });
++    if (params.coverage === 'pvd-step') {
++      params.stepCoverageFraction = Number(params.stepCoverageFraction);
++      if (
++        !Number.isFinite(params.stepCoverageFraction) ||
++        params.stepCoverageFraction <= 0 ||
++        params.stepCoverageFraction > 1
++      ) {
++        throw new Error('deposit.stepCoverageFraction must be between 0 (exclusive) and 1.');
++      }
++    } else delete params.stepCoverageFraction;
+     params.placement =
+       params.coverage === 'transfer'
+         ? ['flat', 'follow'].includes(cleanText(params.placement || params.transferMode, 'follow'))
+
+diff --git a/site/controllers/process-panel-controller.js b/site/controllers/process-panel-controller.js
+--- a/site/controllers/process-panel-controller.js
++++ b/site/controllers/process-panel-controller.js
+@@ -43,6 +43,7 @@ export function createProcessPanelController({
+   // Advanced process primitives extend existing UI groups so old saved projects
+   // and compact Function-panel layout remain compatible without a schema bump.
+   ensureProcessOption('growthMode', 'transfer', 'Transfer / Laminate');
++  ensureProcessOption('growthMode', 'pvd-step', 'PVD step (idealized)');
+   ensureProcessOption('etchProfile', 'planarize', 'Planarize / CMP');
+   ensureProcessOption('etchProfile', 'undercut', 'Undercut release');
+ 
+
+@@ -216,7 +217,8 @@ export function createProcessPanelController({
+       electrical = t === 'electrical',
+       growthMode = $('growthMode')?.value || 'direct',
+       transfer = t === 'add' && growthMode === 'transfer';
+-    if (t === 'grow' && growthMode === 'transfer') $('growthMode').value = 'direct';
++    if (t === 'grow' && ['transfer', 'pvd-step'].includes(growthMode))
++      $('growthMode').value = 'direct';
+ 
+     $('layerNameRow').classList.toggle('hidden', t !== 'add');
+     $('liftoffTargetRow').classList.toggle('hidden', !liftoff);
+
+@@ -230,6 +232,7 @@ export function createProcessPanelController({
+       t === 'etch' || liftoff || t === 'implant' || electrical || recordOnly,
+     );
+     $('transferModeRow')?.classList.toggle('hidden', !transfer);
++    $('pvdStepFractionRow')?.classList.toggle('hidden', t !== 'add' || growthMode !== 'pvd-step');
+     $('operationAreaRow').classList.toggle('hidden', recordOnly);
+     $('operationThicknessRow').classList.toggle('hidden', recordOnly || liftoff);
+     $('recordProcessParams').classList.toggle('hidden', !recordOnly);
+
+@@ -497,6 +500,9 @@ export function createProcessPanelController({
+     if (kind === 'add') {
+       $('layerName').value = params.name || operation.name || '';
+       $('growthMode').value = params.growth || operation.growth || 'direct';
++      if ((params.growth || operation.growth) === 'pvd-step' && $('pvdStepFraction')) {
++        $('pvdStepFraction').value = String(params.stepCoverageFraction ?? 0.25);
++      }
+       if ((params.growth || operation.growth) === 'transfer' && $('transferMode')) {
+         // Missing transferMode identifies a legacy flat-bridge operation.
+         $('transferMode').value = params.transferMode || operation.transferMode || 'flat';
+
+@@ -1038,6 +1044,16 @@ export function createProcessPanelController({
+       params.electricalRegionSource = $('electricalRegionSource').value;
+     } else {
+       params.growth = $('growthMode').value;
++      if (type === 'add' && params.growth === 'pvd-step') {
++        params.stepCoverageFraction = Number($('pvdStepFraction')?.value);
++        if (
++          !Number.isFinite(params.stepCoverageFraction) ||
++          params.stepCoverageFraction <= 0 ||
++          params.stepCoverageFraction > 1
++        ) {
++          return status('PVD step fraction must be greater than zero and at most one.', 'error');
++        }
++      }
+       if (type === 'add' && params.growth === 'transfer') {
+         params.transferMode = $('transferMode')?.value === 'flat' ? 'flat' : 'follow';
+       }
+
+diff --git a/site/controllers/process-recipe-controller.js b/site/controllers/process-recipe-controller.js
+--- a/site/controllers/process-recipe-controller.js
++++ b/site/controllers/process-recipe-controller.js
+@@ -838,8 +838,11 @@ export function createProcessRecipeController({
+         bindSelect('Coverage', 'coverage', [
+           { value: 'direct', label: 'Directional' },
+           { value: 'conformal', label: 'Conformal' },
++          { value: 'pvd-step', label: 'PVD step (idealized)' },
+           { value: 'transfer', label: 'Transfer / Laminate' },
+         ]);
++        if (p.coverage === 'pvd-step')
++          bindText('PVD step fraction', 'stepCoverageFraction', p.stepCoverageFraction);
+         if (p.coverage === 'transfer') {
+           bindSelect('Placement', 'placement', [
+             { value: 'follow', label: 'Follow surface' },
+
+@@ -1376,6 +1379,9 @@ export function createProcessRecipeController({
+       if (step.command === 'deposit') {
+         $('operationType').value = 'add';
+         $('growthMode').value = p.coverage || 'direct';
++        if (p.coverage === 'pvd-step' && $('pvdStepFraction')) {
++          $('pvdStepFraction').value = String(p.stepCoverageFraction);
++        }
+         $('layerName').value = p.material;
+         setThickness(p.thicknessUm);
+         updateOperationUI();
+
+@@ -1668,6 +1674,7 @@ export function createProcessRecipeController({
+           material: p.name || operation.name,
+           thickness: Number(p.thickness),
+           coverage: p.growth || 'direct',
++          ...(p.growth === 'pvd-step' ? { stepCoverageFraction: p.stepCoverageFraction } : {}),
+           placement: p.transferMode || operation.transferMode || 'follow',
+           ...common,
+         },
+
+diff --git a/site/ui-v2/workstation-workflow.js b/site/ui-v2/workstation-workflow.js
+--- a/site/ui-v2/workstation-workflow.js
++++ b/site/ui-v2/workstation-workflow.js
+@@ -255,8 +255,10 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
+         choice('Coverage', 'growthMode', [
+           ['direct', 'Direct'],
+           ['conformal', 'Conformal'],
++          ['pvd-step', 'PVD step (idealized)'],
+         ]),
+       ),
++      row('pvdStepFractionRow', fields.input('PVD sidewall fraction', 'pvdStepFraction', 0.25)),
+       row(
+         'transferModeRow',
+         choice('Placement', 'transferMode', [
+

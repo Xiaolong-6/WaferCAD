@@ -1,0 +1,261 @@
+{
+  "schema_version": 1,
+  "origin_repo": "Xiaolong-6/WaferCAD",
+  "source_pr_head_commits": {
+    "226": "d6c2b574a5c2a80f6207092a4eda88cd6c35277f",
+    "228": "91bc6540314d1d706a4dcc840d431b23215d3fd2",
+    "229": "69bdf8d0b7f73db31342ae5cb221931121984852",
+    "340": "ae26ad84bc337a1a68a8d3793e282dadfd38f5a7"
+  },
+  "origin_main_sha": "7e5ab00bd6757fe064eae89bae3a84cd0151abb2",
+  "selected_items": [
+    {
+      "number": 2,
+      "treatment": "retain",
+      "origin": "PR #226",
+      "files": [
+        "keep/02-pvd-step/pvd-step-focused.diff"
+      ],
+      "intent": "Opt-in experimental partial PVD coverage; integrate only with parameter validation and science tests."
+    },
+    {
+      "number": 3,
+      "treatment": "retain",
+      "origin": "PR #228",
+      "files": [
+        "keep/03-benes/swx-benes64-network.mjs",
+        "keep/03-benes/swx-benes64-network.test.mjs"
+      ],
+      "intent": "64x64 Benes logical topology; neither foundry routing nor approved optical mask."
+    },
+    {
+      "number": 5,
+      "treatment": "reference-only",
+      "origin": "PR #226",
+      "files": [
+        "reference/05-metal-connectivity/m3d-ml-conductive-graph.py"
+      ],
+      "intent": "Independent metal component test for rejected M3D-LIME fixture; no integration."
+    },
+    {
+      "number": 6,
+      "treatment": "reference-only",
+      "origin": "PR #229",
+      "files": [
+        "reference/06-wire-bond/assembly-wire-geometry.js"
+      ],
+      "intent": "Assembly wire record geometry and validator; no assembly UI or GLB feature integration."
+    },
+    {
+      "number": 7,
+      "treatment": "retain-after-science-reproduction",
+      "origin": "PR #226",
+      "files": [
+        "keep/07-conformal/conformal-grid-overlap-focused.diff",
+        "keep/07-conformal/conformal-crack-repair.test.mjs"
+      ],
+      "intent": "Numerical Conformal corner fragments; never widen global tolerances or mask genuine overlaps."
+    },
+    {
+      "number": 8,
+      "treatment": "retain",
+      "origin": "PR #226",
+      "files": [
+        "keep/08-section/section-preserve-focused.diff",
+        "keep/08-section/base-section-rebuild.test.mjs"
+      ],
+      "intent": "Preserve authored physical A-B slice through Recipe Base reset if valid."
+    },
+    {
+      "number": 9,
+      "treatment": "retain-after-transaction-validation",
+      "origin": "PR #226",
+      "files": [
+        "keep/09-recovery/recovery-lease-focused.diff"
+      ],
+      "intent": "Owner-only lease refresh during Recovery checkpoint; requires normal-origin multi-tab checks."
+    },
+    {
+      "number": 11,
+      "treatment": "retain-after-Chromium-reproduction",
+      "origin": "PR #229",
+      "files": [
+        "keep/11-renderer/scene-variant-cache-focused.diff"
+      ],
+      "intent": "Invalidate stale scene-variant aliases after in-place material state mutation."
+    },
+    {
+      "number": 12,
+      "treatment": "retain-tool-reference",
+      "origin": "PR #228",
+      "files": [
+        "keep/12-layout-xor/swx-mems-klayout-verify.py"
+      ],
+      "intent": "KLayout XOR verifying actual native GDS/OAS output; generalize existing local verifier."
+    },
+    {
+      "number": 13,
+      "treatment": "retain-algorithm",
+      "origin": "PR #228",
+      "files": [
+        "keep/13-release/swx-mems-posthf-perimeter-audit.mjs",
+        "keep/13-release/swx-mems-posthf-perimeter-audit.test.mjs"
+      ],
+      "intent": "BOX support/release spans against real post-HF process geometry; not FEM."
+    },
+    {
+      "number": 14,
+      "treatment": "reference-only",
+      "origin": "PR #228",
+      "files": [
+        "reference/14-waveguide/filletPolyline.mjs"
+      ],
+      "intent": "Only generic circular fillet routine; excluded inaccurate SWX hairpin placement."
+    },
+    {
+      "number": 15,
+      "treatment": "reference-only",
+      "origin": "PR #228",
+      "files": [
+        "reference/15-sem-paper/swx-mems-sem-registration.mjs"
+      ],
+      "intent": "SEM topology failure audit; dependencies on rejected SWX design are not included."
+    }
+  ],
+  "rejected_items": [
+    {
+      "number": 1,
+      "description": "Si microchannel interposer"
+    },
+    {
+      "number": 4,
+      "description": "SWX S8 parametric mask and generated GDS"
+    },
+    {
+      "number": 10,
+      "description": "M3D-LIME full reconstruction, recipe and project"
+    }
+  ],
+  "files": [
+    {
+      "archived_path": "keep/02-pvd-step/pvd-step-focused.diff",
+      "origin_pr": "PR #226",
+      "origin_commit": "d6c2b574a5c2a80f6207092a4eda88cd6c35277f",
+      "content_kind": "selected diff hunks",
+      "accepted_status": "retain"
+    },
+    {
+      "archived_path": "keep/03-benes/swx-benes64-network.mjs",
+      "origin_pr": "PR #228",
+      "origin_commit": "91bc6540314d1d706a4dcc840d431b23215d3fd2",
+      "content_kind": "original single file",
+      "accepted_status": "retain"
+    },
+    {
+      "archived_path": "keep/03-benes/swx-benes64-network.test.mjs",
+      "origin_pr": "PR #228",
+      "origin_commit": "91bc6540314d1d706a4dcc840d431b23215d3fd2",
+      "content_kind": "original single file",
+      "accepted_status": "retain"
+    },
+    {
+      "archived_path": "reference/05-metal-connectivity/m3d-ml-conductive-graph.py",
+      "origin_pr": "PR #226",
+      "origin_commit": "d6c2b574a5c2a80f6207092a4eda88cd6c35277f",
+      "content_kind": "original single file",
+      "accepted_status": "reference-only"
+    },
+    {
+      "archived_path": "reference/06-wire-bond/assembly-wire-geometry.js",
+      "origin_pr": "PR #229",
+      "origin_commit": "69bdf8d0b7f73db31342ae5cb221931121984852",
+      "content_kind": "original single file",
+      "accepted_status": "reference-only"
+    },
+    {
+      "archived_path": "keep/07-conformal/conformal-grid-overlap-focused.diff",
+      "origin_pr": "PR #226",
+      "origin_commit": "d6c2b574a5c2a80f6207092a4eda88cd6c35277f",
+      "content_kind": "selected diff hunks",
+      "accepted_status": "retain-after-science-reproduction"
+    },
+    {
+      "archived_path": "keep/07-conformal/conformal-crack-repair.test.mjs",
+      "origin_pr": "PR #226",
+      "origin_commit": "d6c2b574a5c2a80f6207092a4eda88cd6c35277f",
+      "content_kind": "original single file",
+      "accepted_status": "retain-after-science-reproduction"
+    },
+    {
+      "archived_path": "keep/08-section/section-preserve-focused.diff",
+      "origin_pr": "PR #226",
+      "origin_commit": "d6c2b574a5c2a80f6207092a4eda88cd6c35277f",
+      "content_kind": "selected diff hunks",
+      "accepted_status": "retain"
+    },
+    {
+      "archived_path": "keep/08-section/base-section-rebuild.test.mjs",
+      "origin_pr": "PR #226",
+      "origin_commit": "d6c2b574a5c2a80f6207092a4eda88cd6c35277f",
+      "content_kind": "original single file",
+      "accepted_status": "retain"
+    },
+    {
+      "archived_path": "keep/09-recovery/recovery-lease-focused.diff",
+      "origin_pr": "PR #226",
+      "origin_commit": "d6c2b574a5c2a80f6207092a4eda88cd6c35277f",
+      "content_kind": "selected diff hunks",
+      "accepted_status": "retain-after-transaction-validation"
+    },
+    {
+      "archived_path": "keep/11-renderer/scene-variant-cache-focused.diff",
+      "origin_pr": "PR #229",
+      "origin_commit": "69bdf8d0b7f73db31342ae5cb221931121984852",
+      "content_kind": "selected diff hunks",
+      "accepted_status": "retain-after-Chromium-reproduction"
+    },
+    {
+      "archived_path": "keep/12-layout-xor/swx-mems-klayout-verify.py",
+      "origin_pr": "PR #228",
+      "origin_commit": "91bc6540314d1d706a4dcc840d431b23215d3fd2",
+      "content_kind": "original single file",
+      "accepted_status": "retain-tool-reference"
+    },
+    {
+      "archived_path": "keep/13-release/swx-mems-posthf-perimeter-audit.mjs",
+      "origin_pr": "PR #228",
+      "origin_commit": "91bc6540314d1d706a4dcc840d431b23215d3fd2",
+      "content_kind": "original single file",
+      "accepted_status": "retain-algorithm"
+    },
+    {
+      "archived_path": "keep/13-release/swx-mems-posthf-perimeter-audit.test.mjs",
+      "origin_pr": "PR #228",
+      "origin_commit": "91bc6540314d1d706a4dcc840d431b23215d3fd2",
+      "content_kind": "original single file",
+      "accepted_status": "retain-algorithm"
+    },
+    {
+      "archived_path": "reference/14-waveguide/filletPolyline.mjs",
+      "origin_pr": "PR #228",
+      "origin_commit": "91bc6540314d1d706a4dcc840d431b23215d3fd2",
+      "content_kind": "extracted independent original function",
+      "accepted_status": "reference-only"
+    },
+    {
+      "archived_path": "reference/15-sem-paper/swx-mems-sem-registration.mjs",
+      "origin_pr": "PR #228",
+      "origin_commit": "91bc6540314d1d706a4dcc840d431b23215d3fd2",
+      "content_kind": "original single file",
+      "accepted_status": "reference-only"
+    },
+    {
+      "archived_path": "README.md",
+      "content_kind": "user decisions / integration requirements"
+    },
+    {
+      "archived_path": "SOURCE_MANIFEST.json",
+      "content_kind": "frozen source index"
+    }
+  ]
+}

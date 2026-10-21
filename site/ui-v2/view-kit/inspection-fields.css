@@ -1,5 +1,0 @@
-.v2-inspection-pair {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: var(--wc-space-3);
-}
