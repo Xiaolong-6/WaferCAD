@@ -6,9 +6,10 @@ import { intersection, isEmpty } from './vector-geometry.js';
 // Surface Plan worker. The primary worker computes the remaining materials,
 // while one child handles the heaviest independent layer. No production
 // geometry, tolerance, Z level or material ownership rule is approximated.
-// Keep it disabled on small/mobile devices where the extra memory would hurt.
+// Four-core browser A/B showed no repeatable first-frame gain; reserve the
+// extra worker for eight or more reported logical CPUs with ample memory.
 export function splitHeavyMaterialLayer(model, hardwareConcurrency = 0, deviceMemory = 0) {
-  if (!model || hardwareConcurrency < 4 || deviceMemory < 8 || (model.regions?.length || 0) < 256) {
+  if (!model || hardwareConcurrency < 8 || deviceMemory < 8 || (model.regions?.length || 0) < 256) {
     return null;
   }
   const costs = new Map();

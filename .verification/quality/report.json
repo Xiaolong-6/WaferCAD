@@ -1,14 +1,14 @@
 {
   "version": 1,
   "provenance": "developer-reported",
-  "scope": "full",
+  "scope": "draft",
   "status": "pass",
   "source": {
-    "digest": "d2bddb81d388ef5e0652622f81baee1b1a4646290491120fc1e0eba3f23ded86",
+    "digest": "c5d78be7f6ddd5d6064fc42c4dd221d6ae016a6fe1ea75c7f986714263deb84d",
     "fileCount": 1131
   },
   "sourceRevision": "071da3423b457b62e54dc6c2c8aef1f5fc7e6253",
-  "planDigest": "9e40e14c41649069d23911dc155328f17e554f0307619aef8493378a2f26b4b3",
+  "planDigest": "a45061373e4a9c9e6f414d7b3b2e48cab7e2bd0feb4378633d0ff24a1a396899",
   "environment": {
     "node": "v24.11.1",
     "platform": "linux",
@@ -19,7 +19,7 @@
       "three": "0.179.1"
     }
   },
-  "startedAt": "2026-10-21T08:17:42.056Z",
+  "startedAt": "2026-10-21T09:00:48.676Z",
   "checks": [
     {
       "id": "lint",
@@ -31,7 +31,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 4697,
+      "durationMs": 4736,
       "logDigest": "7e083cff9d323606d09accd3389828279cc52091b6c62b45c8100c1ced589c7c"
     },
     {
@@ -44,7 +44,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 13762,
+      "durationMs": 14648,
       "logDigest": "1230617af071df8c1efeb12bcd6d41c3aa159e1cd0841cc546fbae4c8c56f867"
     },
     {
@@ -57,22 +57,27 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 383,
+      "durationMs": 433,
       "logDigest": "3413d1015e1c9f5f6b9363616f39c7ad4c45709f18266518a60b0fcef04cab0e"
     },
     {
       "id": "node",
-      "command": "npm",
+      "command": "node",
       "args": [
-        "test"
+        "--test",
+        "site/tests/ci-test-plan.test.mjs",
+        "site/tests/ci-development-gates.test.mjs",
+        "site/tests/ci-workflow-architecture.test.mjs",
+        "site/tests/local-verification.test.mjs",
+        "site/tests/documentation-suite.test.mjs"
       ],
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 175135,
-      "logDigest": "e558734870b3823ef2dac446e00684abd20c525f4111a5831475d7bab1e5f54e"
+      "durationMs": 1578,
+      "logDigest": "8f2dd2f898ceca513ef96ec5300da52ef2d81f1dae1a4eb43a7e70cf1a7c9ad8"
     }
   ],
-  "finishedAt": "2026-10-21T08:20:56.035Z",
-  "transcriptDigest": "9c55f25ac220e805ed537440574366a7328c98a9e0ddf4024187448484327dd4"
+  "finishedAt": "2026-10-21T09:01:10.073Z",
+  "transcriptDigest": "ccfcb5c026f9538c4ab8b1559a92099c4f5191ec5cca0614bfda13c573f0cc3c"
 }

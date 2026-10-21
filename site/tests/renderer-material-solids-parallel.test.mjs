@@ -33,6 +33,9 @@ function largeSimpleModel() {
 test('parallel splitting respects memory/CPU bounds and preserves layer, region and XY/Z order', () => {
   const model = largeSimpleModel();
   assert.equal(splitHeavyMaterialLayer(model, 3, 8), null);
+  assert.equal(splitHeavyMaterialLayer(model, 4, 16), null);
+  assert.equal(splitHeavyMaterialLayer(model, 7, 16), null);
+  assert.equal(splitHeavyMaterialLayer(model, 8, 7), null);
   assert.equal(splitHeavyMaterialLayer(model, 8, 4), null);
   assert.equal(splitHeavyMaterialLayer(model, 8, undefined), null);
   assert.equal(splitHeavyMaterialLayer(createModel(), 8, 8), null);
@@ -44,6 +47,23 @@ test('parallel splitting respects memory/CPU bounds and preserves layer, region 
   assert.equal(split.heavy.regions[0].geom, model.regions[0].geom);
   assert.equal(split.heavy.regions[0].stack[0].z0, 3);
   assert.equal(model.regions[0].stack[0].layerId, 'film', 'partitioning must be read-only');
+});
+
+test('four-core eligible-memory devices retain the serial Surface Plan path', async () => {
+  const model = largeSimpleModel();
+  class UnexpectedChild {
+    constructor() {
+      assert.fail('four CPU cores must not instantiate a nested child Worker');
+    }
+  }
+  assert.equal(
+    await parallelMaterialSolids(model, null, {
+      WorkerClass: UnexpectedChild,
+      hardwareConcurrency: 4,
+      deviceMemory: 16,
+    }),
+    null,
+  );
 });
 
 test('parallel result assembly reorders by original material order and rejects missing/extra results', () => {
