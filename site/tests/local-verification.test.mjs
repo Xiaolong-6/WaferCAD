@@ -1,13 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import {
-  mkdtempSync,
-  mkdirSync,
-  readFileSync,
-  rmSync,
-  symlinkSync,
-  writeFileSync,
-} from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
@@ -276,7 +269,10 @@ test('the runner executes real npm and Node child processes before issuing a rec
     'format:check': 'node -e "console.log(2)"',
     'docs:check': 'node -e "console.log(3)"',
   };
-  writeFileSync(join(root, 'package.json'), JSON.stringify({ devDependencies: dependencies, scripts }));
+  writeFileSync(
+    join(root, 'package.json'),
+    JSON.stringify({ devDependencies: dependencies, scripts }),
+  );
   for (const relative of qualityPlan('draft').at(-1).args.slice(1)) {
     const path = join(root, relative);
     mkdirSync(dirname(path), { recursive: true });
@@ -287,7 +283,10 @@ test('the runner executes real npm and Node child processes before issuing a rec
   assert.equal(verifyQuality(root, 'draft').scope, 'draft');
   assert.throws(() => verifyQuality(root, 'full'), /Full evidence/);
   scripts.lint = 'node -e "process.exit(2)"';
-  writeFileSync(join(root, 'package.json'), JSON.stringify({ devDependencies: dependencies, scripts }));
+  writeFileSync(
+    join(root, 'package.json'),
+    JSON.stringify({ devDependencies: dependencies, scripts }),
+  );
   git('add', 'package.json');
   assert.throws(() => runQuality(root, 'draft'), /Local Quality failed/);
   const report = JSON.parse(readFileSync(join(root, EVIDENCE_FILES[0])));
