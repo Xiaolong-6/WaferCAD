@@ -3,6 +3,7 @@
 // optional Worker preview packet. This is a labeled, opt-in acceptance gate.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { clearInterval, setInterval } from 'node:timers';
 import { mkdir, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -63,7 +64,7 @@ async function hashExactPlan(page) {
     const append = async (s) => {
       block += s;
       if (block.length < 256 * 1024) return;
-      chunks.push(new Uint8Array(await crypto.subtle.digest('SHA-256', encoder.encode(block))));
+      chunks.push(new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256', encoder.encode(block))));
       block = '';
     };
     for (const key of Object.keys(plan).sort()) {
@@ -74,10 +75,10 @@ async function hashExactPlan(page) {
         for (const item of value) await append(JSON.stringify(item) + '\n');
       } else await append(JSON.stringify(value) + '\n');
     }
-    if (block) chunks.push(new Uint8Array(await crypto.subtle.digest('SHA-256', encoder.encode(block))));
+    if (block) chunks.push(new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256', encoder.encode(block))));
     const combined = new Uint8Array(chunks.length * 32);
     chunks.forEach((chunk, i) => combined.set(chunk, i * 32));
-    const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', combined));
+    const digest = new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256', combined));
     return {
       sha256: Array.from(digest, (x) => x.toString(16).padStart(2, '0')).join(''),
       caps: plan.caps.length,
@@ -128,7 +129,7 @@ async function coldRun(mode, index) {
     await page.addInitScript(() => {
       if (!location.pathname.endsWith('/app.html')) return;
       const observeHost = () => {
-        const insertion = new MutationObserver(() => bindHost());
+        const insertion = new globalThis.MutationObserver(() => bindHost());
         const bindHost = () => {
           const host = document.getElementById('threeHost');
           if (!host) return;
@@ -142,7 +143,7 @@ async function coldRun(mode, index) {
               window.__wafercadABFirstPreviewWallMs = performance.timeOrigin + performance.now();
             }
           };
-          new MutationObserver(check).observe(host, {
+          new globalThis.MutationObserver(check).observe(host, {
             attributes: true,
             attributeFilter: ['data-render-fidelity', 'data-renderer-progressive-first-frame-ms'],
           });

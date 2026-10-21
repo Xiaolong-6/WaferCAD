@@ -14,6 +14,7 @@ try {
   const errors = observePageErrors(page);
   let previewCapture = null;
   let previewCaptureTask = null;
+  let previewInteraction = null;
   // Capture the REAL native canvas when the first approximate WebGL frame
   // commits; waiting until exact ready would erase the evidence we need.
   await page.exposeFunction('__wafercadCaptureM3DPreview', () => {
@@ -36,6 +37,40 @@ try {
           animations: 'disabled',
         });
         previewCapture = phase;
+        // Exercise the real OrbitControls input while the authoritative
+        // Material Solids Worker is still calculating. A drawn canvas alone
+        // does not establish that the approximate first frame is interactive.
+        const beforeCamera = await page.evaluate(
+          () => window.WaferCadV2Workstation.snapshot().threeCamera,
+        );
+        const bounds = await page.locator('#threeHost canvas').boundingBox();
+        assert.ok(bounds, 'Preview canvas must be interactable');
+        const x = bounds.x + bounds.width / 2;
+        const y = bounds.y + bounds.height / 2;
+        const started = Date.now();
+        await page.mouse.move(x, y);
+        await page.mouse.down();
+        await page.mouse.move(x + 32, y + 18, { steps: 6 });
+        await page.mouse.up();
+        await page.waitForFunction(
+          ({ camera, serial }) => {
+            const host = document.getElementById('threeHost');
+            const current = window.WaferCadV2Workstation?.snapshot().threeCamera;
+            return (
+              host?.dataset.renderFidelity === 'approximate' &&
+              Number(host.dataset.rendererFrameSerial || 0) > serial &&
+              JSON.stringify(current) !== camera
+            );
+          },
+          { camera: JSON.stringify(beforeCamera), serial: phase.frameSerial },
+          { timeout: 5000 },
+        );
+        previewInteraction = {
+          realPointerOrbitDuringWorker: true,
+          orbitUntilPaintMs: Date.now() - started,
+          frameSerialBefore: phase.frameSerial,
+          fidelity: 'approximate',
+        };
       } catch (error) {
         // The exact application acceptance must still run even if diagnostic
         // screenshot capture is blocked by a browser or compositor issue.
@@ -62,7 +97,7 @@ try {
             void window.__wafercadCaptureM3DPreview();
           }
         };
-        new MutationObserver(check).observe(host, {
+        new globalThis.MutationObserver(check).observe(host, {
           attributes: true,
           attributeFilter: [
             'data-render-fidelity',
@@ -72,7 +107,7 @@ try {
         });
         check();
       };
-      const insertion = new MutationObserver(findHost);
+      const insertion = new globalThis.MutationObserver(findHost);
       insertion.observe(document.documentElement, { childList: true, subtree: true });
       findHost();
     };
@@ -147,6 +182,7 @@ try {
   const firstFrameEvidence = {
     ...firstFrame,
     capturedPreview: previewCapture,
+    previewInteraction,
     source: 'real Chromium WaferCAD Workstation M3D Welcome',
     scope: 'same loaded model; not a cold baseline A/B or peak-memory measurement',
   };
@@ -155,6 +191,8 @@ try {
     JSON.stringify(firstFrameEvidence, null, 2) + '\n',
   );
   console.log('M3D_PROGRESSIVE_FIRST_FRAME_EVIDENCE', JSON.stringify(firstFrameEvidence));
+  assert.ok(previewCapture, 'Expected a painted M3D approximate frame');
+  assert.ok(previewInteraction?.realPointerOrbitDuringWorker, 'Preview input must remain responsive');
   const border = page.locator('#threePanel [data-action="borders:three"]');
   await border.waitFor({ state: 'visible' });
   assert.equal(await border.getAttribute('aria-label'), 'Borders');
