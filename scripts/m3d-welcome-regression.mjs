@@ -65,7 +65,7 @@ try {
             },
             { passive: true },
           );
-          new MutationObserver(() => {
+          new globalThis.MutationObserver(() => {
             if (pendingAt === null) return;
             if (host.dataset.renderFidelity === 'approximate') {
               samples.push(performance.now() - pendingAt);
