@@ -3375,6 +3375,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     let variantBuild = false;
     let previousVariantGroup = null;
     let progressivePreviousGroup = null;
+    let progressiveRollback = null;
     let rebuildAborted = false;
     let buildStageStartedAt = 0;
     const recordVariantStage = (name) => {
@@ -3497,6 +3498,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
           // Preserve the usable sketch while the exact scene triangulates and
           // assembles. It is not an owned variant and must be retired on commit.
           progressivePreviousGroup = group;
+          // The preview has no exact surface plan or variant-cache entry.
+          // Capture all render-facing ownership before the exact candidate
+          // replaces the active sets, so rollback restores a usable viewport.
+          progressiveRollback = snapshotSceneVariant('progressive-preview');
           previousVariantGroup = startSceneVariantBuild(targetVariant);
         } else {
           disposeGroup();
@@ -4334,7 +4339,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
         const cached = [...sceneVariantCache.values()].find(
           (entry) => entry.group === previousVariantGroup,
         );
-        if (cached) restoreSceneVariant(cached);
+        if (progressiveRollback) {
+          restoreSceneVariant(progressiveRollback);
+          physicalSurfacePlan = null;
+        } else if (cached) restoreSceneVariant(cached);
         else {
           group = previousVariantGroup;
           if (group.parent !== scene) scene.add(group);
