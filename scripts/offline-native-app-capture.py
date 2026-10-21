@@ -567,6 +567,27 @@ def run(args):
                     'Isolated native Three.js viewport: Main/Mask/Section, History and Recovery are not synchronized.')
                 if not ready:
                     fail = True
+                if args.native_section_compare:
+                    import base64
+                    expression = (root / 'scripts/offline-native-section-comparison.js').read_text(encoding='utf-8')
+                    section_images = page.evaluate(expression, {
+                        'roiBounds': args.inmemory_roi, 'line': args.rough_cutline,
+                        'zBreak': args.inmemory_z_break, 'borders': args.native_section_borders})
+                    section_data = {
+                        'modelUnchanged': section_images['modelUnchanged'],
+                        'actualProductionSectionRenderer': section_images['actualProductionSectionRenderer']}
+                    for section_mode in ('aligned', 'physical'):
+                        result = section_images[section_mode]
+                        if result['sampleMode'] != section_mode:
+                            raise RuntimeError('Native production Section mode selection failed')
+                        name = 'native-section-' + section_mode + '.png'
+                        section_path = out / name
+                        section_path.write_bytes(base64.b64decode(result['png'].split(',', 1)[1]))
+                        report['images'][name] = {
+                            'file': name, 'sha256': snapshot_sha(section_path)}
+                        section_data[section_mode] = {
+                            'density': result['pixelDensity'], 'image': name}
+                    report['nativeSectionComparison'] = section_data
                 if args.check_rough_parity:
                     expression = (root / 'scripts/offline-native-rough-parity.js').read_text(encoding='utf-8')
                     report['roughHeightParity'] = page.evaluate(expression, model_input['model'])
@@ -644,6 +665,10 @@ def main():
     parser.add_argument('--check-glb', action='store_true', help='Check production physical GLB stable-profile heights and 50 nm film')
     parser.add_argument('--quality', action='store_true', help='Use Quality instead of Fast 3D mesh budget for isolated model')
     parser.add_argument('--rough-cutline', help='Physical xMin,xMax,y to compare actual 3D CPU mesh against Section sampler')
+    parser.add_argument('--native-section-compare', action='store_true',
+                        help='Render real aligned/physical Section Canvas with production compositor')
+    parser.add_argument('--native-section-borders', action='store_true',
+                        help='Include Section structural borders in native comparison')
     parser.add_argument('--headless', action='store_true', help='Opt out of headful/Xvfb; may disable WebGL')
     parser.add_argument('--require-origin', action='store_true', help='Fail rather than use null-origin diagnostic')
     parser.add_argument('--inspect-history', action='store_true',
@@ -657,7 +682,11 @@ def main():
         parser.error('Rough height parity requires --inmemory-project')
     if args.check_glb and not args.inmemory_project:
         parser.error('Physical GLB check requires --inmemory-project')
-    if (args.rough_cutline or args.quality) and not args.inmemory_project:
+    if args.native_section_borders and not args.native_section_compare:
+        parser.error('--native-section-borders requires --native-section-compare')
+    if args.native_section_compare and (not args.rough_cutline or not args.inmemory_roi):
+        parser.error('--native-section-compare requires --rough-cutline and --inmemory-roi')
+    if (args.rough_cutline or args.quality or args.native_section_compare) and not args.inmemory_project:
         parser.error('Rough cutline and Quality diagnostic require --inmemory-project')
     try:
         args.inmemory_roi = parse_native_bounds(args.inmemory_roi, 'ROI', 4)

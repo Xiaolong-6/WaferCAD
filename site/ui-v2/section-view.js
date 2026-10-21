@@ -64,9 +64,21 @@ export function createSectionView({ store, main, workstation }) {
     });
   const canvas = hook(
     'sectionCanvas',
-    el('canvas', { 'aria-label': 'Physical Section A–B', tabindex: 0 }),
+    el('canvas', {
+      'aria-label': 'Section A–B with switchable display-aligned and physical Rough heights',
+      tabindex: 0,
+    }),
   );
   const detailButton = hook('sectionDetailRoiBtn', icon('ROI', 'detail', 'roi'));
+  // Toggle a display-only reconstruction; the physical process is never edited.
+  const roughPhysicalButton = hook(
+    'sectionRoughPhysicalBtn',
+    button('Physical', null, null, {
+      title: 'Toggle exact physical Rough heights versus display-aligned preview',
+      'aria-label': 'Show physical Rough heights',
+      'aria-pressed': 'false',
+    }),
+  );
   hook('sectionDetailShapeBtn', el('button'));
   const detailOverlay = hook(
     'sectionDetailRoiOverlay',
@@ -192,6 +204,7 @@ export function createSectionView({ store, main, workstation }) {
         icon('XZ Scale', 'scale:section', 'alignment'),
         icon('Borders', 'borders:section', 'rectangle'),
         detailButton,
+        roughPhysicalButton,
       ],
     ],
     [
@@ -238,9 +251,11 @@ export function createSectionView({ store, main, workstation }) {
     panel.querySelector('[data-action="legend"]')?.setAttribute('aria-pressed', String(shown));
   };
   let renderer, detail, collapse;
+  const sectionRoughMode = () => (local.roughProfileMode === 'physical' ? 'physical' : 'aligned');
   const render = () => {
     if (!canvas.checkVisibility()) return;
     renderer.renderSection();
+    roughPhysicalButton.setAttribute('aria-pressed', String(sectionRoughMode() === 'physical'));
     detail.sync();
     sync();
   };
@@ -273,11 +288,16 @@ export function createSectionView({ store, main, workstation }) {
     getState: () => ({ ...state, model: store.renderModel() }),
     ...main.runtime.plan,
     getSectionCollapseController: () => collapse,
+    getRoughSectionDisplayMode: sectionRoughMode,
     syncSectionInputs: () => main.runtime.slice.syncInputs(),
     formatXY: units.format,
     xyText: (value) => `${units.format(value)} ${units.label()}`,
     xyUnitLabel: units.label,
   });
+  roughPhysicalButton.onclick = () => {
+    local.roughProfileMode = sectionRoughMode() === 'physical' ? 'aligned' : 'physical';
+    render();
+  };
   const viewport = (value) => {
     state.sectionViewport = normalizeSectionViewport(value);
     render();

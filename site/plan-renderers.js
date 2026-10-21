@@ -22,6 +22,8 @@ import { sectorAngleHandlePoints, sectorBoundaryPoints, roiHandlePoints } from '
 import {
   roughLod,
   roughProfileOffsetAtPixelFootprint,
+  roughDisplayProfileOffsetAtPoint,
+  roughInspectionLatticePitch,
   roughVisualBoundsZ,
 } from './surface-rendering.js';
 import { unionGeometries } from './vector-geometry.js';
@@ -57,6 +59,7 @@ export function createPlanRenderers({
   xyText,
   xyUnitLabel,
   canvasTheme = false,
+  getRoughSectionDisplayMode = () => 'physical',
 }) {
   const $ = (id) => root.getElementById(id);
   const canvasColors = (canvas) => {
@@ -725,6 +728,7 @@ export function createPlanRenderers({
       effectiveXScale = xScale * screenViewport.zoom * detailScaleX;
 
     if (!detailRoi) {
+      c.dataset.sectionRoughMode = getRoughSectionDisplayMode();
       c.dataset.physicalFacetOwner = physicalOwner?.kind || '';
       c.dataset.scaleMode = sectionScaleMode;
       c.dataset.xPxPerUm = String(xScale * screenViewport.zoom);
@@ -785,11 +789,25 @@ export function createPlanRenderers({
       sectionUnitX = sectionDx / sectionSpan,
       sectionUnitY = sectionDy / sectionSpan,
       filteredSectionRoughRelief = (appearance, worldX, worldY) =>
-        roughProfileOffsetAtPixelFootprint(worldX, worldY, appearance, {
-          pixelsPerUm: effectiveXScale,
-          unitX: sectionUnitX,
-          unitY: sectionUnitY,
-        });
+        (() => {
+          const pitch =
+            getRoughSectionDisplayMode() === 'aligned'
+              ? roughInspectionLatticePitch(
+                  { ...appearance, displayInspectionCentre: [worldX, worldY] },
+                  effectiveXScale,
+                )
+              : 0;
+          return pitch > 0
+            ? roughDisplayProfileOffsetAtPoint(worldX, worldY, {
+                ...appearance,
+                displayLatticePitchUm: pitch,
+              })
+            : roughProfileOffsetAtPixelFootprint(worldX, worldY, appearance, {
+                pixelsPerUm: effectiveXScale,
+                unitX: sectionUnitX,
+                unitY: sectionUnitY,
+              });
+        })();
 
     // Use one screen-space lattice for material and annotation profiles. Detail
     // sampling stays within the visible interval instead of spending its budget
@@ -1298,7 +1316,8 @@ export function createPlanRenderers({
               bottomZExaggeration.toPrecision(3),
             )}`
         : '1:1';
-    $('sectionMeta').textContent = `${xyText(sectionSpan)} span · ${scaleLabel}`;
+    $('sectionMeta').textContent =
+      `${xyText(sectionSpan)} span · ${scaleLabel} · ${getRoughSectionDisplayMode() === 'aligned' ? 'Rough display' : 'Rough physical'}`;
     $('sectionRange').textContent = `Z (${xyUnitLabel()}) ${formatXY(lo)} → ${formatXY(hi)}`;
     getSectionCollapseController()?.sync();
   }

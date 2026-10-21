@@ -639,8 +639,94 @@ export function trimSaturatedRoughLodBudgets(tasks) {
   return true;
 }
 
+// Display-only, area-integrated reconstruction for legacy high-frequency Rough.
+// Physical profile, GLB, Seed and process geometry are never changed.
+export function roughInspectionLatticePitch(appearance, pixelsPerUm) {
+  if (
+    appearance?.morphology !== 'stochastic' ||
+    !(Number(appearance.featureCv) > 0) ||
+    !(Number(appearance.featureSize) > 0) ||
+    !(Number(pixelsPerUm) > 0)
+  )
+    return 0;
+  const feature = Number(appearance.featureSize);
+  const dx = Number(appearance.sampleOrigin?.[0]) || 0;
+  const dy = Number(appearance.sampleOrigin?.[1]) || 0;
+  const centre = appearance.displayInspectionCentre || [0, 0];
+  const radial = Math.hypot(centre[0] - dx, centre[1] - dy);
+  if ((radial * Number(appearance.featureCv)) / feature < 256) return 0;
+  const minimumPitch = feature * 8;
+  const resolutionPitch = 27.5 / Number(pixelsPerUm);
+  const octaves = Math.max(0, Math.ceil(Math.log2(Math.max(1, resolutionPitch / minimumPitch))));
+  return minimumPitch * 2 ** Math.min(16, octaves);
+}
+
+const roughInspectionNodeCaches = new Map();
+function roughInspectionNode(appearance, pitch, xi, yi) {
+  const key = JSON.stringify([
+    appearance.profileId,
+    appearance.seed,
+    appearance.polarity,
+    appearance.featureSize,
+    appearance.featureCv,
+    appearance.meanHeight,
+    appearance.amplitude,
+    appearance.heightCv,
+    appearance.etchDepth,
+    appearance.sampleOrigin,
+    pitch,
+  ]);
+  let nodes = roughInspectionNodeCaches.get(key);
+  if (!nodes) {
+    if (roughInspectionNodeCaches.size >= 8)
+      roughInspectionNodeCaches.delete(roughInspectionNodeCaches.keys().next().value);
+    nodes = new Map();
+    roughInspectionNodeCaches.set(key, nodes);
+  }
+  const cell = String(xi) + ',' + String(yi);
+  if (nodes.has(cell)) return nodes.get(cell);
+  const x = (Number(appearance.sampleOrigin?.[0]) || 0) + xi * pitch;
+  const y = (Number(appearance.sampleOrigin?.[1]) || 0) + yi * pitch;
+  // Integrate physical heights over area; do not promote isolated noise spikes
+  // into artificially wide peaks by sampling a single high-frequency point.
+  let sum = 0;
+  for (let j = 0; j < 4; j++) {
+    for (let i = 0; i < 4; i++) {
+      sum += roughProfileOffsetAtPoint(
+        x + ((i + 0.5) / 4 - 0.5) * pitch,
+        y + ((j + 0.5) / 4 - 0.5) * pitch,
+        appearance,
+      );
+    }
+  }
+  const value = sum / 16;
+  if (nodes.size >= 16384) nodes.clear();
+  nodes.set(cell, value);
+  return value;
+}
+
+export function roughInspectionBandlimitedOffsetAtPoint(x, y, appearance, pitch) {
+  if (!(pitch > 0) || !Number.isFinite(pitch)) return roughProfileOffsetAtPoint(x, y, appearance);
+  const gx = (x - (Number(appearance?.sampleOrigin?.[0]) || 0)) / pitch;
+  const gy = (y - (Number(appearance?.sampleOrigin?.[1]) || 0)) / pitch;
+  const ix = Math.floor(gx),
+    iy = Math.floor(gy);
+  const smooth = (t) => t * t * (3 - 2 * t);
+  const tx = smooth(gx - ix),
+    ty = smooth(gy - iy);
+  const a = roughInspectionNode(appearance, pitch, ix, iy);
+  const b = roughInspectionNode(appearance, pitch, ix + 1, iy);
+  const c = roughInspectionNode(appearance, pitch, ix, iy + 1);
+  const d = roughInspectionNode(appearance, pitch, ix + 1, iy + 1);
+  return (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty;
+}
+
 export function roughDisplayProfileOffsetAtPoint(x, y, appearance) {
-  const original = roughProfileOffsetAtPoint(x, y, appearance),
+  const pitch = Number(appearance?.displayLatticePitchUm);
+  const original =
+      pitch > 0 && appearance?.morphology === 'stochastic'
+        ? roughInspectionBandlimitedOffsetAtPoint(x, y, appearance, pitch)
+        : roughProfileOffsetAtPoint(x, y, appearance),
     weight = Number(appearance?.displayRoughBlend);
   if (!Number.isFinite(weight) || weight >= 1) return original;
   const fraction = Math.max(0, Math.min(1, weight)),

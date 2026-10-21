@@ -181,7 +181,22 @@ tradeoff: the mesh interpolation residual can change, and it is **not** a
 Section/3D scientific convergence fix. The read-only native cutline runner
 must quantify both interpolation and display attenuation before promotion.
 This display-only
-filter does not establish Section/3D interior height parity. The legacy
+filter does not establish Section/3D interior height parity.
+
+The explicit display-aligned Section preview and the 3D rough CPU mesh use
+one world-anchored, area-integrated inspection lattice for unresolved legacy
+`stochastic` morphology far from its physical sample origin. Grid nodes
+average 4×4 original physical heights within their footprint, and adjacent
+seed-matched layers share the same lattice coordinates. This avoids converting
+isolated high-frequency physical spikes into fabricated large-scale peaks.
+The Section header's `Physical` control switches back to the unmodified
+physical pixel-footprint profile; saved Process data, physical Section sampling,
+GLB export and the separate `stochastic-v2` field remain unchanged. The
+reconstruction may attenuate visually unresolved texture; its lower preview
+RMS cannot be claimed as convergence to the unfiltered scientific heightfield.
+A normal-Origin synchronized Section canvas/3D/Border acceptance is still
+required. Native renderer diagnostics and 50 nm conformal GLB checks are
+scientific evidence for their respective scope only. The legacy
 variable-feature stochastic field evaluates noise using a spatially varying
 feature size; at large world coordinates it can vary much faster than its
 nominal `featureSize`. `section-three-rough-profile.test.mjs` audits actual

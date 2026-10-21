@@ -270,6 +270,35 @@ Focused checks: `python3 scripts/offline-native-app-capture.test.py`.
 The real Chromium screenshot run is manual and intentionally not part of
 the ordinary unit-test/CI loop.
 
+### Shared legacy Rough preview and native physical Section comparison
+
+For legacy `stochastic` Rough with nonzero feature CV at large absolute
+wafer positions, the aligned Section preview and actual CPU 3D cap geometry
+now evaluate an identical, world-anchored, area-integrated inspection lattice.
+Area integration uses 16 deterministic physical samples per node and never
+alters the saved morphology or scientific GLB. The Section `Physical` button
+switches back to the original physical pixel-footprint profile.
+
+Run both native display modes and real Three.js CPU mesh raycast in the
+existing headed Chromium fallback:
+
+```sh
+python3 scripts/offline-native-app-capture.py --root . \
+  --inmemory-project site/examples/photodetector-literature-examples.wafercad \
+  --inmemory-roi 2465,-30,2525,30 --inmemory-z-break 14,2 \
+  --rough-cutline 2494.7,2495.3,0.123 --native-section-compare --quality \
+  --output test-results/rough-aligned-60-quality
+```
+
+This saves real production Canvas `native-section-aligned.png` and
+`native-section-physical.png`, alongside native 3D screenshots and
+`physicalRoughCutline.sectionDisplayRmsErrorUm`. Repeat with Fast/Quality
+and 60/240/6800 µm ROI; verify all 65 actual mesh intersections, error
+identity, saved-model immutability, coating and Border continuity. The lower
+aligned preview residual is not a measurement of exact physical-field mesh
+convergence: report `rmsErrorUm` separately. Null-Origin native Canvas
+evidence is not a synchronized Workstation/History/Recovery acceptance.
+
 ### Repeatable Section-sampler versus completed native 3D mesh cutline
 
 The existing source-backed native capture runner can audit the **actual

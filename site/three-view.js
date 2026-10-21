@@ -79,6 +79,7 @@ import { buildRoughSpatialZones, prepareMorphologyExportTasks } from './morpholo
 import {
   adaptiveRoughMeshLod,
   roughDisplayHeightBlend,
+  roughInspectionLatticePitch,
   roughTaskDisplaySampling,
   trimSaturatedRoughLodBudgets,
   roughFarFieldContrast,
@@ -2469,7 +2470,36 @@ diffuseColor.a *= waferCadAlphaScale;`,
       requests = [],
       tasks = roughTasks.map((task) => {
         const sourceZones = prepareRoughSpatialZones(task),
-          gpuDisplacement = gpuRoughTask(task, sourceZones),
+          inspection = (context.clip && xyBounds(context.clip)) || focus,
+          // Large ROIs can enclose rough caps far from their midpoint.
+          zoneCentres = sourceZones
+            .filter((zone) => zone.bounds)
+            .map((zone) => [
+              0.5 * (zone.bounds.minX + zone.bounds.maxX),
+              0.5 * (zone.bounds.minY + zone.bounds.maxY),
+            ]),
+          inspectionCentre = zoneCentres.reduce(
+            (best, centre) =>
+              Math.hypot(
+                centre[0] - (task.cap.appearance?.sampleOrigin?.[0] || 0),
+                centre[1] - (task.cap.appearance?.sampleOrigin?.[1] || 0),
+              ) >
+              Math.hypot(
+                best[0] - (task.cap.appearance?.sampleOrigin?.[0] || 0),
+                best[1] - (task.cap.appearance?.sampleOrigin?.[1] || 0),
+              )
+                ? centre
+                : best,
+            [0.5 * (inspection.minX + inspection.maxX), 0.5 * (inspection.minY + inspection.maxY)],
+          ),
+          legacyDisplayReconstruction =
+            roughInspectionLatticePitch(
+              { ...task.cap.appearance, displayInspectionCentre: inspectionCentre },
+              1100 / Math.max(1e-9, inspection.maxX - inspection.minX),
+            ) > 0,
+          // A GPU physical-height shader cannot represent an area-averaged
+          // legacy display field; use CPU geometry for this inspection.
+          gpuDisplacement = legacyDisplayReconstruction ? false : gpuRoughTask(task, sourceZones),
           gpuGeometryDetail = gpuDisplacement
             ? interactive
               ? 0.35
@@ -2526,7 +2556,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
             });
             return prepared;
           });
-        return { ...task, gpuDisplacement, zones };
+        return { ...task, gpuDisplacement, zones, inspectionCentre };
       }),
       viewport = currentViewport(),
       qualitySceneBudget = roughSceneTriangleBudget({
@@ -2574,7 +2604,20 @@ diffuseColor.a *= waferCadAlphaScale;`,
           ['stochastic', 'stochastic-v2'].includes(appearance.morphology)
             ? roughDisplayHeightBlend(appearance.featureSize, sampling[index].pitch)
             : 1;
-      task.visualAppearance = blend < 1 ? { ...appearance, displayRoughBlend: blend } : appearance;
+      // Section and 3D share the same world-anchored area-integrated field.
+      const inspectionBounds =
+        (roughRenderContext?.clip && xyBounds(roughRenderContext.clip)) || focusBounds();
+      const span = Math.max(inspectionBounds.maxX - inspectionBounds.minX, 1e-9);
+      const pitch = roughInspectionLatticePitch(
+        { ...appearance, displayInspectionCentre: task.inspectionCentre },
+        1100 / span,
+      );
+      task.visualAppearance =
+        pitch > 0
+          ? { ...appearance, displayLatticePitchUm: pitch, displayRoughBlend: 1 }
+          : blend < 1
+            ? { ...appearance, displayRoughBlend: blend }
+            : appearance;
       roughTasks[index].visualAppearance = task.visualAppearance;
     });
     host.dataset.roughDisplaySamplePitchUm = String(
@@ -4844,6 +4887,20 @@ diffuseColor.a *= waferCadAlphaScale;`,
         });
         const physicalZ = info.z + (Number(info.profileNormal) || 1) * height;
         const expectedZ = currentZDisplay.mapZ(physicalZ) * scale;
+        const sectionPitch = roughInspectionLatticePitch(
+          { ...info.appearance, displayInspectionCentre: [x, y] },
+          pixelsPerUm,
+        );
+        const sectionDisplayHeight =
+          sectionPitch > 0
+            ? roughDisplayProfileOffsetAtPoint(x, y, {
+                ...info.appearance,
+                displayLatticePitchUm: sectionPitch,
+              })
+            : height;
+        const sectionDisplayZ =
+          currentZDisplay.mapZ(info.z + (Number(info.profileNormal) || 1) * sectionDisplayHeight) *
+          scale;
         const displayHeight = roughDisplayProfileOffsetAtPoint(x, y, info.displayAppearance);
         const visualZ = info.z + (Number(info.profileNormal) || 1) * displayHeight;
         const visualExpectedZ = currentZDisplay.mapZ(visualZ) * scale;
@@ -4867,9 +4924,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
           expectedDisplayZ: expectedZ,
           actualDisplayZ: hit.point.z,
           errorUm: (hit.point.z - expectedZ) / (scale * derivative),
+          sectionDisplayErrorUm: (hit.point.z - sectionDisplayZ) / (scale * derivative),
+          sectionDisplayPitchUm: sectionPitch,
           meshInterpolationErrorUm: (hit.point.z - visualExpectedZ) / (scale * derivative),
           displayAttenuationErrorUm: (visualExpectedZ - expectedZ) / (scale * derivative),
           displayHeightBlend: info.displayAppearance?.displayRoughBlend ?? 1,
+          threeDisplayPitchUm: info.displayAppearance?.displayLatticePitchUm ?? 0,
         };
         if (!best || Math.abs(result.errorUm) < Math.abs(best.errorUm)) best = result;
       }
@@ -4891,6 +4951,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
       displayScale: scale,
       roiLine: [xMin, xMax, y],
       clippedTriangleCount,
+      sectionDisplayRmsErrorUm: valid.length
+        ? Math.sqrt(valid.reduce((sum, p) => sum + p.sectionDisplayErrorUm ** 2, 0) / valid.length)
+        : null,
+      sectionDisplayMaximumErrorUm: valid.length
+        ? Math.max(...valid.map((p) => Math.abs(p.sectionDisplayErrorUm)))
+        : null,
+      sectionDisplayPitchUm: valid[0]?.sectionDisplayPitchUm ?? null,
       meshInterpolationRmsUm: valid.length
         ? Math.sqrt(
             valid.reduce((sum, p) => sum + p.meshInterpolationErrorUm ** 2, 0) / valid.length,
