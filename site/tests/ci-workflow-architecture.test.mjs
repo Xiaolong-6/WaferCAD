@@ -157,12 +157,15 @@ test('retired preview cannot publish from the obsolete branch', () => {
   );
 });
 
-test('Quality covers docs-only PRs and requires complete local evidence', () => {
+test('Quality covers docs-only PRs and fails closed through real fallback execution', () => {
   const quality = workflow('quality');
   assert.match(quality, /branches: \[main\]/);
   assert.doesNotMatch(quality, /paths-ignore:/);
   assert.match(quality, /run: node scripts\/local-verification\.mjs verify/);
-  assert.doesNotMatch(quality, /npm ci|npm run check/);
+  assert.match(quality, /continue-on-error: true/);
+  assert.match(quality, /steps\.evidence\.outcome != 'success'/);
+  assert.match(quality, /run: npm ci --ignore-scripts --no-audit --no-fund/);
+  assert.match(quality, /run: npm run check/);
 });
 
 test('manual reconstruction runs cannot mutate main', () => {
@@ -191,14 +194,19 @@ test('M3D baseline retains scientific and visual owners without duplicate generi
   assert.doesNotMatch(m3d, /m3d-conformal-baseline\.yml/);
 });
 
-test('manual pre-main reuses local Quality proof and retains full real-browser acceptance', () => {
+test('manual pre-main validates full proof or runs full Quality before real browser acceptance', () => {
   const preMain = workflow('pre-main-integration-validation');
   assert.match(preMain, /node scripts\/local-verification\.mjs verify full/);
   assert.ok(
     preMain.indexOf('run: node scripts/local-verification.mjs verify full') <
       preMain.indexOf('run: npm ci --ignore-scripts --no-audit --no-fund'),
-    'missing or stale proof must fail before npm install',
+    'the proof probe must precede npm install',
   );
-  assert.doesNotMatch(preMain, /npm run check:ci|npm test/);
+  assert.match(preMain, /continue-on-error: true/);
+  assert.match(preMain, /steps\.evidence\.outcome != 'success'/);
+  assert.match(
+    preMain,
+    /name: Final lint, formatting, generated documentation and Node tests[\s\S]*?run: npm run check/,
+  );
   assert.match(preMain, /npm run test:ui:all/);
 });

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -143,7 +144,7 @@ test('schema, plan, runtime, toolchain and timestamps are checked', () => {
     (report) => (report.version = 99),
     (report) => (report.provenance = 'trusted-ci'),
     (report) => (report.planDigest = 'old'),
-    (report) => (report.environment.node = 'v22.0.0'),
+    (report) => (report.environment.node = 'v20.0.0'),
     (report) => (report.environment.dependencies.eslint = '0.0.0'),
     (report) => (report.finishedAt = 'invalid'),
     (report) => (report.finishedAt = '2026-01-01T00:00:00Z'),
@@ -152,6 +153,100 @@ test('schema, plan, runtime, toolchain and timestamps are checked', () => {
     mutate(evidence.report);
     assert.throws(() => validate(evidence));
   }
+});
+
+test('Node 22 and Node 24 LTS reports are accepted without relaxing tool versions', () => {
+  for (const version of ['v22.16.0', 'v24.21.0']) {
+    const proof = passing();
+    proof.report.environment.node = version;
+    assert.equal(validate(proof).checks, 4);
+  }
+  for (const version of ['v20.19.0', 'v23.11.0', 'v25.0.0', 'unknown']) {
+    const proof = passing();
+    proof.report.environment.node = version;
+    assert.throws(() => validate(proof), /Unsupported Node LTS/);
+  }
+});
+
+test('legacy v1 Git-index receipts are still verifiable', (t) => {
+  const { root } = fixture(t);
+  const old = sourceSnapshot(root, 'git-index-v1');
+  const proof = passing('draft');
+  proof.report.version = 1;
+  proof.report.source = old;
+  assert.equal(
+    validateEvidence(proof.report, proof.transcript, old, 'draft', dependencies).checks,
+    4,
+  );
+  assert.notEqual(sourceSnapshot(root).digest, old.digest);
+});
+
+test('source-only manifests and Git checkouts have identical content fingerprints', (t) => {
+  const { root, git } = fixture(t);
+  const before = sourceSnapshot(root);
+  const filenames = git('ls-files', '-z').split('\0').filter(Boolean);
+  const files = Object.fromEntries(
+    filenames.map((path) => [path, digest(readFileSync(join(root, path)))]),
+  );
+  writeFileSync(
+    join(root, 'wafercad-source-manifest.json'),
+    JSON.stringify({
+      schema: 'wafercad-source-only-v1',
+      files,
+      revision: git('rev-parse', 'HEAD').trim(),
+    }),
+  );
+  rmSync(join(root, '.git'), { recursive: true, force: true });
+  assert.deepEqual(sourceSnapshot(root), before);
+  assert.equal(runQuality(root, 'draft', success).checks, 4);
+  assert.equal(verifyQuality(root, 'draft').sourceDigest, before.digest);
+
+  writeFileSync(join(root, 'source.js'), 'changed without Git');
+  assert.throws(() => verifyQuality(root, 'draft'), /source changed/);
+  writeFileSync(join(root, 'extra.js'), 'unlisted source');
+  assert.throws(() => sourceSnapshot(root), /unlisted files/);
+  rmSync(join(root, 'extra.js'));
+  rmSync(join(root, 'source.js'));
+  assert.throws(() => sourceSnapshot(root), /Missing or invalid source/);
+});
+
+test('pinned archive omission is portable only when the checked-in archive matches lock integrity', (t) => {
+  const { root, git } = fixture(t);
+  const archiveName = 'vendor/npm/three-0.179.1.tgz';
+  const archive = Buffer.from('a test-only pinned Three.js archive');
+  mkdirSync(dirname(join(root, archiveName)), { recursive: true });
+  writeFileSync(join(root, archiveName), archive);
+  writeFileSync(
+    join(root, 'package-lock.json'),
+    JSON.stringify({
+      packages: {
+        'node_modules/three': {
+          integrity: 'sha512-' + createHash('sha512').update(archive).digest('base64'),
+        },
+      },
+    }),
+  );
+  git('add', '.');
+  const expected = sourceSnapshot(root);
+  const files = Object.fromEntries(
+    git('ls-files', '-z')
+      .split('\0')
+      .filter((path) => path && path !== archiveName)
+      .map((path) => [path, digest(readFileSync(join(root, path)))]),
+  );
+  writeFileSync(
+    join(root, 'wafercad-source-manifest.json'),
+    JSON.stringify({
+      schema: 'wafercad-source-only-v1',
+      files,
+      excludedDependencyArchives: [archiveName],
+    }),
+  );
+  rmSync(join(root, '.git'), { recursive: true, force: true });
+  rmSync(join(root, archiveName));
+  assert.deepEqual(sourceSnapshot(root), expected);
+  writeFileSync(join(root, archiveName), Buffer.from('tampered archive'));
+  assert.throws(() => sourceSnapshot(root), /archive integrity mismatch/);
 });
 
 test('missing, edited and empty logs are rejected', () => {
@@ -185,15 +280,13 @@ test('source identity survives an evidence-only commit', (t) => {
   assert.equal(verifyQuality(root, 'draft').checks, 4);
 });
 
-test('untracked and unstaged source changes cannot be certified', (t) => {
+test('untracked sources are rejected and unstaged tracked bytes invalidate evidence', (t) => {
   const { root, git } = fixture(t);
   writeFileSync(join(root, 'extra.js'), 'new source');
-  assert.throws(() => sourceSnapshot(root), /Stage source/);
+  assert.throws(() => sourceSnapshot(root), /Untracked source/);
   git('add', 'extra.js');
   const before = sourceSnapshot(root);
   writeFileSync(join(root, 'source.js'), 'changed source');
-  assert.throws(() => sourceSnapshot(root), /Stage source/);
-  git('add', 'source.js');
   assert.notEqual(sourceSnapshot(root).digest, before.digest);
 });
 
