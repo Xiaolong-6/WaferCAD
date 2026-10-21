@@ -1,11 +1,13 @@
 import { difference, intersection, isEmpty, pointInMulti, rectMulti } from './vector-geometry.js';
+import { sidewallApertureCoverage } from './direct-sidewall-aperture.js';
 
 const TOL = 1e-8;
 
 /**
  * Ballistic, wafer-normal-thickness input on an isolated vertical rectangular
  * material step. This is a deliberately narrow 2.5D physical geometry contract:
- * no resist, competing obstacles, sloped facets, or time-resolved self-shadow.
+ * Upper Z-resolved apertures are supported only when the entire wall receives
+ * the beam; competing steps, sloped walls and dynamic growth remain unsupported.
  * The material wall occupies the *lower* material column outside the plateau.
  */
 export function isolatedDirectSidewallPlan(model, area, incidence, thicknessUm) {
@@ -15,8 +17,6 @@ export function isolatedDirectSidewallPlan(model, area, incidence, thicknessUm) 
   const phi = incidence.azimuthDeg;
   if (!(theta > 0 && theta < 89) || !Number.isFinite(phi))
     throw new RangeError('Isolated sidewall requires a finite nonzero Direct tilt.');
-  if ((incidence.apertureStack || []).length)
-    throw new RangeError('Sidewall deposition through resist requires 3D occlusion; unsupported.');
   if (!isEmpty(difference(model.boundary, area)))
     throw new RangeError('Isolated sidewall requires the complete physical face, not a 2D mask.');
   if (!(Number.isFinite(thicknessUm) && thicknessUm > 0))
@@ -60,6 +60,12 @@ export function isolatedDirectSidewallPlan(model, area, incidence, thicknessUm) 
     }
     const flux = nx * incidentX + ny * incidentY;
     if (flux <= TOL) continue;
+    const apertureCoverage = sidewallApertureCoverage({ a, b, lowZ, highZ }, incidence);
+    if (apertureCoverage === 'blocked') continue;
+    if (apertureCoverage === 'partial')
+      throw new RangeError(
+        'Partially illuminated resist-covered sidewall requires Z-varying 3D geometry.',
+      );
     const width = travelWidth * flux;
     if (width < 1e-4)
       throw new RangeError('Projected sidewall thickness is below the 0.1 nm XY grid.');

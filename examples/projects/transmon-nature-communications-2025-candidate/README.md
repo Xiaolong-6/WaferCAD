@@ -179,3 +179,32 @@ This is the ballistic projected-flux relation for an ideal vertical step, not a 
 **Scientific scope is intentionally narrow:** the solver requires exactly two physical surface-height regions, a single axis-aligned rectangular raised region, the complete wafer face, no Z-resolved resist aperture, and a lateral width resolvable on the 0.1 nm persistence XY grid. Unsupported geometry/angles/masks fail with the transactional rollback; no empirical coverage factor, broadening of tolerance or rotating target is introduced. This does **not** yet support original Q2 junction resist walls, arbitrary three-dimensional occlusion, competing tall features, sloped facets or dynamic self-shadowing.
 
 Verified with offline source-backed Process/Conformal/author-Q2 tests: **25/25 passed**; strict `validateProcessModel`, save/export/expand/`validateProjectFile`, positive and reversed azimuth, diagonal two-wall illumination, unsupported-mode rollback, and subsequent Direct exclusion of the artificial wall cap. Prettier 3.9.9 passed. The real native Three.js model was rendered under headed Chromium + SwiftShader using the standard `offline-native-app-capture.py` null-origin diagnostic with 0 page errors. Thin sidewall geometry was not visually distinguishable at the chosen scale, therefore **visual acceptance is incomplete**; normal-origin Workstation/History/Recovery and exact branch-HEAD final Quality also remain unverified.
+
+## Exact upper-aperture visibility for isolated Direct sidewalls
+
+The opt-in `incidence.sidewallGeometry = 'isolated-step'` can now accept an
+`apertureStack` **only when every resist aperture is wholly above the raised
+wall**. At each resist height, all incident rays starting anywhere on the
+finite-height rectangular wall sweep a planar parallelogram; Boolean
+containment of that entire envelope in the aperture is checked using the
+existing polygon kernel. Fully visible walls receive the previously verified
+ballistic normal-projection thickness. Fully blocked walls receive no film.
+**Partially visible walls fail closed and roll back the Process transaction**,
+because the current 2.5D wall slab cannot express Z-varying material coverage.
+Resist intersecting the wall, competing obstacles, nonrectangular steps,
+multiple separated heights and evolving sidewalls are not supported.
+
+This closes a specific false-coverage risk without introducing PVD,
+user-calibrated coverage fractions or rotating targets. Tests cover full,
+blocked, partial and Z-intersecting apertures; a real native Direct operation
+and strict Process Model validation; and a byte-for-byte unchanged predecessor
+after a rejected deposit. The author's Q2 MMA/PMMA undercut intersects the
+junction topography, so this feature is **not yet a complete Josephson process
+solver**.
+
+Reproducible offline evidence: Chromium 144 + SwiftShader renders a schema-
+validated exported research project using `offline-native-app-capture.py`
+with ROI around the step at x = 2 µm, and Z break 6.08–4.90 µm. The sidewall
+band is visible after correcting an initially misplaced ROI; this is native
+Three.js null-origin diagnostic evidence, **not** a full Workstation,
+Worker/History/Recovery or Section/3D quantitative acceptance.
