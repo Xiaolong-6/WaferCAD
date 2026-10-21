@@ -11,8 +11,12 @@ new Function(
 )(vendor, vendor.exports);
 globalThis.polygonClipping = vendor.exports;
 const { createModel } = await import('../model.js');
-const { attachContinuousEtchModel, validateContinuousEtchModel } =
-  await import('../continuous-etch-model.js');
+const {
+  attachContinuousEtchModel,
+  validateContinuousEtchModel,
+  continuousModelMaterialAt,
+  continuousModelColumnAtXY,
+} = await import('../continuous-etch-model.js');
 const { buildContinuousSiHeightfieldMesh } = await import('../continuous-heightfield-mesh.js');
 const { buildExactFilmComponents, exactUnetchedFilmCandidates } =
   await import('../continuous-exact-film-mesh.js');
@@ -117,4 +121,99 @@ test('Real Microdisk material shells close at centered and off-centre ROI bounda
   ])
     verifyClosed(parts, bounds);
   assert.equal(JSON.stringify(model), original, 'ROI inspection cannot modify exact material');
+});
+
+// Manifold closure alone does not prove the right material is drawn. Compare
+// actual ROI display triangles with the immutable analytic owner in XY and Z.
+test('Microdisk ROI display covers only real oxide and follows the silicon release height', () => {
+  const project = expandProjectStorage(
+    JSON.parse(
+      readFileSync(new URL('../examples/suspended-silica-microdisks.wafercad', import.meta.url)),
+    ),
+  );
+  const source = project.snapshots.find((s) => s.id === 'snapshot-microdisk-07').state.model;
+  const model = attachContinuousEtchModel(source, {
+    face: 'front',
+    targetLayerIds: ['base'],
+    lateralUm: 36,
+    verticalUm: 36,
+    shape: 'circular',
+  });
+  const sourceBytes = JSON.stringify(model);
+  const owner = validateContinuousEtchModel(model);
+  const bounds = { minX: -75, minY: 56, maxX: -5, maxY: 114 };
+  const silicon = clipContinuousSurfaceToRect(
+    buildContinuousSiHeightfieldMesh(owner, { xyStepUm: 1 }),
+    bounds,
+  );
+  const oxide = exactUnetchedFilmCandidates(owner).get('layer-1');
+  assert.ok(oxide, 'The actual M07 silicon dioxide geometry is required');
+  const film = buildExactFilmComponents(THREE, oxide.geom, oxide.z0, oxide.z1);
+  const croppedFilm = film.parts.map((part) => clipContinuousSurfaceToRect(part, bounds));
+
+  const triangleHeight = (positions, index, x, y) => {
+    const ax = positions[index],
+      ay = positions[index + 1],
+      bx = positions[index + 3],
+      by = positions[index + 4],
+      cx = positions[index + 6],
+      cy = positions[index + 7];
+    const determinant = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy);
+    if (Math.abs(determinant) < 1e-9) return null;
+    const a = ((by - cy) * (x - cx) + (cx - bx) * (y - cy)) / determinant;
+    const b = ((cy - ay) * (x - cx) + (ax - cx) * (y - cy)) / determinant;
+    const c = 1 - a - b;
+    if (a < -1e-7 || b < -1e-7 || c < -1e-7) return null;
+    return a * positions[index + 2] + b * positions[index + 5] + c * positions[index + 8];
+  };
+  let oxideSamples = 0;
+  for (let x = bounds.minX + 1; x < bounds.maxX - 1; x += 3) {
+    for (let y = bounds.minY + 1; y < bounds.maxY - 1; y += 3) {
+      const expected = continuousModelMaterialAt(model, [x, y, oxide.z1 - 0.8]) === 'layer-1';
+      const actual = croppedFilm.some((part) => {
+        const p = part.positions;
+        for (let index = 0; index < p.length; index += 9) {
+          if (
+            Math.abs(p[index + 2] - oxide.z1) > 1e-4 ||
+            Math.abs(p[index + 5] - oxide.z1) > 1e-4 ||
+            Math.abs(p[index + 8] - oxide.z1) > 1e-4
+          )
+            continue;
+          if (triangleHeight(p, index, x, y) !== null) return true;
+        }
+        return false;
+      });
+      assert.equal(actual, expected, `Oxide ROI projection is incorrect at (${x}, ${y}) µm`);
+      oxideSamples++;
+    }
+  }
+  assert.equal(oxideSamples, 437, 'The oxide witness grid must remain comprehensive');
+
+  let siliconSamples = 0;
+  for (let x = -72.13; x < -6; x += 5.4) {
+    for (let y = 58.37; y < 113; y += 5.5) {
+      const intervals = continuousModelColumnAtXY(model, [x, y]).filter(
+        (interval) => interval.layerId === 'base',
+      );
+      if (!intervals.length) continue;
+      const expectedTop = Math.max(...intervals.map((interval) => interval.z1));
+      let actualTop = -Infinity;
+      for (let index = 0; index < silicon.positions.length; index += 9) {
+        const z = triangleHeight(silicon.positions, index, x, y);
+        if (z !== null) actualTop = Math.max(actualTop, z);
+      }
+      assert.ok(Number.isFinite(actualTop), `Silicon ROI surface missing at (${x}, ${y}) µm`);
+      assert.ok(
+        Math.abs(actualTop - expectedTop) < 0.75,
+        `The sampled 1 µm XY silicon mesh drifted from the exact release front at (${x}, ${y})`,
+      );
+      siliconSamples++;
+    }
+  }
+  assert.equal(siliconSamples, 130, 'The silicon height witness grid must remain comprehensive');
+  assert.equal(
+    JSON.stringify(model),
+    sourceBytes,
+    'No visualization may mutate canonical material',
+  );
 });
