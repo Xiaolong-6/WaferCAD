@@ -3304,7 +3304,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
         addSurfaceMesh(
           geometry,
           createSurfaceMaterial(layer, opaque, null, presentation),
-          opaque, null, 0, false, null, presentation,
+          opaque,
+          null,
+          0,
+          false,
+          null,
+          presentation,
         );
       }
       if (getInspection()?.borders !== false) {
@@ -3469,7 +3474,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
                       !inspectionMaterialState(inspection.opacity).transparent
                         ? (preview) =>
                             installProgressiveSurfacePreview(
-                              preview, model, renderGeneration, rendererProfileStart,
+                              preview,
+                              model,
+                              renderGeneration,
+                              rendererProfileStart,
                             )
                         : undefined,
                   });
