@@ -35,7 +35,6 @@ export function buildProgressiveSurfacePreview(model, clip = null) {
     const top = stack[stack.length - 1];
     if (![bottom.z0, top.z1].every(Number.isFinite)) return null;
     // Validate the original model before any potentially expensive LOD work.
-    // The caps and edge strokes below share only disposable reduced coordinates.
     for (const poly of polys) {
       if (!Array.isArray(poly) || !poly.length) return null;
       for (const ring of poly) {
@@ -80,8 +79,18 @@ export function buildProgressiveSurfacePreview(model, clip = null) {
         }
       }
     }
-    caps.push({ layerId: top.layerId, z: top.z1, normal: 1, polys: previewPolys });
-    caps.push({ layerId: bottom.layerId, z: bottom.z0, normal: -1, polys: previewPolys });
+    caps.push({
+      layerId: top.layerId,
+      z: top.z1,
+      normal: 1,
+      polys: previewPolys,
+    });
+    caps.push({
+      layerId: bottom.layerId,
+      z: bottom.z0,
+      normal: -1,
+      polys: previewPolys,
+    });
   }
   if (!caps.length) return null;
   return {
@@ -92,11 +101,14 @@ export function buildProgressiveSurfacePreview(model, clip = null) {
   };
 }
 
+// The camera can orbit to either hemisphere while the exact Worker is busy.
+// Keep both provisional cap surfaces available; 0 means edge-on/both faces.
+export function progressivePreviewFacingNormal(viewZFraction) {
+  if (!Number.isFinite(viewZFraction) || Math.abs(viewZFraction) < 0.2) return 0;
+  return viewZFraction > 0 ? 1 : -1;
+}
+
 export function visibleProgressivePreviewCaps(caps, viewZFraction) {
-  // For an oblique view only the outward-facing plane contributes to an opaque
-  // sketch. Preserve both sides for edge-on views; a true exact scene still
-  // replaces the entire preview after Boolean ownership resolves.
-  if (!Number.isFinite(viewZFraction) || Math.abs(viewZFraction) < 0.2) return caps;
-  const normal = viewZFraction > 0 ? 1 : -1;
-  return caps.filter((cap) => cap.normal === normal);
+  const facing = progressivePreviewFacingNormal(viewZFraction);
+  return facing === 0 ? caps : caps.filter((cap) => cap.normal === facing);
 }

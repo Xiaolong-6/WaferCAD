@@ -44,7 +44,11 @@ export function createWorkstationThreeView({ store, workstation }) {
         icon('Borders', 'borders:three', 'rectangle'),
       ],
     ],
-    [button('Export', 'three-export-menu', 'export', { 'data-help': 'view.export' })],
+    [
+      button('Export', 'three-export-menu', 'export', {
+        'data-help': 'view.export',
+      }),
+    ],
   );
   tools.append(icon('Maximize', 'maximize:three', 'maximize'));
   const panel = window.createWaferCadV2ViewPanels().update(
@@ -161,7 +165,8 @@ export function createWorkstationThreeView({ store, workstation }) {
     if (
       (host.dataset.renderFidelity !== 'exact-surface-plan' && !physicalFacet) ||
       !host.dataset.rendererExactFirstFrameMs
-    ) return;
+    )
+      return;
     if (!firstExactSceneFrame) {
       firstSceneFrame = true;
       firstExactSceneFrame = true;
@@ -460,7 +465,9 @@ export function createWorkstationThreeView({ store, workstation }) {
         content: el(
           'div',
           { class: 'p-form v2-three-floating' },
-          button('PNG · 3×', 'export:three:png', 'export', { 'data-help': 'three.export.png' }),
+          button('PNG · 3×', 'export:three:png', 'export', {
+            'data-help': 'three.export.png',
+          }),
           button('GLB · physical units', 'export:three:glb', 'export', {
             'data-help': 'three.export.glb',
           }),

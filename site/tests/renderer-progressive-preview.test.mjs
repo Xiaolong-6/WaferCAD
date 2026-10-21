@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   buildProgressiveSurfacePreview,
+  progressivePreviewFacingNormal,
   visibleProgressivePreviewCaps,
 } from '../renderer-progressive-preview.js';
 
@@ -123,9 +124,40 @@ test('preview data is presentation-only and has no owned sidewalls or solids', (
 
 test('preview limits displayed caps to the camera-facing plane without altering model geometry', () => {
   const caps = buildProgressiveSurfacePreview(twoLayerModel()).caps;
-  assert.deepEqual(visibleProgressivePreviewCaps(caps, 0.6).map((cap) => cap.normal), [1]);
-  assert.deepEqual(visibleProgressivePreviewCaps(caps, -0.6).map((cap) => cap.normal), [-1]);
+  assert.deepEqual(
+    visibleProgressivePreviewCaps(caps, 0.6).map((cap) => cap.normal),
+    [1],
+  );
+  assert.deepEqual(
+    visibleProgressivePreviewCaps(caps, -0.6).map((cap) => cap.normal),
+    [-1],
+  );
   assert.equal(visibleProgressivePreviewCaps(caps, 0).length, caps.length);
   assert.equal(visibleProgressivePreviewCaps(caps, NaN).length, caps.length);
   assert.equal(caps.length, 2);
+});
+
+test('dynamic preview face selector supports orbit across wafer during exact work', () => {
+  const caps = buildProgressiveSurfacePreview(twoLayerModel()).caps;
+  const meshVisibility = (cameraZ) => {
+    const activeNormal = progressivePreviewFacingNormal(cameraZ);
+    return caps.filter((cap) => activeNormal === 0 || cap.normal === activeNormal);
+  };
+  assert.deepEqual(
+    meshVisibility(0.8).map((cap) => cap.z),
+    [0.12],
+  );
+  assert.deepEqual(
+    meshVisibility(-0.8).map((cap) => cap.z),
+    [-2],
+  );
+  assert.deepEqual(
+    meshVisibility(0).map((cap) => cap.z),
+    [0.12, -2],
+  );
+  assert.deepEqual(
+    meshVisibility(0.8).map((cap) => cap.z),
+    [0.12],
+  );
+  assert.equal(progressivePreviewFacingNormal(NaN), 0);
 });

@@ -8,7 +8,9 @@ import { selectScientificView } from './v2/desktop-view-selector.mjs';
 await mkdir('test-results/m3d/welcome', { recursive: true });
 const browser = await launchBrowser();
 try {
-  const context = await newUiContext(browser, { viewport: { width: 1440, height: 960 } });
+  const context = await newUiContext(browser, {
+    viewport: { width: 1440, height: 960 },
+  });
   const page = await context.newPage();
   page.setDefaultTimeout(120000);
   const errors = observePageErrors(page);
@@ -47,6 +49,31 @@ try {
         assert.ok(bounds, 'Preview canvas must be interactable');
         const x = bounds.x + bounds.width / 2;
         const y = bounds.y + bounds.height / 2;
+        // Measure actual page-side pointer event -> native renderer frame,
+        // independently of the Playwright gesture's wall-clock overhead.
+        await page.evaluate(() => {
+          const host = document.getElementById('threeHost');
+          const canvas = host?.querySelector('canvas');
+          const samples = [];
+          let pendingAt = null;
+          canvas.addEventListener(
+            'pointermove',
+            (event) => {
+              if (event.buttons && host.dataset.renderFidelity === 'approximate') {
+                pendingAt ??= performance.now();
+              }
+            },
+            { passive: true },
+          );
+          new MutationObserver(() => {
+            if (pendingAt === null) return;
+            if (host.dataset.renderFidelity === 'approximate') {
+              samples.push(performance.now() - pendingAt);
+            }
+            pendingAt = null;
+          }).observe(host, { attributes: true, attributeFilter: ['data-renderer-frame-serial'] });
+          window.__wafercadPreviewPointerFrameSamples = samples;
+        });
         const started = Date.now();
         await page.mouse.move(x, y);
         await page.mouse.down();
@@ -65,9 +92,18 @@ try {
           { camera: JSON.stringify(beforeCamera), serial: phase.frameSerial },
           { timeout: 5000 },
         );
+        const pointerToRendererFrame = await page.evaluate(() => {
+          const values = (window.__wafercadPreviewPointerFrameSamples || []).sort((a, b) => a - b);
+          return {
+            count: values.length,
+            medianMs: values.length ? values[Math.floor(values.length / 2)] : null,
+            p95Ms: values.length ? values[Math.ceil(values.length * 0.95) - 1] : null,
+          };
+        });
         previewInteraction = {
           realPointerOrbitDuringWorker: true,
           orbitUntilPaintMs: Date.now() - started,
+          pointerToRendererFrame,
           frameSerialBefore: phase.frameSerial,
           fidelity: 'approximate',
         };
@@ -108,11 +144,16 @@ try {
         check();
       };
       const insertion = new globalThis.MutationObserver(findHost);
-      insertion.observe(document.documentElement, { childList: true, subtree: true });
+      insertion.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+      });
       findHost();
     };
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', observeHost, { once: true });
+      document.addEventListener('DOMContentLoaded', observeHost, {
+        once: true,
+      });
     } else observeHost();
   });
   await gotoWelcome(page);
@@ -192,7 +233,10 @@ try {
   );
   console.log('M3D_PROGRESSIVE_FIRST_FRAME_EVIDENCE', JSON.stringify(firstFrameEvidence));
   assert.ok(previewCapture, 'Expected a painted M3D approximate frame');
-  assert.ok(previewInteraction?.realPointerOrbitDuringWorker, 'Preview input must remain responsive');
+  assert.ok(
+    previewInteraction?.realPointerOrbitDuringWorker,
+    'Preview input must remain responsive',
+  );
   const border = page.locator('#threePanel [data-action="borders:three"]');
   await border.waitFor({ state: 'visible' });
   assert.equal(await border.getAttribute('aria-label'), 'Borders');

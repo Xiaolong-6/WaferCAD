@@ -9,18 +9,17 @@ const geometryModule = import(moduleUrl.href);
 const streamUrl = new URL('./renderer-surface-plan-stream.js', self.location.href);
 streamUrl.search = versionQuery;
 const streamModule = import(streamUrl.href);
-const previewUrl = new URL('./renderer-progressive-preview.js', self.location.href);
-previewUrl.search = versionQuery;
-const previewModule = import(previewUrl.href);
 
 self.onmessage = async ({ data }) => {
   if (data?.id !== 1 || data.action !== 'surface-plan') return;
   try {
     if (data.preview === true) {
       // A display-only sketch must never be a prerequisite for scientific
-      // ownership. If preview generation or transfer fails, continue exact.
+      // ownership. If preview generation, import or transfer fails, continue exact.
       try {
-        const { buildProgressiveSurfacePreview } = await previewModule;
+        const previewUrl = new URL('./renderer-progressive-preview.js', self.location.href);
+        previewUrl.search = versionQuery;
+        const { buildProgressiveSurfacePreview } = await import(previewUrl.href);
         const preview = buildProgressiveSurfacePreview(data.model, data.clip ?? null);
         if (preview) {
           self.postMessage({ id: 1, type: 'preview', preview }, [preview.borderPositions.buffer]);

@@ -15,7 +15,7 @@ import {
   borderPresentationState,
 } from './border-inspector.js';
 import { shouldYieldDuringSceneAssembly } from './renderer-cooperative-assembly.js';
-import { visibleProgressivePreviewCaps } from './renderer-progressive-preview.js';
+import { progressivePreviewFacingNormal } from './renderer-progressive-preview.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
   LAYER_INSPECTION_NEUTRAL,
@@ -151,6 +151,7 @@ export function createThreeView({
   let roughBaseTriangulationCount = 0;
   let surfacePlanBuildCount = 0;
   let progressiveProfileStart = null;
+  let activeProgressiveCapGroup = null;
   let smoothCapInstanceGroupCount = 0;
   let smoothCapInstanceCount = 0;
   let smoothCapTemplateTriangleCount = 0;
@@ -188,7 +189,10 @@ export function createThreeView({
   let sceneVariantCache = new Map();
 
   function renderPolicy(interactive = interacting) {
-    return threeRenderPolicy({ fast: getInspection()?.fast !== false, interactive });
+    return threeRenderPolicy({
+      fast: getInspection()?.fast !== false,
+      interactive,
+    });
   }
 
   function syncRenderPolicy() {
@@ -880,6 +884,7 @@ export function createThreeView({
       const changed = controls?.update?.() || false;
       updateRoughMaterialLod();
       updateTransparentOrder();
+      updateProgressiveCapVisibility();
       const frameStartedAt = performance.now();
       renderInspectionFrame();
       // Ready/assembly flags can be set before the first WebGL frame. This
@@ -940,6 +945,7 @@ export function createThreeView({
 
   function disposeGroup() {
     if (!group) return;
+    activeProgressiveCapGroup = null;
     clearRoughRefineTimer();
     terminateRoughWorker({ invalidate: true });
     roughInteractionCache = null;
@@ -2123,7 +2129,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
         planContours,
         dashed: true,
         dashSize,
-        presentation: { kind: 'hidden-border', category: 'occluded', lineStyle: 'dashed' },
+        presentation: {
+          kind: 'hidden-border',
+          category: 'occluded',
+          lineStyle: 'dashed',
+        },
       });
       addBorderPositions(positions, {
         order: order - 1,
@@ -2132,7 +2142,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
         planContours,
         dashed: false,
         includeHidden: false,
-        presentation: { kind: 'hidden-border', category: 'occluded', lineStyle: 'solid' },
+        presentation: {
+          kind: 'hidden-border',
+          category: 'occluded',
+          lineStyle: 'solid',
+        },
       });
     }
     return edges;
@@ -2171,7 +2185,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
     });
     // Explicitly expose overview LOD; selected ROIs retain exact internal lines.
     host.dataset.internalBorderDetail = scoped.mode;
-    const contours = borderInspectorContours(scoped.plan, { boundaryProfiles: profiles });
+    const contours = borderInspectorContours(scoped.plan, {
+      boundaryProfiles: profiles,
+    });
     const model = getModel();
     const opacity = Number(inspection.opacity ?? 1);
     for (const [category, lines] of [
@@ -2260,7 +2276,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
         ),
         planContours: true,
         includeHidden: false,
-        presentation: { kind: 'border', category: 'roi', lineStyle: dashed ? 'dashed' : 'solid' },
+        presentation: {
+          kind: 'border',
+          category: 'roi',
+          lineStyle: dashed ? 'dashed' : 'solid',
+        },
       });
     }
   }
@@ -2608,7 +2628,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
           .map((task) => task.visualAppearance?.displayRoughBlend ?? 1),
       ),
     );
-    return { tasks, sceneBudget, requestedSceneBudget, baseTriangleCount, policy };
+    return {
+      tasks,
+      sceneBudget,
+      requestedSceneBudget,
+      baseTriangleCount,
+      policy,
+    };
   }
 
   function roughWorkerDiagnostics(prepared) {
@@ -2779,7 +2805,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
   // thread and settle the same readiness contract as the Worker completion.
   // Do not synchronously build a preview followed by another detailed build.
   function completeSynchronousRoughFallback(sceneToken, startedAt, preparedTasks = null) {
-    const applied = rebuildAdaptiveRoughGeometrySync({ sceneToken, preparedTasks });
+    const applied = rebuildAdaptiveRoughGeometrySync({
+      sceneToken,
+      preparedTasks,
+    });
     if (!applied) return false;
     host.dataset.rendererRoughMs = String(performance.now() - startedAt);
     const profileStart = roughRenderContext?.profileStart;
@@ -3099,7 +3128,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
         }
 
         try {
-          renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: false });
+          renderer = new THREE.WebGLRenderer({
+            antialias: true,
+            preserveDrawingBuffer: false,
+          });
         } catch (error) {
           return showUnavailable({
             status: 'WebGL unavailable',
@@ -3302,7 +3334,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
         name: 'Experimental physical SiO2',
         color: '#d88b37',
       };
-      const oxideExterior = { kind: 'material-exterior', layerId: data.oxideLayerId };
+      const oxideExterior = {
+        kind: 'material-exterior',
+        layerId: data.oxideLayerId,
+      };
       let builtOxideFaces = 0;
       for (const face of ['top', 'bottom', 'side']) {
         const positions = data.oxidePositions[face];
@@ -3360,6 +3395,27 @@ diffuseColor.a *= waferCadAlphaScale;`,
       : 'physical Si (experimental)';
   }
 
+  // Keep both cheap display caps resident so flipping underneath the wafer
+  // never shows the initially selected face at the wrong Z. Only the facing
+  // half is drawn; this remains completely outside exact ownership/cache.
+  function updateProgressiveCapVisibility() {
+    const previewGroup = activeProgressiveCapGroup;
+    if (!previewGroup || !camera || !controls || !previewGroup.parent) return;
+    const distance = camera.position.distanceTo(controls.target);
+    const fraction = distance > 0 ? (camera.position.z - controls.target.z) / distance : 0;
+    const facing = progressivePreviewFacingNormal(fraction);
+    const inspection = getInspection() || {};
+    for (const mesh of previewGroup.children) {
+      const normal = mesh.userData?.waferCadProgressiveCapNormal;
+      if (!normal) continue;
+      const presentation = mesh.userData.waferCadPresentation;
+      mesh.visible =
+        (facing === 0 || normal === facing) &&
+        Boolean(presentationState(presentation, inspection).visible);
+    }
+    host.dataset.rendererProgressiveFacingNormal = String(facing);
+  }
+
   // A disposable display tier. It cannot enter the canonical surface cache,
   // inspection ownership, morphology pipeline or physical GLB export.
   function installProgressiveSurfacePreview(preview, model, generation, startedAt) {
@@ -3373,24 +3429,32 @@ diffuseColor.a *= waferCadAlphaScale;`,
       getModel() !== model ||
       physicalSceneModel ||
       !group
-    ) return;
+    )
+      return;
     try {
       disposeGroup();
       const buckets = new Map();
-      const viewDistance = camera && controls ? camera.position.distanceTo(controls.target) : 0;
-      const viewZFraction =
-        viewDistance > 0 ? (camera.position.z - controls.target.z) / viewDistance : 1;
-      for (const cap of visibleProgressivePreviewCaps(preview.caps, viewZFraction)) {
-        if (!buckets.has(cap.layerId)) buckets.set(cap.layerId, []);
-        buckets.get(cap.layerId).push(cap);
+      for (const cap of preview.caps) {
+        const key = `${cap.layerId}:${cap.normal}`;
+        if (!buckets.has(key))
+          buckets.set(key, {
+            layerId: cap.layerId,
+            normal: cap.normal,
+            caps: [],
+          });
+        buckets.get(key).caps.push(cap);
       }
       const opaque = inspectionMaterialState(1);
-      for (const [layerId, caps] of buckets) {
+      for (const { layerId, normal, caps } of buckets.values()) {
         const layer = layerById(model, layerId);
         if (!layer) continue;
         const geometry = geometryFromSolid({ slabs: [], caps });
-        const presentation = { kind: 'material-exterior', layerId, approximate: true };
-        addSurfaceMesh(
+        const presentation = {
+          kind: 'material-exterior',
+          layerId,
+          approximate: true,
+        };
+        const mesh = addSurfaceMesh(
           geometry,
           createSurfaceMaterial(layer, opaque, null, presentation),
           opaque,
@@ -3400,7 +3464,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
           null,
           presentation,
         );
+        if (mesh) mesh.userData.waferCadProgressiveCapNormal = normal;
       }
+      activeProgressiveCapGroup = group;
+      updateProgressiveCapVisibility();
       if (getInspection()?.borders !== false) {
         addBorderPositions(preview.borderPositions, {
           includeHidden: false,
@@ -3749,7 +3816,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
             await maybeYieldAssembly();
             preparedPlanes.push({
               ...plane,
-              instances: translatedPolygonInstanceGroups(plane.polys, { minInstances: 8 }),
+              instances: translatedPolygonInstanceGroups(plane.polys, {
+                minInstances: 8,
+              }),
             });
           }
           const totalInstances = preparedPlanes.reduce(
@@ -3912,7 +3981,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
         if (!state || !visibleParts.length) continue;
 
         if (!state.transparent) {
-          const instances = translatedSidewallInstanceGroups(visibleParts, { minInstances: 8 });
+          const instances = translatedSidewallInstanceGroups(visibleParts, {
+            minInstances: 8,
+          });
           if (instances.instanceCount > 0) {
             for (const groupInstances of instances.groups) {
               await maybeYieldAssembly();
@@ -4054,7 +4125,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
             : [{ leaf: annotationModel, translations: null }],
         arrayAnnotations = (derive) =>
           annotationSources.flatMap(({ leaf, translations }) =>
-            derive(leaf, clip).map((a) => ({ ...a, instanceTranslations: translations })),
+            derive(leaf, clip).map((a) => ({
+              ...a,
+              instanceTranslations: translations,
+            })),
           );
 
       host.dataset.arrayInstances = String(plan.arrayInstances || 0);
@@ -4281,7 +4355,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
           }
 
           if (followDepthProfile && zIsVisible(electrical.innerZ)) {
-            const depthPresentation = { kind: 'electrical-depth', sortBias: 35 },
+            const depthPresentation = {
+                kind: 'electrical-depth',
+                sortBias: 35,
+              },
               depthState = presentationState(depthPresentation, inspection).materialState;
             roughTasks.push({
               kind: 'electrical-depth',
@@ -4346,7 +4423,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
           const capGeometry = geometryFromSolid(
               {
                 slabs: [],
-                caps: [{ z: electrical.outerZ, normal: outerNormal, polys: electrical.polys }],
+                caps: [
+                  {
+                    z: electrical.outerZ,
+                    normal: outerNormal,
+                    polys: electrical.polys,
+                  },
+                ],
               },
               transparentArrayDisplayTolerance,
             ),
@@ -4404,6 +4487,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       if (previousVariantGroup && previousVariantGroup !== group) {
         scene.remove(previousVariantGroup);
         if (progressivePreviousGroup === previousVariantGroup) {
+          activeProgressiveCapGroup = null;
           disposeSceneGroup(previousVariantGroup);
         }
         host.dataset.rendererRetainedCompleteVisible = 'false';
@@ -4629,7 +4713,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
           };
 
           try {
-            worker.postMessage({ id, generation, tasks: payload, reportProgress: true });
+            worker.postMessage({
+              id,
+              generation,
+              tasks: payload,
+              reportProgress: true,
+            });
           } catch (error) {
             if (!finish()) return;
             reject(error);
@@ -4842,7 +4931,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
       pixelRatio: multiplier,
       aspect: width / height,
       createRenderer: () =>
-        new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }),
+        new THREE.WebGLRenderer({
+          antialias: true,
+          preserveDrawingBuffer: true,
+        }),
       configureRenderer: (captureRenderer) => {
         captureRenderer.setPixelRatio(multiplier);
         captureRenderer.setSize(width, height, false);

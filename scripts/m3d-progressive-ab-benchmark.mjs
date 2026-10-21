@@ -18,8 +18,13 @@ const results = [];
 const report = {
   source: process.env.GITHUB_HEAD_SHA || process.env.GITHUB_SHA || 'local-unidentified',
   baselineReferenceMs: 25240,
-  baselineReferenceNote: 'Historical #358 same-host 4-CPU measurement; not interchangeable with this host',
-  host: { platform: process.platform, cpus: os.availableParallelism(), model: os.cpus()[0]?.model },
+  baselineReferenceNote:
+    'Historical #358 same-host 4-CPU measurement; not interchangeable with this host',
+  host: {
+    platform: process.platform,
+    cpus: os.availableParallelism(),
+    model: os.cpus()[0]?.model,
+  },
   control: 'Identical source except the surface-plan Worker preview request is false',
   repeats,
   results,
@@ -28,7 +33,9 @@ const median = (a) => a.slice().sort((x, y) => x - y)[Math.floor(a.length / 2)];
 
 function processTreeRss(rootPid) {
   if (!rootPid || process.platform !== 'linux') return null;
-  const ps = execFileSync('ps', ['-eo', 'pid=,ppid=,rss='], { encoding: 'utf8' });
+  const ps = execFileSync('ps', ['-eo', 'pid=,ppid=,rss='], {
+    encoding: 'utf8',
+  });
   const children = new Map();
   const rss = new Map();
   for (const line of ps.split('\n')) {
@@ -64,7 +71,9 @@ async function hashExactPlan(page) {
     const append = async (s) => {
       block += s;
       if (block.length < 256 * 1024) return;
-      chunks.push(new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256', encoder.encode(block))));
+      chunks.push(
+        new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256', encoder.encode(block))),
+      );
       block = '';
     };
     for (const key of Object.keys(plan).sort()) {
@@ -75,7 +84,10 @@ async function hashExactPlan(page) {
         for (const item of value) await append(JSON.stringify(item) + '\n');
       } else await append(JSON.stringify(value) + '\n');
     }
-    if (block) chunks.push(new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256', encoder.encode(block))));
+    if (block)
+      chunks.push(
+        new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256', encoder.encode(block))),
+      );
     const combined = new Uint8Array(chunks.length * 32);
     chunks.forEach((chunk, i) => combined.set(chunk, i * 32));
     const digest = new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256', combined));
@@ -104,7 +116,9 @@ async function coldRun(mode, index) {
         }
       } catch {}
     }, 200);
-    context = await newUiContext(browser, { viewport: { width: 1440, height: 960 } });
+    context = await newUiContext(browser, {
+      viewport: { width: 1440, height: 960 },
+    });
     let intercepted = 0;
     await context.route('**/renderer-surface-plan-async.js*', async (route) => {
       const response = await route.fetch();
@@ -149,11 +163,16 @@ async function coldRun(mode, index) {
           });
           check();
         };
-        insertion.observe(document.documentElement, { childList: true, subtree: true });
+        insertion.observe(document.documentElement, {
+          childList: true,
+          subtree: true,
+        });
         bindHost();
       };
       if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', observeHost, { once: true });
+        document.addEventListener('DOMContentLoaded', observeHost, {
+          once: true,
+        });
       } else observeHost();
     });
     await gotoWelcome(page);
@@ -211,9 +230,15 @@ async function coldRun(mode, index) {
       mode === 'preview' && timing.previewWallMs ? timing.previewWallMs - startedAt : null;
     if (mode === 'preview') assert.ok(openToPreviewMs > 0 && openToPreviewMs < openToExactMs);
     const result = {
-      mode, index, openToExactMs, openToPreviewMs, ...timing, hash,
+      mode,
+      index,
+      openToExactMs,
+      openToPreviewMs,
+      ...timing,
+      hash,
       peakBrowserTreeRssBytes: rssSamples ? peakRssBytes : null,
-      rssSamples, errors: pageErrors,
+      rssSamples,
+      errors: pageErrors,
     };
     console.log('M3D_AB_COLD_RUN', JSON.stringify(result));
     return result;
@@ -257,9 +282,9 @@ try {
     peakRssRatio: memoryRatio,
     allExactPlanHashesMatch: hashes.size === 1,
     exactPlanHash: results[0].hash.sha256,
-    exactTopologyCountsMatch: results.every((x) =>
-      x.hash.caps === results[0].hash.caps &&
-      x.hash.sidewalls === results[0].hash.sidewalls),
+    exactTopologyCountsMatch: results.every(
+      (x) => x.hash.caps === results[0].hash.caps && x.hash.sidewalls === results[0].hash.sidewalls,
+    ),
   };
   console.log('M3D_AB_SUMMARY', JSON.stringify(report.summary));
   assert.ok(report.summary.previewUsableGainPct >= 20, 'Usable preview improved less than 20%');
