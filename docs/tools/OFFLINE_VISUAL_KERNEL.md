@@ -270,6 +270,55 @@ Focused checks: `python3 scripts/offline-native-app-capture.test.py`.
 The real Chromium screenshot run is manual and intentionally not part of
 the ordinary unit-test/CI loop.
 
+### Repeatable Section-sampler versus completed native 3D mesh cutline
+
+The existing source-backed native capture runner can audit the **actual
+completed CPU rough mesh**, including the live material-layer ownership,
+Renderer Z break and its display-only Z scale. For the Photodetector, keep
+the physical 65-point line fixed and change only ROI and Fast/Quality:
+
+```sh
+python3 scripts/offline-native-app-capture.py --root . \
+  --inmemory-project site/examples/photodetector-literature-examples.wafercad \
+  --inmemory-roi 2465,-30,2525,30 --inmemory-z-break 14,2 \
+  --rough-cutline 2494.7,2495.3,0.123 \
+  --output test-results/rough-cutline-60-fast
+# Add --quality for the same 60 µm ROI, and repeat using
+# --inmemory-roi 2375,-120,2615,120 (240 µm) and
+# --inmemory-roi=-3400,-3400,3400,3400 (6,800 µm).
+```
+
+For very large ROI / Quality meshes, the cutline runner creates a
+temporary narrow probe geometry from the **actual completed material cap
+triangles**. It keeps original Float32 vertices, face orientation and
+`matrixWorld`, then intersects only triangles capable of meeting the line.
+It never changes production mesh `drawRange`, canonical physical geometry
+or the saved model. The report's `clippedTriangleCount` distinguishes
+this diagnostic workload from the full `roughTriangleCount`. In particular,
+do not call `Box3.setFromObject()` on a detached probe: it can recompute
+`matrixWorld` without the parent group Z scaling, manufacturing a false
+physical height error. Bound using the original live mesh instead. Unclipped
+and clipped native Chromium raycasts must agree at the same cutline; the
+6,800 µm Quality Photodetector scenario was the motivating regression.
+
+The runner records `physicalRoughCutline`: the actual material owner,
+all 65 ray intersections, missed points, per-point residual, RMS and maximum
+error, together with the native screenshots, mode and triangle counts.
+Section's reference height is sampled at 1,100 pixels / physical ROI width.
+The reference is transformed with the **same** native 3D display map
+before comparing to the ray intersection; otherwise a Z-break comparison
+would report a false physical height error. A buried Base must not be treated
+as the visible cap when an oxide lies above it. Shader-displaced and instanced
+rough meshes are explicitly excluded from the CPU triangle-raycast metric.
+
+This is a *null-Origin native Renderer diagnostic*. Its Section reference is
+the production sampler, not a captured synchronized Section raster.
+It does not prove complete Workstation, Worker-backed project Open,
+History/Recovery, or untested GPU-shader vertex heights. Do not silently
+label a partial or missed cutline as a pass; do not change scientific
+tolerances or default morphology based on this diagnostic alone.
+
+
 Add `--check-rough-parity` together with the full Photodetector
 `--inmemory-project` to execute the production vertex-height qualification
 at the actual rough-region coordinates, plus origin and uniform-height

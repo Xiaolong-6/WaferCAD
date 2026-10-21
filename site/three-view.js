@@ -83,6 +83,7 @@ import {
   roughFarFieldContrast,
   allocateRoughTriangleBudgets,
   projectedPixelsPerUnit,
+  roughProfileOffsetAtPixelFootprint,
   roughDisplayProfileOffsetAtPoint,
   roughSceneTriangleBudget,
   synchronizeConformalRoughLods,
@@ -2673,6 +2674,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
       );
       if (mesh) {
         roughOwnedObjects.add(mesh);
+        // The diagnostic observes real CPU mesh geometry without editing the model.
+        mesh.userData.waferCadRoughCutline = {
+          layerId: cap.layerId,
+          z: cap.z,
+          profileNormal: cap.profileNormal ?? cap.normal,
+          appearance: cap.appearance,
+        };
         if (task.name) mesh.name = task.name;
       }
 
@@ -3000,6 +3008,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
         );
         if (mesh) {
           roughOwnedObjects.add(mesh);
+          // The diagnostic observes real CPU mesh geometry without editing the model.
+          mesh.userData.waferCadRoughCutline = {
+            layerId: cap.layerId,
+            z: cap.z,
+            profileNormal: cap.profileNormal ?? cap.normal,
+            appearance: cap.appearance,
+          };
           if (task.name) mesh.name = task.name;
         }
 
@@ -4712,10 +4727,164 @@ diffuseColor.a *= waferCadAlphaScale;`,
     });
   }
 
+  // Read-only acceptance probe: actual CPU rough triangles versus Section's physical sampler.
+  // GPU vertex displacement, array instances and synced Section raster are out of scope.
+  function sampleRoughCutline({
+    xMin,
+    xMax,
+    y,
+    samples = 65,
+    pixelsPerUm = 100,
+    layerId = null,
+  } = {}) {
+    if (!ready || !THREE || !group || !currentZDisplay || currentRoughMode !== 'detailed') {
+      throw new Error('Detailed native rough mesh must finish before cutline sampling');
+    }
+    if (
+      ![xMin, xMax, y, pixelsPerUm].every(Number.isFinite) ||
+      !(xMax > xMin) ||
+      !(pixelsPerUm > 0) ||
+      !Number.isInteger(samples) ||
+      samples < 2 ||
+      samples > 2048
+    ) {
+      throw new Error('Invalid physical rough cutline or Section pixel calibration');
+    }
+    const candidates = roughMeshes
+      .map(({ mesh }) => mesh)
+      .filter((mesh) => mesh?.visible && mesh.userData.waferCadRoughCutline);
+    const top = candidates.reduce(
+      (best, mesh) =>
+        mesh.userData.waferCadRoughCutline.z > (best?.userData.waferCadRoughCutline.z ?? -Infinity)
+          ? mesh
+          : best,
+      null,
+    );
+    const targetLayer = layerId || top?.userData.waferCadRoughCutline.layerId;
+    const meshes = candidates.filter(
+      (mesh) => mesh.userData.waferCadRoughCutline.layerId === targetLayer,
+    );
+    if (!meshes.length) throw new Error('No visible rough mesh for requested material layer');
+    if (
+      meshes.some((mesh) => mesh.isInstancedMesh || mesh.geometry?.userData?.roughGpuDisplacement)
+    ) {
+      throw new Error('CPU raycast cannot qualify GPU/instanced rough meshes');
+    }
+    group.updateMatrixWorld(true);
+    const scale = Number(currentZDisplay.scale);
+    if (!(scale > 0)) throw new Error('Invalid rendered Z scale');
+    // Limit the raycast to triangles that can intersect the requested line.
+    // The full-area Quality geometry can have >100k triangles: 65 full mesh
+    // raycasts can dominate the actual render and hang the acceptance runner.
+    // This temporary probe mesh reuses the *actual* BufferGeometry vertices and
+    // original material facing, but never changes a production mesh/drawRange.
+    const probeMeshes = [];
+    for (const mesh of meshes) {
+      const source = mesh.geometry;
+      const position = source.getAttribute('position');
+      const indices = source.getIndex();
+      if (!position) continue;
+      const picked = [];
+      const a = new THREE.Vector3(),
+        b = new THREE.Vector3(),
+        c = new THREE.Vector3();
+      const triangles = indices ? indices.count / 3 : position.count / 3;
+      for (let t = 0; t < triangles; t++) {
+        const i = t * 3;
+        const ai = indices ? indices.getX(i) : i;
+        const bi = indices ? indices.getX(i + 1) : i + 1;
+        const ci = indices ? indices.getX(i + 2) : i + 2;
+        a.fromBufferAttribute(position, ai).applyMatrix4(mesh.matrixWorld);
+        b.fromBufferAttribute(position, bi).applyMatrix4(mesh.matrixWorld);
+        c.fromBufferAttribute(position, ci).applyMatrix4(mesh.matrixWorld);
+        if (
+          Math.min(a.y, b.y, c.y) > y ||
+          Math.max(a.y, b.y, c.y) < y ||
+          Math.min(a.x, b.x, c.x) > xMax ||
+          Math.max(a.x, b.x, c.x) < xMin
+        )
+          continue;
+        // Store the original local-space Float32 vertices: the Raycaster uses
+        // precisely the same transformed coordinates as the production mesh.
+        for (const vertex of [ai, bi, ci]) {
+          picked.push(position.getX(vertex), position.getY(vertex), position.getZ(vertex));
+        }
+      }
+      if (!picked.length) continue;
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(picked, 3));
+      geometry.computeBoundingBox();
+      geometry.computeBoundingSphere();
+      const probe = new THREE.Mesh(geometry, mesh.material);
+      probe.matrixAutoUpdate = false;
+      probe.matrixWorld.copy(mesh.matrixWorld);
+      probe.userData = mesh.userData;
+      probeMeshes.push({ mesh: probe, source: mesh, triangles: picked.length / 9 });
+    }
+    const ray = new THREE.Raycaster(),
+      points = [];
+    for (let index = 0; index < samples; index++) {
+      const x = xMin + ((xMax - xMin) * (index + 0.5)) / samples;
+      let best = null;
+      for (const { mesh, source } of probeMeshes) {
+        const info = mesh.userData.waferCadRoughCutline;
+        const height = roughProfileOffsetAtPixelFootprint(x, y, info.appearance, {
+          pixelsPerUm,
+          unitX: 1,
+          unitY: 0,
+        });
+        const physicalZ = info.z + (Number(info.profileNormal) || 1) * height;
+        const expectedZ = currentZDisplay.mapZ(physicalZ) * scale;
+        const bounds = new THREE.Box3().setFromObject(source);
+        if (x < bounds.min.x || x > bounds.max.x || y < bounds.min.y || y > bounds.max.y) continue;
+        ray.set(
+          new THREE.Vector3(x, y, bounds.max.z + Math.max(1, bounds.max.z - bounds.min.z + 1)),
+          new THREE.Vector3(0, 0, -1),
+        );
+        const hit = ray.intersectObject(mesh, false)[0];
+        if (!hit) continue;
+        const dz = Math.max(1e-5, Math.abs(physicalZ) * 1e-9);
+        const derivative =
+          (currentZDisplay.mapZ(physicalZ + dz) - currentZDisplay.mapZ(physicalZ - dz)) / (2 * dz);
+        if (!(derivative > 1e-9)) continue;
+        const result = {
+          xUm: x,
+          yUm: y,
+          layerId: targetLayer,
+          expectedPhysicalZUm: physicalZ,
+          expectedDisplayZ: expectedZ,
+          actualDisplayZ: hit.point.z,
+          errorUm: (hit.point.z - expectedZ) / (scale * derivative),
+        };
+        if (!best || Math.abs(result.errorUm) < Math.abs(best.errorUm)) best = result;
+      }
+      points.push(best || { xUm: x, yUm: y, missing: true });
+    }
+    const clippedTriangleCount = probeMeshes.reduce((sum, p) => sum + p.triangles, 0);
+    for (const { mesh } of probeMeshes) mesh.geometry.dispose();
+    const valid = points.filter((p) => Number.isFinite(p.errorUm));
+    return {
+      layerId: targetLayer,
+      sampleCount: samples,
+      hitCount: valid.length,
+      missingCount: samples - valid.length,
+      rmsErrorUm: valid.length
+        ? Math.sqrt(valid.reduce((sum, p) => sum + p.errorUm ** 2, 0) / valid.length)
+        : null,
+      maximumErrorUm: valid.length ? Math.max(...valid.map((p) => Math.abs(p.errorUm))) : null,
+      sectionPixelsPerUm: pixelsPerUm,
+      displayScale: scale,
+      roiLine: [xMin, xMax, y],
+      clippedTriangleCount,
+      points,
+    };
+  }
+
   return {
     init,
     render,
     fit,
+    sampleRoughCutline,
     getViewState,
     setViewState,
     setGestureMode,

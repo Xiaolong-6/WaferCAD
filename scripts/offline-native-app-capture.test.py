@@ -2,6 +2,8 @@
 """Focused offline native-browser allowlist and Three.js pin regression."""
 import importlib.util
 import json
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -42,6 +44,25 @@ class CapturePreflightTests(unittest.TestCase):
             with self.subTest(value=value):
                 with self.assertRaises(ValueError):
                     capture.parse_native_bounds(value, 'Z break', 2)
+
+    def test_rough_cutline_and_quality_preflight_is_fail_closed(self):
+        fixture = self.root / 'sample.wafercad'
+        fixture.write_text('{}')  # Parsing arguments must fail before reading model or Chromium.
+        for options, expected in (
+            (['--rough-cutline', '2494.7,2495.3,0.123'], 'require --inmemory-project'),
+            (['--quality'], 'require --inmemory-project'),
+            (['--inmemory-project', str(fixture), '--rough-cutline', '0,0,0'],
+             'xMax > xMin'),
+            (['--inmemory-project', str(fixture), '--rough-cutline', 'nan,1,0'],
+             'xMax > xMin'),
+        ):
+            with self.subTest(options=options):
+                result = subprocess.run(
+                    [sys.executable, str(MODULE), '--output', str(self.root / 'capture'),
+                     *options], capture_output=True, text=True, timeout=5,
+                )
+                self.assertEqual(result.returncode, 2)
+                self.assertIn(expected, result.stderr)
 
     def test_native_model_does_not_duplicate_initial_renderer_build(self):
         source = (MODULE.parent / 'offline-native-model-view.js').read_text()

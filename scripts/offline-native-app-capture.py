@@ -500,7 +500,8 @@ def run(args):
                 model_input = {'model': None, 'demo': args.inmemory_demo,
                                'roiBounds': args.inmemory_roi, 'zBreak': args.inmemory_z_break,
                                'zDisplayFactor': args.inmemory_z_scale,
-                               'roughReliefFactor': args.inmemory_relief_scale}
+                               'roughReliefFactor': args.inmemory_relief_scale,
+                               'quality': args.quality}
                 input_evidence = None
                 if args.inmemory_project:
                     project_path = args.inmemory_project.resolve()
@@ -572,6 +573,15 @@ def run(args):
                 if args.check_glb:
                     expression = (root / 'scripts/offline-native-glb-check.js').read_text(encoding='utf-8')
                     report['physicalGlb'] = page.evaluate(expression)
+                if args.rough_cutline:
+                    roi = args.inmemory_roi
+                    density = 1100 / (roi[2] - roi[0]) if roi else 100
+                    report['physicalRoughCutline'] = page.evaluate('''(params) => {
+                      return window.__wafercadOfflineModel.renderer.sampleRoughCutline(params);
+                    }''', {'xMin': args.rough_cutline[0], 'xMax': args.rough_cutline[1],
+                           'y': args.rough_cutline[2], 'pixelsPerUm': density, 'samples': 65})
+                    if report['physicalRoughCutline']['missingCount']:
+                        raise RuntimeError('Rough cutline missed actual displayed mesh positions')
             report['httpRequestsAllowed'] = dict(counts)
             report['rejectedRequests'] = rejected
             # Only exact build-info.json is known harmless; any other denial needs review.
@@ -622,6 +632,8 @@ def main():
     parser.add_argument('--check-rough-parity', action='store_true', help='Probe production GLSL at Photodetector physical coordinates')
     parser.add_argument('--check-stable-rough-ui', action='store_true', help='Apply stable rough Etch/ALD and verify native Undo, Save, file Open and reload on a 2 um base')
     parser.add_argument('--check-glb', action='store_true', help='Check production physical GLB stable-profile heights and 50 nm film')
+    parser.add_argument('--quality', action='store_true', help='Use Quality instead of Fast 3D mesh budget for isolated model')
+    parser.add_argument('--rough-cutline', help='Physical xMin,xMax,y to compare actual 3D CPU mesh against Section sampler')
     parser.add_argument('--headless', action='store_true', help='Opt out of headful/Xvfb; may disable WebGL')
     parser.add_argument('--require-origin', action='store_true', help='Fail rather than use null-origin diagnostic')
     parser.add_argument('--inspect-history', action='store_true',
@@ -635,9 +647,16 @@ def main():
         parser.error('Rough height parity requires --inmemory-project')
     if args.check_glb and not args.inmemory_project:
         parser.error('Physical GLB check requires --inmemory-project')
+    if (args.rough_cutline or args.quality) and not args.inmemory_project:
+        parser.error('Rough cutline and Quality diagnostic require --inmemory-project')
     try:
         args.inmemory_roi = parse_native_bounds(args.inmemory_roi, 'ROI', 4)
         args.inmemory_z_break = parse_native_bounds(args.inmemory_z_break, 'Z break', 2)
+        if args.rough_cutline:
+            values = [float(part) for part in args.rough_cutline.split(',')]
+            if len(values) != 3 or not all(math.isfinite(value) for value in values) or values[1] <= values[0]:
+                raise ValueError('Rough cutline must be physical xMin,xMax,y with xMax > xMin')
+            args.rough_cutline = values
     except ValueError as exc:
         parser.error(str(exc))
     try:
