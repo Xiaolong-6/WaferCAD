@@ -9,10 +9,20 @@ const geometryModule = import(moduleUrl.href);
 const streamUrl = new URL('./renderer-surface-plan-stream.js', self.location.href);
 streamUrl.search = versionQuery;
 const streamModule = import(streamUrl.href);
+const previewUrl = new URL('./renderer-progressive-preview.js', self.location.href);
+previewUrl.search = versionQuery;
+const previewModule = import(previewUrl.href);
 
 self.onmessage = async ({ data }) => {
   if (data?.id !== 1 || data.action !== 'surface-plan') return;
   try {
+    if (data.preview === true) {
+      // One bounded, non-authoritative frame before the expensive exact
+      // Material Solids Boolean. Never cache or serialize this sketch.
+      const { buildProgressiveSurfacePreview } = await previewModule;
+      const preview = buildProgressiveSurfacePreview(data.model, data.clip ?? null);
+      if (preview) self.postMessage({ id: 1, type: 'preview', preview });
+    }
     const [{ buildRenderSurfacePlan }, { shouldStreamSurfacePlan, surfacePlanStreamPackets }] =
       await Promise.all([geometryModule, streamModule]);
     const plan = buildRenderSurfacePlan(data.model, data.clip ?? null);
