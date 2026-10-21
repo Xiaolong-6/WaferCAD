@@ -10,12 +10,16 @@ const { validateProjectFile } = await import('../project-schema.js');
 const { parseLayoutFile } = await import('../layout-io.js');
 const { serializeGDS } = await import('../layout-export.js');
 const { validateContinuousEtchModel } = await import('../continuous-etch-model.js');
-const { continuousOwnerColumnAtXY } = await import('../continuous-material-owner.js');
+const { continuousOwnerColumnAtXY, restoreContinuousMaterialOwner } =
+  await import('../continuous-material-owner.js');
+const { continuousSectionContours } = await import('../continuous-etch-section.js');
+const { pointInMulti } = await import('../vector-geometry.js');
 const { canBuildContinuousSiHeightfield } = await import('../continuous-heightfield-mesh.js');
 const { exactUnetchedFilmCandidates, buildExactFilmComponents } =
   await import('../continuous-exact-film-mesh.js');
 const { buildContinuousMaterialSurfaceMesh } = await import('../continuous-etch-mesh.js');
 const { parseProcessRecipeSource, serializeProcessRecipe } = await import('../process-recipe.js');
+const { validateRecipeExecution } = await import('../process-recipe-preflight.js');
 const src = new URL('../../examples/projects/hbar-blesin-2024-candidate/', import.meta.url);
 const projectBytes = readFileSync(new URL('hbar-blesin-2024-author-roi.wafercad', src));
 const project = await readProjectFile({
@@ -151,5 +155,62 @@ test('coincident-height GDS film fragments form finite exact meshes without samp
     JSON.stringify(owner),
     before,
     'render mesh generation may not modify the analytic owner',
+  );
+});
+
+test('released HBAR Section contours match the canonical material owner across five physical cuts', () => {
+  const owner = restoreContinuousMaterialOwner(project.model.continuousEtchOwner);
+  const sampleHeights = [
+    -0.73, 0.21, 1.53, 3.41, 10.53, 16.33, 17.9, 18.13, 18.6, 19.6, 21.9, 23.8, 24.21,
+  ];
+  let witnesses = 0;
+  for (const y of [-8.4, -3.6, 0, 3.6, 8.4]) {
+    const from = [-55, y];
+    const to = [55, y];
+    const contours = continuousSectionContours(project.model, from, to, { maxStepUm: 0.35 });
+    for (let x = -52.7; x < 53; x += 3.23) {
+      const sectionT = (x + 55) / 110;
+      const column = continuousOwnerColumnAtXY(owner, [x, y]);
+      for (const z of sampleHeights) {
+        const canonicalLayers = column
+          .filter((segment) => segment.z0 + 1e-6 < z && z < segment.z1 - 1e-6)
+          .map((segment) => segment.layerId)
+          .sort();
+        const sectionLayers = contours
+          .filter((entry) => pointInMulti([sectionT, z], entry.polys))
+          .map((entry) => entry.layerId)
+          .sort();
+        assert.deepEqual(
+          sectionLayers,
+          canonicalLayers,
+          `Physical Section occupancy must match source material at (${x}, ${y}, ${z}) um`,
+        );
+        witnesses++;
+      }
+    }
+  }
+  assert.equal(witnesses, 2145);
+});
+
+test('HBAR full Recipe preflight resolves author GDS masks and rejects a missing release layer', () => {
+  const options = {
+    model: project.model,
+    maskState: { layout: project.layout },
+    base: project.processRecipe.base,
+    startMode: 'new-base',
+  };
+  const valid = validateRecipeExecution(project.processRecipe.steps, options);
+  assert.deepEqual(valid.errors, []);
+  assert.deepEqual(valid.warnings, []);
+  assert.equal(valid.total, 11);
+
+  const tampered = structuredClone(project.processRecipe.steps);
+  const release = tampered.at(-1);
+  assert.equal(release.params.profile, 'continuous');
+  release.params.mask.layerKeys = ['999|0'];
+  const rejected = validateRecipeExecution(tampered, options);
+  assert.ok(
+    rejected.errors.some((message) => message.includes('Mask layer "999|0" is missing')),
+    'A missing author-GDS release-hole layer must fail closed before Recipe Run All',
   );
 });
