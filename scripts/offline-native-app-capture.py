@@ -155,6 +155,13 @@ def parse_native_bounds(raw: str | None, label: str, count: int):
     return values
 
 
+def parse_native_camera(raw: str | None):
+    pose = parse_native_bounds(raw, 'Camera pose', 6)
+    if pose is not None and math.dist(pose[:3], pose[3:]) <= 1e-6:
+        raise ValueError('Camera position must differ from target')
+    return pose
+
+
 def snapshot_sha(path: Path):
     return hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else None
 
@@ -467,13 +474,24 @@ def run(args):
                     roughMeshBackend:canvas?.dataset?.roughMeshBackend || null,
                     roughTriangleCount:Number(canvas?.dataset?.roughTriangleCount || 0),
                     roughRebuildCount:Number(canvas?.dataset?.roughRebuildCount || 0),
+                    continuousRoiMode:item?.host?.dataset?.continuousEtchRoi || null,
+                    continuousRoiMeshMode:item?.host?.dataset?.continuousEtchRoiMeshMode || null,
+                    continuousRoiMeshTriangles:Number(item?.host?.dataset?.continuousEtchRoiMeshTriangles || 0),
+                    continuousRoiCapTriangles:Number(item?.host?.dataset?.continuousEtchRoiCapTriangles || 0),
                     width:bounds?.width || 0,height:bounds?.height || 0};
                 }''')
                 rough_ready = (not details.get('roughCaps') or
                                (state['roughMeshMode'] == 'detailed' and
                                 state['roughTriangleCount'] > 0 and
                                 not rough_completion_timeout))
-                ready = bool(details['initialized'] and state['ready'] and rough_ready
+                continuous_roi = bool(args.inmemory_roi and model_input['model'] and
+                                      model_input['model'].get('kernel') == 'vector-continuous-etch-v1')
+                clipped_ready = (not continuous_roi or
+                                 (state['continuousRoiMode'] == 'rect-clipped' and
+                                  state['continuousRoiMeshMode'] == 'geometry-clipped' and
+                                  state['continuousRoiMeshTriangles'] > 0 and
+                                  state['continuousRoiCapTriangles'] > 0))
+                ready = bool(details['initialized'] and state['ready'] and rough_ready and clipped_ready
                              and state['renderState'] == 'ready'
                              and state['width'] > 100 and state['height'] > 100)
                 image = out / 'isolated-native-model.png'
@@ -528,6 +546,27 @@ def run(args):
                     report['continuousAppearanceRestored'] = restored
                     if not (appearance['hiddenBase'] and restored['visible']):
                         raise ValueError('Continuous display toggle failed')
+                if args.inmemory_camera is not None:
+                    # Explicit physical camera pose uses production ThreeView
+                    # OrbitControls (not a fabricated geometry/camera overlay).
+                    camera = page.evaluate('''(values) => {
+                      const renderer = window.__wafercadOfflineModel?.renderer;
+                      const old = renderer?.getViewState?.();
+                      if (!old) throw new Error('Production 3D view has no camera state');
+                      const next = {
+                        position: values.slice(0, 3),
+                        target: values.slice(3),
+                        fov: old.fov,
+                      };
+                      if (!renderer.setViewState(next)) throw new Error('Camera pose rejected');
+                      return renderer.getViewState();
+                    }''', list(args.inmemory_camera))
+                    page.wait_for_timeout(450)
+                    camera_image = out / 'continuous-physical-camera.png'
+                    page.screenshot(path=str(camera_image), animations='disabled')
+                    report['images']['continuousPhysicalCamera'] = {
+                        'file': camera_image.name, 'sha256': snapshot_sha(camera_image)}
+                    report['continuousPhysicalCamera'] = camera
                 if model_input['model'] and model_input['model'].get('kernel') == 'vector-continuous-etch-v1':
                     # Switch the *production* ThreeView camera to the underside
                     # without repeated SwiftShader interactions or synthetic geometry.
@@ -589,6 +628,7 @@ def main():
                              help='Strictly parse a real .wafercad in Node and render its model in isolated ThreeView')
     parser.add_argument('--inmemory-roi', help='xMin,yMin,xMax,yMax in physical micrometres; for --inmemory-project')
     parser.add_argument('--inmemory-z-break', help='top,bottom Z coordinates in physical micrometres; for --inmemory-project')
+    parser.add_argument('--inmemory-camera', help='Camera x,y,z,targetX,targetY,targetZ in physical micrometres; for --inmemory-project')
     parser.add_argument('--capture-continuous-appearance', action='store_true',
                         help='Test real continuous-material layer color and visibility without rebuilding mesh')
     parser.add_argument('--capture-continuous-ui', action='store_true',
@@ -605,11 +645,12 @@ def main():
         parser.error('Invalid dimensions or wait interval')
     if args.capture_continuous_appearance and not args.inmemory_project:
         parser.error('Continuous appearance capture requires an in-memory project')
-    if (args.inmemory_roi or args.inmemory_z_break) and not args.inmemory_project:
-        parser.error('ROI and Z break require --inmemory-project')
+    if (args.inmemory_roi or args.inmemory_z_break or args.inmemory_camera) and not args.inmemory_project:
+        parser.error('ROI, Z break and camera require --inmemory-project')
     try:
         args.inmemory_roi = parse_native_bounds(args.inmemory_roi, 'ROI', 4)
         args.inmemory_z_break = parse_native_bounds(args.inmemory_z_break, 'Z break', 2)
+        args.inmemory_camera = parse_native_camera(args.inmemory_camera)
     except ValueError as exc:
         parser.error(str(exc))
     try:
