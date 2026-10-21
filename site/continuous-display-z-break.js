@@ -31,7 +31,14 @@ export function clipContinuousDisplayZBreak(part, state) {
   for (let offset = 0; offset < positions.length; offset += 9) {
     const face = Array.from({ length: 3 }, (_, i) => {
       const j = offset + 3 * i;
-      return [positions[j], positions[j + 1], positions[j + 2], normals[j], normals[j + 1], normals[j + 2]];
+      return [
+        positions[j],
+        positions[j + 1],
+        positions[j + 2],
+        normals[j],
+        normals[j + 1],
+        normals[j + 2],
+      ];
     });
     for (const fragment of [
       clipHalfspace(face, state.top, true),
@@ -42,7 +49,14 @@ export function clipContinuousDisplayZBreak(part, state) {
         const [a, b, c] = points;
         const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
         const v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
-        if (Math.hypot(u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]) < 1e-11) continue;
+        if (
+          Math.hypot(
+            u[1] * v[2] - u[2] * v[1],
+            u[2] * v[0] - u[0] * v[2],
+            u[0] * v[1] - u[1] * v[0],
+          ) < 1e-11
+        )
+          continue;
         for (const p of points) {
           output.push(p[0], p[1], p[2]);
           const m = Math.hypot(p[3], p[4], p[5]) || 1;

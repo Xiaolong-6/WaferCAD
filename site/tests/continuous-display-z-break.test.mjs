@@ -28,7 +28,10 @@ test('disabled break leaves the original display geometry untouched', () => {
 });
 
 test('invalid Z Break bounds fail closed', () => {
-  assert.throws(() => clipContinuousDisplayZBreak(part, { enabled: true, top: 0, bottom: 3 }), /Invalid/);
+  assert.throws(
+    () => clipContinuousDisplayZBreak(part, { enabled: true, top: 0, bottom: 3 }),
+    /Invalid/,
+  );
 });
 
 test('a user-authored Section Z Break opt-in reaches the Continuous 3D path', () => {
@@ -62,10 +65,7 @@ test('sharp-edge structural Border keeps exterior edges, never flat triangulatio
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute(
     'position',
-    new THREE.Float32BufferAttribute([
-      0, 0, 0, 1, 0, 0, 1, 1, 0,
-      0, 0, 0, 1, 1, 0, 0, 1, 0,
-    ], 3),
+    new THREE.Float32BufferAttribute([0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0], 3),
   );
   const edges = new THREE.EdgesGeometry(geometry, 25);
   assert.equal(edges.getAttribute('position').count / 2, 4);
