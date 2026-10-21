@@ -29,8 +29,11 @@ test('preview is capped, bounded and preserves original model geometry', () => {
     ['coating', 0.12, 1],
     ['substrate', -2, -1],
   ]);
-  assert.equal(preview.borderLines.length, 8);
-  assert.deepEqual(preview.borderLines[0], [[0, 0, 0.12], [4, 0, 0.12]]);
+  assert.equal(preview.lineCount, 8);
+  assert.equal(preview.borderPositions.length, 8 * 6);
+  assert.deepEqual(Array.from(preview.borderPositions.slice(0, 2)), [0, 0]);
+  assert.ok(Math.abs(preview.borderPositions[2] - 0.12) < 1e-6);
+  assert.deepEqual(Array.from(preview.borderPositions.slice(3, 5)), [4, 0]);
   assert.deepEqual(model, original);
   assert.strictEqual(preview.caps[0].polys, model.regions[0].geom);
 });
@@ -69,4 +72,5 @@ test('preview data is presentation-only and has no owned sidewalls or solids', (
   assert.equal('sidewalls' in preview, false);
   assert.equal('solids' in preview, false);
   assert.equal('slabs' in preview, false);
+  assert.ok(preview.borderPositions instanceof Float32Array);
 });
