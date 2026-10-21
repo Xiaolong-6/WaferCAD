@@ -51,7 +51,7 @@ function blankResearchProject() {
   };
 }
 
-export async function produceAuthorShadowPreview(source) {
+export async function produceAuthorShadowPreview(source, { barrier = null } = {}) {
   if (sha(source) !== SOURCE_SHA256) throw new Error('Author GDS SHA-256 mismatch.');
   const parsed = parseGDS(
     source.buffer.slice(source.byteOffset, source.byteOffset + source.byteLength),
@@ -83,13 +83,16 @@ export async function produceAuthorShadowPreview(source) {
   const simulated = makeShadowAlPreview({
     layers,
     beams,
+    barrier,
     substrateWidthUm: 40,
     substrateHeightUm: 30,
     substrateThicknessUm: 675,
     sampleStepUm: 0.0375,
   });
   const project = blankResearchProject();
-  project.name = 'Transmon Q2 Al shadow geometry PREVIEW (no tunnel barrier)';
+  project.name = barrier
+    ? 'Transmon Q2 AlOx HYPOTHESIS preview (not a validated Josephson junction)'
+    : 'Transmon Q2 Al shadow geometry PREVIEW (no tunnel barrier)';
   project.model = simulated.model;
   project.layout = {
     ...local,
@@ -123,7 +126,7 @@ export async function produceAuthorShadowPreview(source) {
       notSupported: [
         'True sidewall deposition',
         'MMA/PMMA actual relief',
-        'AlOx film and quantum tunnelling barrier',
+        'Real oxide growth kinetics and verified tunnelling barrier thickness',
         'Argon milling',
         'Real lift-off and material redeposition',
         'Coupled electrothermal response',
@@ -139,7 +142,16 @@ if (process.argv[1]?.endsWith('transmon-shadow-al-preview.mjs')) {
   if (!sourcePath || !outPath)
     throw new Error('Usage: --gds sample.gds --output Al-preview.wafercad');
   const source = await readFile(sourcePath);
-  const { project, report } = await produceAuthorShadowPreview(source);
+  const thickness = valueArg(args, '--oxide-thickness-um');
+  const sourceNote = valueArg(args, '--oxide-source');
+  const barrier = thickness === null && sourceNote === null
+    ? null
+    : {
+        thicknessUm: Number(thickness),
+        provenance: 'hypothesis',
+        source: sourceNote || '',
+      };
+  const { project, report } = await produceAuthorShadowPreview(source, { barrier });
   await writeFile(outPath, project);
   if (valueArg(args, '--report'))
     await writeFile(valueArg(args, '--report'), JSON.stringify(report, null, 2) + '\n');
