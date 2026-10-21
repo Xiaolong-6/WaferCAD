@@ -55,6 +55,10 @@ import { buildRenderSurfacePlanAsync } from './renderer-surface-plan-async.js';
 import { appendSidewallTriangle } from './renderer-sidewall-triangle.js';
 import { clipBorderPositions } from './renderer-border-position-clip.js';
 import { clipContinuousDisplayZBreak } from './continuous-display-z-break.js';
+import {
+  buildContinuousZBreakCaps,
+  buildContinuousPlanarZBreakCaps,
+} from './continuous-z-break-caps.js';
 import { createDerivedDataCache } from './renderer-derived-cache.js';
 import {
   mergeCollinearSidewallParts,
@@ -190,6 +194,8 @@ export function createThreeView({
   let physicalSceneModel = null;
   let continuousRoiCapObjects = [];
   let continuousRoiCapSignature = null;
+  let continuousZCapObjects = [];
+  let continuousZCapSignature = null;
   let physicalSceneSignature = null;
   let physicalSurfacePlan = null;
   let activeSceneVariant = null;
@@ -966,6 +972,8 @@ export function createThreeView({
     physicalSceneModel = null;
     continuousRoiCapObjects = [];
     continuousRoiCapSignature = null;
+    continuousZCapObjects = [];
+    continuousZCapSignature = null;
     physicalSceneSignature = null;
     physicalSurfacePlan = null;
   }
@@ -3378,6 +3386,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         if (mesh) {
           mesh.userData.continuousLayerId = part.layerId;
           mesh.userData.continuousRoiCap = true;
+          mesh.userData.continuousRoiCapSourcePart = part;
           mesh.userData.continuousCroppedPart = displayed;
           continuousRoiCapObjects.push(mesh);
         }
@@ -3428,6 +3437,87 @@ diffuseColor.a *= waferCadAlphaScale;`,
       );
       return changed;
     };
+    // Build the two horizontal Z Break cut faces from physically cropped,
+    // canonical mesh triangles. The separate ROI caps close any open contour
+    // on a rectangular inspection boundary. This never touches model/History.
+    const updateZBreakCaps = () => {
+      const signature = JSON.stringify([roiBounds, zBreakSignature()]);
+      if (continuousZCapSignature === signature) return false;
+      for (const mesh of continuousZCapObjects) {
+        discardContinuousBorder(mesh);
+        group.remove(mesh);
+        presentationObjects.delete(mesh);
+        zDisplayObjects.delete(mesh);
+        mesh.geometry?.dispose?.();
+        mesh.material?.dispose?.();
+      }
+      continuousZCapObjects = [];
+      continuousZCapSignature = signature;
+      if (!currentZDisplay?.enabled) {
+        host.dataset.continuousZBreakCapTriangles = '0';
+        return true;
+      }
+      const byLayer = new Map();
+      for (const mesh of presentationObjects) {
+        const layerId = mesh.userData?.continuousLayerId;
+        if (!layerId || mesh.userData.continuousZBreakCap) continue;
+        const source =
+          mesh.userData.continuousRoiSourcePart ||
+          mesh.userData.continuousRoiCapSourcePart ||
+          mesh.userData.continuousFullPart;
+        if (!source) continue;
+        if (!byLayer.has(layerId)) byLayer.set(layerId, []);
+        byLayer.get(layerId).push(source);
+      }
+      const exterior = { kind: 'material-exterior' };
+      const state = presentationState(exterior, getInspection() || {}).materialState;
+      for (const [layerId, parts] of byLayer) {
+        // Unreleased layers retain exact 2.5D ownership. Their sampled display
+        // meshes can omit buried interfaces and cannot reliably form planar
+        // cut loops. Only released fronts need native surface intersections.
+        const released = owner.fronts.some((front) => front.layerId === layerId);
+        const capParts = released
+          ? buildContinuousZBreakCaps(THREE, parts, currentZDisplay)
+          : buildContinuousPlanarZBreakCaps(
+              THREE,
+              owner,
+              layerId,
+              currentZDisplay,
+              roiBounds,
+            );
+        for (const part of capParts) {
+          const geometry = new THREE.BufferGeometry();
+          geometry.setAttribute('position', new THREE.BufferAttribute(part.positions, 3));
+          geometry.setAttribute('normal', new THREE.BufferAttribute(part.normals, 3));
+          geometry.userData.analyticSurfaceNormals = true;
+          let material = createSurfaceMaterial(
+            layerById(model, layerId),
+            state,
+            null,
+            exterior,
+          );
+          if (material.userData?.waferCadPooledPresentationMaterial) {
+            material = material.clone();
+            material.userData.waferCadPooledPresentationMaterial = false;
+          }
+          material.side = THREE.DoubleSide;
+          const mesh = addSurfaceMesh(geometry, material, state, null, 0, false, null, exterior);
+          if (!mesh) continue;
+          mesh.userData.continuousLayerId = layerId;
+          mesh.userData.continuousZBreakCap = true;
+          mesh.userData.continuousCroppedPart = { ...part, layerId };
+          continuousZCapObjects.push(mesh);
+        }
+      }
+      applyZDisplayState(model);
+      host.dataset.continuousZBreakCapTriangles = String(
+        continuousZCapObjects.reduce(
+          (sum, mesh) => sum + (mesh.geometry.getAttribute('position')?.count || 0) / 3,
+          0,
+        ),
+      );
+      return true;
+    };
     const updateMaterialAppearance = () => {
       const inspection = getInspection() || {};
       for (const mesh of presentationObjects) {
@@ -3455,6 +3545,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       applyPresentationState();
       cropMaterialMeshes();
       const roiChanged = updateRoiCaps();
+      updateZBreakCaps();
       updateMaterialAppearance();
       // The default camera still targets the full wafer after an ROI change.
       // Reframe only when the actual rectangle changes; ordinary orbit/pan and
@@ -3566,6 +3657,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     applyPresentationState({ profile: false, settle: true });
     cropMaterialMeshes();
     updateRoiCaps();
+    updateZBreakCaps();
     updateMaterialAppearance();
     host.dataset.renderState = 'ready';
     stats.textContent = 'Continuous Etch · analytic material, sampled display mesh';
