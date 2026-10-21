@@ -146,9 +146,10 @@ if (process.argv[1]?.endsWith('transmon-shadow-al-preview.mjs')) {
   const sourceNote = valueArg(args, '--oxide-source');
   if (args.includes('--oxide-thickness-um') !== args.includes('--oxide-source'))
     throw new Error('Oxide hypothesis requires both --oxide-thickness-um and --oxide-source.');
-  const barrier = thickness === null && sourceNote === null
-    ? null
-    : {
+  const barrier =
+    thickness === null && sourceNote === null
+      ? null
+      : {
         thicknessUm: Number(thickness),
         provenance: 'hypothesis',
         source: sourceNote || '',
