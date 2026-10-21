@@ -215,7 +215,12 @@ try {
         'etch({ target: "Base", depth: "2 µm", profile: "continuous", shape: "circular", face: "front", area: "full" });',
       );
     await page.locator('#recipeApplyCodeBtn').click();
-    assert.doesNotMatch(await page.locator('#recipeValidation').innerText(), /✕/);
+    // Continue-on-current must fail closed: the active physical model already
+    // has a canonical continuous release. Rebuild Base is the intended replay.
+    assert.match(
+      await page.locator('#recipeValidation').innerText(),
+      /follow-on Process on exact continuous material is unsupported/,
+    );
     await page.locator('#recipeRunStart').selectOption('new-base');
     assert.doesNotMatch(await page.locator('#recipeValidation').innerText(), /✕/);
     await page.locator('#recipeRunAllBtn').click();
