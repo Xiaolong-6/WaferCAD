@@ -8,6 +8,9 @@ on:
       - '.github/workflows/pages.yml'
       - '.github/workflows/release-evidence-contract.yml'
       - 'scripts/release/verified-pr-release.mjs'
+      - '.github/workflows/quality.yml'
+      - 'scripts/local-verification.mjs'
+      - 'site/tests/local-verification.test.mjs'
       - 'site/tests/release-evidence.test.mjs'
       - 'site/tests/ci-development-gates.test.mjs'
       - 'site/tests/ci-workflow-architecture.test.mjs'
@@ -26,4 +29,4 @@ jobs:
         with:
           node-version: '24'
       - name: Verify routing, evidence and failure contracts
-        run: node --test site/tests/release-evidence.test.mjs
+        run: node --test site/tests/release-evidence.test.mjs site/tests/local-verification.test.mjs site/tests/ci-development-gates.test.mjs site/tests/ci-workflow-architecture.test.mjs

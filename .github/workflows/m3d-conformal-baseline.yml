@@ -9,7 +9,6 @@ on:
       - "site/app.html"
       - "site/controllers/process-panel-controller.js"
       - "docs/wiki/**"
-      - ".github/workflows/m3d-conformal-baseline.yml"
   workflow_dispatch:
 
 concurrency:
@@ -51,21 +50,6 @@ jobs:
             site/tests/m3d-reconstruction-regression.test.mjs \
             site/tests/m3d-bundled-example.test.mjs \
             site/tests/m3d-persistence-roundtrip.test.mjs
-
-  quality:
-    name: Candidate quality and docs
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: "24"
-          cache: npm
-      - run: npm ci --ignore-scripts --no-audit --no-fund
-      - run: npm run lint
-      - run: npm run format:check
-      - run: npm run docs:check
 
   approved-windows-visual-baseline:
     name: Native v2 M3D Section / historical layout / ${{ matrix.variant }}
