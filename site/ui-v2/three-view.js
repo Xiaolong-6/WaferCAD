@@ -66,6 +66,7 @@ export function createWorkstationThreeView({ store, workstation }) {
   // project's persisted Quality choice or change canonical scene geometry.
   let startupPreview = Boolean(workstation.progressive);
   let firstSceneFrame = false;
+  let firstExactSceneFrame = false;
   let backgroundRefine = false;
   let assemblyFinished = false;
   let refinementStartSerial = 0;
@@ -146,8 +147,23 @@ export function createWorkstationThreeView({ store, workstation }) {
     if (!progressive || progressive.snapshot().project !== 'ready') return;
     const serial = Number(host.dataset.rendererFrameSerial || 0);
     if (!serial || !['ready', 'refining'].includes(host.dataset.renderState)) return;
-    if (!firstSceneFrame) {
+    // A caps-only frame is interactive but must never start a second Quality
+    // build while Material Solids Boolean is still running in the first Worker.
+    if (host.dataset.renderFidelity === 'approximate') {
+      if (!host.dataset.rendererProgressiveFirstFrameMs) return;
+      if (!firstSceneFrame) {
+        firstSceneFrame = true;
+        progressive.viewFrame('three', 'coarse');
+      }
+      return;
+    }
+    if (
+      host.dataset.renderFidelity !== 'exact-surface-plan' ||
+      !host.dataset.rendererExactFirstFrameMs
+    ) return;
+    if (!firstExactSceneFrame) {
       firstSceneFrame = true;
+      firstExactSceneFrame = true;
       if (state.threeFastMode === false) {
         progressive.viewFrame('three', 'coarse');
         scheduleQualityRefinement();
