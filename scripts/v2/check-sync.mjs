@@ -428,14 +428,14 @@ try {
         'History cannot overwrite the Layers display preference',
       );
       await command('section', 'legend');
-      await page.getByRole('checkbox', { name: 'Show Sync front', exact: true }).uncheck();
+      await page.getByRole('button', { name: 'Hide Sync front', exact: true }).click();
       assert.equal((await snap()).model.layers.find((l) => l.id === layer.id).visible, false);
       await ready3d();
       assert.ok(
         Number(await page.locator('#threeHost').getAttribute('data-renderer-draw-calls')) > 0,
       );
       await view('section');
-      await page.getByRole('checkbox', { name: 'Show Sync front', exact: true }).check();
+      await page.getByRole('button', { name: 'Show Sync front', exact: true }).click();
       if (width === 1440) {
         await panel('project');
         const downloadPromise = page.waitForEvent('download');

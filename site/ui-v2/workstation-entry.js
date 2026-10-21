@@ -89,7 +89,7 @@ try {
     temporaryFocus: null,
   };
   let message = 'Opening workspace…',
-    commitVersion = 'commit local',
+    commitVersion = 'local',
     commitSha = '',
     starting = true;
   const adapters = window.WaferCadV2DomainAdapters.create();
@@ -453,7 +453,7 @@ try {
       const commit = String(build?.commit || '').trim();
       if (!/^[0-9a-f]{7,64}$/i.test(commit)) return;
       commitSha = commit;
-      commitVersion = `commit ${commit.slice(0, 7)}`;
+      commitVersion = commit.slice(0, 7);
       shell.renderVersion();
     })
     .catch(() => {});

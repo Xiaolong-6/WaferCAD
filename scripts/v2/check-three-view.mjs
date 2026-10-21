@@ -24,6 +24,21 @@ const report = {
 };
 const distance = (camera) => Math.hypot(...camera.position.map((v, i) => v - camera.target[i]));
 const difference = (a, b) => Math.hypot(...a.map((v, i) => v - b[i]));
+// Reuse the original command whether layout leaves it in the header or moves it into More.
+async function clickThreeTool(page, action) {
+  const control = page.locator(`[data-action="${action}"]`);
+  if (!(await control.isVisible())) {
+    await page.getByRole('button', { name: '3D more tools', exact: true }).click();
+    assert.equal(await control.isVisible(), true, `${action} should be visible in More`);
+  }
+  await control.click();
+  await waitForPaint(page);
+  assert.equal(
+    await page.locator('#p-overflow-3d:popover-open').count(),
+    0,
+    'Choosing a 3D command must dismiss More',
+  );
+}
 const browser = await launchBrowser();
 try {
   report.browser = browser.version();
@@ -76,13 +91,7 @@ try {
         ),
         [],
       );
-      const command = async (action) => {
-        const control = page.locator(`[data-action="${action}"]`);
-        if (!(await control.isVisible()))
-          await page.getByRole('button', { name: '3D more tools', exact: true }).click();
-        await control.click();
-        await waitForPaint(page);
-      };
+      const command = (action) => clickThreeTool(page, action);
       const camera = async () => (await snapshot()).threeCamera;
       const wheel = async () => {
         const b = await canvas.boundingBox();
@@ -350,7 +359,7 @@ try {
     for (const mode of ['rotate', 'pan', 'none']) {
       if ((await snapshot()).local.three.mode !== mode) {
         const action = mode === 'none' ? (await snapshot()).local.three.mode : mode;
-        await page.locator(`[data-action="tool:${action}:three"]`).click();
+        await clickThreeTool(page, `tool:${action}:three`);
       }
       assert.equal((await snapshot()).local.three.mode, mode);
       if (mode !== 'none') {

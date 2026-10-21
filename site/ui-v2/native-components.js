@@ -28,6 +28,15 @@
       text,
     );
   }
+  function visibilityButton(name, visible) {
+    return button('', null, visible ? 'eye' : 'eyeOff', {
+      class: 'wc-button v2-visibility-button',
+      'aria-label': `${visible ? 'Hide' : 'Show'} ${name}`,
+      'aria-pressed': String(visible),
+      'data-help': 'section.visibility',
+      title: `${visible ? 'Hide' : 'Show'} ${name}`,
+    });
+  }
   function select(label, key, options, value) {
     return el(
       'label',
@@ -135,6 +144,7 @@
         id,
         popover: 'auto',
         role: 'menu',
+        tabindex: -1,
         'aria-label': `${label} more tools`,
       },
       overflow,
@@ -153,7 +163,25 @@
       trigger.setAttribute('aria-expanded', String(event.newState === 'open'));
       if (event.newState === 'open') {
         position();
-        overflow.find((item) => !item.disabled)?.focus({ preventScroll: true });
+        // Focus the menu itself, not the first tool: the global tooltip for
+        // that tool would otherwise cover the open More menu. Arrow keys
+        // still move focus to commands via the menu keyboard handler.
+        menu.focus({ preventScroll: true });
+      }
+    });
+    // Choosing a command in More dismisses the menu just like a toolbar
+    // command. The original button and its click event still bubble to the
+    // owning view controller; no duplicate command state is introduced.
+    menu.addEventListener('click', (event) => {
+      const command = event.target.closest('button[data-action]');
+      if (command && menu.contains(command) && !command.disabled && menu.matches(':popover-open')) {
+        menu.hidePopover();
+        // View controllers update aria-pressed later in this same bubbling
+        // click. Keep the menuitemcheckbox mirror correct on reopening.
+        requestAnimationFrame(() => {
+          if (command.hasAttribute('aria-pressed'))
+            command.setAttribute('aria-checked', command.getAttribute('aria-pressed'));
+        });
       }
     });
     menu.addEventListener('keydown', (event) => {
@@ -166,7 +194,8 @@
       }
       if (!['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return;
       const items = overflow.filter((item) => !item.disabled);
-      const index = items.indexOf(document.activeElement);
+      const focusedIndex = items.indexOf(document.activeElement);
+      const index = focusedIndex < 0 ? (event.key === 'ArrowUp' ? 0 : -1) : focusedIndex;
       const next =
         event.key === 'Home'
           ? 0
@@ -186,12 +215,16 @@
       ),
     );
     const toolStrip = el('div', { class: 'p-tool-strip' }, toolGroups);
+    const anchor = el('div', { class: 'p-overflow-anchor' }, trigger, menu);
     const bar = el(
       'div',
       { class: 'p-toolbar', role: 'toolbar', 'aria-label': `${label} tools` },
       toolStrip,
-      el('div', { class: 'p-overflow-anchor' }, trigger, menu),
+      anchor,
     );
+    // The same controls are reparented into More: actions, toggles and listeners remain unique.
+    // Available toolbar width, not screen orientation, determines what enters More.
+    // When space is tight, move Pan/Zoom before other commands; Fit stays last.
     const tools = layoutGroups.flat();
     const roles = new Map(tools.map((item) => [item, item.getAttribute('role')]));
     // Move the original controls, preserving actions and toggle state. No domain state is owned here.
@@ -208,11 +241,11 @@
           else item.removeAttribute('role');
         });
       });
-      const hidden = [];
-      const bounds = toolStrip.getBoundingClientRect();
-      for (let i = tools.length - 1; i >= 0; i--) {
-        if (tools[i].getBoundingClientRect().right <= bounds.right + 0.5) break;
-        const item = tools[i];
+      // The More trigger must not consume width while all commands fit.
+      // If the full strip clips, expose the trigger and recalculate before moving tools.
+      anchor.hidden = true;
+      const hidden = new Set();
+      const hide = (item) => {
         item.setAttribute(
           'role',
           item.hasAttribute('aria-pressed') ? 'menuitemcheckbox' : 'menuitem',
@@ -227,18 +260,46 @@
               item.getAttribute('aria-label') || item.title,
             ),
           );
-        hidden.unshift(item);
-        menu.prepend(item);
+        hidden.add(item);
+        menu.append(item);
+      };
+      const outOfBounds = () => {
+        const bounds = toolStrip.getBoundingClientRect();
+        return tools.some(
+          (item) =>
+            toolStrip.contains(item) && item.getBoundingClientRect().right > bounds.right + 0.5,
+        );
+      };
+      if (outOfBounds()) {
+        anchor.hidden = false;
+        while (outOfBounds()) {
+          const remaining = tools.filter((item) => toolStrip.contains(item));
+          if (!remaining.length) break;
+          // Only overflow when the *actual view header* is too narrow.
+          // Pan/Zoom are lower priority; Fit stays available as long as possible.
+          const candidate =
+            remaining
+              .filter((item) => /^tool:(pan|zoom):/.test(item.dataset.action || ''))
+              .at(-1) ||
+            remaining.filter((item) => !/^fit:/.test(item.dataset.action || '')).at(-1) ||
+            remaining.at(-1);
+          hide(candidate);
+        }
       }
-      overflow.splice(0, overflow.length, ...hidden);
-      if (!hidden.length && menu.matches(':popover-open')) menu.hidePopover();
-      trigger.disabled = hidden.length === 0;
+      // Maintain keyboard order regardless of which icon overflowed first.
+      const ordered = tools.filter((item) => hidden.has(item));
+      menu.append(...ordered);
+      overflow.splice(0, overflow.length, ...ordered);
+      if (!ordered.length && menu.matches(':popover-open')) menu.hidePopover();
+      trigger.disabled = ordered.length === 0;
       if (focused !== document.activeElement && tools.includes(focused)) {
-        if (!hidden.includes(focused) || menu.matches(':popover-open'))
+        if (!hidden.has(focused) || menu.matches(':popover-open'))
           focused.focus({ preventScroll: true });
         else trigger.focus({ preventScroll: true });
       }
     };
+    const onResize = () => arrange();
+    window.addEventListener('resize', onResize);
     const observer = new ResizeObserver(() => {
       if (!bar.isConnected) observer.disconnect();
       else arrange();
@@ -249,6 +310,7 @@
       () => {
         disposed = true;
         observer.disconnect();
+        window.removeEventListener('resize', onResize);
       },
       { once: true },
     );
@@ -280,6 +342,7 @@
   window.WaferCadV2Components = Object.freeze({
     el,
     button,
+    visibilityButton,
     select,
     field,
     stepper,
