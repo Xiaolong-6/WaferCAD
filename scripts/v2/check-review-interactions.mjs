@@ -62,12 +62,9 @@ try {
       await waitForPaint(page);
       assert.equal(await layers.getAttribute('aria-pressed'), 'true');
       assert.equal(await page.locator('#layerLegend').isVisible(), true);
-      // Material identity is owned by the creating Process Step. The Layers legend
-      // opens that Step for editing instead of changing the live model in-place.
-      const editInHistory = page.getByRole('button', {
-        name: 'Edit TiO2 in History',
-        exact: true,
-      });
+      // Focusing a Layer is inspection-only. Explicit Actions -> Edit source
+      // step is the sole entry to the owning Process History transaction.
+      const focus = page.getByRole('button', { name: 'Focus TiO2', exact: true });
       const inspectCanvas = () =>
         page.locator('#sectionCanvas').evaluate((canvas) => ({
           width: canvas.width,
@@ -76,8 +73,32 @@ try {
         }));
       const normal = await inspectCanvas();
       const inspectionBefore = await snapshot();
-      assert.equal(await page.getByRole('textbox', { name: 'Name for TiO2' }).count(), 0);
-      await editInHistory.click();
+      assert.equal(await focus.getAttribute('aria-pressed'), 'false');
+      await focus.click();
+      await waitForPaint(page);
+      assert.equal(await focus.getAttribute('aria-pressed'), 'true');
+      assert.deepEqual((await snapshot()).model, inspectionBefore.model);
+      assert.deepEqual((await snapshot()).workflow.steps, inspectionBefore.workflow.steps);
+      assert.notEqual(
+        (await page.locator('#applyOperationBtn').textContent())?.trim(),
+        'Save edited Step',
+        'Layer focus must not open historical Process editing',
+      );
+      assert.notEqual(
+        (await inspectCanvas()).png,
+        normal.png,
+        'Layer focus must de-emphasize other Section materials',
+      );
+      await focus.click();
+      await waitForPaint(page);
+      assert.equal(await focus.getAttribute('aria-pressed'), 'false');
+      assert.equal(
+        (await inspectCanvas()).png,
+        normal.png,
+        'Unfocus restores the exact Section raster without model mutation',
+      );
+      await page.getByRole('button', { name: 'Actions for TiO2', exact: true }).click();
+      await page.getByRole('button', { name: 'Edit source step in History', exact: true }).click();
       await page.waitForFunction(
         () =>
           document.querySelector('#applyOperationBtn')?.textContent?.trim() === 'Save edited Step',
@@ -141,12 +162,13 @@ try {
           .evaluateAll((rows) => rows.map((e) => getComputedStyle(e).opacity)),
         ['1', '1', '1', '1', '1'],
       );
-      const checks = await page
-        .locator('.v2-legend-row > input[type="checkbox"]')
+      const eyes = await page
+        .locator('.v2-legend-row > .v2-visibility-button')
         .evaluateAll((es) => es.map((e) => e.getBoundingClientRect().right));
+      assert.equal(eyes.length, 5, 'Every Layer must have an independent eye visibility action');
       assert.ok(
-        Math.max(...checks) - Math.min(...checks) <= 0.25,
-        'Visibility checks are right aligned',
+        Math.max(...eyes) - Math.min(...eyes) <= 0.25,
+        'Layer eye buttons are right aligned',
       );
       const palette = page.getByRole('combobox', { name: 'Structure color palette', exact: true });
       await palette.selectOption('random');
@@ -224,7 +246,12 @@ try {
     assert.equal((await snapshot()).model.electricalRegions[0].depthProfile, 'follow');
     await depth.click();
     await waitForPaint(page);
-    await page.getByRole('checkbox', { name: `Show ${item.name}`, exact: true }).uncheck();
+    await page.getByRole('button', { name: `Hide ${item.name}`, exact: true }).click();
+    assert.equal(
+      await page.getByRole('button', { name: `Show ${item.name}`, exact: true }).count(),
+      1,
+      'Electrical visibility must be an eye button, not a Checkbox',
+    );
     await waitForPaint(page);
     const expected = structuredClone(initial.model);
     expected.electricalRegions[0].depthProfile = 'smooth';
