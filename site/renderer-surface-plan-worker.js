@@ -22,10 +22,7 @@ self.onmessage = async ({ data }) => {
       const { buildProgressiveSurfacePreview } = await previewModule;
       const preview = buildProgressiveSurfacePreview(data.model, data.clip ?? null);
       if (preview) {
-        self.postMessage(
-          { id: 1, type: 'preview', preview },
-          [preview.borderPositions.buffer],
-        );
+        self.postMessage({ id: 1, type: 'preview', preview }, [preview.borderPositions.buffer]);
       }
     }
     const [{ buildRenderSurfacePlan }, { shouldStreamSurfacePlan, surfacePlanStreamPackets }] =
