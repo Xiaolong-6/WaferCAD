@@ -245,3 +245,44 @@ capture with zero page errors; two actual 0.2 µm uncoated intervals remain
 hard to resolve in the current 3D view, so final visual acceptance is
 **not passed**. Normal-origin Workstation/Worker/History/Recovery and
 the exact Git HEAD full release Quality gate remain unverified.
+
+
+## Fixed-angle Direct: independent XY and Z sidewall bounds
+
+The experimental \`isolated-step\` sidewall geometry now supports partial **length**
+clipping for an upper, axis-aligned rectangular resist opening when the beam
+has **zero component along the facet tangent**. The original physical
+sidewall interval is clipped in XY and only that retained line segment is
+passed to the existing analytic upper-aperture Z interval solver. Both
+endpoints snap **inward** to the established 0.1 nm persistence quantum.
+If clipping does not occur, the old wall coordinates are preserved exactly.
+
+A critical native Process control-path error was also fixed: a narrow
+upper aperture may completely block **every horizontal surface** while
+still illuminating a **vertical surface**. In that case ordinary Direct
+must not return \`changed: false\` before materializing the eligible sidewall.
+The absence of horizontal hit, material contact and eligible horizontal
+surface is now checked together with actual nonempty sidewall plans, without
+weakening the original default Direct contracts.
+
+**Actual native Kernel fixture:** one raised rectangular step, 40 nm
+nominal Al at θ=45°, φ=0°, an upper opening with X bounds 2.2–3.4 µm,
+Y bounds −0.4…0.4 µm and resist Z bounds 6–6.6 µm. The resulting
+sidewall Al occupies X=2–2.04 µm, Y=−0.4…0.4 µm, Z=5.2–5.8 µm,
+with an actual material **volume of 0.0192 µm³**, matching the analytic
+product (0.04 × 0.8 × 0.6). No metal is deposited along that wall
+outside the upper mask's Y interval or in either unilluminated Z band.
+Project strict model/schema validation, compact export, expansion and
+re-validation passed, without altering global scientific tolerances.
+Independent local geometry and relevant Process/Conformal/History/Project
+regressions passed **32/32** on the reconstructed baseline. Evidence,
+full limitations, and fixture SHA-256 are in \`direct-sidewall-xy-z-science.json\`.
+
+Tangentially oblique incidence coupling wall length to Z, nonrectangular
+partial XY apertures, competing tall occluders, arbitrary facets,
+resist contacting the wall, dynamic thickness/self-shadow and original
+Q2 junction fabrication remain **unsupported**; such cases remain
+fail-closed. The real native Chromium diagnostic rendered the validated
+model without page errors, but the 40 nm band was not distinctly
+recognizable under inspected views. **Visual acceptance and exact branch
+HEAD final Quality remain open.**

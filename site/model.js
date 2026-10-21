@@ -1516,7 +1516,8 @@ function applyOperationImpl(
       ? sanitizeProcessGeometry(snapProcessGeometry(exposure.area))
       : exposure.area;
   }
-  if (isEmpty(active)) return { changed: false };
+  // A ray may miss every horizontal surface but still illuminate a wall.
+  if (isEmpty(active) && !sidewallPlans.length) return { changed: false };
   if (!hasMaterial(model)) {
     return {
       changed: false,
@@ -1526,7 +1527,7 @@ function applyOperationImpl(
   const touchesMaterial = model.regions.some(
     (region) => !isEmpty(intersection(active, region.geom)),
   );
-  if (!touchesMaterial) {
+  if (!touchesMaterial && !sidewallPlans.length) {
     return { changed: false, error: 'The selected area contains no material.' };
   }
   if (type === 'implant' || type === 'electrical') {
@@ -1708,7 +1709,7 @@ function applyOperationImpl(
         !isEmpty(intersection(active, region.geom))
       );
     });
-    if (!eligible) {
+    if (!eligible && !(type === 'add' && sidewallPlans.length)) {
       return {
         changed: false,
         error: 'The selected area has no eligible horizontal surface for directional deposition.',

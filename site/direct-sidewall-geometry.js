@@ -1,5 +1,6 @@
 import { difference, intersection, isEmpty, pointInMulti, rectMulti } from './vector-geometry.js';
 import { sidewallVisibleHeightIntervals } from './direct-sidewall-aperture.js';
+import { clipFixedSidewallLength } from './direct-sidewall-xy-clip.js';
 
 const TOL = 1e-8;
 
@@ -60,21 +61,31 @@ export function isolatedDirectSidewallPlan(model, area, incidence, thicknessUm) 
     }
     const flux = nx * incidentX + ny * incidentY;
     if (flux <= TOL) continue;
-    const visibleHeightIntervals = sidewallVisibleHeightIntervals(
-      { a, b, normal: [nx, ny], lowZ, highZ },
-      incidence,
-    );
-    if (!visibleHeightIntervals.length) continue;
+    const patches = clipFixedSidewallLength({ a, b, lowZ, highZ }, incidence);
     const width = travelWidth * flux;
     if (width < 1e-4)
       throw new RangeError('Projected sidewall thickness is below the 0.1 nm XY grid.');
-    const strip =
-      Math.abs(dx) < TOL
-        ? rectMulti(width, length, midpoint[0] + (nx * width) / 2, midpoint[1])
-        : rectMulti(length, width, midpoint[0], midpoint[1] + (ny * width) / 2);
-    const clipped = intersection(intersection(strip, low.geom), area);
-    if (!isEmpty(clipped))
-      strips.push({ area: clipped, lowZ, highZ, visibleHeightIntervals, projectedWidthUm: width });
+    for (const patch of patches) {
+      const visibleHeightIntervals = sidewallVisibleHeightIntervals(patch, incidence);
+      if (!visibleHeightIntervals.length) continue;
+      const pa = patch.a,
+        pb = patch.b,
+        segmentLength = Math.hypot(pb[0] - pa[0], pb[1] - pa[1]),
+        center = [(pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2];
+      const strip =
+        Math.abs(dx) < TOL
+          ? rectMulti(width, segmentLength, center[0] + (nx * width) / 2, center[1])
+          : rectMulti(segmentLength, width, center[0], center[1] + (ny * width) / 2);
+      const clipped = intersection(intersection(strip, low.geom), area);
+      if (!isEmpty(clipped))
+        strips.push({
+          area: clipped,
+          lowZ,
+          highZ,
+          visibleHeightIntervals,
+          projectedWidthUm: width,
+        });
+    }
   }
   if (!strips.length) throw new Error('No illuminated sidewall with exposed lower material.');
   return strips;

@@ -1,0 +1,79 @@
+{
+  "scope": "Fixed-angle Direct: one isolated rectangular step; analytic partial wall length and height. Not full Josephson junction or generic 3D mesh.",
+  "baseline": "Local recovered source artifact with programmatically patched Direct core matching relevant branch behavior; exact branch HEAD checkout not available.",
+  "beam": {
+    "tiltDeg": 45,
+    "azimuthDeg": 0,
+    "nominalHorizontalThicknessUm": 0.04
+  },
+  "resist": {
+    "bottomZUm": 6,
+    "topZUm": 6.6,
+    "openingRectangle": {
+      "x": [
+        2.2,
+        3.4
+      ],
+      "y": [
+        -0.4,
+        0.4
+      ]
+    }
+  },
+  "wall": {
+    "xUm": [
+      2,
+      2.04
+    ],
+    "yUm": [
+      -0.4,
+      0.4
+    ],
+    "zUm": [
+      5.2,
+      5.8
+    ],
+    "physicalVolumeUm3": 0.0192,
+    "volumeFromKernelUm3": 0.019200000000000005
+  },
+  "project": {
+    "sha256": "cbb36d9546ddc43daeef784adf13ada26aad582bc80cd5568cdbf28345853522",
+    "format": "WaferCAD-vector v14",
+    "strictModelAndProjectValidation": true,
+    "storageCodec": "compact",
+    "exportImportVerified": true,
+    "regions": 3,
+    "wallRegions": 1
+  },
+  "testResults": {
+    "focusedAndRelated": 32,
+    "passed": 32,
+    "failed": 0,
+    "scopes": [
+      "Direct wall XY/Z geometric clipping",
+      "native Process output",
+      "off-axis rejection and transaction rollback",
+      "Process topology single ownership",
+      "History/Project",
+      "conformal regression",
+      "v3 geometry storage"
+    ]
+  },
+  "renderer": {
+    "method": "scripts/offline-native-app-capture.py headed Chromium + SwiftShader",
+    "origin": "about-blank-null-origin",
+    "nativeThreeRendered": true,
+    "pageErrors": 0,
+    "unexpectedRejections": 0,
+    "visualAcceptance": "not passed: wall film and separated boundary not distinctly visible; Worker/History/Recovery unverified"
+  },
+  "limits": [
+    "Beam tangential component must be zero for partial wall-length exposure",
+    "Opening must be an axis-aligned rectangle for partial XY clipping",
+    "Wall must be an isolated rectangular step",
+    "No dynamic deposition, sidewall self-shadow, or material growth kinetics",
+    "No full author Q2 MMA/PMMA undercut acceptance",
+    "No exact branch-HEAD Quality or normal-origin browser gate yet"
+  ],
+  "source": "User original author GDS is a separate research fixture; this simplified rectangular wall science fixture is synthetic and expressly not the author transmon geometry."
+}
