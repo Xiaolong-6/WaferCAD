@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { appendFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { buildCiTestPlan } from '../ci-test-plan.mjs';
+import { EVIDENCE_FILES, verifyQuality } from '../local-verification.mjs';
 
 // Release evidence is evaluated exclusively on trusted main-push runners.
 // Missing data must cause a complete release gate, never a fast publication.
@@ -24,9 +25,16 @@ const EXTENDED_OWNERS = Object.freeze([
   'renderer',
 ]);
 
+function sourcePaths(paths) {
+  if (!Array.isArray(paths) || !paths.length || paths.some((path) => typeof path !== 'string')) {
+    return [];
+  }
+  return paths.filter((path) => !EVIDENCE_FILES.includes(path));
+}
+
 export function targetedProductionGates(paths) {
-  if (!Array.isArray(paths) || !paths.length || paths.some((p) => typeof p !== 'string'))
-    return null;
+  paths = sourcePaths(paths);
+  if (!paths.length) return null;
   if (
     paths.some(
       (path) =>
@@ -80,8 +88,8 @@ export const INFRA_FILES = Object.freeze([
 ]);
 
 export function classifyRelease(paths) {
-  if (!Array.isArray(paths) || !paths.length || paths.some((p) => typeof p !== 'string'))
-    return 'full';
+  paths = sourcePaths(paths);
+  if (!paths.length) return 'full';
   if (paths.every((p) => INFRA_FILES.includes(p))) return 'infra';
   if (paths.some((p) => p.startsWith('.github/') || p.startsWith('scripts/release/')))
     return 'full';
@@ -150,6 +158,18 @@ export function evaluateRelease({
     mode,
     reason: 'exact tree and complete verified PR checks',
   };
+}
+
+export function fullQualityVerification(steps) {
+  if (!Array.isArray(steps)) return null;
+  const owners = steps.filter((step) =>
+    [
+      'Final lint, formatting, generated documentation and Node tests',
+      'Require full local Quality evidence',
+    ].includes(step?.name),
+  );
+  if (owners.length !== 1 || owners[0].conclusion !== 'success') return null;
+  return owners[0].name === 'Require full local Quality evidence' ? 'local-evidence' : 'executed';
 }
 
 function git(...args) {
@@ -290,14 +310,14 @@ async function findRelease() {
       ?.split('/')[0];
     if (jobId) {
       const job = await api('actions/jobs/' + jobId);
+      const verification = fullQualityVerification(job.steps);
       fullQuality =
-        job.head_sha === parents[1] &&
-        job.conclusion === 'success' &&
-        job.steps?.some(
-          (s) =>
-            s.name === 'Final lint, formatting, generated documentation and Node tests' &&
-            s.conclusion === 'success',
-        );
+        job.head_sha === parents[1] && job.conclusion === 'success' && verification !== null;
+      if (fullQuality && verification === 'local-evidence') {
+        // Recheck the reviewed local proof against this exact main source tree.
+        // This reads evidence only; it never repeats the underlying tests.
+        verifyQuality(process.cwd(), 'full');
+      }
     }
   }
   const verdict = evaluateRelease({

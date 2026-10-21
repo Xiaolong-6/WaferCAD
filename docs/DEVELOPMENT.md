@@ -113,11 +113,18 @@ Install the development-only tooling:
 npm ci
 ```
 
-Run the full check:
+Run the full check and record reusable Quality evidence after staging source changes:
 
 ```bash
-npm run check
+git add <changed-source-files>
+node scripts/local-verification.mjs run full
+git add .verification/quality/report.json .verification/quality/transcript.json.gz
 ```
+
+Use `node scripts/local-verification.mjs run draft` during development. Direct `npm run check`
+remains available, but does not generate the proof required by PR/release Quality.
+See [local Quality evidence](CI.md#local-quality-evidence) for invalidation,
+logs, toolchain requirements and limitations.
 
 Available commands:
 
