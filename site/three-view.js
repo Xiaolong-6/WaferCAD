@@ -3280,7 +3280,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     if (
       preview?.kind !== 'approximate-caps-preview' ||
       !Array.isArray(preview.caps) ||
-      !Array.isArray(preview.borderLines) ||
+      !(preview.borderPositions instanceof Float32Array) ||
       !rendering ||
       pendingRender ||
       generation !== sceneGeneration ||
@@ -3308,7 +3308,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         );
       }
       if (getInspection()?.borders !== false) {
-        addBorderPositions(preview.borderLines.flat(2), {
+        addBorderPositions(preview.borderPositions, {
           includeHidden: false,
           presentation: { kind: 'border', category: 'progressive-preview' },
         });
