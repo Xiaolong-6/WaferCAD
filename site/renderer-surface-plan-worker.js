@@ -17,12 +17,16 @@ self.onmessage = async ({ data }) => {
   if (data?.id !== 1 || data.action !== 'surface-plan') return;
   try {
     if (data.preview === true) {
-      // One bounded, non-authoritative frame before the expensive exact
-      // Material Solids Boolean. Never cache or serialize this sketch.
-      const { buildProgressiveSurfacePreview } = await previewModule;
-      const preview = buildProgressiveSurfacePreview(data.model, data.clip ?? null);
-      if (preview) {
-        self.postMessage({ id: 1, type: 'preview', preview }, [preview.borderPositions.buffer]);
+      // A display-only sketch must never be a prerequisite for scientific
+      // ownership. If preview generation or transfer fails, continue exact.
+      try {
+        const { buildProgressiveSurfacePreview } = await previewModule;
+        const preview = buildProgressiveSurfacePreview(data.model, data.clip ?? null);
+        if (preview) {
+          self.postMessage({ id: 1, type: 'preview', preview }, [preview.borderPositions.buffer]);
+        }
+      } catch (error) {
+        console.warn('Progressive 3D preview unavailable; computing exact solids:', error);
       }
     }
     const [{ buildRenderSurfacePlan }, { shouldStreamSurfacePlan, surfacePlanStreamPackets }] =
