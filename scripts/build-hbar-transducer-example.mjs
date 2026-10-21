@@ -392,7 +392,9 @@ export async function buildHbarTransducer(sourceBytes) {
     targets: [layers['SiO2 upper']],
     profile: 'planarize',
     targetZ: LOCAL_SI_HANDLE_UM / 2 + DIMS.oxideTotal,
-    thickness: 1,
+    // Recipe 'planarize' executes its thicknessUm as an absolute target Z.
+    // Supplying a dummy 1 um field is not equivalent to the History target.
+    thickness: LOCAL_SI_HANDLE_UM / 2 + DIMS.oxideTotal,
   });
   bookmark('S03 · Planarized 5.9 um silica acoustic cladding');
   operation(

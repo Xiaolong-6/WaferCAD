@@ -205,6 +205,110 @@ test('HBAR Recipe oxide opening does not etch 20 nm of Si relative to saved Hist
   }
 });
 
+test('all eleven HBAR Recipe operations reproduce the saved analytic material owner', async () => {
+  const modelApi = await import('../model.js');
+  const geometry = await import('../vector-geometry.js');
+  const { applyAdvancedProcessOperation } = await import('../advanced-process-operations.js');
+  const { applyContinuousRelease } = await import('../continuous-etch-process.js');
+  const recipe = project.processRecipe;
+  let current = modelApi.createModel(recipe.base);
+  current.layers[0].name = recipe.base.material;
+  const masks = new Map();
+  const areaFor = (step) => {
+    const captured = step.params.mask;
+    if (!captured) return current.boundary;
+    assert.equal(captured.sourceMode, 'file');
+    assert.equal(captured.cell, project.layout.root);
+    assert.equal(captured.layerKeys.length, 1);
+    const key = captured.layerKeys[0];
+    if (!masks.has(key)) {
+      const layer = Number(key.split('|')[0]);
+      const source = geometry.unionGeometries(
+        project.layout.elements
+          .filter((element) => element.layer === layer)
+          .map((element) => [[[...element.points, element.points[0]]]]),
+      );
+      masks.set(key, geometry.intersection(source, current.boundary));
+    }
+    return masks.get(key);
+  };
+  for (const [index, step] of recipe.steps.entries()) {
+    const p = step.params;
+    const area = areaFor(step);
+    let result;
+    if (step.command === 'record') {
+      current.revision++;
+      current.processRevision++;
+      result = { changed: true };
+    } else if (step.command === 'deposit') {
+      const params = {
+        type: 'add',
+        name: p.material,
+        thickness: p.thicknessUm,
+        growth: p.coverage,
+        face: p.face,
+      };
+      result =
+        applyAdvancedProcessOperation(current, params, area, modelApi, geometry) ||
+        modelApi.applyOperation(current, { ...params, area });
+    } else if (step.command === 'etch' && p.profile === 'continuous') {
+      const target = current.layers.find((layer) => layer.name === p.target);
+      assert.ok(target, 'Continuous release target must resolve after prior Recipe steps');
+      const applied = applyContinuousRelease(
+        current,
+        {
+          type: 'etch',
+          etchProfile: 'continuous',
+          face: p.face,
+          continuousShape: p.continuousShape,
+          continuousLateralUm: p.continuousLateralUm,
+          thickness: p.thicknessUm,
+          etchTargetLayerIds: [target.id],
+        },
+        area,
+      );
+      current = applied.model;
+      result = applied.result;
+    } else if (step.command === 'etch') {
+      const params = {
+        type: 'etch',
+        etchProfile: p.profile,
+        face: p.face,
+        thickness: p.thicknessUm,
+        etchTargetLayerIds: p.target
+          ? current.layers.filter((layer) => layer.name === p.target).map((layer) => layer.id)
+          : [],
+        ...(p.profile === 'planarize' ? { targetZ: p.thicknessUm } : {}),
+      };
+      result =
+        applyAdvancedProcessOperation(current, params, area, modelApi, geometry) ||
+        modelApi.applyOperation(current, { ...params, area });
+    } else {
+      assert.fail(`Unsupported candidate Recipe command: ${step.command}`);
+    }
+    assert.equal(result?.changed, true, `Recipe Step ${index + 1}: ${result?.error}`);
+    assert.equal(
+      current.regions.length,
+      project.snapshotBranches.nodes[index + 1].state.model.regions.length,
+      `Recipe Step ${index + 1} must preserve the saved History material partition count`,
+    );
+  }
+  assert.equal(recipe.steps.length, 11);
+  assert.equal(current.kernel, 'vector-continuous-etch-v1');
+  const canonicalOwner = (model) => {
+    const owner = structuredClone(model.continuousEtchOwner);
+    // The authoring script applies custom palette colors outside the Process
+    // operations.  Do not mistake appearance-only differences for geometry.
+    for (const layer of owner.sourceModel.layers) delete layer.color;
+    return owner;
+  };
+  assert.deepEqual(
+    canonicalOwner(current),
+    canonicalOwner(project.model),
+    'Complete Recipe replay must reproduce the entire analytic front and predecessor geometry',
+  );
+});
+
 test('released HBAR Section contours match the canonical material owner across five physical cuts', () => {
   const owner = restoreContinuousMaterialOwner(project.model.continuousEtchOwner);
   const sampleHeights = [
