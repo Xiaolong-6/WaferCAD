@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
 import { readFile, access } from 'node:fs/promises';
-import { resolve, relative, extname } from 'node:path';
+import { resolve, relative, extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PROCESS_GUIDE } from '../site/process-guide.js';
 import { BUNDLED_EXAMPLES } from '../site/bundled-examples.js';
@@ -100,21 +101,35 @@ function internalTarget(source, destination) {
 export async function auditDocumentation({ rootDir = repositoryRoot, files } = {}) {
   const paths =
     files ||
-    execFileSync(
-      'git',
-      [
-        '-c',
-        'safe.directory=' + posix(rootDir),
-        'ls-files',
-        '--cached',
-        '--others',
-        '--exclude-standard',
-        '-z',
-      ],
-      { cwd: rootDir, encoding: 'utf8' },
-    )
-      .split('\0')
-      .filter(Boolean);
+    (existsSync(join(rootDir, '.git'))
+      ? execFileSync(
+          'git',
+          [
+            '-c',
+            'safe.directory=' + posix(rootDir),
+            'ls-files',
+            '--cached',
+            '--others',
+            '--exclude-standard',
+            '-z',
+          ],
+          { cwd: rootDir, encoding: 'utf8' },
+        )
+          .split('\0')
+          .filter(Boolean)
+      : (() => {
+          const path = join(rootDir, 'wafercad-source-manifest.json');
+          if (!existsSync(path))
+            throw Error('Documentation audit needs Git or wafercad-source-manifest.json');
+          const manifest = JSON.parse(readFileSync(path, 'utf8'));
+          if (
+            manifest.schema !== 'wafercad-source-only-v1' ||
+            !manifest.files ||
+            Array.isArray(manifest.files)
+          )
+            throw Error('Invalid source-only manifest for documentation audit');
+          return Object.keys(manifest.files);
+        })());
   const markdown = paths.filter((path) => path.endsWith('.md'));
   const texts = new Map(
     await Promise.all(
