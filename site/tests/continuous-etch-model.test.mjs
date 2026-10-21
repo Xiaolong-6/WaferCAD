@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { createSnapshotManager } from '../workspace-snapshots.js';
 
 const vendor = { exports: {} };
 new Function(
@@ -321,7 +322,6 @@ test('generic serialization preserves an exact continuous owner buried in Histor
 });
 
 test('History Manager restores M07 and exact continuous release across lossless reload', async () => {
-  const { createSnapshotManager } = await import('../workspace-snapshots.js');
   const { expandProjectStorage, serializeProject, readProjectFile } =
     await import('../project-io.js');
   const project = expandProjectStorage(
@@ -397,7 +397,6 @@ test('History Manager restores M07 and exact continuous release across lossless 
 });
 
 test('process History nodes replay continuous M07 material across exact project reload', async () => {
-  const { createSnapshotManager } = await import('../workspace-snapshots.js');
   const { expandProjectStorage, serializeProject, readProjectFile } =
     await import('../project-io.js');
   const project = expandProjectStorage(
