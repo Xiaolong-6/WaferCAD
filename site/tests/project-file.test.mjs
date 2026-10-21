@@ -125,6 +125,41 @@ test('project JSON round-trip remains valid', () => {
   assert.deepEqual(loaded, source);
 });
 
+test('project-level layerAppearance rejects invalid appearance metadata', () => {
+  const source = validProject();
+  source.display.layerAppearance = {
+    'layers:base': { color: '#778899', visible: true },
+    'implants:implant-1': { color: '#112233', visible: false },
+    'electricalRegions:electrical-1': { color: '#AABBCC', visible: true },
+  };
+  assert.equal(validateProjectFile(source), source);
+  const before = JSON.stringify(source);
+  for (const bad of [
+    { key: 'layer:base', entry: { color: '#778899', visible: true } },
+    { key: 'layers:', entry: { color: '#778899', visible: true } },
+    { key: `layers:${'x'.repeat(129)}`, entry: { color: '#778899', visible: true } },
+    { key: 'layers:base', entry: { color: 'red', visible: true } },
+    { key: 'layers:base', entry: { color: '#778899', visible: 'true' } },
+    { key: 'layers:base', entry: null },
+  ]) {
+    const invalid = structuredClone(source);
+    invalid.display.layerAppearance = { [bad.key]: bad.entry };
+    assert.throws(() => validateProjectFile(invalid), /display\.layerAppearance/);
+  }
+  const invalidShape = structuredClone(source);
+  invalidShape.display.layerAppearance = [];
+  assert.throws(() => validateProjectFile(invalidShape), /display\.layerAppearance/);
+  const tooMany = structuredClone(source);
+  tooMany.display.layerAppearance = Object.fromEntries(
+    Array.from({ length: 30001 }, (_, i) => [
+      `layers:layer-${i}`,
+      { color: '#778899', visible: true },
+    ]),
+  );
+  assert.throws(() => validateProjectFile(tooMany), /display\.layerAppearance.*too many/);
+  assert.equal(JSON.stringify(source), before, 'Validation cannot mutate imported appearance');
+});
+
 test('v13 projects migrate electrical region defaults into v14', () => {
   const source = validProject();
   source.version = 13;

@@ -279,21 +279,19 @@ cutline still reports approximately `0.133455 µm` RMS interpolation error at
 LOD 4; rejecting inaccurate shader displacement does not fix that legacy
 field/mesh-resolution mismatch.
 
-The opt-in stable-scale GPU shader evaluates rotated noise using a
-Float32-representable **render-only local reference point**, a CPU-computed
-seed rotation, and CPU-derived global fine/coarse lattice base cell and
-fraction. It preserves the absolute seeded hash cell indices and does **not**
-change the project's physical `sampleOrigin`, section geometry, or GLB.
-The reference comes from the actual cap qualification samples and is passed
-unchanged to the shader material; a different view/ROI requalifies the task.
-In the Chromium/SwiftShader diagnostic at Photodetector x=2495 µm, this
-reduced the stable-scale shader maximum height discrepancy from about
-56.744 nm to 0.0275 nm for the 58-point control. At other coordinates/seeds,
-0.020 nm is still exceeded; the existing 2e-5 µm gate must continue to
-reject these cases and keep deterministic CPU fallback. This diagnostic is
-not proof of GPU availability, interior interpolation accuracy, or a default
-morphology change. Never "fix" a failing GPU test by shifting the saved
-sample origin, changing the seed, or relaxing the physical-height tolerance.
+The opt-in stable-scale GPU shader currently evaluates the absolute seeded
+field in Float32 arithmetic. The qualification probe runs this shader at
+sampled Float32 cap coordinates and checks against the CPU field. Production
+does **not** yet implement a local reference point, CPU-derived seed rotation,
+or high/low lattice-coordinate splitting. Those techniques were explored in
+a diagnostic prototype only, not incorporated into the production renderer.
+A historical Chromium/SwiftShader experiment at Photodetector x=2495 µm
+reduced the stable-scale maximum height discrepancy from 56.744 nm to
+approximately 0.0275 nm in a 58-point sample, still above the 0.020 nm
+contract. This result is **not** GPU acceptance. The existing `2e-5 µm`
+gate must reject failing samples and select deterministic CPU fallback.
+Do not shift a saved `sampleOrigin`, change the seed, or weaken the
+physical-height tolerance to enable GPU displacement.
 
 Exposed rough caps can use the GPU-hybrid renderer: the worker still owns adaptive topology and transferable buffers, while shader code applies deterministic surface displacement and micro-normal detail. Keep CPU fallback for buried interfaces, Implant morphology and non-unit front/back Z scaling, and keep physical GLB export on the CPU morphology path. Presentation-only 3D changes (currently opacity and borders) must not be added to the physical-scene cache key: with model/ROI/Z-collapse/layer identity/Fast policy unchanged, update existing scene objects and materials in place. Any change to this split must preserve `sceneGeneration`, `surfacePlanBuildCount` and stable scene resource counts under repeated presentation toggles.
 

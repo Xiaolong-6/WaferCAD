@@ -16,6 +16,26 @@ export function threeZDisplayScale(baseScale, factor = 1) {
   return base * normalizeThreeZDisplayFactor(factor);
 }
 
+// Select the actual frontmost ray hit, never the candidate closest to Section.
+// Coplanar hits owned by different layers are ambiguous diagnostic samples.
+export function selectFrontmostRoughCutlineSample(samples, tolerance = 1e-6) {
+  let point = null;
+  let ambiguous = false;
+  for (const candidate of samples || []) {
+    if (!Number.isFinite(candidate?.actualDisplayZ)) continue;
+    if (!point || candidate.actualDisplayZ > point.actualDisplayZ + tolerance) {
+      point = candidate;
+      ambiguous = false;
+    } else if (
+      Math.abs(candidate.actualDisplayZ - point.actualDisplayZ) <= tolerance &&
+      candidate.layerId !== point.layerId
+    ) {
+      ambiguous = true;
+    }
+  }
+  return { point: ambiguous ? null : point, ambiguous };
+}
+
 // An opt-in local, monotone display mapping can make subpixel height variation
 // inspectable without multiplying only rough-cap vertices (which would cross
 // conformal films). The same map must be applied to every 3D surface, sidewall

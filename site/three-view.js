@@ -72,6 +72,7 @@ import {
   threeRoughReliefBands,
   threeZDisplayScale,
   refreshThreeDashedBorderDistances,
+  selectFrontmostRoughCutlineSample,
 } from './three-z-display.js';
 import { geometryFromRoughCap, geometryFromRoughMeshData } from './rough-mesh-geometry.js';
 import {
@@ -2720,7 +2721,6 @@ diffuseColor.a *= waferCadAlphaScale;`,
         decorateGpuRoughMaterial(material, task.visualAppearance || cap.appearance, {
           profileNormal: cap.profileNormal ?? cap.normal,
           normalStrength: mode === 'interactive' ? 0.82 : 1,
-          precisionAnchor: task.gpuHeightParity?.precisionAnchor,
         });
       } else if (!task.implant && !cap.buried && roughFarFieldContrast(0, cap.appearance) > 0) {
         decorateRoughFarFieldMaterial(material, task.visualAppearance || cap.appearance);
@@ -3055,7 +3055,6 @@ diffuseColor.a *= waferCadAlphaScale;`,
           decorateGpuRoughMaterial(material, task.visualAppearance || cap.appearance, {
             profileNormal: cap.profileNormal ?? cap.normal,
             normalStrength: interactive ? 0.82 : 1,
-            precisionAnchor: task.gpuHeightParity?.precisionAnchor,
           });
         } else if (!task.implant && !cap.buried && roughFarFieldContrast(0, cap.appearance) > 0) {
           decorateRoughFarFieldMaterial(material, task.visualAppearance || cap.appearance);
@@ -4830,16 +4829,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
     const candidates = roughMeshes
       .map(({ mesh }) => mesh)
       .filter((mesh) => mesh?.visible && mesh.userData.waferCadRoughCutline);
-    const top = candidates.reduce(
-      (best, mesh) =>
-        mesh.userData.waferCadRoughCutline.z > (best?.userData.waferCadRoughCutline.z ?? -Infinity)
-          ? mesh
-          : best,
-      null,
-    );
-    const targetLayer = layerId || top?.userData.waferCadRoughCutline.layerId;
+    // The highest rough layer in the whole scene may not exist at this XY.
+    // Unless explicitly constrained, select the frontmost cap per sample.
+    const targetLayer = layerId || null;
     const meshes = candidates.filter(
-      (mesh) => mesh.userData.waferCadRoughCutline.layerId === targetLayer,
+      (mesh) => !targetLayer || mesh.userData.waferCadRoughCutline.layerId === targetLayer,
     );
     if (!meshes.length) throw new Error('No visible rough mesh for requested material layer');
     if (
@@ -4896,14 +4890,25 @@ diffuseColor.a *= waferCadAlphaScale;`,
       probe.matrixAutoUpdate = false;
       probe.matrixWorld.copy(mesh.matrixWorld);
       probe.userData = mesh.userData;
-      probeMeshes.push({ mesh: probe, source: mesh, triangles: picked.length / 9 });
+      probeMeshes.push({
+        mesh: probe,
+        bounds: new THREE.Box3().setFromObject(mesh),
+        triangles: picked.length / 9,
+      });
     }
     const ray = new THREE.Raycaster(),
       points = [];
     for (let index = 0; index < samples; index++) {
       const x = xMin + ((xMax - xMin) * (index + 0.5)) / samples;
-      let best = null;
-      for (const { mesh, source } of probeMeshes) {
+      const hits = [];
+      for (const { mesh, bounds } of probeMeshes) {
+        if (x < bounds.min.x || x > bounds.max.x || y < bounds.min.y || y > bounds.max.y) continue;
+        ray.set(
+          new THREE.Vector3(x, y, bounds.max.z + Math.max(1, bounds.max.z - bounds.min.z + 1)),
+          new THREE.Vector3(0, 0, -1),
+        );
+        const hit = ray.intersectObject(mesh, false)[0];
+        if (!hit) continue;
         const info = mesh.userData.waferCadRoughCutline;
         const height = roughProfileOffsetAtPixelFootprint(x, y, info.appearance, {
           pixelsPerUm,
@@ -4915,14 +4920,6 @@ diffuseColor.a *= waferCadAlphaScale;`,
         const displayHeight = roughDisplayProfileOffsetAtPoint(x, y, info.displayAppearance);
         const visualZ = info.z + (Number(info.profileNormal) || 1) * displayHeight;
         const visualExpectedZ = currentZDisplay.mapZ(visualZ) * scale;
-        const bounds = new THREE.Box3().setFromObject(source);
-        if (x < bounds.min.x || x > bounds.max.x || y < bounds.min.y || y > bounds.max.y) continue;
-        ray.set(
-          new THREE.Vector3(x, y, bounds.max.z + Math.max(1, bounds.max.z - bounds.min.z + 1)),
-          new THREE.Vector3(0, 0, -1),
-        );
-        const hit = ray.intersectObject(mesh, false)[0];
-        if (!hit) continue;
         const dz = Math.max(1e-5, Math.abs(physicalZ) * 1e-9);
         const derivative =
           (currentZDisplay.mapZ(physicalZ + dz) - currentZDisplay.mapZ(physicalZ - dz)) / (2 * dz);
@@ -4930,7 +4927,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         const result = {
           xUm: x,
           yUm: y,
-          layerId: targetLayer,
+          layerId: info.layerId,
           expectedPhysicalZUm: physicalZ,
           expectedDisplayZ: expectedZ,
           actualDisplayZ: hit.point.z,
@@ -4939,15 +4936,27 @@ diffuseColor.a *= waferCadAlphaScale;`,
           displayAttenuationErrorUm: (visualExpectedZ - expectedZ) / (scale * derivative),
           displayHeightBlend: info.displayAppearance?.displayRoughBlend ?? 1,
         };
-        if (!best || Math.abs(result.errorUm) < Math.abs(best.errorUm)) best = result;
+        hits.push(result);
       }
-      points.push(best || { xUm: x, yUm: y, missing: true });
+      const selected = selectFrontmostRoughCutlineSample(hits);
+      points.push(
+        selected.point || {
+          xUm: x,
+          yUm: y,
+          missing: true,
+          reason: selected.ambiguous ? 'ambiguous-rough-ownership' : 'no-rough-intersection',
+          ambiguous: selected.ambiguous,
+        },
+      );
     }
     const clippedTriangleCount = probeMeshes.reduce((sum, p) => sum + p.triangles, 0);
     for (const { mesh } of probeMeshes) mesh.geometry.dispose();
     const valid = points.filter((p) => Number.isFinite(p.errorUm));
+    const sampledLayerIds = [...new Set(valid.map((point) => point.layerId))];
     return {
-      layerId: targetLayer,
+      layerId: targetLayer || (sampledLayerIds.length === 1 ? sampledLayerIds[0] : null),
+      sampledLayerIds,
+      ambiguousCount: points.filter((point) => point.ambiguous).length,
       sampleCount: samples,
       hitCount: valid.length,
       missingCount: samples - valid.length,

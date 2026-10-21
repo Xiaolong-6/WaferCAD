@@ -10,6 +10,36 @@ import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 
 await loadGeometryKernel();
 
+test('cutline selects frontmost rough cap independently of Section-reference error', async () => {
+  const THREE = await import('three');
+  const { selectFrontmostRoughCutlineSample } = await import('../three-z-display.js');
+  const material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+  const lower = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
+  const upper = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
+  lower.position.z = 2;
+  upper.position.z = 3;
+  lower.updateMatrixWorld(true);
+  upper.updateMatrixWorld(true);
+  const ray = new THREE.Raycaster(new THREE.Vector3(0, 0, 10), new THREE.Vector3(0, 0, -1));
+  const hits = [
+    { layerId: 'base', actualDisplayZ: ray.intersectObject(lower)[0].point.z, errorUm: 0 },
+    { layerId: 'film', actualDisplayZ: ray.intersectObject(upper)[0].point.z, errorUm: 1 },
+  ];
+  assert.equal(selectFrontmostRoughCutlineSample(hits).point.layerId, 'film');
+  assert.equal(selectFrontmostRoughCutlineSample([...hits].reverse()).point.layerId, 'film');
+  assert.equal(selectFrontmostRoughCutlineSample([hits[0]]).point.layerId, 'base');
+  const coplanar = selectFrontmostRoughCutlineSample([
+    hits[0],
+    { ...hits[1], actualDisplayZ: hits[0].actualDisplayZ + 0.0000002 },
+  ]);
+  assert.equal(coplanar.ambiguous, true);
+  assert.equal(coplanar.point, null);
+  assert.deepEqual(selectFrontmostRoughCutlineSample([]), { point: null, ambiguous: false });
+  lower.geometry.dispose();
+  upper.geometry.dispose();
+  material.dispose();
+});
+
 // A shared monotone map cannot open artificial air gaps at a conformal edge.
 test('3D display-only factors are finite, bounded and reversible', () => {
   assert.deepEqual(THREE_Z_DISPLAY_RANGE, { min: 0.25, max: 20, step: 0.05 });
