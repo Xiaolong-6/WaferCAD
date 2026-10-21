@@ -82,6 +82,7 @@ try {
             };
           }),
           headerHeight: header.getBoundingClientRect().height,
+          moreVisible: !document.querySelector('#mainPanel .p-overflow-anchor').hidden,
           calls: performance
             .getEntriesByType('resource')
             .map((entry) => entry.name)
@@ -111,15 +112,26 @@ try {
       }
       assert.equal(values.overflow, 0);
       assert.equal(values.headerOverflow, 0);
-      // Portrait keeps Fit immediately available, while Pan/Zoom use the
-      // same original commands with visible labels inside the More menu.
-      const portraitTools = width <= 768;
-      assert.deepEqual(values.labels, [
-        { text: '', inMore: false },
-        { text: portraitTools ? 'Pan' : '', inMore: portraitTools },
-        { text: portraitTools ? 'Zoom' : '', inMore: portraitTools },
-        { text: '', inMore: false },
-      ]);
+      // Overflow follows the actual header width, never the viewport orientation.
+      // An exposed command stays icon-only; the same button gains a label in More.
+      assert.equal(values.labels[0].inMore, false, 'Fit has the highest priority');
+      assert.equal(values.labels[3].inMore, false, 'ROI remains a primary Main action');
+      for (const [index, name] of [
+        [1, 'Pan'],
+        [2, 'Zoom'],
+      ]) {
+        assert.equal(values.labels[index].text, values.labels[index].inMore ? name : '');
+      }
+      assert.equal(
+        values.moreVisible,
+        values.labels.some((entry) => entry.inMore),
+      );
+      if (width === 768) {
+        // This Main panel has room for both controls despite a portrait viewport.
+        // Catch regressions that force-collapse Pan/Zoom merely for orientation.
+        assert.equal(values.labels[1].inMore, false);
+        assert.equal(values.labels[2].inMore, false);
+      }
       assert.deepEqual(values.calls, []);
       const box = await page.locator('#mainCanvas').boundingBox();
       const clickExposedCanvas = async () => {

@@ -215,16 +215,16 @@
       ),
     );
     const toolStrip = el('div', { class: 'p-tool-strip' }, toolGroups);
+    const anchor = el('div', { class: 'p-overflow-anchor' }, trigger, menu);
     const bar = el(
       'div',
       { class: 'p-toolbar', role: 'toolbar', 'aria-label': `${label} tools` },
       toolStrip,
-      el('div', { class: 'p-overflow-anchor' }, trigger, menu),
+      anchor,
     );
     // The same controls are reparented into More: actions, toggles and listeners remain unique.
-    // Portrait prioritizes Fit and inspection commands over continuous Pan/Zoom modes.
-    const portrait = () =>
-      window.matchMedia('(orientation: portrait)').matches && window.innerWidth <= 1100;
+    // Available toolbar width, not screen orientation, determines what enters More.
+    // When space is tight, move Pan/Zoom before other commands; Fit stays last.
     const tools = layoutGroups.flat();
     const roles = new Map(tools.map((item) => [item, item.getAttribute('role')]));
     // Move the original controls, preserving actions and toggle state. No domain state is owned here.
@@ -241,7 +241,9 @@
           else item.removeAttribute('role');
         });
       });
-      const portraitMode = portrait();
+      // The More trigger must not consume width while all commands fit.
+      // If the full strip clips, expose the trigger and recalculate before moving tools.
+      anchor.hidden = true;
       const hidden = new Set();
       const hide = (item) => {
         item.setAttribute(
@@ -261,28 +263,28 @@
         hidden.add(item);
         menu.append(item);
       };
-      // On narrow portrait screens Pan and Zoom always live in More, even if
-      // this particular view happens to have enough room for both icons.
-      if (portraitMode) {
-        for (const item of tools) {
-          if (/^tool:(pan|zoom):/.test(item.dataset.action || '')) hide(item);
-        }
-      }
-      const bounds = toolStrip.getBoundingClientRect();
-      const outOfBounds = () =>
-        tools.some(
+      const outOfBounds = () => {
+        const bounds = toolStrip.getBoundingClientRect();
+        return tools.some(
           (item) =>
             toolStrip.contains(item) && item.getBoundingClientRect().right > bounds.right + 0.5,
         );
-      while (outOfBounds()) {
-        const remaining = tools.filter((item) => toolStrip.contains(item));
-        if (!remaining.length) break;
-        // Fit is the highest-priority quick action; keep it until no other
-        // tool can be moved. Reparent the original button, not its state.
-        const candidate =
-          remaining.filter((item) => !/^fit:/.test(item.dataset.action || '')).at(-1) ||
-          remaining.at(-1);
-        hide(candidate);
+      };
+      if (outOfBounds()) {
+        anchor.hidden = false;
+        while (outOfBounds()) {
+          const remaining = tools.filter((item) => toolStrip.contains(item));
+          if (!remaining.length) break;
+          // Only overflow when the *actual view header* is too narrow.
+          // Pan/Zoom are lower priority; Fit stays available as long as possible.
+          const candidate =
+            remaining
+              .filter((item) => /^tool:(pan|zoom):/.test(item.dataset.action || ''))
+              .at(-1) ||
+            remaining.filter((item) => !/^fit:/.test(item.dataset.action || '')).at(-1) ||
+            remaining.at(-1);
+          hide(candidate);
+        }
       }
       // Maintain keyboard order regardless of which icon overflowed first.
       const ordered = tools.filter((item) => hidden.has(item));

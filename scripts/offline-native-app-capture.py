@@ -207,6 +207,25 @@ def inspect_native_ui_controls(page, out: Path):
         first = page.locator('#layerLegend .v2-legend-name').first
         result['controls']['layerRowAvailable'] = first.count() > 0 and first.is_visible()
         record('section-portrait')
+        # When this header really overflows, use the original Pan command in
+        # More and ensure its view state survives closing and reopening.
+        if result['controls']['section']['panInMore']:
+            section_more = page.get_by_role('button', name='Section more tools')
+            pan = page.locator('[data-action="tool:pan:section"]')
+            original = pan.get_attribute('aria-pressed')
+            section_more.click()
+            pan.click()
+            page.wait_for_timeout(80)
+            result['controls']['sectionMoreCommandCloses'] = (
+                page.locator('#p-overflow-section:popover-open').count() == 0
+                and pan.get_attribute('aria-pressed') != original
+                and pan.get_attribute('aria-checked') == pan.get_attribute('aria-pressed'))
+            section_more.click()
+            pan.click()
+            page.wait_for_timeout(80)
+            result['controls']['sectionPanRestored'] = (
+                pan.get_attribute('aria-pressed') == original
+                and page.locator('#p-overflow-section:popover-open').count() == 0)
         if result['controls']['layerRowAvailable']:
             before = page.locator('[data-action="domain:history"][aria-pressed="true"]').count()
             first.click()

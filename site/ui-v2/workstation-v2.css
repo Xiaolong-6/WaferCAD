@@ -770,6 +770,9 @@ body[data-workstation] .p-workbench {
 .p-overflow-anchor {
   margin-left: auto;
 }
+.p-overflow-anchor[hidden] {
+  display: none;
+}
 .p-overflow {
   position: fixed;
   inset: auto;
