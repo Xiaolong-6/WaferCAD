@@ -291,6 +291,10 @@ export function buildContinuousMaterialSurfaceMesh(
   const mergedParts = new Map();
   for (const region of source.regions)
     for (const segment of region.stack) {
+      // Exact film/silicon renderers already own excluded layers. Computing
+      // their signed-distance fields here wastes most of the mesh budget and
+      // can make author-GDS devices with thousands of vertices unresponsive.
+      if (excludeLayerIds.includes(segment.layerId)) continue;
       const key = JSON.stringify([segment.layerId, segment.z0, segment.z1]);
       if (!mergedParts.has(key))
         mergedParts.set(key, { layerId: segment.layerId, segment, footprints: [] });
