@@ -891,7 +891,8 @@ export function createThreeView({
             performance.now() - progressiveProfileStart,
           );
         } else if (
-          host.dataset.renderFidelity === 'exact-surface-plan' &&
+          (host.dataset.renderFidelity === 'exact-surface-plan' ||
+            host.dataset.renderFidelity === 'exact-physical-facet') &&
           !host.dataset.rendererExactFirstFrameMs
         ) {
           host.dataset.rendererExactFirstFrameMs = String(
@@ -3188,6 +3189,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
       return;
     }
 
+    // A Physical Facet is a separate exact presentation kernel, not an
+    // unfinished Material Solids preview. Require a painted native frame
+    // before the Workstation can report this view as ready.
+    const facetProfileStart = performance.now();
+    progressiveProfileStart = facetProfileStart;
+    delete host.dataset.rendererExactFirstFrameMs;
+    host.dataset.renderFidelity = 'pending-physical-facet';
     // Never route a real faceted owner into the flat Process topology plan.
     // Group disposal also drops any stale surface variants and GPU resources.
     disposeGroup();
@@ -3264,6 +3272,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
     physicalSceneSignature = signature;
     activeSceneVariant = null;
     physicalSurfacePlan = null;
+    host.dataset.renderFidelity = 'exact-physical-facet';
+    host.dataset.rendererExactSceneMs = String(performance.now() - facetProfileStart);
     host.dataset.physicalFacetOwner = owner.kind;
     host.dataset.physicalFacetTriangles = String(data.physicalTriangleCount);
     host.dataset.physicalFacetOxideTriangles = String(data.oxideTriangleCount);

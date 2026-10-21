@@ -157,14 +157,15 @@ export function createWorkstationThreeView({ store, workstation }) {
       }
       return;
     }
+    const physicalFacet = host.dataset.renderFidelity === 'exact-physical-facet';
     if (
-      host.dataset.renderFidelity !== 'exact-surface-plan' ||
+      (host.dataset.renderFidelity !== 'exact-surface-plan' && !physicalFacet) ||
       !host.dataset.rendererExactFirstFrameMs
     ) return;
     if (!firstExactSceneFrame) {
       firstSceneFrame = true;
       firstExactSceneFrame = true;
-      if (state.threeFastMode === false) {
+      if (state.threeFastMode === false && !physicalFacet) {
         progressive.viewFrame('three', 'coarse');
         scheduleQualityRefinement();
       } else {
