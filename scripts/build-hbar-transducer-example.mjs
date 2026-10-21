@@ -418,10 +418,18 @@ export async function buildHbarTransducer(sourceBytes) {
     'XeF2 Mo isolation and Al feedline lift-off',
     'This etchback and Al connection are documented but mask-purpose correspondence cannot yet be verified. Their shape is intentionally not invented.',
   );
+  // The Recipe Workstation supports one selected Etch material or all exposed
+  // materials, not an array of target IDs.  The former selective 5.92 um
+  // operation and its unselected 5.92 um Recipe replay therefore differed:
+  // Run All unintentionally cut 20 nm into the Si at each oxide opening.
+  // Stop exactly at the measured 5.9 um oxide/Si boundary and use the same
+  // non-selective physical operation for History and Recipe.  This is valid
+  // for this source-GDS mask because no metal/SiN is exposed at its holes;
+  // a process geometry regression must assert that assumption.
   operation(
     'etch',
-    'DRIE holes through oxide (GDS layer 9, provisional)',
-    { targets: [layers['SiO2 upper'], layers['SiO2 lower']], thickness: DIMS.oxideTotal + 0.02 },
+    'DRIE holes through 5.9 um oxide (GDS layer 9, provisional)',
+    { targets: [], thickness: DIMS.oxideTotal },
     9,
   );
   bookmark('S05 · Opened cladding release holes');

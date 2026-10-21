@@ -158,6 +158,53 @@ test('coincident-height GDS film fragments form finite exact meshes without samp
   );
 });
 
+test('HBAR Recipe oxide opening does not etch 20 nm of Si relative to saved History', async () => {
+  const { applyOperation } = await import('../model.js');
+  const { unionGeometries, pointInMulti } = await import('../vector-geometry.js');
+  const recipeEtch = project.processRecipe.steps.at(-2);
+  assert.equal(recipeEtch.command, 'etch');
+  assert.equal(recipeEtch.params.profile, 'directional');
+  assert.equal(recipeEtch.params.thicknessUm, 5.9);
+  assert.equal(recipeEtch.params.targetLayerIds?.length ?? 0, 0);
+  const mask = unionGeometries(
+    project.layout.elements
+      .filter((entry) => entry.layer === 9)
+      .map((entry) => [[[...entry.points, entry.points[0]]]]),
+  );
+  const stage04 = project.snapshots.find((entry) => entry.name.startsWith('S04')).state.model;
+  const stage05 = project.snapshots.find((entry) => entry.name.startsWith('S05')).state.model;
+  const replay = structuredClone(stage04);
+  const result = applyOperation(replay, {
+    type: 'etch',
+    face: 'front',
+    etchProfile: 'directional',
+    thickness: recipeEtch.params.thicknessUm,
+    etchTargetLayerIds: [],
+    area: mask,
+  });
+  assert.equal(result.changed, true, result.error);
+  const column = (model, xy) =>
+    model.regions
+      .filter((region) => pointInMulti(xy, region.geom))
+      .flatMap((region) => region.stack.map(({ layerId, z0, z1 }) => [layerId, z0, z1]));
+  let witnesses = 0;
+  for (const y of [-45, -22, -8, 0, 8, 22, 45]) {
+    for (const x of [-54, -38, -29, -18, -8, 0, 5, 17, 29, 41, 55]) {
+      assert.deepEqual(
+        column(replay, [x, y]),
+        column(stage05, [x, y]),
+        `Recipe oxide etch and saved History differ at (${x}, ${y}) um`,
+      );
+      witnesses++;
+    }
+  }
+  assert.equal(witnesses, 77);
+  for (const x of [-18, 29]) {
+    const silicon = column(replay, [x, 0]).find(([layerId]) => layerId === 'base');
+    assert.deepEqual(silicon, ['base', -18, 18], 'No Si overetch under oxide release openings');
+  }
+});
+
 test('released HBAR Section contours match the canonical material owner across five physical cuts', () => {
   const owner = restoreContinuousMaterialOwner(project.model.continuousEtchOwner);
   const sampleHeights = [
