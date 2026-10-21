@@ -3,8 +3,6 @@ import test from 'node:test';
 import {
   adaptiveRoughMeshLod,
   roughDisplayHeightBlend,
-  roughInspectionLatticePitch,
-  roughInspectionBandlimitedOffsetAtPoint,
   roughFarFieldContrast,
   roughDisplayProfileOffsetAtPoint,
   roughProfileOffsetAtPoint,
@@ -265,46 +263,4 @@ test('Quality can trim one subdivision only for a globally saturated rough scene
   assert.equal(trimSaturatedRoughLodBudgets(instancedCohort), false);
   assert.equal(JSON.stringify(instancedCohort), instancedSnapshot);
   assert.equal(trimSaturatedRoughLodBudgets([]), false);
-});
-
-test('legacy far-wafer inspection is area-integrated, seeded, and physically immutable', () => {
-  const legacy = { ...appearance, sampleOrigin: [0, 0] };
-  const original = JSON.stringify(legacy);
-  const far = { ...legacy, displayInspectionCentre: [2495, 0] };
-  const fine = roughInspectionLatticePitch(far, 1100 / 60);
-  const medium = roughInspectionLatticePitch(far, 1100 / 240);
-  const coarse = roughInspectionLatticePitch(far, 1100 / 6800);
-  assert.equal(fine, 2.4);
-  assert.equal(medium, 9.6);
-  assert.equal(coarse, 307.2);
-  assert.equal(roughInspectionLatticePitch({ ...legacy, displayInspectionCentre: [12, 0] }, 18), 0);
-  assert.equal(roughInspectionLatticePitch({ ...far, morphology: 'stochastic-v2' }, 18), 0);
-  assert.equal(roughInspectionLatticePitch({ ...far, featureCv: 0 }, 18), 0);
-  assert.equal(roughInspectionLatticePitch(far, 0), 0);
-  // Every display lattice node integrates 4x4 physical samples, rather than
-  // enlarging one unresolved random spike into a fabricated display feature.
-  const x = 1040 * fine;
-  let sum = 0;
-  for (let iy = 0; iy < 4; iy++) {
-    for (let ix = 0; ix < 4; ix++) {
-      sum += roughProfileOffsetAtPoint(
-        x + ((ix + 0.5) / 4 - 0.5) * fine,
-        ((iy + 0.5) / 4 - 0.5) * fine,
-        legacy,
-      );
-    }
-  }
-  const expected = sum / 16;
-  assert.ok(Math.abs(roughInspectionBandlimitedOffsetAtPoint(x, 0, legacy, fine) - expected) < 1e-11);
-  assert.equal(
-    roughDisplayProfileOffsetAtPoint(x, 0, { ...legacy, displayLatticePitchUm: fine }),
-    roughInspectionBandlimitedOffsetAtPoint(x, 0, legacy, fine),
-  );
-  assert.equal(roughInspectionBandlimitedOffsetAtPoint(x, 0, legacy, 0), roughProfileOffsetAtPoint(x, 0, legacy));
-  for (const dx of [-0.6, -0.31, -0.1, 0, 0.1, 0.33, 0.7]) {
-    const v = roughInspectionBandlimitedOffsetAtPoint(x + dx, 0.125, legacy, fine);
-    assert.ok(v >= 0 && v <= legacy.etchDepth);
-    assert.equal(v, roughInspectionBandlimitedOffsetAtPoint(x + dx, 0.125, { ...legacy }, fine));
-  }
-  assert.equal(JSON.stringify(legacy), original);
 });

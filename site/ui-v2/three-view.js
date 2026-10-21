@@ -2,12 +2,7 @@
 import { createThreeView } from '../three-view.js';
 import { mountToolPopover } from './view-kit/tool-popover.js';
 import { BORDER_CATEGORIES, BORDER_PRESETS, normalizeBorderSettings } from '../border-inspector.js';
-import {
-  THREE_ROUGH_RELIEF_FACTORS,
-  THREE_Z_DISPLAY_FACTORS,
-  normalizeThreeRoughReliefFactor,
-  normalizeThreeZDisplayFactor,
-} from '../three-z-display.js';
+import { THREE_Z_DISPLAY_RANGE, normalizeThreeZDisplayFactor } from '../three-z-display.js';
 
 export function createWorkstationThreeView({ store, workstation }) {
   const { el, button, toolbar } = window.WaferCadV2Components;
@@ -15,7 +10,8 @@ export function createWorkstationThreeView({ store, workstation }) {
   const local = store.local.three;
   local.borderSettings = normalizeBorderSettings(local.borderSettings);
   local.zDisplayFactor = normalizeThreeZDisplayFactor(local.zDisplayFactor);
-  local.roughReliefFactor = normalizeThreeRoughReliefFactor(local.roughReliefFactor);
+  // Retire the nonlinear multi-band Relief setting, including previously saved UI values.
+  local.roughReliefFactor = 1;
   const icon = (label, action, glyph) =>
     button('', action, glyph, {
       title: label,
@@ -100,7 +96,7 @@ export function createWorkstationThreeView({ store, workstation }) {
     }),
     getZCollapse: () => state.sectionCollapse,
     getZDisplayFactor: () => local.zDisplayFactor,
-    getRoughReliefFactor: () => local.roughReliefFactor,
+    getRoughReliefFactor: () => 1,
     onViewChanged: (camera) => {
       state.threeCamera = camera;
       workstation.changed('three');
@@ -238,79 +234,64 @@ export function createWorkstationThreeView({ store, workstation }) {
   };
   // The complete 3D scene shares this presentation transform: physical
   // Process geometry, export and thin-film Z ownership remain unchanged.
-  const zDisplayMenu = el('div', { class: 'p-form v2-three-z-menu', 'data-three-z-display': '' });
-  const zDisplayButtons = THREE_Z_DISPLAY_FACTORS.map((factor) => {
-    const choice = el(
-      'button',
-      {
-        type: 'button',
-        class: 'wc-segment',
-        'data-three-z-factor': String(factor),
-        'aria-label': `3D display Z ×${factor}`,
-      },
-      `×${factor}`,
-    );
-    choice.onclick = () => {
-      local.zDisplayFactor = factor;
-      updateZDisplayControls();
-      renderer.updateZCollapse();
-      renderer.fit({ preserveOrientation: true });
-    };
-    return choice;
+  const zDisplayMenu = el('div', { class: 'p-form', 'data-three-z-display': '' });
+  const scaleSlider = el('input', {
+    type: 'range',
+    class: 'wc-input',
+    min: THREE_Z_DISPLAY_RANGE.min,
+    max: THREE_Z_DISPLAY_RANGE.max,
+    step: THREE_Z_DISPLAY_RANGE.step,
+    'aria-label': '3D vertical display scale',
   });
-  const reliefButtons = THREE_ROUGH_RELIEF_FACTORS.map((factor) => {
-    const choice = el(
-      'button',
-      {
-        type: 'button',
-        class: 'wc-segment',
-        'data-three-relief-factor': String(factor),
-        'aria-label': `3D roughness relief display ×${factor}`,
-      },
-      `×${factor}`,
-    );
-    choice.onclick = () => {
-      local.roughReliefFactor = factor;
-      updateZDisplayControls();
-      renderer.updateZCollapse();
-      renderer.fit({ preserveOrientation: true });
-      // Displacement must use CPU geometry while the nonlinear display map
-      // is active; a cached GPU-only cap has not passed through the Z map.
-      requestRender();
-    };
-    return choice;
+  const scaleNumber = el('input', {
+    type: 'number',
+    class: 'wc-input',
+    min: THREE_Z_DISPLAY_RANGE.min,
+    max: THREE_Z_DISPLAY_RANGE.max,
+    step: 'any',
+    'aria-label': '3D vertical display scale exact factor',
+  });
+  const scaleReset = button('Reset ×1', null, null, {
+    'aria-label': 'Reset 3D vertical display scale to one',
   });
   zDisplayMenu.append(
-    el('strong', {}, '3D vertical display scale'),
-    el('div', { class: 'v2-three-z-options' }, ...zDisplayButtons),
-    el('strong', {}, 'Local roughness relief inspection'),
-    el('div', { class: 'v2-three-z-options v2-three-relief-options' }, ...reliefButtons),
     el(
-      'p',
-      {},
-      'Display only, not physical height. Surface relief boosts a narrow Z band around rough interfaces, with one continuous map for caps, conformal films, sidewalls and borders. Coarse meshes remain limited by their resolution.',
+      'label',
+      { class: 'wc-field' },
+      el('span', { class: 'wc-label' }, 'Vertical scale · display only'),
+      scaleSlider,
     ),
+    el(
+      'label',
+      { class: 'wc-field' },
+      el('span', { class: 'wc-label' }, 'Multiplier ×'),
+      scaleNumber,
+    ),
+    scaleReset,
   );
+  let zScaleFramePending = false;
+  function commitZDisplayFactor(value) {
+    local.zDisplayFactor = normalizeThreeZDisplayFactor(value);
+    updateZDisplayControls();
+    // Never auto-fit on value change: doing so hides the visual multiplier.
+    // A large scene may require Fit, which remains an explicit viewport action.
+    if (zScaleFramePending) return;
+    zScaleFramePending = true;
+    requestAnimationFrame(() => {
+      zScaleFramePending = false;
+      renderer.updateZCollapse();
+    });
+  }
+  scaleSlider.oninput = () => commitZDisplayFactor(scaleSlider.value);
+  scaleNumber.onchange = () => commitZDisplayFactor(scaleNumber.value);
+  scaleReset.onclick = () => commitZDisplayFactor(1);
   function updateZDisplayControls() {
     local.zDisplayFactor = normalizeThreeZDisplayFactor(local.zDisplayFactor);
-    for (const choice of zDisplayButtons)
-      choice.setAttribute(
-        'aria-pressed',
-        String(Number(choice.dataset.threeZFactor) === local.zDisplayFactor),
-      );
-    local.roughReliefFactor = normalizeThreeRoughReliefFactor(local.roughReliefFactor);
-    for (const choice of reliefButtons)
-      choice.setAttribute(
-        'aria-pressed',
-        String(Number(choice.dataset.threeReliefFactor) === local.roughReliefFactor),
-      );
+    scaleSlider.value = String(local.zDisplayFactor);
+    if (document.activeElement !== scaleNumber) scaleNumber.value = String(local.zDisplayFactor);
     host.dataset.zDisplayFactorSelected = String(local.zDisplayFactor);
-    host.dataset.roughReliefFactorSelected = String(local.roughReliefFactor);
-    zDisplayIndicator.hidden = local.zDisplayFactor === 1 && local.roughReliefFactor === 1;
-    const scales = [];
-    if (local.zDisplayFactor !== 1) scales.push(`Z ×${local.zDisplayFactor}`);
-    if (local.roughReliefFactor !== 1) scales.push(`Relief ×${local.roughReliefFactor}`);
-    zDisplayIndicator.textContent = `Display only: ${scales.join(' / ')} · not physical`;
+    zDisplayIndicator.hidden = local.zDisplayFactor === 1;
+    zDisplayIndicator.textContent = `Display Z ×${local.zDisplayFactor} · not physical`;
   }
 
   const borderNames = {

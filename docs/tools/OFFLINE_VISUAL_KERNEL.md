@@ -45,6 +45,33 @@ Outputs: `main.svg`/`section.svg`/`mask.svg`, matching PNG (unless `--svg-only`)
 
 The metadata records the exact input SHA-256, checkout commit, view, physical bounds, XY/Z pixel calibration and rendering limitations. `--scale auto` uses independent X/Z scaling, and `--scale physical` fixes a true 1:1 physical X:Z ratio. No Z break is applied. The exported SVG shows visible materials but is **not** a native renderer screenshot. This P0 does **not** reproduce rough surface tessellation, annotations, Mask, native WebGL transparency/borders or full UI interactions. Do not use it to close native renderer or real-browser visual acceptance requirements.
 
+### Native Section canvas vs native 3D, single validated project
+
+The `--native-section-compare` mode of the **existing**
+`offline-native-app-capture.py` runner executes the production
+`createPlanRenderers().renderSection()` compositor on the same strictly
+loaded model that supplies the native Three.js mesh. It writes only
+`native-section-physical.png` (unmodified physical Section),
+including a source hash and `modelUnchanged: true`. The rejected Aligned
+smoothing prototype is not an inspection mode. Add
+`--native-section-borders` to include the compositor border pass.
+
+```sh
+python3 scripts/offline-native-app-capture.py --root . \
+  --inmemory-project site/examples/photodetector-literature-examples.wafercad \
+  --inmemory-roi 2465,-30,2525,30 \
+  --rough-cutline 2494.7,2495.3,0.123 \
+  --native-section-compare --quality \
+  --output test-results/rough-physical-section-60
+```
+
+This is a real Section canvas, **not an SVG/mock**; however null-Origin
+cannot prove the app's synchronous Section controls, Worker, process history
+or recovery transactions. Compare the unmodified physical Section to the
+actual 3D mesh cutline using `physicalRoughCutline`. Display attenuation,
+mesh interpolation and floating-point positioning may differ; no display
+smoothing may be counted as a scientific convergence improvement.
+
 ## Validation
 
 Focused pure presentation checks: `node --test site/tests/offline-visual-svg.test.mjs`. Full integration should run `--fixture step` plus an actual bundled `.wafercad` against the exact branch checkout and inspect the PNG, exported evidence, and scientific geometry. A simulated fixture cannot prove the real file reader or production topology path. Keep CI and release gates separate; local images are developer inspection artifacts until reviewed and approved.
@@ -259,114 +286,9 @@ Open-file UI attempt and records a screenshot/Worker errors, but it
 complete**. Independent review and the original targeted science gates
 are still required.
 
-For native UI shell diagnosis, add `--inspect-history` to the existing capture command.
-It records `history-step0.png`, `step0-base-editor.png`, and `process-undo.png`,
-and asserts that Step 0 opens the real Base editor and Process exposes model-level
-Undo/Redo controls. In null-origin mode these screenshots prove **only** native
-presentation and navigation; Step replay, Workers, autosave, and Recovery remain
-unverified.
-
 Focused checks: `python3 scripts/offline-native-app-capture.test.py`.
 The real Chromium screenshot run is manual and intentionally not part of
 the ordinary unit-test/CI loop.
-
-### Shared legacy Rough preview and native physical Section comparison
-
-For legacy `stochastic` Rough with nonzero feature CV at large absolute
-wafer positions, the aligned Section preview and actual CPU 3D cap geometry
-now evaluate an identical, world-anchored, area-integrated inspection lattice.
-Area integration uses 16 deterministic physical samples per node and never
-alters the saved morphology or scientific GLB. The Section `Physical` button
-switches back to the original physical pixel-footprint profile.
-
-Run both native display modes and real Three.js CPU mesh raycast in the
-existing headed Chromium fallback:
-
-```sh
-python3 scripts/offline-native-app-capture.py --root . \
-  --inmemory-project site/examples/photodetector-literature-examples.wafercad \
-  --inmemory-roi 2465,-30,2525,30 --inmemory-z-break 14,2 \
-  --rough-cutline 2494.7,2495.3,0.123 --native-section-compare --quality \
-  --output test-results/rough-aligned-60-quality
-```
-
-This saves real production Canvas `native-section-aligned.png` and
-`native-section-physical.png`, alongside native 3D screenshots and
-`physicalRoughCutline.sectionDisplayRmsErrorUm`. Repeat with Fast/Quality
-and 60/240/6800 µm ROI; verify all 65 actual mesh intersections, error
-identity, saved-model immutability, coating and Border continuity. The lower
-aligned preview residual is not a measurement of exact physical-field mesh
-convergence: report `rmsErrorUm` separately. Null-Origin native Canvas
-evidence is not a synchronized Workstation/History/Recovery acceptance.
-
-### Repeatable Section-sampler versus completed native 3D mesh cutline
-
-The existing source-backed native capture runner can audit the **actual
-completed CPU rough mesh**, including the live material-layer ownership,
-Renderer Z break and its display-only Z scale. For the Photodetector, keep
-the physical 65-point line fixed and change only ROI and Fast/Quality:
-
-```sh
-python3 scripts/offline-native-app-capture.py --root . \
-  --inmemory-project site/examples/photodetector-literature-examples.wafercad \
-  --inmemory-roi 2465,-30,2525,30 --inmemory-z-break 14,2 \
-  --rough-cutline 2494.7,2495.3,0.123 \
-  --output test-results/rough-cutline-60-fast
-# Add --quality for the same 60 µm ROI, and repeat using
-# --inmemory-roi 2375,-120,2615,120 (240 µm) and
-# --inmemory-roi=-3400,-3400,3400,3400 (6,800 µm).
-```
-
-For very large ROI / Quality meshes, the cutline runner creates a
-temporary narrow probe geometry from the **actual completed material cap
-triangles**. It keeps original Float32 vertices, face orientation and
-`matrixWorld`, then intersects only triangles capable of meeting the line.
-It never changes production mesh `drawRange`, canonical physical geometry
-or the saved model. The report's `clippedTriangleCount` distinguishes
-this diagnostic workload from the full `roughTriangleCount`. In particular,
-do not call `Box3.setFromObject()` on a detached probe: it can recompute
-`matrixWorld` without the parent group Z scaling, manufacturing a false
-physical height error. Bound using the original live mesh instead. Unclipped
-and clipped native Chromium raycasts must agree at the same cutline; the
-6,800 µm Quality Photodetector scenario was the motivating regression.
-
-The runner records `physicalRoughCutline`: the actual material owner,
-all 65 ray intersections, missed points, per-point residual, RMS and maximum
-error, together with the native screenshots, mode and triangle counts.
-Section's reference height is sampled at 1,100 pixels / physical ROI width.
-The reference is transformed with the **same** native 3D display map
-before comparing to the ray intersection; otherwise a Z-break comparison
-would report a false physical height error. A buried Base must not be treated
-as the visible cap when an oxide lies above it. Shader-displaced and instanced
-rough meshes are explicitly excluded from the CPU triangle-raycast metric.
-
-The current report also separates two _signed_, physically equivalent
-height residuals at each sample:
-
-- `meshInterpolationErrorUm`: native CPU triangle raycast minus the 3D
-  LOD-filtered analytic height (mesh/tessellation residual).
-- `displayAttenuationErrorUm`: 3D LOD-filtered height minus the Section
-  pixel-footprint physical height (display-filtering difference).
-
-Their signed sum **must** equal `errorUm` at every sample (1e-9 µm
-numerical tolerance), and the report checks that the project model is
-unchanged. The corresponding RMS components are **not generally additive**.
-The diagnostic also reports `displayHeightBlend` for each matched cap;
-a blend below 1 intentionally reduces visible 3D rough displacement
-without altering stored physics or the Section sampling formula.
-
-On the Photodetector at 60 µm the native Quality mode exposes more height
-frequency than its finite CPU mesh can resolve. At 240/6,800 µm both
-Fast and Quality reach the minimum 0.12 display blend; increasing triangle
-budget alone need not improve the physical Section/3D comparison. Do not
-claim numerical convergence solely because a mesh budget increases.
-
-This is a _null-Origin native Renderer diagnostic_. Its Section reference is
-the production sampler, not a captured synchronized Section raster.
-It does not prove complete Workstation, Worker-backed project Open,
-History/Recovery, or untested GPU-shader vertex heights. Do not silently
-label a partial or missed cutline as a pass; do not change scientific
-tolerances or default morphology based on this diagnostic alone.
 
 Add `--check-rough-parity` together with the full Photodetector
 `--inmemory-project` to execute the production vertex-height qualification
@@ -377,33 +299,6 @@ It deliberately measures the shader even on SwiftShader, where production
 already selects CPU; software results cannot establish hardware acceptance.
 This diagnostic does not change the physical heightfield or accept the
 remaining triangle-interior interpolation error.
-
-To audit the **spatial** distinction between saved legacy `stochastic` and
-explicit `stochastic-v2` independently of display LOD, run:
-
-```sh
-node scripts/rough-morphology-statistics.mjs \
-  site/examples/photodetector-literature-examples.wafercad
-node --test site/tests/rough-morphology-statistics.test.mjs
-```
-
-The read-only diagnostic reports the source project SHA-256, seed, sampled
-height mean/standard deviation/bounds, and X/Y autocorrelation versus
-physical lag (default: 256×256 points, 0.025 µm pitch near the Photodetector
-rough region). The statistics quantify morphology semantics and legacy
-coordinate-dependent frequency; they are **not** a fitted Feature CV, a
-section raster, a shader-height parity test, or native 3D visual acceptance.
-Do not switch the saved morphology or weaken scientific tolerances based on
-these statistics alone.
-
-The parity diagnostic also probes stable-scale morphology at ±50,000 µm,
-intermediate positions, a second Seed and normal polarity. Its printed
-`precisionAnchor` is an internal shader-only coordinate frame; the test must
-retain the original model/Seed and validate cache/resource restoration. A
-smaller numeric discrepancy than before does not constitute a passing result:
-only `eligible: true` at the existing 2e-5 µm maximum-error gate can qualify
-the specific sampled task, and the native null-origin result cannot establish
-full Workstation or hardware-GPU acceptance.
 
 The probe also compares explicit `stochastic-v2` with the legacy stochastic
 field at the same coordinates; it never upgrades the supplied project.
@@ -422,32 +317,6 @@ physical vertex heights and matched 50 nm film samples, independently of
 display Z scaling. This focused check expects explicit stable-scale front
 profiles; it does not replace the general GLB, History or Recovery suites.
 Reuse the installed Chromium path/headless options as appropriate above.
-
-For a **strictly validated, authored science fixture** that does not require
-Worker-backed Open, the repository also provides
-`tests/fixtures/project-io/stable-rough-conformal-glb.wafercad`. It contains
-explicit `stochastic-v2` matching Base and 50 nm film profiles and can be
-checked using the existing source-backed native renderer:
-
-```sh
-python3 scripts/offline-native-app-capture.py --root . \
-  --inmemory-project tests/fixtures/project-io/stable-rough-conformal-glb.wafercad \
-  --check-glb --output test-results/stable-conformal-glb
-node --test site/tests/section-three-rough-profile.test.mjs
-```
-
-This fixture is deliberately authored from a simple base (not produced by a
-Process Worker). It validates physical GLB vertices and matched conformal
-heights, **not** an executed process transaction, History/Recovery, sidewall
-process formation or real synchronized four-view acceptance. Do not call the
-unmodified `stable-rough-base.wafercad` a GLB Rough test: its Base is flat.
-
-The GPU qualification samples the inside and boundaries of up to 16 physical
-Rough spatial zones (no more than 144 unique Float32 XY probes). Every zone
-must be represented; a scene with more zones, or translated array instances
-whose physical coordinates were not actually probed, is ineligible for GPU
-height displacement and uses the CPU fallback. Passing these finite probes
-still does not prove unsampled interior parity or hardware GPU correctness.
 
 ### Source-backed in-memory native 3D: demo or validated project
 

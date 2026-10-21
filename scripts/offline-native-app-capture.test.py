@@ -70,6 +70,26 @@ class CapturePreflightTests(unittest.TestCase):
         self.assertNotIn('await renderer.render()', source)
         self.assertIn('roughCaps:', source)
 
+    def test_native_section_uses_physical_compositor_only(self):
+        source = (MODULE.parent / 'offline-native-section-comparison.js').read_text()
+        self.assertIn('renderer.renderSection()', source)
+        self.assertIn("sampleMode: 'physical'", source)
+        self.assertNotIn('getRoughSectionDisplayMode', source)
+        self.assertNotIn("['aligned', 'physical']", source)
+
+    def test_continuous_3d_diagnostic_scale_is_bounded(self):
+        fixture = self.root / 'sample.wafercad'
+        fixture.write_text('{}')
+        for value in ('0.2', '20.01', 'nan', 'inf', '-1'):
+            with self.subTest(value=value):
+                result = subprocess.run(
+                    [sys.executable, str(MODULE), '--output', str(self.root / 'capture'),
+                     '--inmemory-project', str(fixture), '--inmemory-z-scale', value],
+                    capture_output=True, text=True, timeout=5,
+                )
+                self.assertEqual(result.returncode, 2)
+                self.assertIn('In-memory 3D Z scale must be finite', result.stderr)
+
     def test_pinned_version_and_files(self):
         self.assertEqual(capture.check_three(self.root), ('0.179.1', self.three))
 

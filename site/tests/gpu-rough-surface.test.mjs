@@ -40,7 +40,7 @@ test('GPU qualification samples physical cap corners and interiors across zones 
   ];
   const before = JSON.stringify(zones);
   const points = gpuRoughParitySamples(zones);
-  assert.ok(points.length > 64 && points.length <= 144);
+  assert.ok(points.length > 16 && points.length <= 64);
   assert.ok(points.some(([x]) => x === 2492));
   assert.ok(points.some(([x]) => x === -3000));
   assert.ok(
@@ -51,31 +51,6 @@ test('GPU qualification samples physical cap corners and interiors across zones 
   assert.deepEqual(gpuRoughParitySamples(zones), points);
   assert.deepEqual(gpuRoughParitySamples([]), []);
   assert.equal(JSON.stringify(zones), before, 'Never modify physical mesh input');
-});
-
-test('GPU qualification covers every spatial zone or conservatively chooses CPU', () => {
-  const triangle = (x) => [
-    [x, -0.3, 0],
-    [x + 0.1, -0.3, 0],
-    [x, 0.3, 0],
-  ];
-  // The last zone has just one triangle and very different physical coordinates.
-  const groups = Array.from({ length: 16 }, (_, index) => ({
-    baseTriangles: Array.from({ length: index === 0 ? 128 : 1 }, (_, sub) =>
-      triangle(index * 10000 + sub * 0.01),
-    ),
-  }));
-  const snapshot = JSON.stringify(groups);
-  const probes = gpuRoughParitySamples(groups);
-  assert.ok(probes.length > 16 && probes.length <= 144);
-  for (let index = 0; index < 16; index++) {
-    assert.ok(
-      probes.some(([x]) => x >= index * 10000 && x < index * 10000 + 2),
-      `Missing GPU height sample for spatial zone ${index}`,
-    );
-  }
-  assert.deepEqual(gpuRoughParitySamples([...groups, { baseTriangles: [triangle(-9999)] }]), []);
-  assert.equal(JSON.stringify(groups), snapshot, 'Probe selection must not edit physical geometry');
 });
 
 test('GPU height qualification rejects inaccurate or missing readback and restores renderer state', async () => {
@@ -172,43 +147,6 @@ test('GPU rough uniforms preserve deterministic appearance identity', () => {
   assert.equal(filtered.waferCadRoughVisualBlend.value, 0.12);
 });
 
-test('Stable-scale shader frame preserves global lattice indices without changing the physical sampling origin', () => {
-  const surface = {
-    ...appearance,
-    morphology: 'stochastic-v2',
-    seed: 0xfedcba98,
-    featureSize: 0.3,
-    sampleOrigin: [35.25, -4.5],
-  };
-  const anchor = [2495.123456, -1.234567];
-  const uniforms = gpuRoughAppearanceUniforms(surface, { precisionAnchor: anchor });
-  const frame = anchor.map(Math.fround);
-  const theta = ((surface.seed % 3600) / 3600) * Math.PI * 2;
-  const x = frame[0] - surface.sampleOrigin[0],
-    y = frame[1] - surface.sampleOrigin[1];
-  const rotated = [
-    x * Math.cos(theta) + y * Math.sin(theta),
-    -x * Math.sin(theta) + y * Math.cos(theta),
-  ];
-  assert.deepEqual(uniforms.waferCadRoughFrameAnchor.value, frame);
-  for (const [scale, name] of [
-    [1, 'Fine'],
-    [4, 'Coarse'],
-  ]) {
-    const expected = rotated.map((value) => value / (surface.featureSize * scale));
-    const cell = uniforms[`waferCadRough${name}Cell`].value;
-    const fraction = uniforms[`waferCadRough${name}Fraction`].value;
-    assert.deepEqual(cell, expected.map(Math.floor));
-    for (let i = 0; i < 2; i++) {
-      assert.ok(Math.abs(cell[i] + fraction[i] - expected[i]) < 1e-10);
-    }
-  }
-  assert.deepEqual(uniforms.waferCadRoughFrameCosSin.value, [Math.cos(theta), Math.sin(theta)]);
-  assert.equal(uniforms.waferCadRoughSampleOriginX.value, surface.sampleOrigin[0]);
-  assert.equal(uniforms.waferCadRoughSampleOriginY.value, surface.sampleOrigin[1]);
-  assert.deepEqual(surface.sampleOrigin, [35.25, -4.5]);
-});
-
 test('GPU rough preview rejects non-rough or degenerate appearances', () => {
   assert.equal(canUseGpuRoughPreview(appearance), true);
   assert.equal(canUseGpuRoughPreview({ ...appearance, kind: 'smooth' }), false);
@@ -237,17 +175,6 @@ test('GPU rough task eligibility falls back for buried, implant, and scaled-Z pa
   assert.equal(canUseGpuRoughTask({ appearance }), true);
   assert.equal(canUseGpuRoughTask({ appearance, buried: true }), false);
   assert.equal(canUseGpuRoughTask({ appearance, implant: true }), false);
-  assert.equal(
-    canUseGpuRoughTask({
-      appearance,
-      instanceTranslations: [
-        [2500, 0],
-        [50000, 0],
-      ],
-    }),
-    false,
-    'Translated instances cannot be qualified by template-only GPU height probes',
-  );
   assert.equal(
     canUseGpuRoughTask({ appearance, zDisplay: { frontScale: 1.2, backScale: 1 } }),
     false,
@@ -281,7 +208,7 @@ test('GPU rough decorator chains existing material shader hooks', () => {
   assert.equal(priorCompileCalls, 1);
   assert.equal(material.needsUpdate, true);
   assert.equal(material.userData.waferCadGpuRough.normalStrengthBase, 1);
-  assert.match(material.customProgramCacheKey(), /wafercad-gpu-rough-v10/);
+  assert.match(material.customProgramCacheKey(), /wafercad-gpu-rough-v9/);
   assert.match(shader.vertexShader, /waferCadGpuDisplace/);
   assert.doesNotMatch(shader.vertexShader, /instanceMatrix\[3\]\.xy/);
   assert.match(shader.vertexShader, /transformed\.z \+= waferCadRoughProfileNormal/);

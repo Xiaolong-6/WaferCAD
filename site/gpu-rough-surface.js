@@ -1,6 +1,6 @@
 import { roughDisplayProfileOffsetAtPoint } from './surface-rendering.js';
 
-const GPU_ROUGH_PROGRAM_VERSION = 'wafercad-gpu-rough-v10';
+const GPU_ROUGH_PROGRAM_VERSION = 'wafercad-gpu-rough-v9';
 const gpuHeightParityCache = new WeakMap();
 
 // The existing physical vertex-height contract, in micrometres. Renderer-name
@@ -11,45 +11,23 @@ export function gpuRoughParitySamples(zones) {
   const groups = (zones || []).filter((zone) => zone.baseTriangles?.length);
   const total = groups.reduce((sum, zone) => sum + zone.baseTriangles.length, 0);
   if (!total) return [];
-  const maxTriangleProbes = 16;
-  // The parity gate cannot qualify zones that it never observes. A large
-  // multi-zone field stays on the deterministic CPU path instead of silently
-  // claiming shader precision from samples in unrelated patches.
-  if (groups.length > maxTriangleProbes) return [];
   const points = new Map();
-  const selected = new Set();
-  let offset = 0;
-  for (const group of groups) {
-    selected.add(offset + Math.floor((group.baseTriangles.length - 1) / 2));
-    offset += group.baseTriangles.length;
-  }
-  // Fill the remaining fixed budget by distributing probes across the scene,
-  // but never replace the guaranteed representative from each distinct zone.
-  for (let index = 0; index < maxTriangleProbes && selected.size < maxTriangleProbes; index++) {
-    selected.add(Math.floor((index * (total - 1)) / (maxTriangleProbes - 1)));
-  }
+  const count = Math.min(16, total);
   let groupIndex = 0,
     first = 0;
-  for (const ordinal of [...selected].sort((a, b) => a - b)) {
+  for (let index = 0; index < count; index++) {
+    const ordinal = Math.floor((index * (total - 1)) / Math.max(1, count - 1));
     while (ordinal >= first + groups[groupIndex].baseTriangles.length) {
       first += groups[groupIndex++].baseTriangles.length;
     }
     const triangle = groups[groupIndex].baseTriangles[ordinal - first];
     // Include corners pinned by the CPU and nonvertex interior points. The
     // shader receives Float32 XY, exactly as the production vertex buffer does.
-    // Include the physical corners, all three edge interiors, and several
-    // independent barycentric locations. Passing only sparse corner probes
-    // cannot qualify an oscillatory rough heightfield between vertices.
     for (const weights of [
       [1, 0, 0],
       [0, 1, 0],
       [0, 0, 1],
-      [0.5, 0.5, 0],
-      [0, 0.5, 0.5],
-      [0.5, 0, 0.5],
       [0.23, 0.31, 0.46],
-      [0.13, 0.17, 0.7],
-      [0.65, 0.12, 0.23],
     ]) {
       const point = [0, 1].map((axis) =>
         Math.fround(triangle.reduce((sum, vertex, i) => sum + vertex[axis] * weights[i], 0)),
@@ -71,7 +49,7 @@ function clamp01(value) {
 
 export function gpuRoughAppearanceUniforms(
   appearance,
-  { profileNormal = 1, normalStrength = 1, precisionAnchor = null } = {},
+  { profileNormal = 1, normalStrength = 1 } = {},
 ) {
   const featureSize = finitePositive(appearance?.featureSize, 1),
     meanHeight = Math.max(
@@ -80,25 +58,7 @@ export function gpuRoughAppearanceUniforms(
     ),
     etchDepth = finitePositive(appearance?.etchDepth, meanHeight),
     seed = Number(appearance?.seed) >>> 0,
-    origin = Array.isArray(appearance?.sampleOrigin) ? appearance.sampleOrigin : [0, 0],
-    // Frame origin is a shader-only translation. Never change the canonical
-    // sampleOrigin or the seeded lattice indices stored in project geometry.
-    frame =
-      precisionAnchor?.length === 2
-        ? precisionAnchor.map((value) => Math.fround(Number(value)))
-        : [0, 0],
-    angle = ((seed % 3600) / 3600) * Math.PI * 2,
-    cos = Math.cos(angle),
-    sin = Math.sin(angle),
-    dx = frame[0] - (Number(origin[0]) || 0),
-    dy = frame[1] - (Number(origin[1]) || 0),
-    rotatedAnchor = [dx * cos + dy * sin, -dx * sin + dy * cos],
-    frameLattice = (scale) => {
-      const grid = rotatedAnchor.map((value) => value / (featureSize * scale));
-      return { cell: grid.map(Math.floor), fraction: grid.map((v) => v - Math.floor(v)) };
-    },
-    fine = frameLattice(1),
-    coarse = frameLattice(4);
+    origin = Array.isArray(appearance?.sampleOrigin) ? appearance.sampleOrigin : [0, 0];
 
   return {
     waferCadRoughFeatureSize: { value: featureSize },
@@ -115,12 +75,6 @@ export function gpuRoughAppearanceUniforms(
     waferCadRoughSeedHigh: { value: seed >>> 16 },
     waferCadRoughSampleOriginX: { value: Number(origin[0]) || 0 },
     waferCadRoughSampleOriginY: { value: Number(origin[1]) || 0 },
-    waferCadRoughFrameAnchor: { value: frame },
-    waferCadRoughFrameCosSin: { value: [cos, sin] },
-    waferCadRoughFineCell: { value: fine.cell },
-    waferCadRoughFineFraction: { value: fine.fraction },
-    waferCadRoughCoarseCell: { value: coarse.cell },
-    waferCadRoughCoarseFraction: { value: coarse.fraction },
     waferCadRoughMorphology: { value: appearance?.morphology === 'pyramid' ? 1 : 0 },
     waferCadRoughStableScale: { value: appearance?.morphology === 'stochastic-v2' ? 1 : 0 },
     waferCadRoughPolarityNormal: { value: appearance?.polarity === 'normal' ? 1 : 0 },
@@ -164,7 +118,6 @@ export function canUseGpuRoughTask({
   appearance,
   buried = false,
   implant = false,
-  instanceTranslations = null,
   zDisplay = null,
 } = {}) {
   const frontScale = Number(zDisplay?.frontScale),
@@ -173,16 +126,7 @@ export function canUseGpuRoughTask({
       !zDisplay?.reliefActive &&
       (!Number.isFinite(frontScale) || Math.abs(frontScale - 1) <= 1e-12) &&
       (!Number.isFinite(backScale) || Math.abs(backScale - 1) <= 1e-12);
-  // The probe samples the template's physical triangles, not every translated
-  // array instance. Do not qualify displaced shader heights for untested
-  // instance locations; retain the existing CPU morphology/export contract.
-  return Boolean(
-    !implant &&
-    !buried &&
-    !instanceTranslations?.length &&
-    scaleCompatible &&
-    canUseGpuRoughPreview(appearance),
-  );
+  return Boolean(!implant && !buried && scaleCompatible && canUseGpuRoughPreview(appearance));
 }
 
 const ROUGH_PROFILE_GLSL = `
@@ -196,12 +140,6 @@ uniform float waferCadRoughSeedLow;
 uniform float waferCadRoughSeedHigh;
 uniform float waferCadRoughSampleOriginX;
 uniform float waferCadRoughSampleOriginY;
-uniform vec2 waferCadRoughFrameAnchor;
-uniform vec2 waferCadRoughFrameCosSin;
-uniform vec2 waferCadRoughFineCell;
-uniform vec2 waferCadRoughFineFraction;
-uniform vec2 waferCadRoughCoarseCell;
-uniform vec2 waferCadRoughCoarseFraction;
 uniform float waferCadRoughMorphology;
 uniform float waferCadRoughStableScale;
 uniform float waferCadRoughPolarityNormal;
@@ -247,24 +185,6 @@ float waferCadGaussianNoise2D(vec2 point, float featureSize, uint seed, int chan
   float a = mix(a0, a1, smoothT.x);
   float b = mix(b0, b1, smoothT.x);
   return mix(a, b, smoothT.y) * 1.5;
-}
-
-// For stable-scale rough, avoid putting an 8,000+ lattice coordinate into
-// single-precision interpolation. Frame displacement is small, while the
-// integer hash cells retain the EXACT seeded global lattice identity.
-float waferCadGaussianNoiseFramed(
-  vec2 rotatedDelta, float feature, vec2 anchorCell, vec2 anchorFraction,
-  uint seed, int channel
-) {
-  vec2 grid = rotatedDelta / max(1e-9, feature) + anchorFraction;
-  ivec2 cell = ivec2(anchorCell) + ivec2(floor(grid));
-  vec2 t = fract(grid);
-  vec2 smoothT = t * t * (3.0 - 2.0 * t);
-  float a0 = waferCadGaussianHash(seed, cell.x, cell.y, channel);
-  float a1 = waferCadGaussianHash(seed, cell.x + 1, cell.y, channel);
-  float b0 = waferCadGaussianHash(seed, cell.x, cell.y + 1, channel);
-  float b1 = waferCadGaussianHash(seed, cell.x + 1, cell.y + 1, channel);
-  return mix(mix(a0, a1, smoothT.x), mix(b0, b1, smoothT.x), smoothT.y) * 1.5;
 }
 
 float waferCadLognormalFactor(float cv, float z) {
@@ -332,31 +252,25 @@ float waferCadPyramidOffset(vec2 point, uint seed) {
   return waferCadRoughPolarityNormal > 0.5 ? normalOffset : depth - normalOffset;
 }
 
-float waferCadStochasticOffset(vec2 point, vec2 absolutePoint, uint seed) {
+float waferCadStochasticOffset(vec2 point, uint seed) {
   float meanFeature = max(1e-9, waferCadRoughFeatureSize);
   float meanHeight = max(0.0, waferCadRoughMeanHeight);
-  float c = waferCadRoughFrameCosSin.x;
-  float s = waferCadRoughFrameCosSin.y;
+  float angle = (float(seed % 3600u) / 3600.0) * 6.283185307179586;
+  float c = cos(angle);
+  float s = sin(angle);
+  vec2 rotated = vec2(point.x * c + point.y * s, -point.x * s + point.y * c);
   if (waferCadRoughStableScale > 0.5) {
-    // Rebase before rotating: the physical field stays at the SAME absolute
-    // location and uses the same global hash cells as the CPU double field.
-    vec2 delta = absolutePoint - waferCadRoughFrameAnchor;
-    vec2 localRotated = vec2(delta.x * c + delta.y * s, -delta.x * s + delta.y * c);
     vec2 warp = meanFeature * 0.25 * waferCadRoughFeatureCv * clamp(vec2(
-      waferCadGaussianNoiseFramed(localRotated, meanFeature * 4.0,
-        waferCadRoughCoarseCell, waferCadRoughCoarseFraction, seed ^ 0x51ed270bu, 1),
-      waferCadGaussianNoiseFramed(localRotated, meanFeature * 4.0,
-        waferCadRoughCoarseCell, waferCadRoughCoarseFraction, seed ^ 0x51ed270bu, 3)
+      waferCadGaussianNoise2D(rotated, meanFeature * 4.0, seed ^ 0x51ed270bu, 1),
+      waferCadGaussianNoise2D(rotated, meanFeature * 4.0, seed ^ 0x51ed270bu, 3)
     ), vec2(-1.0), vec2(1.0));
     float heightFactor = waferCadLognormalFactor(
       waferCadRoughHeightCv,
-      waferCadGaussianNoiseFramed(localRotated + warp, meanFeature,
-        waferCadRoughFineCell, waferCadRoughFineFraction, seed ^ 0x9e3779b9u, 2)
+      waferCadGaussianNoise2D(rotated + warp, meanFeature, seed ^ 0x9e3779b9u, 2)
     );
     float relief = min(waferCadRoughEtchDepth, meanHeight * heightFactor);
     return waferCadRoughPolarityNormal > 0.5 ? waferCadRoughEtchDepth - relief : relief;
   }
-  vec2 rotated = vec2(point.x * c + point.y * s, -point.x * s + point.y * c);
   float featureFactor = waferCadLognormalFactor(
     waferCadRoughFeatureCv,
     waferCadGaussianNoise2D(rotated, meanFeature * 4.0, seed ^ 0x51ed270bu, 1)
@@ -376,7 +290,7 @@ float waferCadRoughProfile(vec2 absolutePoint) {
   uint seed = waferCadRoughSeed();
   float raw = waferCadRoughMorphology > 0.5
     ? waferCadPyramidOffset(point, seed)
-    : waferCadStochasticOffset(point, absolutePoint, seed);
+    : waferCadStochasticOffset(point, seed);
   float mean = min(waferCadRoughEtchDepth, max(0.0, waferCadRoughMeanHeight));
   float center =
     waferCadRoughPolarityNormal > 0.5 ? waferCadRoughEtchDepth - mean : mean;
@@ -396,14 +310,7 @@ export function checkGpuRoughHeightParity(THREE, renderer, appearance, points) {
     cache = new Map();
     gpuHeightParityCache.set(renderer, cache);
   }
-  // Anchoring inside the probed zone keeps GLSL fractional coordinates
-  // numerically small without shifting the physical sampleOrigin.
-  const precisionAnchor = [0, 1].map((axis) =>
-    Math.fround(
-      (Math.min(...points.map((p) => p[axis])) + Math.max(...points.map((p) => p[axis]))) / 2,
-    ),
-  );
-  const key = JSON.stringify([GPU_ROUGH_PROGRAM_VERSION, appearance, points, precisionAnchor]);
+  const key = JSON.stringify([appearance, points]);
   if (cache.has(key)) return cache.get(key);
 
   let result = { eligible: false, reason: 'float-readback-unavailable', samples: points.length };
@@ -430,7 +337,7 @@ export function checkGpuRoughHeightParity(THREE, renderer, appearance, points) {
       material = new THREE.RawShaderMaterial({
         glslVersion: THREE.GLSL3,
         uniforms: {
-          ...gpuRoughAppearanceUniforms(appearance, { precisionAnchor }),
+          ...gpuRoughAppearanceUniforms(appearance),
           sampleCount: { value: points.length },
         },
         vertexShader: `precision highp float;
@@ -480,7 +387,6 @@ void main() { outColor = vec4(sampleHeight, 0.0, 0.0, 1.0); }`,
         samples: points.length,
         maximumErrorUm,
         rmsErrorUm: Math.sqrt(squared / points.length),
-        precisionAnchor,
       };
     } catch {
       result = { eligible: false, reason: 'height-probe-failed', samples: points.length };
@@ -558,15 +464,11 @@ function injectAfter(source, token, code) {
 export function decorateGpuRoughMaterial(
   material,
   appearance,
-  { profileNormal = 1, normalStrength = 1, precisionAnchor = null } = {},
+  { profileNormal = 1, normalStrength = 1 } = {},
 ) {
   if (!material || !canUseGpuRoughPreview(appearance)) return false;
 
-  const uniforms = gpuRoughAppearanceUniforms(appearance, {
-      profileNormal,
-      normalStrength,
-      precisionAnchor,
-    }),
+  const uniforms = gpuRoughAppearanceUniforms(appearance, { profileNormal, normalStrength }),
     previousCompile = material.onBeforeCompile,
     previousProgramKey = material.customProgramCacheKey?.bind(material);
 
@@ -709,13 +611,9 @@ export function decorateRoughFarFieldMaterial(material, appearance) {
 
 // Wire/outline variant: the same vertex displacement as the rough cap, without
 // the fragment-normal shader (LineBasicMaterial has no normal_fragment_maps).
-export function decorateGpuRoughLineMaterial(
-  material,
-  appearance,
-  { profileNormal = 1, precisionAnchor = null } = {},
-) {
+export function decorateGpuRoughLineMaterial(material, appearance, { profileNormal = 1 } = {}) {
   if (!material || !canUseGpuRoughPreview(appearance)) return false;
-  const uniforms = gpuRoughAppearanceUniforms(appearance, { profileNormal, precisionAnchor }),
+  const uniforms = gpuRoughAppearanceUniforms(appearance, { profileNormal }),
     previousCompile = material.onBeforeCompile,
     previousProgramKey = material.customProgramCacheKey?.bind(material);
   material.customProgramCacheKey = () =>

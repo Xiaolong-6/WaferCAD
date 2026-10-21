@@ -1,11 +1,13 @@
 // Read-only 3D presentation scaling, independent of physical Process geometry.
 // The complete scene (caps, sidewalls, conformal films and borders) shares
 // one Z display scale; never apply this multiplier to individual rough vertices.
-export const THREE_Z_DISPLAY_FACTORS = Object.freeze([1, 2, 5, 10]);
+export const THREE_Z_DISPLAY_RANGE = Object.freeze({ min: 0.25, max: 20, step: 0.05 });
 
 export function normalizeThreeZDisplayFactor(value) {
   const factor = Number(value);
-  return THREE_Z_DISPLAY_FACTORS.includes(factor) ? factor : 1;
+  return Number.isFinite(factor) && factor > 0
+    ? Math.max(THREE_Z_DISPLAY_RANGE.min, Math.min(THREE_Z_DISPLAY_RANGE.max, factor))
+    : 1;
 }
 
 export function threeZDisplayScale(baseScale, factor = 1) {

@@ -162,36 +162,6 @@ body[data-workstation] #app-root {
 .v2-three-z-display-indicator[hidden] {
   display: none;
 }
-.v2-main-tools:has(> .v2-three-z-menu) {
-  width: min(360px, calc(100vw - 16px));
-  min-width: 0;
-}
-.v2-main-tools > .v2-three-z-menu {
-  width: 100%;
-  box-sizing: border-box;
-}
-.v2-three-z-menu p {
-  margin: 0;
-  line-height: 1.4;
-  white-space: normal;
-}
-.v2-three-z-options {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 5px;
-}
-.v2-three-relief-options {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-.v2-three-z-options .wc-segment {
-  min-height: 44px;
-  padding: 5px;
-}
-.v2-three-z-options .wc-segment[aria-pressed='true'] {
-  background: var(--wc-accent-tint);
-  color: var(--wc-accent);
-  border-color: var(--wc-accent);
-}
 .v2-three-task {
   position: fixed;
   z-index: 50;

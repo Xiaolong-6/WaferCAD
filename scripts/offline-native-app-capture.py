@@ -355,53 +355,6 @@ def run(args):
             before = runtime_probe(page)
             report['beforeInteraction'] = before
             report['images'] = {'fourView': {'file': base.name, 'sha256': snapshot_sha(base)}}
-            if args.inspect_history:
-                # These are real app controls; null-origin remains diagnostic-only
-                # because process Workers and Recovery cannot operate there.
-                history_nav = page.locator('button[data-action="domain:history"]')
-                process_nav = page.locator('button[data-action="domain:process"]')
-                if history_nav.count() != 1 or process_nav.count() != 1:
-                    raise RuntimeError('Native History/Process navigation controls are missing')
-                history_nav.click()
-                page.wait_for_timeout(350)
-                base_step = page.locator('#snapshotList .snapshot-base-step')
-                history_visible = base_step.count() == 1 and base_step.is_visible()
-                history_img = out / 'history-step0.png'
-                page.mouse.move(args.width - 8, args.height - 8)
-                page.screenshot(path=str(history_img), animations='disabled')
-                report['images']['historyStep0'] = {
-                    'file': history_img.name, 'sha256': snapshot_sha(history_img)}
-                base_step.click()
-                page.wait_for_timeout(350)
-                project_selected = page.locator('button[data-action="domain:project"][aria-pressed="true"]')
-                base_editor_visible = page.locator('#applyBaseBtn').is_visible()
-                step0_opens_editor = bool(project_selected.count() == 1 and base_editor_visible)
-                editor_img = out / 'step0-base-editor.png'
-                page.mouse.move(args.width - 8, args.height - 8)
-                page.screenshot(path=str(editor_img), animations='disabled')
-                report['images']['step0BaseEditor'] = {
-                    'file': editor_img.name, 'sha256': snapshot_sha(editor_img)}
-                process_nav.click()
-                page.wait_for_timeout(350)
-                undo = page.get_by_role('button', name='Undo model operation')
-                redo = page.get_by_role('button', name='Redo model operation')
-                process_actions = undo.count() == 1 and redo.count() == 1
-                process_img = out / 'process-undo.png'
-                page.mouse.move(args.width - 8, args.height - 8)
-                page.screenshot(path=str(process_img), animations='disabled')
-                report['images']['processUndo'] = {
-                    'file': process_img.name, 'sha256': snapshot_sha(process_img)}
-                report['historyProcessDiagnostic'] = {
-                    'stepZeroVisible': history_visible,
-                    'processUndoRedoVisible': process_actions,
-                    'stepZeroOpensBaseEditor': step0_opens_editor,
-                    'historyRecoveryVerified': False,
-                }
-                fail = fail or not (history_visible and process_actions and step0_opens_editor)
-                project_nav = page.locator('button[data-action="domain:project"]')
-                if project_nav.count():
-                    project_nav.click()
-                    page.wait_for_timeout(200)
             three_rect = before.get('three')
             three_ok = (bool(before['webgl']['available'])
                         and bool(before['webgl']['nativeThreeContext'])
@@ -437,40 +390,36 @@ def run(args):
                 if trigger.count() != 1:
                     raise RuntimeError('Display-only Z toolbar trigger is missing')
                 trigger.click()
-                page.locator('[data-three-z-factor="2"]').click()
-                page.wait_for_timeout(750)
+                slider = page.get_by_role('slider', name='3D vertical display scale')
+                number = page.get_by_role('spinbutton', name='3D vertical display scale exact factor')
+                if slider.count() != 1 or number.count() != 1:
+                    raise RuntimeError('Continuous 3D Z scale controls are missing')
+                slider.fill('1.75')
+                page.wait_for_timeout(350)
                 selected = page.locator('#threeHost').get_attribute('data-z-display-factor')
                 indicator = page.locator('#threeHost .v2-three-z-display-indicator')
                 indicator_text = indicator.inner_text() if indicator.is_visible() else ''
                 image = out / 'three-z-display-ui.png'
                 page.screenshot(path=str(image), animations='disabled')
                 report['images']['zDisplayUi'] = {'file': image.name, 'sha256': snapshot_sha(image)}
-                page.locator('[data-three-z-factor="1"]').click()
-                page.wait_for_timeout(250)
+                number.fill('2.35')
+                number.press('Tab')
+                page.wait_for_timeout(350)
+                typed = page.locator('#threeHost').get_attribute('data-z-display-factor')
+                page.get_by_role('button', name='Reset 3D vertical display scale to one').click()
+                page.wait_for_timeout(350)
                 reverted = page.locator('#threeHost').get_attribute('data-z-display-factor')
-                report['zDisplayUi'] = {'factor2': selected, 'indicator': indicator_text,
-                                        'factor1Reverted': reverted, 'nullOrigin': mode != 'https-origin'}
-                if selected != '2' or reverted != '1' or 'not physical' not in indicator_text:
-                    raise RuntimeError('3D display-only Z control failed to render and revert')
-                page.locator('[data-three-relief-factor="30"]').click()
-                page.wait_for_timeout(900)
-                relief_selected = page.locator('#threeHost').get_attribute(
-                    'data-rough-relief-factor-selected')
-                relief_indicator = indicator.inner_text() if indicator.is_visible() else ''
-                relief_image = out / 'three-relief-display-ui.png'
-                page.screenshot(path=str(relief_image), animations='disabled')
-                report['images']['reliefDisplayUi'] = {
-                    'file': relief_image.name, 'sha256': snapshot_sha(relief_image)}
-                page.locator('[data-three-relief-factor="1"]').click()
-                page.wait_for_timeout(500)
-                relief_reverted = page.locator('#threeHost').get_attribute(
-                    'data-rough-relief-factor-selected')
-                report['roughReliefUi'] = {
-                    'factor30': relief_selected, 'indicator': relief_indicator,
-                    'factor1Reverted': relief_reverted, 'nullOrigin': mode != 'https-origin'}
-                if relief_selected != '30' or relief_reverted != '1' or \
-                        'not physical' not in relief_indicator:
-                    raise RuntimeError('3D local relief control failed to render and revert')
+                relief_buttons = page.locator('[data-three-relief-factor]').count()
+                section_physical_button = page.locator('#sectionRoughPhysicalBtn').count()
+                report['zDisplayUi'] = {'factor1Point75': selected, 'typed2Point35': typed,
+                                        'indicator': indicator_text, 'factor1Reverted': reverted,
+                                        'reliefButtons': relief_buttons,
+                                        'extraSectionPhysicalButton': section_physical_button,
+                                        'nullOrigin': mode != 'https-origin'}
+                if selected != '1.75' or typed != '2.35' or reverted != '1' or \
+                        relief_buttons != 0 or section_physical_button != 0 or \
+                        'not physical' not in indicator_text:
+                    raise RuntimeError('Continuous Z control or retired Relief/Section UI failed')
             if args.project:
                 if mode != 'https-origin':
                     report['exampleLoad'] = 'NOT ATTEMPTED: null origin prevents native Worker access'
@@ -541,6 +490,12 @@ def run(args):
                     roughMeshMode:canvas?.dataset?.roughMeshMode || 'none',
                     roughMeshBackend:canvas?.dataset?.roughMeshBackend || null,
                     roughTriangleCount:Number(canvas?.dataset?.roughTriangleCount || 0),
+                    rendererFinalReadyMs:Number(item?.host?.dataset?.rendererFinalReadyMs || 0),
+                    rendererRoughMs:Number(item?.host?.dataset?.rendererRoughMs || 0),
+                    roughSaturatedLodTrim:item?.host?.dataset?.roughSaturatedLodTrim || null,
+                    roughSaturatedLodDebug:globalThis.__waferCadLocalSaturationDebug || null,
+                    roughTaskSpecialDebug:globalThis.__waferCadTaskSpecialDebug || null,
+                    roughLodTrace:globalThis.__waferCadLodTrace || null,
                     roughDisplaySamplePitchUm:Number(item?.host?.dataset?.roughDisplaySamplePitchUm || 0),
                     roughDisplayBlendMin:Number(item?.host?.dataset?.roughDisplayBlendMin ?? 1),
                     roughRebuildCount:Number(canvas?.dataset?.roughRebuildCount || 0),
@@ -568,25 +523,24 @@ def run(args):
                 if not ready:
                     fail = True
                 if args.native_section_compare:
+                    if not args.rough_cutline or not args.inmemory_roi:
+                        raise ValueError('Native Section comparison requires --rough-cutline and --inmemory-roi')
                     import base64
                     expression = (root / 'scripts/offline-native-section-comparison.js').read_text(encoding='utf-8')
                     section_images = page.evaluate(expression, {
                         'roiBounds': args.inmemory_roi, 'line': args.rough_cutline,
                         'zBreak': args.inmemory_z_break, 'borders': args.native_section_borders})
-                    section_data = {
-                        'modelUnchanged': section_images['modelUnchanged'],
-                        'actualProductionSectionRenderer': section_images['actualProductionSectionRenderer']}
-                    for section_mode in ('aligned', 'physical'):
+                    section_data = {'modelUnchanged': section_images['modelUnchanged'],
+                                    'actualProductionSectionRenderer': section_images['actualProductionSectionRenderer']}
+                    for section_mode in ('physical',):
                         result = section_images[section_mode]
                         if result['sampleMode'] != section_mode:
-                            raise RuntimeError('Native production Section mode selection failed')
+                            raise RuntimeError('Native Section mode incorrectly selected')
                         name = 'native-section-' + section_mode + '.png'
                         section_path = out / name
                         section_path.write_bytes(base64.b64decode(result['png'].split(',', 1)[1]))
-                        report['images'][name] = {
-                            'file': name, 'sha256': snapshot_sha(section_path)}
-                        section_data[section_mode] = {
-                            'density': result['pixelDensity'], 'image': name}
+                        report['images'][name] = {'file': name, 'sha256': snapshot_sha(section_path)}
+                        section_data[section_mode] = {'density': result['pixelDensity'], 'image': name}
                     report['nativeSectionComparison'] = section_data
                 if args.check_rough_parity:
                     expression = (root / 'scripts/offline-native-rough-parity.js').read_text(encoding='utf-8')
@@ -605,8 +559,9 @@ def run(args):
                         throw Error('Read-only cutline probe mutated project data');
                       }
                       return { ...result, modelUnchanged: true };
-                    }''', {'xMin': args.rough_cutline[0], 'xMax': args.rough_cutline[1],
-                           'y': args.rough_cutline[2], 'pixelsPerUm': density, 'samples': 65})
+                    }''',
+                      {'xMin': args.rough_cutline[0], 'xMax': args.rough_cutline[1],
+                       'y': args.rough_cutline[2], 'pixelsPerUm': density, 'samples': 65})
                     if report['physicalRoughCutline']['missingCount']:
                         raise RuntimeError('Rough cutline missed real mesh positions')
                     for point in report['physicalRoughCutline']['points']:
@@ -654,8 +609,8 @@ def main():
     parser.add_argument('--inmemory-z-break', help='top,bottom Z coordinates in physical micrometres; for --inmemory-project')
     parser.add_argument('--inmemory-relief-scale', type=int, choices=(1, 10, 30), default=1,
                         help='Opt-in local monotone roughness relief display magnification')
-    parser.add_argument('--inmemory-z-scale', type=int, choices=(1, 2, 5, 10), default=1,
-                        help='Diagnostic-only uniform 3D display Z multiplier')
+    parser.add_argument('--inmemory-z-scale', type=float, default=1,
+                        help='Diagnostic-only continuous 3D Z multiplier (0.25 to 20)')
     parser.add_argument('--wait-ms', type=int, default=5500)
     parser.add_argument('--width', type=int, default=1600)
     parser.add_argument('--height', type=int, default=1000)
@@ -663,38 +618,37 @@ def main():
     parser.add_argument('--check-rough-parity', action='store_true', help='Probe production GLSL at Photodetector physical coordinates')
     parser.add_argument('--check-stable-rough-ui', action='store_true', help='Apply stable rough Etch/ALD and verify native Undo, Save, file Open and reload on a 2 um base')
     parser.add_argument('--check-glb', action='store_true', help='Check production physical GLB stable-profile heights and 50 nm film')
-    parser.add_argument('--quality', action='store_true', help='Use Quality instead of Fast 3D mesh budget for isolated model')
-    parser.add_argument('--rough-cutline', help='Physical xMin,xMax,y to compare actual 3D CPU mesh against Section sampler')
+    parser.add_argument('--quality', action='store_true', help='Use Quality instead of Fast 3D mesh budget')
+    parser.add_argument('--rough-cutline', help='Physical xMin,xMax,y versus actual 3D rough mesh')
     parser.add_argument('--native-section-compare', action='store_true',
-                        help='Render real aligned/physical Section Canvas with production compositor')
-    parser.add_argument('--native-section-borders', action='store_true',
-                        help='Include Section structural borders in native comparison')
+                        help='Compare genuine physical Section canvas against the actual 3D mesh')
+    parser.add_argument('--native-section-borders', action='store_true', help='Include real structural Section borders in native model comparison')
     parser.add_argument('--headless', action='store_true', help='Opt out of headful/Xvfb; may disable WebGL')
     parser.add_argument('--require-origin', action='store_true', help='Fail rather than use null-origin diagnostic')
-    parser.add_argument('--inspect-history', action='store_true',
-                        help='Capture real History Step 0 and Process Undo controls (visual only)')
     args = parser.parse_args()
     if not 300 <= args.width <= 4096 or not 300 <= args.height <= 4096 or not 500 <= args.wait_ms <= 60000:
         parser.error('Invalid dimensions or wait interval')
+    if not math.isfinite(args.inmemory_z_scale) or not 0.25 <= args.inmemory_z_scale <= 20:
+        parser.error('In-memory 3D Z scale must be finite and between 0.25 and 20')
     if (args.inmemory_roi or args.inmemory_z_break) and not args.inmemory_project:
         parser.error('ROI and Z break require --inmemory-project')
-    if args.check_rough_parity and not args.inmemory_project:
-        parser.error('Rough height parity requires --inmemory-project')
-    if args.check_glb and not args.inmemory_project:
-        parser.error('Physical GLB check requires --inmemory-project')
     if args.native_section_borders and not args.native_section_compare:
         parser.error('--native-section-borders requires --native-section-compare')
     if args.native_section_compare and (not args.rough_cutline or not args.inmemory_roi):
         parser.error('--native-section-compare requires --rough-cutline and --inmemory-roi')
-    if (args.rough_cutline or args.quality or args.native_section_compare) and not args.inmemory_project:
-        parser.error('Rough cutline and Quality diagnostic require --inmemory-project')
+    if args.check_rough_parity and not args.inmemory_project:
+        parser.error('Rough height parity requires --inmemory-project')
+    if args.check_glb and not args.inmemory_project:
+        parser.error('Physical GLB check requires --inmemory-project')
+    if (args.rough_cutline or args.quality or args.native_section_compare or args.native_section_borders) and not args.inmemory_project:
+        parser.error('Rough cutline and Quality require --inmemory-project')
     try:
         args.inmemory_roi = parse_native_bounds(args.inmemory_roi, 'ROI', 4)
         args.inmemory_z_break = parse_native_bounds(args.inmemory_z_break, 'Z break', 2)
         if args.rough_cutline:
             values = [float(part) for part in args.rough_cutline.split(',')]
-            if len(values) != 3 or not all(math.isfinite(value) for value in values) or values[1] <= values[0]:
-                raise ValueError('Rough cutline must be physical xMin,xMax,y with xMax > xMin')
+            if len(values) != 3 or not all(math.isfinite(v) for v in values) or values[1] <= values[0]:
+                raise ValueError('Rough cutline must be finite xMin,xMax,y with xMax > xMin')
             args.rough_cutline = values
     except ValueError as exc:
         parser.error(str(exc))

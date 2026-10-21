@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  THREE_Z_DISPLAY_FACTORS,
+  THREE_Z_DISPLAY_RANGE,
   normalizeThreeZDisplayFactor,
   threeZDisplayScale,
 } from '../three-z-display.js';
@@ -12,9 +12,13 @@ await loadGeometryKernel();
 
 // A shared monotone map cannot open artificial air gaps at a conformal edge.
 test('3D display-only factors are finite, bounded and reversible', () => {
-  assert.deepEqual(THREE_Z_DISPLAY_FACTORS, [1, 2, 5, 10]);
-  for (const invalid of [-10, 0, 1.1, 100, Infinity, NaN, undefined, null])
+  assert.deepEqual(THREE_Z_DISPLAY_RANGE, { min: 0.25, max: 20, step: 0.05 });
+  for (const invalid of [-10, 0, Infinity, NaN, undefined, null])
     assert.equal(normalizeThreeZDisplayFactor(invalid), 1);
+  assert.equal(normalizeThreeZDisplayFactor(1.75), 1.75);
+  assert.equal(normalizeThreeZDisplayFactor(0.1), 0.25);
+  assert.equal(normalizeThreeZDisplayFactor(100), 20);
+  assert.equal(threeZDisplayScale(37, 1.75), 64.75);
   assert.equal(threeZDisplayScale(37, 10), 370);
   assert.equal(threeZDisplayScale(37, 1), 37);
   assert.equal(threeZDisplayScale(37, Infinity), 37);
@@ -29,7 +33,7 @@ test('3D scene Z scaling preserves gaps, conformal interfaces and physical value
     collapse: { enabled: true, top: 4, bottom: -4 },
     breakFraction: 0,
   });
-  for (const factor of THREE_Z_DISPLAY_FACTORS) {
+  for (const factor of [0.25, 0.6, 1, 1.75, 2, 5, 10, 17.35, 20]) {
     const scale = threeZDisplayScale(37, factor);
     const display = physical.map((z) => transform.mapZ(z) * scale);
     for (let i = 1; i < display.length; i++)
