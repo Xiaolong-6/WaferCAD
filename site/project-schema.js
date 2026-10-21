@@ -1412,6 +1412,12 @@ function validateDisplay(display) {
     if (collapse.enabled != null && typeof collapse.enabled !== 'boolean') {
       fail('display.sectionCollapse.enabled', 'must be boolean.');
     }
+    if (
+      collapse.continuousEtchExplicit != null &&
+      typeof collapse.continuousEtchExplicit !== 'boolean'
+    ) {
+      fail('display.sectionCollapse.continuousEtchExplicit', 'must be boolean.');
+    }
     if (collapse.scaleLinked != null && typeof collapse.scaleLinked !== 'boolean') {
       fail('display.sectionCollapse.scaleLinked', 'must be boolean.');
     }
