@@ -37,9 +37,9 @@
       "view": "three",
       "width": 640,
       "height": 560,
-      "bytes": 5380,
-      "sourceSha256": "5e6bfca245cdc739d62338711fd55317bf7bead1f67999bef02f1546364aaa60",
-      "sha256": "f34170e3bfac24f0607d6b859cbe175e7e4a3b95b06384e9ce4ac5a4ccf9d8b7"
+      "bytes": 7210,
+      "sourceSha256": "7ad5846f21204301c91c281bad59f13f40cc84abcdfb93c579c74e81b2c36b22",
+      "sha256": "2637a9859f026d0c729924bd5c01cf0eec65765a5c8c3126ac8f64968693b580"
     },
     {
       "id": "m3d-selfpowered-heterogeneous-ic",

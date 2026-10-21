@@ -59,6 +59,19 @@ test('published M08 uses the original inverted seven-shape GDS mask, not Full Fa
   assert.equal(recipe[6].params.profile, 'continuous');
   assert.equal(recipe[6].params.continuousShape, 'circular');
   assert.equal(recipe[7].command, 'record');
+  const historyM08 = released.snapshotBranches.nodes.find(
+    (node) => node.id === 'process-microdisk-08',
+  );
+  assert.equal(historyM08.operation.replay.version, 1);
+  assert.equal(historyM08.operation.replay.params.etchProfile, 'continuous');
+  assert.equal(historyM08.operation.replay.params.continuousShape, 'circular');
+  assert.equal(historyM08.operation.replay.areaMode, 'invert');
+  assert.deepEqual(historyM08.operation.replay.maskContext.layerKeys, ['1|0']);
+  assert.equal(
+    released.snapshotBranches.nodes.find((node) => node.id === 'process-microdisk-09').operation
+      .replay.kind,
+    'record',
+  );
   assert.match(
     released.snapshotBranches.nodes.find((n) => n.id === 'process-microdisk-08').operation.note,
     /not a measured value/,

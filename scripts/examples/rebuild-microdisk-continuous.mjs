@@ -98,6 +98,36 @@ n08.operation = {
   lateralUm: 36,
   verticalUm: 36,
   note,
+  // History must not synthesize a directional legacy replay. Keep the
+  // real Invert Mask selection and exact continuous worker parameters.
+  maskContext: {
+    sourceMode: 'file',
+    cell: oldStep.params.mask.cell,
+    layerKeys: [...oldStep.params.mask.layerKeys],
+    transform: structuredClone(oldStep.params.mask.transform),
+    roi: oldStep.params.mask.roi,
+  },
+  replay: {
+    version: 1,
+    params: {
+      type: 'etch',
+      thickness: 36,
+      face: 'front',
+      surface: null,
+      etchProfile: 'continuous',
+      etchTargetLayerIds: ['base'],
+      continuousShape: 'circular',
+      continuousLateralUm: 36,
+    },
+    areaMode: 'invert',
+    maskContext: {
+      sourceMode: 'file',
+      cell: oldStep.params.mask.cell,
+      layerKeys: [...oldStep.params.mask.layerKeys],
+      transform: structuredClone(oldStep.params.mask.transform),
+      roi: oldStep.params.mask.roi,
+    },
+  },
 };
 n08.state.model = structuredClone(continuous);
 updateRecipe(n08.state.processRecipe);
@@ -105,6 +135,7 @@ const m09 = snapshot('09');
 m09.state.model = structuredClone(continuous);
 updateRecipe(m09.state.processRecipe);
 const n09 = node('09');
+n09.operation.replay = { version: 1, kind: 'record' };
 n09.state.model = structuredClone(continuous);
 updateRecipe(n09.state.processRecipe);
 const mainBranch = project.snapshotBranches.branches.find((b) => b.id === 'main');

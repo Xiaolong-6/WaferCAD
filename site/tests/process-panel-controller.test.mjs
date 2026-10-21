@@ -19,7 +19,8 @@ globalThis.Option ??= class Option {
 const { createModel } = await import('../model.js');
 const { createProcessPanelController } = await import('../controllers/process-panel-controller.js');
 const { applyContinuousRelease } = await import('../continuous-etch-process.js');
-const { validateContinuousEtchModel } = await import('../continuous-etch-model.js');
+const { validateContinuousEtchModel, attachContinuousEtchModel } =
+  await import('../continuous-etch-model.js');
 
 function fakeElement(id, value = '') {
   return {
@@ -475,6 +476,41 @@ test('replayOperations re-runs saved geometry requests and preserves record-only
   );
   assert.equal(events.filter((event) => event === 'save-history').length, 2);
   assert.equal(events.filter((event) => event === 'record-operation').length, 2);
+});
+
+test('record-only after exact Continuous Etch preserves analytic owner in manual and replay History', async () => {
+  const baseline = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+  const released = attachContinuousEtchModel(baseline, {
+    face: 'front',
+    targetLayerIds: ['base'],
+    shape: 'circular',
+    lateralUm: 2,
+    verticalUm: 2,
+  });
+  const original = structuredClone(released);
+  const events = [],
+    recorded = [];
+  const controller = controllerForTask(
+    () => {
+      throw new Error('Record-only must not invoke the Process Worker');
+    },
+    events,
+    { mode: 'record', recorded, initialModel: released },
+  );
+  const record = {
+    kind: 'record',
+    label: 'Final metadata',
+    replay: { version: 1, kind: 'record' },
+  };
+  assert.deepEqual(await controller.replayOperations([record]), { ok: true, completed: 1 });
+  assert.deepEqual(controller.__getModel(), original);
+  assert.doesNotThrow(() => validateContinuousEtchModel(controller.__getModel()));
+  controller.__root.getElementById('recordProcessLabel').value = 'M09';
+  await controller.applyOperation();
+  assert.deepEqual(controller.__getModel(), original);
+  assert.doesNotThrow(() => validateContinuousEtchModel(controller.__getModel()));
+  assert.equal(recorded.length, 2, 'Both History steps must be recorded without altering material');
+  assert.equal(events.includes('run-worker'), false);
 });
 
 test('legacy downstream Step stops replay without guessing missing parameters', async () => {

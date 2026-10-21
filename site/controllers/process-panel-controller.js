@@ -696,8 +696,13 @@ export function createProcessPanelController({
           saveHistory();
           clearBaseRevertSnapshot();
           const nextModel = structuredClone(getModel());
-          nextModel.revision = (Number(nextModel.revision) || 0) + 1;
-          nextModel.processRevision = (Number(nextModel.processRevision) || 0) + 1;
+          // Record-only History metadata is not a physical Process operation.
+          // An exact continuous owner validates a fixed predecessor revision;
+          // changing it here would corrupt the scientific owner on replay.
+          if (nextModel.kernel !== 'vector-continuous-etch-v1') {
+            nextModel.revision = (Number(nextModel.revision) || 0) + 1;
+            nextModel.processRevision = (Number(nextModel.processRevision) || 0) + 1;
+          }
           setModel(nextModel);
           recordProcessOperation(operation);
           completed += 1;
@@ -851,8 +856,12 @@ export function createProcessPanelController({
     saveHistory();
     clearBaseRevertSnapshot();
     const nextModel = structuredClone(model);
-    nextModel.revision = (Number(nextModel.revision) || 0) + 1;
-    nextModel.processRevision = (Number(nextModel.processRevision) || 0) + 1;
+    // Recording M09 (or any later metadata Step) must preserve the immutable
+    // analytic predecessor/release revision contract without exception.
+    if (nextModel.kernel !== 'vector-continuous-etch-v1') {
+      nextModel.revision = (Number(nextModel.revision) || 0) + 1;
+      nextModel.processRevision = (Number(nextModel.processRevision) || 0) + 1;
+    }
     setModel(nextModel);
 
     const operation = {

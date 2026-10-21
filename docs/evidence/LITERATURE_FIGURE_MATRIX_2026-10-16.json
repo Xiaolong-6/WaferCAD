@@ -98,18 +98,18 @@
     },
     {
       "id": "suspended-silica-microdisk",
-      "projectPath": "./examples/suspended-silica-microdisks-adaptive.wafercad",
+      "projectPath": "./examples/suspended-silica-microdisks-continuous.wafercad",
       "sourceURL": "https://doi.org/10.1038/s41467-018-08038-4",
       "paperPanel": "Fig. 2a (SEM of similar device); Methods fabrication",
       "classification": "assumed",
-      "claim": "Original 148/82 µm spoked disk and 1.8 µm thermal oxide follow cited publication. 72-band adaptive XeF₂ undercut and 36 µm release are model assumptions, not a calibrated original SEM or measured etch front.",
+      "claim": "Original 148/82 µm spoked disk and 1.8 µm oxide follow the cited publication. The final M08 now uses canonical circular Continuous XeF₂ silicon release seeded by the original inverted GDS mask; 36 µm equal lateral and vertical reach remain reconstruction assumptions, not an experimentally measured etch front.",
       "acceptance": {
         "status": "open-paper-match",
         "calibratedScale": false,
         "quantitativeOverlay": false
       },
       "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/39145866397",
-      "evidenceType": "Earlier real Chromium screenshot confirms unchanged 72-band geometry and existing History; new exact portable asset additionally fixes adaptive Etch Recipe/History parity and still requires current-blob browser acceptance.",
+      "evidenceType": "The historical linked Chromium capture and project SHA validate the archived 72-band model only. New exact continuous M08 has real offline native Three.js diagnostics, but full normal-Origin Workstation, source-panel SEM overlay and final published-blob acceptance remain open.",
       "captureEvidence": {
         "kind": "actual-chromium-project-capture",
         "runURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/39145866397",
@@ -123,7 +123,7 @@
         "originalPaperOverlay": false,
         "exactPublishedBlob": false
       },
-      "publishedProjectSha256": "5e6bfca245cdc739d62338711fd55317bf7bead1f67999bef02f1546364aaa60"
+      "publishedProjectSha256": "7ad5846f21204301c91c281bad59f13f40cc84abcdfb93c579c74e81b2c36b22"
     },
     {
       "id": "m3d-selfpowered-heterogeneous-ic",
@@ -156,18 +156,9 @@
             {
               "cutId": "power-via-both-tiers",
               "probeId": "second-power-via",
-              "a": [
-                12,
-                -5.3
-              ],
-              "b": [
-                20,
-                -5.3
-              ],
-              "xy": [
-                16,
-                5.3
-              ],
+              "a": [12, -5.3],
+              "b": [20, -5.3],
+              "xy": [16, 5.3],
               "offSectionDistanceUm": 10.6
             }
           ],
@@ -176,34 +167,16 @@
             {
               "cutId": "power-via-both-tiers",
               "probeId": "first-power-via",
-              "a": [
-                12,
-                -5.3
-              ],
-              "b": [
-                20,
-                -5.3
-              ],
-              "xy": [
-                16,
-                -5.3
-              ]
+              "a": [12, -5.3],
+              "b": [20, -5.3],
+              "xy": [16, -5.3]
             },
             {
               "cutId": "data-via-transfer",
               "probeId": "data-via-contact",
-              "a": [
-                12,
-                0
-              ],
-              "b": [
-                20,
-                0
-              ],
-              "xy": [
-                16,
-                0
-              ]
+              "a": [12, 0],
+              "b": [20, 0],
+              "xy": [16, 0]
             }
           ]
         },
@@ -221,34 +194,16 @@
           "cuts": [
             {
               "id": "first-power-via",
-              "a": [
-                12,
-                -5.3
-              ],
-              "b": [
-                20,
-                -5.3
-              ],
-              "probeXY": [
-                16,
-                -5.3
-              ],
+              "a": [12, -5.3],
+              "b": [20, -5.3],
+              "probeXY": [16, -5.3],
               "image": "first-power-via-native-v2-section.png"
             },
             {
               "id": "second-power-via",
-              "a": [
-                12,
-                5.3
-              ],
-              "b": [
-                20,
-                5.3
-              ],
-              "probeXY": [
-                16,
-                5.3
-              ],
+              "a": [12, 5.3],
+              "b": [20, 5.3],
+              "probeXY": [16, 5.3],
               "image": "second-power-via-native-v2-section.png"
             }
           ]
@@ -286,18 +241,9 @@
             {
               "cutId": "beol-four-metal-levels",
               "probeId": "right-four-levels",
-              "a": [
-                -10,
-                -4
-              ],
-              "b": [
-                10,
-                -4
-              ],
-              "xy": [
-                7,
-                4
-              ],
+              "a": [-10, -4],
+              "b": [10, -4],
+              "xy": [7, 4],
               "offSectionDistanceUm": 8
             }
           ],
@@ -306,50 +252,23 @@
             {
               "cutId": "beol-four-metal-levels",
               "probeId": "left-four-levels",
-              "a": [
-                -10,
-                -4
-              ],
-              "b": [
-                10,
-                -4
-              ],
-              "xy": [
-                -7,
-                -4
-              ]
+              "a": [-10, -4],
+              "b": [10, -4],
+              "xy": [-7, -4]
             },
             {
               "cutId": "mos2-gate-and-alox",
               "probeId": "enhancement-gate",
-              "a": [
-                -10,
-                4
-              ],
-              "b": [
-                10,
-                4
-              ],
-              "xy": [
-                7,
-                4
-              ]
+              "a": [-10, 4],
+              "b": [10, 4],
+              "xy": [7, 4]
             },
             {
               "cutId": "mos2-gate-and-alox",
               "probeId": "depletion-surrogate",
-              "a": [
-                -10,
-                4
-              ],
-              "b": [
-                10,
-                4
-              ],
-              "xy": [
-                -7,
-                4
-              ]
+              "a": [-10, 4],
+              "b": [10, 4],
+              "xy": [-7, 4]
             }
           ]
         }
@@ -413,18 +332,9 @@
             {
               "cutId": "two-nanopillar-diameters",
               "probeId": "substrate-control",
-              "a": [
-                -2.3,
-                1.1
-              ],
-              "b": [
-                2.3,
-                1.1
-              ],
-              "xy": [
-                0,
-                0
-              ],
+              "a": [-2.3, 1.1],
+              "b": [2.3, 1.1],
+              "xy": [0, 0],
               "offSectionDistanceUm": 1.1
             }
           ],
@@ -433,34 +343,16 @@
             {
               "cutId": "two-nanopillar-diameters",
               "probeId": "negative-x-annular-pillar",
-              "a": [
-                -2.3,
-                1.1
-              ],
-              "b": [
-                2.3,
-                1.1
-              ],
-              "xy": [
-                -1.2,
-                1.1
-              ]
+              "a": [-2.3, 1.1],
+              "b": [2.3, 1.1],
+              "xy": [-1.2, 1.1]
             },
             {
               "cutId": "two-nanopillar-diameters",
               "probeId": "positive-x-pillar",
-              "a": [
-                -2.3,
-                1.1
-              ],
-              "b": [
-                2.3,
-                1.1
-              ],
-              "xy": [
-                1.1,
-                1.1
-              ]
+              "a": [-2.3, 1.1],
+              "b": [2.3, 1.1],
+              "xy": [1.1, 1.1]
             }
           ]
         }
