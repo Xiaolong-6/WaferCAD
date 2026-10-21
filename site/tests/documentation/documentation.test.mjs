@@ -35,7 +35,7 @@ test('all documentation PRs retain automatic local Quality ownership and manual 
     'Quality must include every PR source path',
   );
   assert.match(quality, /QUALITY_SCOPE: .*'draft'.*'full'/);
-  assert.match(quality, /node scripts\/local-verification\.mjs verify "\\$QUALITY_SCOPE"/);
+  assert.ok(quality.includes('run: node scripts/local-verification.mjs verify "$QUALITY_SCOPE"'));
   assert.match(quality, /name: Execute Draft Quality fallback/);
   assert.match(quality, /site\/tests\/documentation-suite\.test\.mjs/);
   assert.match(quality, /node scripts\/local-verification\.mjs verify full/);
