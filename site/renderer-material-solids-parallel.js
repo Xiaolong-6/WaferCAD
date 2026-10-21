@@ -102,15 +102,9 @@ export async function parallelMaterialSolids(
     const url = new URL('./renderer-material-solids-worker.js', import.meta.url);
     url.search = new URL(import.meta.url).search;
     worker = new WorkerClass(url);
+    let rejectChild;
     const heavyResult = new Promise((resolve, reject) => {
-      // A child may stay alive without responding (e.g. native OOM/thrashing).
-      // Never strand the owning Surface Plan worker waiting indefinitely.
-      const boundedTimeoutMs =
-        Number.isFinite(childTimeoutMs) && childTimeoutMs > 0 ? childTimeoutMs : 30_000;
-      timeoutId = setTimeout(
-        () => reject(new Error('Parallel material topology worker timed out.')),
-        boundedTimeoutMs,
-      );
+      rejectChild = reject;
       worker.onmessage = ({ data }) => {
         if (data?.id !== 1) return;
         if (data.type === 'done') resolve(data.solids);
@@ -121,9 +115,17 @@ export async function parallelMaterialSolids(
       worker.onmessageerror = () => reject(new Error('Parallel material topology clone failed.'));
       worker.postMessage({ id: 1, model: partition.heavy, clip });
     });
-    // Start the expensive layer before working synchronously on the rest.
-    // This parent is itself a background worker, not the interactive UI.
+    // The parent cannot receive messages while synchronously computing the
+    // other layers (or cloning the child input for postMessage). Arm the
+    // watchdog only once that blocking work ends; otherwise an expired timer
+    // may win over an already-finished child and force a second serial pass.
     const other = materialSolidsFromTopology(partition.other, clip);
+    const boundedTimeoutMs =
+      Number.isFinite(childTimeoutMs) && childTimeoutMs > 0 ? childTimeoutMs : 30_000;
+    timeoutId = setTimeout(
+      () => rejectChild(new Error('Parallel material topology worker timed out.')),
+      boundedTimeoutMs,
+    );
     const heavy = await heavyResult;
     return assembleParallelMaterialSolids(partition, heavy, other, {
       allowClippedLayers: clip != null,
