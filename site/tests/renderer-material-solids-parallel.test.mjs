@@ -15,8 +15,7 @@ const {
   survivingMaterialLayerIds,
   assembleParallelMaterialSolids,
   parallelMaterialSolids,
-} =
-  await import('../renderer-material-solids-parallel.js');
+} = await import('../renderer-material-solids-parallel.js');
 const hash = (value) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
 function largeSimpleModel() {
@@ -83,13 +82,17 @@ test('clipped material assembly accepts only the proven surviving layer set', ()
     /duplicate/,
   );
   assert.throws(
-    () => assembleParallelMaterialSolids(partition, [film], [base, base], { expectedIds: ['film', 'base'] }),
+    () =>
+      assembleParallelMaterialSolids(partition, [film], [base, base], {
+        expectedIds: ['film', 'base'],
+      }),
     /duplicate/,
   );
   assert.throws(
-    () => assembleParallelMaterialSolids(partition, [film], [{ layerId: 'foreign' }], {
-      expectedIds: ['film', 'base'],
-    }),
+    () =>
+      assembleParallelMaterialSolids(partition, [film], [{ layerId: 'foreign' }], {
+        expectedIds: ['film', 'base'],
+      }),
     /incomplete/,
   );
   assert.throws(
@@ -97,11 +100,11 @@ test('clipped material assembly accepts only the proven surviving layer set', ()
     /incomplete/,
   );
   assert.throws(
-    () => assembleParallelMaterialSolids(partition, [film], [base], { expectedIds: ['film','film'] }),
+    () =>
+      assembleParallelMaterialSolids(partition, [film], [base], { expectedIds: ['film', 'film'] }),
     /incomplete/,
   );
 });
-
 
 test('worker branch returns exact serial solids and terminates child; worker error falls back to serial', async () => {
   const model = largeSimpleModel();
@@ -295,7 +298,10 @@ test('mixed ROI first surviving material reorders even when all layers remain', 
   const expectedIds = survivingMaterialLayerIds(model, clip);
   assert.deepEqual(expectedIds, ['base', 'film']);
   const serialSolids = materialSolidsFromTopology(model, clip);
-  assert.deepEqual(serialSolids.map((item) => item.layerId), expectedIds);
+  assert.deepEqual(
+    serialSolids.map((item) => item.layerId),
+    expectedIds,
+  );
   const heavy = materialSolidsFromTopology(partition.heavy, clip);
   const other = materialSolidsFromTopology(partition.other, clip);
   const combined = assembleParallelMaterialSolids(partition, heavy, other, { expectedIds });
@@ -310,7 +316,9 @@ test('mixed ROI first surviving material reorders even when all layers remain', 
       const solids = materialSolidsFromTopology(childModel, childClip);
       queueMicrotask(() => this.onmessage({ data: { id: 1, type: 'done', solids } }));
     }
-    terminate() { this.terminated = true; }
+    terminate() {
+      this.terminated = true;
+    }
   }
   const actual = await parallelMaterialSolids(model, clip, {
     WorkerClass: SimulatedWorker,
@@ -339,4 +347,3 @@ test('mixed ROI first surviving material reorders even when all layers remain', 
     console.warn = warn;
   }
 });
-
