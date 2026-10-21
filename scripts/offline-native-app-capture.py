@@ -567,7 +567,10 @@ def run(args):
                     report['images']['continuousPhysicalCamera'] = {
                         'file': camera_image.name, 'sha256': snapshot_sha(camera_image)}
                     report['continuousPhysicalCamera'] = camera
-                if model_input['model'] and model_input['model'].get('kernel') == 'vector-continuous-etch-v1':
+                if args.inmemory_camera is None and model_input['model'] and model_input['model'].get('kernel') == 'vector-continuous-etch-v1':
+                    # The default underside diagnostic runs only without an
+                    # explicit physical camera; a second view switch is
+                    # redundant and can stall software WebGL on dense meshes.
                     # Switch the *production* ThreeView camera to the underside
                     # without repeated SwiftShader interactions or synthetic geometry.
                     camera_state = page.evaluate('''() => {

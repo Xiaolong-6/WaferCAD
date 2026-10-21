@@ -59,6 +59,10 @@ class CapturePreflightTests(unittest.TestCase):
         self.assertNotIn('await renderer.render()', source)
         self.assertIn('roughCaps:', source)
 
+    def test_explicit_camera_skips_redundant_software_webgl_underside_capture(self):
+        source = MODULE.read_text()
+        self.assertIn("if args.inmemory_camera is None and model_input['model']", source)
+
     def test_pinned_version_and_files(self):
         self.assertEqual(capture.check_three(self.root), ('0.179.1', self.three))
 
