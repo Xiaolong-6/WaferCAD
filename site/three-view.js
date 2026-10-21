@@ -3317,7 +3317,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
       progressiveProfileStart = startedAt;
       host.dataset.renderFidelity = 'approximate';
       host.dataset.renderPhase = 'progressive-preview';
-      host.dataset.renderState = 'ready';
+      // Existing tests and release gates use ready for exact geometry.
+      // Refining remains interactive without falsely satisfying those gates.
+      host.dataset.renderState = 'refining';
       host.dataset.rendererProgressiveBuildMs = String(performance.now() - startedAt);
       stats.textContent = '3D preview — refining exact solids…';
       scheduleFrame();
@@ -4329,7 +4331,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           group = previousVariantGroup;
           if (group.parent !== scene) scene.add(group);
         }
-        host.dataset.renderState = 'ready';
+        host.dataset.renderState = progressivePreviousGroup ? 'refining' : 'ready';
         if (progressivePreviousGroup) host.dataset.renderFidelity = 'approximate';
         host.dataset.rendererRetainedCompleteVisible = 'false';
         host.dataset.rendererVariantRollbacks = String(
@@ -4344,9 +4346,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
         stats.textContent = 'updating 3D…';
       } else {
         console.error('3D scene rebuild failed:', error);
-        host.dataset.renderPhase = previousVariantGroup ? 'variant-build-failed' : 'build-failed';
+        host.dataset.renderPhase = progressivePreviousGroup
+          ? 'exact-build-failed'
+          : previousVariantGroup
+            ? 'variant-build-failed'
+            : 'build-failed';
         host.dataset.rendererBuildFailure = error?.message || String(error);
-        if (!previousVariantGroup) {
+        if (!previousVariantGroup || progressivePreviousGroup) {
           host.dataset.renderState = 'error';
         }
         stats.textContent = previousVariantGroup
