@@ -21,9 +21,6 @@ import {
   recolorLayer,
   recolorImplant,
   recolorElectricalRegion,
-  renameLayer,
-  renameImplant,
-  renameElectricalRegion,
   setImplantDepthProfile,
   setElectricalRegionDepthProfile,
 } from '../model.js';
@@ -122,7 +119,6 @@ export function createSectionView({ store, main, workstation }) {
     ),
   );
   let legendOpen = !preview && state.sectionLayersVisible !== false,
-    editingName = false,
     legendPalette = 'balanced',
     paletteOpen = null,
     legend;
@@ -386,51 +382,20 @@ export function createSectionView({ store, main, workstation }) {
         store.renderAll();
       };
       const name = row.querySelector('.v2-legend-name');
-      name.tabIndex = 0;
+      const entityKind = row.dataset.layerId ? 'layer' : item.kind.toLowerCase();
+      name.tabIndex = preview ? -1 : 0;
       name.setAttribute('role', 'button');
-      name.setAttribute('aria-label', `Rename ${item.name}`);
-      name.dataset.help = 'section.layers';
-      const editName = () => {
-        if (name.querySelector('input')) return;
-        editingName = true;
-        store.setRenameFocus({ kind: row.dataset.layerId ? 'layer' : item.kind, id: item.id });
-        const input = el('input', { value: item.name, 'aria-label': `Name for ${item.name}` });
-        let cancelled = false;
-        input.onblur = () => {
-          editingName = false;
-          store.setRenameFocus(null);
-          const rename = row.dataset.layerId
-            ? renameLayer
-            : item.kind === 'Implant'
-              ? renameImplant
-              : renameElectricalRegion;
-          if (!cancelled && input.value.trim() !== item.name) {
-            rename(state.model, item.id, input.value);
-            store.history?.renameHistoryEntity(
-              row.dataset.layerId ? 'layer' : item.kind.toLowerCase(),
-              item.id,
-              input.value.trim(),
-            );
-          }
-          store.renderAll();
-        };
-        input.onkeydown = (event) => {
-          event.stopPropagation();
-          if (event.key === 'Enter') input.blur();
-          else if (event.key === 'Escape') {
-            cancelled = true;
-            input.blur();
-          }
-        };
-        name.replaceChildren(input);
-        input.focus();
-        input.select();
+      name.setAttribute('aria-label', `Edit ${item.name} in History`);
+      name.title = 'Edit the originating Process Step in History';
+      const editSourceStep = () => {
+        if (preview) return;
+        void store.editHistoryEntity?.(entityKind, item.id);
       };
-      name.onclick = editName;
+      name.onclick = editSourceStep;
       name.onkeydown = (event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
-          editName();
+          editSourceStep();
         }
       };
       if (row.dataset.annotationId) {
@@ -479,8 +444,7 @@ export function createSectionView({ store, main, workstation }) {
     if (preview) return;
     if (paletteOpen && !event.target.closest('.v2-legend-palette-anchor')) {
       paletteOpen = null;
-      if (editingName) panel.querySelector('.v2-legend-palette')?.remove();
-      else renderLegend();
+      renderLegend();
     }
     const trigger = event.target.closest('[data-action]');
     if (!trigger || trigger.disabled || !trigger.closest('#sectionPanel,.v2-section-floating'))
@@ -571,16 +535,13 @@ export function createSectionView({ store, main, workstation }) {
     detail,
     collapse,
     resetTransient() {
-      const input = legend?.querySelector('.v2-legend-name input');
-      if (input) input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
-      editingName = false;
       paletteOpen = null;
       workstation.overlays.closeFloatings();
     },
     runtime: {
       render() {
         render();
-        if (!editingName) renderLegend();
+        renderLegend();
       },
     },
     viewport,

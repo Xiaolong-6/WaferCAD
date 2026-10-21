@@ -2,6 +2,7 @@ const VIEW_DISPLAY_KEYS = [
   'xyUnit',
   'structurePalette',
   'customStructurePalette',
+  'layerAppearance',
   'maskOpacity',
   'threeOpacity',
   'threeShowBorders',

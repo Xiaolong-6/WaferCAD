@@ -23,6 +23,7 @@ import { createFirstFrameThreeGate } from './first-frame-three-gate.js';
 import { createMobileWorkspaceController } from './mobile-workspace-controller.js';
 import { createMobileViewportController } from './mobile-viewport-controller.js';
 import { createWorkstationRenderScheduler } from './workstation-render-scheduler.js';
+import { classifyStatusMessage } from '../controllers/feedback-controller.js';
 
 const { el } = window.WaferCadV2Components;
 try {
@@ -226,9 +227,16 @@ try {
     },
     { once: true },
   );
-  const status = (value) => {
-    message = value;
-    shell.getSlot('status.message').textContent = value;
+  const status = (value, level = 'auto') => {
+    message = String(value ?? '');
+    const severity = level === 'auto' ? classifyStatusMessage(message) : level;
+    const messageSlot = shell.getSlot('status.message');
+    messageSlot.textContent = message;
+    const footer = messageSlot.closest('.p-status');
+    if (footer)
+      footer.dataset.level = ['success', 'info', 'warning', 'error', 'progress'].includes(severity)
+        ? severity
+        : 'passive';
   };
   const workstation = {
     readOnlyPreview,
