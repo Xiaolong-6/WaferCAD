@@ -4,20 +4,93 @@
 import { difference, unionGeometries, pointInMulti } from './vector-geometry.js';
 import { geometryArea } from './model.js';
 
-function distanceToFootprint([x, y], multi) {
-  if (pointInMulti([x, y], multi)) return 0;
-  let result = Infinity;
-  for (const poly of multi)
+// Build a bounded XY index for the *display-only* distance queries. Every
+// segment whose Euclidean distance can be < lateralUm is indexed in all
+// buckets overlapping its radius-expanded AABB. No approximate distance or
+// physical ownership is introduced: candidate segments use the same exact
+// projection as the unindexed search.
+function indexFootprintDistance(multi, lateralUm, xyStepUm) {
+  const edges = [];
+  const polygons = [];
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity;
+  for (const poly of multi) {
+    let pMinX = Infinity,
+      pMinY = Infinity,
+      pMaxX = -Infinity,
+      pMaxY = -Infinity;
     for (const ring of poly)
       for (let i = 1; i < ring.length; i++) {
         const a = ring[i - 1],
           b = ring[i];
+        pMinX = Math.min(pMinX, a[0], b[0]);
+        pMinY = Math.min(pMinY, a[1], b[1]);
+        pMaxX = Math.max(pMaxX, a[0], b[0]);
+        pMaxY = Math.max(pMaxY, a[1], b[1]);
         const dx = b[0] - a[0],
           dy = b[1] - a[1];
-        const sq = dx * dx + dy * dy;
-        const t = sq ? Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / sq)) : 0;
-        result = Math.min(result, Math.hypot(x - a[0] - t * dx, y - a[1] - t * dy));
+        edges.push({
+          x: a[0],
+          y: a[1],
+          dx,
+          dy,
+          squaredLength: dx * dx + dy * dy,
+          minX: Math.min(a[0], b[0]),
+          maxX: Math.max(a[0], b[0]),
+          minY: Math.min(a[1], b[1]),
+          maxY: Math.max(a[1], b[1]),
+        });
       }
+    polygons.push({ minX: pMinX, minY: pMinY, maxX: pMaxX, maxY: pMaxY });
+    minX = Math.min(minX, pMinX);
+    minY = Math.min(minY, pMinY);
+    maxX = Math.max(maxX, pMaxX);
+    maxY = Math.max(maxY, pMaxY);
+  }
+  const cell = Math.max(4, 8 * xyStepUm, lateralUm / 4);
+  const originX = minX - lateralUm,
+    originY = minY - lateralUm;
+  const nx = Math.max(1, Math.ceil((maxX - minX + 2 * lateralUm) / cell));
+  const ny = Math.max(1, Math.ceil((maxY - minY + 2 * lateralUm) / cell));
+  // Extremely small display steps or enormous physical extents must never
+  // allocate an unbounded acceleration structure.
+  if (!Number.isSafeInteger(nx * ny) || nx * ny > 1000000)
+    throw new RangeError('Continuous heightfield distance index exceeds display budget');
+  const buckets = Array.from({ length: nx * ny }, () => []);
+  const clamp = (v, size) => Math.min(size - 1, Math.max(0, v));
+  for (const edge of edges) {
+    const x0 = clamp(Math.floor((edge.minX - lateralUm - originX) / cell), nx),
+      x1 = clamp(Math.floor((edge.maxX + lateralUm - originX) / cell), nx),
+      y0 = clamp(Math.floor((edge.minY - lateralUm - originY) / cell), ny),
+      y1 = clamp(Math.floor((edge.maxY + lateralUm - originY) / cell), ny);
+    for (let j = y0; j <= y1; j++) for (let i = x0; i <= x1; i++) buckets[j * nx + i].push(edge);
+  }
+  return { multi, polygons, lateralUm, originX, originY, nx, ny, cell, buckets };
+}
+
+function distanceToFootprint(x, y, index) {
+  // A polygon interior may lie further than lateralUm from every edge and
+  // must still receive the full release depth (distance = 0).
+  if (
+    index.polygons.some((p) => x >= p.minX && x <= p.maxX && y >= p.minY && y <= p.maxY) &&
+    pointInMulti([x, y], index.multi)
+  )
+    return 0;
+  const ix = Math.floor((x - index.originX) / index.cell),
+    iy = Math.floor((y - index.originY) / index.cell);
+  if (ix < 0 || iy < 0 || ix >= index.nx || iy >= index.ny) return Infinity;
+  let result = Infinity;
+  for (const edge of index.buckets[iy * index.nx + ix]) {
+    const t = edge.squaredLength
+      ? Math.max(
+          0,
+          Math.min(1, ((x - edge.x) * edge.dx + (y - edge.y) * edge.dy) / edge.squaredLength),
+        )
+      : 0;
+    result = Math.min(result, Math.hypot(x - edge.x - t * edge.dx, y - edge.y - t * edge.dy));
+  }
   return result;
 }
 
@@ -56,10 +129,11 @@ export function canBuildContinuousSiHeightfield(owner) {
   return geometryArea(outside) + geometryArea(missing) < model.width * model.height * 1e-12;
 }
 
-function physicalTopAt(owner, x, y, originalTop) {
+function physicalTopAt(owner, indices, x, y, originalTop) {
   let top = originalTop;
-  for (const front of owner.fronts) {
-    const dist = distanceToFootprint([x, y], front.seedGeom);
+  for (let i = 0; i < owner.fronts.length; i++) {
+    const front = owner.fronts[i];
+    const dist = distanceToFootprint(x, y, indices[i]);
     if (dist >= front.lateralUm) continue;
     const reach = front.verticalUm * Math.sqrt(Math.max(0, 1 - (dist / front.lateralUm) ** 2));
     top = Math.min(top, front.seedZ - reach);
@@ -110,10 +184,19 @@ export function buildContinuousSiHeightfieldMesh(
   const dx = model.width / nx,
     dy = model.height / ny;
   const top = new Float64Array((nx + 1) * (ny + 1));
+  const distanceIndices = owner.fronts.map((front) =>
+    indexFootprintDistance(front.seedGeom, front.lateralUm, xyStepUm),
+  );
   const index = (i, j) => j * (nx + 1) + i;
   for (let j = 0; j <= ny; j++)
     for (let i = 0; i <= nx; i++)
-      top[index(i, j)] = physicalTopAt(owner, minX + dx * i, minY + dy * j, originalTop);
+      top[index(i, j)] = physicalTopAt(
+        owner,
+        distanceIndices,
+        minX + dx * i,
+        minY + dy * j,
+        originalTop,
+      );
   const pos = new Float32Array(expectedTriangles * 9);
   const normal = new Float32Array(expectedTriangles * 9);
   let write = 0;
