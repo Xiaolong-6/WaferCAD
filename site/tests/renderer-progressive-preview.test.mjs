@@ -50,7 +50,23 @@ test('preview is capped, bounded and preserves original model geometry', () => {
   assert.ok(Math.abs(preview.borderPositions[2] - 0.12) < 1e-6);
   assert.deepEqual(Array.from(preview.borderPositions.slice(3, 5)), [4, 0]);
   assert.deepEqual(model, original);
-  assert.strictEqual(preview.caps[0].polys, model.regions[0].geom);
+  assert.deepEqual(preview.caps[0].polys, model.regions[0].geom);
+  assert.notStrictEqual(preview.caps[0].polys, model.regions[0].geom);
+});
+
+test('preview safely reduces dense display contours without modifying canonical geometry', () => {
+  const model = twoLayerModel();
+  const ring = Array.from({ length: 513 }, (_, i) => [
+    5 * Math.cos((2 * Math.PI * i) / 512),
+    5 * Math.sin((2 * Math.PI * i) / 512),
+  ]);
+  model.regions[0].geom = [[ring]];
+  const original = structuredClone(model.regions[0].geom);
+  const preview = buildProgressiveSurfacePreview(model);
+  assert.ok(preview.caps[0].polys[0][0].length < ring.length / 2);
+  assert.deepEqual(model.regions[0].geom, original);
+  assert.strictEqual(preview.caps[0].polys, preview.caps[1].polys);
+  assert.ok(preview.lineCount < ring.length);
 });
 
 test('hidden layers resolve preview outer faces without changing canonical stacks', () => {

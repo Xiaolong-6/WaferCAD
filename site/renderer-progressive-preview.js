@@ -1,9 +1,13 @@
+import { simplifyDisplayPolygons } from './renderer-line-reduction.js';
+
 // Display-only first-frame sketch. It MUST NOT be used as an owned surface plan,
 // canonical geometry, collision/query input, or export geometry. In particular,
 // intersecting regions and buried interfaces are not Boolean-resolved here.
 const MAX_PREVIEW_CAPS = 4096;
 const MAX_PREVIEW_POINTS = 120000;
 const MAX_PREVIEW_LINES = 120000;
+// Conservative 3 nm display-only reduction; scientific contours are untouched.
+const PREVIEW_CONTOUR_TOLERANCE_UM = 0.003;
 
 export function buildProgressiveSurfacePreview(model, clip = null) {
   // A clipped or array model needs its exact ownership/instance-aware path.
@@ -29,6 +33,8 @@ export function buildProgressiveSurfacePreview(model, clip = null) {
     const bottom = stack[0];
     const top = stack[stack.length - 1];
     if (![bottom.z0, top.z1].every(Number.isFinite)) return null;
+    // Validate the original model before any potentially expensive LOD work.
+    // The caps and edge strokes below share only disposable reduced coordinates.
     for (const poly of polys) {
       if (!Array.isArray(poly) || !poly.length) return null;
       for (const ring of poly) {
@@ -39,6 +45,11 @@ export function buildProgressiveSurfacePreview(model, clip = null) {
           if (!Array.isArray(point) || !Number.isFinite(point[0]) || !Number.isFinite(point[1]))
             return null;
         }
+      }
+    }
+    const previewPolys = simplifyDisplayPolygons(polys, PREVIEW_CONTOUR_TOLERANCE_UM);
+    for (const poly of previewPolys) {
+      for (const ring of poly) {
         // Dense contours are accurate caps, but their illustrative vertical
         // strokes are sampled to keep the approximate first frame responsive.
         const verticalStride = Math.max(1, Math.ceil((ring.length - 1) / 8));
@@ -57,8 +68,8 @@ export function buildProgressiveSurfacePreview(model, clip = null) {
         }
       }
     }
-    caps.push({ layerId: top.layerId, z: top.z1, normal: 1, polys });
-    caps.push({ layerId: bottom.layerId, z: bottom.z0, normal: -1, polys });
+    caps.push({ layerId: top.layerId, z: top.z1, normal: 1, polys: previewPolys });
+    caps.push({ layerId: bottom.layerId, z: bottom.z0, normal: -1, polys: previewPolys });
   }
   if (!caps.length) return null;
   return {

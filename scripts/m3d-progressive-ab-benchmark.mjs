@@ -44,7 +44,10 @@ function processTreeRss(rootPid) {
     const pid = queue.pop();
     if (seen.has(pid)) continue;
     seen.add(pid);
-    total += rss.get(pid) || 0;
+    // Playwright does not expose Puppeteer's browser.process(). The current
+    // Node job is the stable ancestor of its Chromium processes. Exclude Node
+    // itself and sample its actual child process tree instead.
+    if (pid !== rootPid) total += rss.get(pid) || 0;
     queue.push(...(children.get(pid) || []));
   }
   return total || null;
@@ -93,7 +96,7 @@ async function coldRun(mode, index) {
   try {
     timer = setInterval(() => {
       try {
-        const bytes = processTreeRss(browser.process()?.pid);
+        const bytes = processTreeRss(process.pid);
         if (bytes != null) {
           peakRssBytes = Math.max(peakRssBytes, bytes);
           rssSamples++;
