@@ -144,6 +144,7 @@ export function createThreeView({
   let roughSpatialZoneBuildCount = 0;
   let roughBaseTriangulationCount = 0;
   let surfacePlanBuildCount = 0;
+  let progressiveProfileStart = null;
   let smoothCapInstanceGroupCount = 0;
   let smoothCapInstanceCount = 0;
   let smoothCapTemplateTriangleCount = 0;
@@ -881,6 +882,15 @@ export function createThreeView({
       host.dataset.rendererFrameArrayLodTier = host.dataset.transparentArrayLodTier || 'exact';
       host.dataset.rendererFrameSceneGeneration = host.dataset.sceneGeneration || '0';
       host.dataset.rendererFrameMs = String(performance.now() - frameStartedAt);
+      if (
+        host.dataset.renderPhase === 'progressive-preview' &&
+        !host.dataset.rendererProgressiveFirstFrameMs &&
+        Number.isFinite(progressiveProfileStart)
+      ) {
+        host.dataset.rendererProgressiveFirstFrameMs = String(
+          performance.now() - progressiveProfileStart,
+        );
+      }
       host.dataset.rendererDrawCalls = String(renderer.info?.render?.calls || 0);
       host.dataset.rendererDrawTriangles = String(renderer.info?.render?.triangles || 0);
       if (interacting || changed) scheduleFrame();
@@ -3256,6 +3266,59 @@ diffuseColor.a *= waferCadAlphaScale;`,
       : 'physical Si (experimental)';
   }
 
+  // A disposable display tier. It cannot enter the canonical surface cache,
+  // inspection ownership, morphology pipeline or physical GLB export.
+  function installProgressiveSurfacePreview(preview, model, generation, startedAt) {
+    if (
+      preview?.kind !== 'approximate-caps-preview' ||
+      !Array.isArray(preview.caps) ||
+      !Array.isArray(preview.borderLines) ||
+      !rendering ||
+      pendingRender ||
+      generation !== sceneGeneration ||
+      getModel() !== model ||
+      physicalSceneModel ||
+      !group
+    ) return;
+    try {
+      disposeGroup();
+      const buckets = new Map();
+      for (const cap of preview.caps) {
+        if (!buckets.has(cap.layerId)) buckets.set(cap.layerId, []);
+        buckets.get(cap.layerId).push(cap);
+      }
+      const opaque = inspectionMaterialState(1);
+      for (const [layerId, caps] of buckets) {
+        const layer = layerById(model, layerId);
+        if (!layer) continue;
+        const geometry = geometryFromSolid({ slabs: [], caps });
+        const presentation = { kind: 'material-exterior', approximate: true };
+        addSurfaceMesh(
+          geometry,
+          createSurfaceMaterial(layer, opaque, null, presentation),
+          opaque, null, 0, false, null, presentation,
+        );
+      }
+      addBorderPositions(preview.borderLines.flat(2), {
+        includeHidden: false,
+        presentation: { kind: 'border', category: 'progressive-preview' },
+      });
+      applyZDisplayState(model);
+      progressiveProfileStart = startedAt;
+      host.dataset.renderFidelity = 'approximate';
+      host.dataset.renderPhase = 'progressive-preview';
+      host.dataset.renderState = 'ready';
+      host.dataset.rendererProgressiveBuildMs = String(performance.now() - startedAt);
+      stats.textContent = '3D preview — refining exact solids…';
+      scheduleFrame();
+    } catch (error) {
+      disposeGroup();
+      host.dataset.renderState = 'building';
+      host.dataset.renderPhase = 'preview-rejected';
+      console.warn('Could not display progressive 3D preview:', error);
+    }
+  }
+
   async function render() {
     if (!ready) return;
     if (rendering) {
@@ -3357,6 +3420,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
     host.dataset.rendererUpdateKind = variantBuild ? 'variant-build' : 'rebuild';
     stats.textContent = variantBuild ? 'preparing 3D transparency…' : 'rebuilding 3D…';
     const rendererProfileStart = performance.now();
+    if (!variantBuild) {
+      delete host.dataset.rendererProgressiveFirstFrameMs;
+      delete host.dataset.rendererProgressiveBuildMs;
+      delete host.dataset.rendererExactSceneMs;
+      host.dataset.renderFidelity = 'pending-exact';
+      progressiveProfileStart = null;
+    }
 
     rendering = true;
     buildStageStartedAt = performance.now();
@@ -3378,6 +3448,16 @@ diffuseColor.a *= waferCadAlphaScale;`,
                 try {
                   return await buildRenderSurfacePlanAsync(model, clip, {
                     signal: controller.signal,
+                    onPreview:
+                      !variantBuild &&
+                      !clip &&
+                      !physicalSceneModel &&
+                      !inspectionMaterialState(inspection.opacity).transparent
+                        ? (preview) =>
+                            installProgressiveSurfacePreview(
+                              preview, model, renderGeneration, rendererProfileStart,
+                            )
+                        : undefined,
                   });
                 } finally {
                   if (activeSurfaceAbort === controller) activeSurfaceAbort = null;
@@ -4191,6 +4271,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
       activeSceneVariant = targetVariant;
       host.dataset.sceneVariant = targetVariant;
       group.visible = true;
+      host.dataset.renderFidelity = 'exact-surface-plan';
+      host.dataset.rendererExactSceneMs = String(performance.now() - rendererProfileStart);
       recordVariantStage('presentation-begin');
       applyPresentationState({ profile: false, settle: false });
       // The next frame must contain exactly one presentation variant.
