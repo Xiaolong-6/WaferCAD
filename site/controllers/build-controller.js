@@ -19,7 +19,7 @@ export function createBuildController({
       announcedBuildUpdate = current;
       const host = documentRef.getElementById('buildCommit');
       if (host) {
-        host.textContent = `commit ${buildVersion.slice(0, 7)} · update`;
+        host.textContent = `${buildVersion.slice(0, 7)} · update`;
         host.title = `Loaded ${buildVersion.slice(0, 7)}; deployed ${current.slice(0, 7)}. Save, then reload.`;
       }
       onUpdateAvailable(current);
@@ -39,13 +39,13 @@ export function createBuildController({
       const info = await response.json();
       const commit = String(info.commit || '').trim();
       if (!commit) throw new Error('build commit missing');
-      host.textContent = `commit ${commit.slice(0, 7)}`;
+      host.textContent = commit.slice(0, 7);
       host.href = `${repositoryUrl}/commit/${commit}`;
       host.target = '_blank';
       host.rel = 'noreferrer';
       host.title = `Open commit ${commit}`;
     } catch {
-      host.textContent = 'commit local';
+      host.textContent = 'local';
       host.removeAttribute('href');
       host.removeAttribute('target');
       host.removeAttribute('rel');

@@ -167,6 +167,10 @@ export function createThreeView({
   let lastTransparencySort = -Infinity;
   let transparencyOrderDirty = true;
   let presentationObjects = new Set();
+  // View-only selection: emissive accents never mutate canonical layer colors,
+  // mesh ownership, geometry or the project's persistent inspection options.
+  let highlightedLayerId = null;
+  const originalInspectionEmissive = new WeakMap();
   let surfaceMaterialPool = new Map();
   let presentationUpdateCount = 0;
   let physicalSceneModel = null;
@@ -1023,6 +1027,7 @@ export function createThreeView({
     transparentMeshes = entry.transparentMeshes;
     presentationObjects = entry.presentationObjects;
     surfaceMaterialPool = entry.surfaceMaterialPool;
+    updateLayerInspection();
     currentRoughMode = entry.currentRoughMode;
     lastLodSignature = entry.lastLodSignature;
     physicalSceneModel = entry.model;
@@ -1225,6 +1230,46 @@ export function createThreeView({
     if (transparentChanged || depthWriteChanged || depthTestChanged) material.needsUpdate = true;
   }
 
+  function applyLayerInspectionMaterial(material, selected) {
+    if (!material?.emissive) return;
+    if (!originalInspectionEmissive.has(material)) {
+      originalInspectionEmissive.set(material, {
+        color: material.emissive.clone(),
+        intensity: material.emissiveIntensity,
+      });
+    }
+    const original = originalInspectionEmissive.get(material);
+    material.emissive.copy(original.color);
+    material.emissiveIntensity = original.intensity;
+    if (selected) {
+      material.emissive.set('#ffd04d');
+      material.emissiveIntensity = 0.9;
+    }
+  }
+
+  function updateLayerInspection() {
+    const visited = new Set();
+    for (const object of presentationObjects) {
+      const descriptor = object.userData?.waferCadPresentation;
+      const selected =
+        descriptor?.kind === 'material-exterior' &&
+        descriptor.layerId != null &&
+        String(descriptor.layerId) === highlightedLayerId;
+      for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+        if (visited.has(material)) continue;
+        visited.add(material);
+        applyLayerInspectionMaterial(material, selected);
+      }
+    }
+    host.dataset.highlightLayerId = highlightedLayerId ?? '';
+  }
+
+  function highlightLayer(id) {
+    highlightedLayerId = id == null ? null : String(id);
+    updateLayerInspection();
+    scheduleFrame();
+  }
+
   function registerPresentationObject(object, descriptor = null) {
     if (!object || !descriptor) return object;
     object.userData ||= {};
@@ -1234,6 +1279,10 @@ export function createThreeView({
       materials = Array.isArray(object.material) ? object.material : [object.material];
     object.visible = Boolean(state.visible);
     for (const material of materials) applyMaterialPresentation(material, state.materialState);
+    if (highlightedLayerId !== null && descriptor.kind === 'material-exterior') {
+      for (const material of materials)
+        applyLayerInspectionMaterial(material, String(descriptor.layerId) === highlightedLayerId);
+    }
     if (
       object.isLineSegments &&
       ['border', 'internal-border', 'hidden-border'].includes(descriptor.kind)
@@ -3466,6 +3515,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       const stateFor = (part) => (part.buried ? interfaceState : materialState),
         presentationFor = (part, sortBias = 0) => ({
           kind: part.buried ? 'material-interface' : 'material-exterior',
+          layerId: part.layerId,
           sortBias,
         }),
         bucketKey = (part, state) => {
@@ -4650,6 +4700,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     init,
     render,
     fit,
+    highlightLayer,
     getViewState,
     setViewState,
     setGestureMode,

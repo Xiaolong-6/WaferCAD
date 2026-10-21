@@ -46,11 +46,11 @@ test('build controller renders deployed commit and announces a newer build', asy
   });
 
   await controller.loadBuildCommit();
-  assert.equal(host.textContent, 'commit abcdef1');
+  assert.equal(host.textContent, 'abcdef1');
   assert.match(host.href, /commit\/abcdef1234567890$/);
 
   await controller.checkForBuildUpdate();
-  assert.equal(host.textContent, 'commit abcdef1 · update');
+  assert.equal(host.textContent, 'abcdef1 · update');
   assert.match(host.title, /deployed fedcba9/);
   assert.deepEqual(messages, [
     'Update fedcba9 available. Use Reload safely to update without losing the workspace.',

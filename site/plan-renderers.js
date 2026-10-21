@@ -644,6 +644,7 @@ export function createPlanRenderers({
       sectionShowBorders,
       sectionCollapse,
       sectionViewport,
+      inspectionLayerId,
     } = getState();
     const physicalOwner = validateExperimentalPhysicalFacetModel(model);
     const mainCanvas = $('sectionCanvas'),
@@ -766,6 +767,17 @@ export function createPlanRenderers({
         }
       ctx.fillStyle = experimentalOxide ? '#d88b37' : layer.color;
       ctx.fill('evenodd');
+      if (inspectionLayerId === contour.layerId && layer?.visible !== false) {
+        // Inspection-only overlay shares the same physical contour and draw order.
+        // Never recolor the model or expose a normally occluded material face.
+        ctx.save();
+        ctx.fillStyle = 'rgba(255, 198, 40, .24)';
+        ctx.fill('evenodd');
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#d58b18';
+        ctx.stroke();
+        ctx.restore();
+      }
       if (sectionShowBorders) {
         ctx.setLineDash([]);
         ctx.strokeStyle = experimentalOxide ? 'rgba(216,139,55,.93)' : 'rgba(17,24,32,.72)';
