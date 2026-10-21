@@ -1,7 +1,7 @@
 // Real v2 M3D Welcome -> full project / History / 3D Border integration.
 // Retires the obsolete Legacy DOM regression without dropping its user contracts.
 import assert from 'node:assert/strict';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { gotoWelcome, launchBrowser, newUiContext, observePageErrors } from './test-helpers/ui.mjs';
 import { selectScientificView } from './v2/desktop-view-selector.mjs';
 
@@ -12,6 +12,74 @@ try {
   const page = await context.newPage();
   page.setDefaultTimeout(120000);
   const errors = observePageErrors(page);
+  let previewCapture = null;
+  let previewCaptureTask = null;
+  // Capture the REAL native canvas when the first approximate WebGL frame
+  // commits; waiting until exact ready would erase the evidence we need.
+  await page.exposeFunction('__wafercadCaptureM3DPreview', () => {
+    if (previewCaptureTask) return previewCaptureTask;
+    previewCaptureTask = (async () => {
+      try {
+        const phase = await page.evaluate(() => {
+          const host = document.getElementById('threeHost');
+          return {
+            fidelity: host?.dataset.renderFidelity || null,
+            renderState: host?.dataset.renderState || null,
+            progressiveFirstFrameMs: Number(host?.dataset.rendererProgressiveFirstFrameMs),
+            frameSerial: Number(host?.dataset.rendererFrameSerial),
+          };
+        });
+        if (phase.fidelity !== 'approximate' || !Number.isFinite(phase.progressiveFirstFrameMs))
+          return;
+        await page.screenshot({
+          path: 'test-results/m3d/welcome/m3d-progressive-first-frame.png',
+          animations: 'disabled',
+        });
+        previewCapture = phase;
+      } catch (error) {
+        // The exact application acceptance must still run even if diagnostic
+        // screenshot capture is blocked by a browser or compositor issue.
+        console.warn('M3D progressive preview screenshot unavailable:', error.message);
+      }
+    })();
+    return previewCaptureTask;
+  });
+  await page.addInitScript(() => {
+    if (!location.pathname.endsWith('/app.html')) return;
+    const observeHost = () => {
+      const findHost = () => {
+        const host = document.getElementById('threeHost');
+        if (!host) return;
+        insertion.disconnect();
+        let emitted = false;
+        const check = () => {
+          if (
+            !emitted &&
+            host.dataset.renderFidelity === 'approximate' &&
+            host.dataset.rendererProgressiveFirstFrameMs
+          ) {
+            emitted = true;
+            void window.__wafercadCaptureM3DPreview();
+          }
+        };
+        new MutationObserver(check).observe(host, {
+          attributes: true,
+          attributeFilter: [
+            'data-render-fidelity',
+            'data-renderer-progressive-first-frame-ms',
+            'data-renderer-frame-serial',
+          ],
+        });
+        check();
+      };
+      const insertion = new MutationObserver(findHost);
+      insertion.observe(document.documentElement, { childList: true, subtree: true });
+      findHost();
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', observeHost, { once: true });
+    } else observeHost();
+  });
   await gotoWelcome(page);
   const card = page.locator(
     '.welcome-example-card[data-example-id="m3d-selfpowered-heterogeneous-ic"]',
@@ -63,6 +131,30 @@ try {
     null,
     { timeout: 120000 },
   );
+  if (previewCaptureTask) await previewCaptureTask;
+  const firstFrame = await page.evaluate(() => {
+    const data = document.getElementById('threeHost')?.dataset || {};
+    return {
+      fidelity: data.renderFidelity || null,
+      progressiveFirstFrameMs: Number(data.rendererProgressiveFirstFrameMs) || null,
+      exactFirstFrameMs: Number(data.rendererExactFirstFrameMs) || null,
+      progressiveBuildMs: Number(data.rendererProgressiveBuildMs) || null,
+      exactSceneMs: Number(data.rendererExactSceneMs) || null,
+      renderState: data.renderState || null,
+      frameSerial: Number(data.rendererFrameSerial) || 0,
+    };
+  });
+  const firstFrameEvidence = {
+    ...firstFrame,
+    capturedPreview: previewCapture,
+    source: 'real Chromium WaferCAD Workstation M3D Welcome',
+    scope: 'same loaded model; not a cold baseline A/B or peak-memory measurement',
+  };
+  await writeFile(
+    'test-results/m3d/welcome/m3d-first-frame-evidence.json',
+    JSON.stringify(firstFrameEvidence, null, 2) + '\n',
+  );
+  console.log('M3D_PROGRESSIVE_FIRST_FRAME_EVIDENCE', JSON.stringify(firstFrameEvidence));
   const border = page.locator('#threePanel [data-action="borders:three"]');
   await border.waitFor({ state: 'visible' });
   assert.equal(await border.getAttribute('aria-label'), 'Borders');
