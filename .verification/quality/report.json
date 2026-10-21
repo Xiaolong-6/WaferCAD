@@ -4,10 +4,10 @@
   "scope": "full",
   "status": "pass",
   "source": {
-    "digest": "932b74931219e7684144769bb43fa420f3e7da0010f24048c1d075a103f2e01e",
-    "fileCount": 1121
+    "digest": "d098d390251cfd2b52cf0fb9fb5b8573d8bd831314b2854bd3487c6465f735bb",
+    "fileCount": 1123
   },
-  "sourceRevision": "3de6ba17fa52ca4b1545cb42e31cce301313e30d",
+  "sourceRevision": "764f3430a0ce746cd77279872159e40684d6339e",
   "planDigest": "9e40e14c41649069d23911dc155328f17e554f0307619aef8493378a2f26b4b3",
   "environment": {
     "node": "v24.11.1",
@@ -19,7 +19,7 @@
       "three": "0.179.1"
     }
   },
-  "startedAt": "2026-10-21T05:52:39.484Z",
+  "startedAt": "2026-10-21T11:10:15.863Z",
   "checks": [
     {
       "id": "lint",
@@ -31,7 +31,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 7348,
+      "durationMs": 4919,
       "logDigest": "7e083cff9d323606d09accd3389828279cc52091b6c62b45c8100c1ced589c7c"
     },
     {
@@ -44,7 +44,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 28736,
+      "durationMs": 14632,
       "logDigest": "1230617af071df8c1efeb12bcd6d41c3aa159e1cd0841cc546fbae4c8c56f867"
     },
     {
@@ -57,7 +57,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 616,
+      "durationMs": 406,
       "logDigest": "3413d1015e1c9f5f6b9363616f39c7ad4c45709f18266518a60b0fcef04cab0e"
     },
     {
@@ -69,10 +69,10 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 417911,
-      "logDigest": "694ec6b3aae25078a9c93954f5f2976d445239a60adeec92dad6d60f1482a7bd"
+      "durationMs": 189451,
+      "logDigest": "805b763e44b9b00676e2e45888fc1e280c9da70eb3b662eef11682c2fec70667"
     }
   ],
-  "finishedAt": "2026-10-21T06:00:14.100Z",
-  "transcriptDigest": "4f89919a01c8348eadee84985ac066401d04436a07d9898de3c3d9201eaeb73e"
+  "finishedAt": "2026-10-21T11:13:45.273Z",
+  "transcriptDigest": "7b255c871c822d6e96eccc8a2dabaf4ad3fd9bec7cb28097aed9390dc565d5c0"
 }

@@ -11,6 +11,7 @@ on:
       - 'site/ui-v2/three-view.js'
       - 'site/ui-v2/workstation-workflow.js'
       - 'scripts/m3d-welcome-regression.mjs'
+      - 'scripts/m3d-progressive-ab-benchmark.mjs'
       - '.github/workflows/m3d-example-integration.yml'
   workflow_dispatch:
 
@@ -49,6 +50,9 @@ jobs:
         run: node scripts/build-example-thumbnails.mjs --id=m3d-selfpowered-heterogeneous-ic
       - name: Welcome-card open and preview regression
         run: node scripts/m3d-welcome-regression.mjs
+      - name: Repeated cold M3D first-frame A/B (opt-in review gate)
+        if: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'renderer-first-frame-benchmark') }}
+        run: node scripts/m3d-progressive-ab-benchmark.mjs
       - name: M3D scientific and History Node contracts
         run: |
           node --check site/three-view.js

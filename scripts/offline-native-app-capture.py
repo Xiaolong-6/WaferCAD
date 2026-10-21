@@ -139,6 +139,144 @@ def runtime_probe(page):
     }''')
 
 
+def inspect_native_ui_controls(page, out: Path):
+    """Exercise production workstation UI; null origin remains visual-only."""
+    result = {'controls': {}, 'screenshots': {}, 'originVerified': False}
+    def record(name):
+        path = out / f'ui-{name}.png'
+        page.screenshot(path=str(path), animations='disabled')
+        result['screenshots'][name] = {'file': path.name, 'sha256': snapshot_sha(path)}
+    def control_state(view):
+        return page.evaluate('''(view) => {
+          const action = key => document.querySelector(`[data-action="${key}:${view}"]`);
+          const fit = action('fit'), pan = action('tool:pan'), zoom = action('tool:zoom');
+          const inMore = node => Boolean(node?.closest('.p-overflow'));
+          return {fitVisible: Boolean(fit && !inMore(fit)), panInMore: inMore(pan),
+            zoomInMore: inMore(zoom), toolbar: Boolean(fit?.closest('.p-toolbar'))};
+        }''', view)
+    page.wait_for_timeout(150)
+    result['controls']['main'] = control_state('main')
+    # Real screen-size round trip must preserve the original command node;
+    # re-creating tools on rotation would duplicate their event listeners.
+    if page.viewport_size['height'] > page.viewport_size['width']:
+        page.evaluate("window.__inspectionMainPanNode = document.querySelector('[data-action=\"tool:pan:main\"]')")
+        before_size = page.viewport_size.copy()
+        page.set_viewport_size({'width': 900, 'height': 500})
+        page.wait_for_timeout(200)
+        landscape = control_state('main')
+        page.set_viewport_size(before_size)
+        page.wait_for_timeout(200)
+        returned = control_state('main')
+        same_node = page.evaluate('''() => {
+          const found = document.querySelectorAll('[data-action="tool:pan:main"]');
+          return found.length === 1 && found[0] === window.__inspectionMainPanNode;
+        }''')
+        result['controls']['orientationRoundTrip'] = {
+            'landscapePanInMore': landscape['panInMore'],
+            'portraitPanInMore': returned['panInMore'],
+            'sameCommandNode': same_node}
+    record('main-portrait')
+    main_more = page.get_by_role('button', name='Main more tools')
+    if main_more.count() == 1 and main_more.is_visible() and main_more.is_enabled():
+        main_more.click()
+        page.wait_for_timeout(100)
+        result['controls']['mainMoreOpen'] = page.locator('.p-overflow[popover]:popover-open').count() > 0
+        record('main-more')
+        if result['controls']['mainMoreOpen']:
+            pan = page.locator('[data-action="tool:pan:main"]')
+            original_pressed = pan.get_attribute('aria-pressed')
+            pan.click()
+            page.wait_for_timeout(80)
+            result['controls']['mainMoreCommandCloses'] = (
+                page.locator('#p-overflow-main:popover-open').count() == 0
+                and pan.get_attribute('aria-pressed') != original_pressed
+                and pan.get_attribute('aria-checked') == pan.get_attribute('aria-pressed'))
+            # Restore the original Pan mode via the same menu command.
+            main_more.click()
+            pan.click()
+            result['controls']['mainPanRestored'] = (
+                pan.get_attribute('aria-pressed') == original_pressed
+                and page.locator('#p-overflow-main:popover-open').count() == 0)
+        else:
+            page.keyboard.press('Escape')
+    section_nav = page.locator('[data-action="mobile-section"]')
+    if section_nav.count() == 1 and section_nav.is_visible():
+        section_nav.click()
+        page.wait_for_timeout(350)
+        result['controls']['section'] = control_state('section')
+        first = page.locator('#layerLegend .v2-legend-name').first
+        result['controls']['layerRowAvailable'] = first.count() > 0 and first.is_visible()
+        record('section-portrait')
+        # When this header really overflows, use the original Pan command in
+        # More and ensure its view state survives closing and reopening.
+        if result['controls']['section']['panInMore']:
+            section_more = page.get_by_role('button', name='Section more tools')
+            pan = page.locator('[data-action="tool:pan:section"]')
+            original = pan.get_attribute('aria-pressed')
+            section_more.click()
+            pan.click()
+            page.wait_for_timeout(80)
+            result['controls']['sectionMoreCommandCloses'] = (
+                page.locator('#p-overflow-section:popover-open').count() == 0
+                and pan.get_attribute('aria-pressed') != original
+                and pan.get_attribute('aria-checked') == pan.get_attribute('aria-pressed'))
+            section_more.click()
+            pan.click()
+            page.wait_for_timeout(80)
+            result['controls']['sectionPanRestored'] = (
+                pan.get_attribute('aria-pressed') == original
+                and page.locator('#p-overflow-section:popover-open').count() == 0)
+        if result['controls']['layerRowAvailable']:
+            before = page.locator('[data-action="domain:history"][aria-pressed="true"]').count()
+            first.click()
+            page.wait_for_timeout(250)
+            selected = page.locator('#layerLegend .v2-legend-row[data-selected="true"]')
+            after = page.locator('[data-action="domain:history"][aria-pressed="true"]').count()
+            result['controls']['layerClickSelects'] = selected.count() == 1
+            result['controls']['layerClickDidNotOpenHistory'] = before == after
+            record('section-selected')
+    # The same production view menu implementation is used by all four view adapters.
+    for view in ('mask', 'three'):
+        switch = page.locator(f'[data-action="view:{view}"]')
+        if switch.count() == 1 and switch.is_visible():
+            switch.click()
+            page.wait_for_timeout(250)
+            result['controls'][view] = control_state(view)
+            record(view + '-portrait')
+    if section_nav.count() == 1 and section_nav.is_visible():
+        section_nav.click()
+        page.wait_for_timeout(200)
+        eye = page.locator('#layerLegend .v2-visibility-button').first
+        if eye.count() == 1 and eye.is_visible():
+            initial = eye.get_attribute('aria-pressed')
+            eye.click()
+            page.wait_for_timeout(120)
+            updated = page.locator('#layerLegend .v2-visibility-button').first
+            hidden = updated.get_attribute('aria-pressed') == 'false'
+            updated.click()
+            page.wait_for_timeout(120)
+            restored = page.locator('#layerLegend .v2-visibility-button').first
+            result['controls']['eyeVisibilityReversible'] = (initial == 'true' and hidden
+                and restored.get_attribute('aria-pressed') == 'true')
+        z_break = page.locator('[data-action="zbreak-settings"]')
+        if z_break.count() == 1 and z_break.is_visible():
+            z_break.click()
+            page.wait_for_timeout(150)
+            enabled = page.locator('#section-collapse-enabled')
+            result['controls']['zBreakButtonStyle'] = enabled.count() == 1 and bool(
+                enabled.locator('xpath=..').evaluate("el => el.classList.contains('v2-z-check')"))
+            page.mouse.move(4, page.viewport_size['height'] - 8)
+            page.evaluate('document.activeElement?.blur()')
+            page.wait_for_timeout(100)
+            record('z-break-toggle')
+            if enabled.count() == 1:
+                was_checked = enabled.is_checked()
+                enabled.locator('xpath=..').click()
+                result['controls']['zBreakNativeChange'] = enabled.is_checked() != was_checked
+    result['originVerified'] = False  # Explicitly not History/Worker acceptance.
+    return result
+
+
 def parse_native_bounds(raw: str | None, label: str, count: int):
     if raw is None:
         return None
@@ -270,6 +408,8 @@ def run(args):
             before = runtime_probe(page)
             report['beforeInteraction'] = before
             report['images'] = {'fourView': {'file': base.name, 'sha256': snapshot_sha(base)}}
+            if args.inspect_ui_controls:
+                report['uiControlDiagnostic'] = inspect_native_ui_controls(page, out)
             if args.inspect_history:
                 # These are real app controls; null-origin remains diagnostic-only
                 # because process Workers and Recovery cannot operate there.
@@ -420,6 +560,58 @@ def run(args):
                 ready = bool(details['initialized'] and state['ready'] and rough_ready
                              and state['renderState'] == 'ready'
                              and state['width'] > 100 and state['height'] > 100)
+                if args.inspect_ui_controls and ready:
+                    base_img = out / 'isolated-before-highlight.png'
+                    page.screenshot(path=str(base_img), animations='disabled')
+                    selection = page.evaluate('''() => {
+                      const item = window.__wafercadOfflineModel;
+                      const layer = item?.model?.layers?.filter(x => x.visible !== false)?.at(-1);
+                      if (!layer || typeof item.renderer.highlightLayer !== 'function')
+                        return { supported: false };
+                      window.__wafercadInspectionModelBefore = JSON.stringify(item.model);
+                      item.renderer.highlightLayer(layer.id);
+                      return {supported: true, selectedLayerId: String(layer.id),
+                        hostLayerId: item.host.dataset.highlightLayerId};
+                    }''')
+                    page.wait_for_timeout(300)
+                    selected_img = out / 'isolated-after-highlight.png'
+                    page.screenshot(path=str(selected_img), animations='disabled')
+                    selection['imageChanged'] = snapshot_sha(base_img) != snapshot_sha(selected_img)
+                    selection['beforeSha256'] = snapshot_sha(base_img)
+                    selection['afterSha256'] = snapshot_sha(selected_img)
+                    alternate = page.evaluate('''() => {
+                      const item = window.__wafercadOfflineModel;
+                      const layers = item.model.layers.filter(layer => layer.visible !== false);
+                      const current = item.host.dataset.highlightLayerId;
+                      const next = layers.find(layer => String(layer.id) !== current);
+                      if (!next) return {available: false};
+                      item.renderer.highlightLayer(next.id);
+                      return {available: true, selectedLayerId: String(next.id),
+                        hostLayerId: item.host.dataset.highlightLayerId};
+                    }''')
+                    if alternate['available']:
+                        page.wait_for_timeout(300)
+                        switched_img = out / 'isolated-switched-focus.png'
+                        page.screenshot(path=str(switched_img), animations='disabled')
+                        alternate['imageChanged'] = snapshot_sha(switched_img) != snapshot_sha(selected_img)
+                        alternate['switchedSha256'] = snapshot_sha(switched_img)
+                    selection['alternateFocus'] = alternate
+                    selection.update(page.evaluate('''() => {
+                      const item = window.__wafercadOfflineModel;
+                      item.renderer.highlightLayer(null);
+                      const result = {
+                        cleared: item.host.dataset.highlightLayerId === '',
+                        modelUnchanged: JSON.stringify(item.model) === window.__wafercadInspectionModelBefore,
+                      };
+                      delete window.__wafercadInspectionModelBefore;
+                      return result;
+                    }'''))
+                    page.wait_for_timeout(250)
+                    restored_img = out / 'isolated-restored-highlight.png'
+                    page.screenshot(path=str(restored_img), animations='disabled')
+                    selection['restoredImageMatchesBefore'] = snapshot_sha(base_img) == snapshot_sha(restored_img)
+                    selection['restoredSha256'] = snapshot_sha(restored_img)
+                    report['isolatedThreeLayerInspection'] = selection
                 image = out / 'isolated-native-model.png'
                 page.screenshot(path=str(image), animations='disabled')
                 report['images']['isolatedNativeModel'] = {
@@ -478,6 +670,8 @@ def main():
     parser.add_argument('--height', type=int, default=1000)
     parser.add_argument('--headless', action='store_true', help='Opt out of headful/Xvfb; may disable WebGL')
     parser.add_argument('--require-origin', action='store_true', help='Fail rather than use null-origin diagnostic')
+    parser.add_argument('--inspect-ui-controls', action='store_true',
+                        help='Inspect actual phone Main/Section toolbars and transient layer selection')
     parser.add_argument('--inspect-history', action='store_true',
                         help='Capture real History Step 0 and Process Undo controls (visual only)')
     args = parser.parse_args()
