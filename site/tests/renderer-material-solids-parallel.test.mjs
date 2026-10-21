@@ -10,7 +10,12 @@ const { materialSolidsFromTopology } = await import('../process-topology.js');
 const { buildRenderSurfacePlan } = await import('../renderer-geometry.js');
 const { expandProjectStorage } = await import('../project-io.js');
 const { migrateProjectFile } = await import('../project-schema.js');
-const { splitHeavyMaterialLayer, assembleParallelMaterialSolids, parallelMaterialSolids } =
+const {
+  splitHeavyMaterialLayer,
+  survivingMaterialLayerIds,
+  assembleParallelMaterialSolids,
+  parallelMaterialSolids,
+} =
   await import('../renderer-material-solids-parallel.js');
 const hash = (value) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
@@ -55,46 +60,48 @@ test('parallel result assembly reorders by original material order and rejects m
   assert.throws(() => assembleParallelMaterialSolids(partition, heavy, []), /incomplete/);
 });
 
-test('clipped material assembly preserves only surviving layers in source order', () => {
+test('clipped material assembly accepts only the proven surviving layer set', () => {
   const partition = { heavyId: 'film', orderedIds: ['base', 'film', 'passivation'] };
   const film = { layerId: 'film', slabs: [] };
   const base = { layerId: 'base', slabs: [] };
   assert.deepEqual(
-    assembleParallelMaterialSolids(partition, [film], [base], { allowClippedLayers: true }),
+    assembleParallelMaterialSolids(partition, [film], [base], { expectedIds: ['base', 'film'] }),
     [base, film],
   );
   assert.deepEqual(
-    assembleParallelMaterialSolids(partition, [], [base], { allowClippedLayers: true }),
+    assembleParallelMaterialSolids(partition, [], [base], { expectedIds: ['base'] }),
     [base],
   );
-  assert.deepEqual(
-    assembleParallelMaterialSolids(partition, [], [], { allowClippedLayers: true }),
-    [],
-  );
+  assert.deepEqual(assembleParallelMaterialSolids(partition, [], [], { expectedIds: [] }), []);
   assert.throws(() => assembleParallelMaterialSolids(partition, [film], [base]), /incomplete/);
   assert.throws(
-    () => assembleParallelMaterialSolids(partition, [film, film], [], { allowClippedLayers: true }),
-    /duplicate/,
-  );
-  assert.throws(
-    () =>
-      assembleParallelMaterialSolids(partition, [film], [base, base], {
-        allowClippedLayers: true,
-      }),
-    /duplicate/,
-  );
-  assert.throws(
-    () =>
-      assembleParallelMaterialSolids(partition, [film], [{ layerId: 'foreign' }], {
-        allowClippedLayers: true,
-      }),
+    () => assembleParallelMaterialSolids(partition, [film], [], { expectedIds: ['base', 'film'] }),
     /incomplete/,
   );
   assert.throws(
-    () => assembleParallelMaterialSolids(partition, [base], [], { allowClippedLayers: true }),
+    () => assembleParallelMaterialSolids(partition, [film, film], [], { expectedIds: ['film'] }),
+    /duplicate/,
+  );
+  assert.throws(
+    () => assembleParallelMaterialSolids(partition, [film], [base, base], { expectedIds: ['film', 'base'] }),
+    /duplicate/,
+  );
+  assert.throws(
+    () => assembleParallelMaterialSolids(partition, [film], [{ layerId: 'foreign' }], {
+      expectedIds: ['film', 'base'],
+    }),
+    /incomplete/,
+  );
+  assert.throws(
+    () => assembleParallelMaterialSolids(partition, [base], [], { expectedIds: ['base'] }),
+    /incomplete/,
+  );
+  assert.throws(
+    () => assembleParallelMaterialSolids(partition, [film], [base], { expectedIds: ['film','film'] }),
     /incomplete/,
   );
 });
+
 
 test('worker branch returns exact serial solids and terminates child; worker error falls back to serial', async () => {
   const model = largeSimpleModel();
@@ -233,8 +240,10 @@ test('ROI can remove one or all material layers without triggering serial fallba
   ]) {
     const heavy = materialSolidsFromTopology(partition.heavy, clip);
     const other = materialSolidsFromTopology(partition.other, clip);
+    const survivingIds = survivingMaterialLayerIds(model, clip);
+    assert.deepEqual(survivingIds, expected, name + ' clipped layer ordering');
     const combined = assembleParallelMaterialSolids(partition, heavy, other, {
-      allowClippedLayers: true,
+      expectedIds: survivingIds,
     });
     const serial = materialSolidsFromTopology(model, clip);
     assert.deepEqual(
@@ -266,3 +275,68 @@ test('ROI can remove one or all material layers without triggering serial fallba
   assert.ok(result, 'ROI must not discard valid parallel solids');
   assert.equal(hash(result), hash(materialSolidsFromTopology(model, clip)));
 });
+
+test('mixed ROI first surviving material reorders even when all layers remain', async () => {
+  const { rectMulti } = await import('../vector-geometry.js');
+  const model = largeSimpleModel();
+  // The first film Region is entirely clipped. All subsequent base Regions
+  // precede the later surviving film Regions in the *clipped* input.
+  const firstFilm = model.regions[0];
+  const otherFilm = model.regions.slice(1, 480);
+  const base = model.regions.slice(480);
+  model.regions = [firstFilm, ...base, ...otherFilm];
+  for (const region of model.regions) {
+    region.geom = rectMulti(3, 3, region === firstFilm ? -5 : 5, 0);
+  }
+  const clip = rectMulti(4, 4, 5, 0);
+  const partition = splitHeavyMaterialLayer(model, 8, 8);
+  assert.ok(partition, 'must use actual eligible parallel workload');
+  assert.deepEqual(partition.orderedIds, ['film', 'base']);
+  const expectedIds = survivingMaterialLayerIds(model, clip);
+  assert.deepEqual(expectedIds, ['base', 'film']);
+  const serialSolids = materialSolidsFromTopology(model, clip);
+  assert.deepEqual(serialSolids.map((item) => item.layerId), expectedIds);
+  const heavy = materialSolidsFromTopology(partition.heavy, clip);
+  const other = materialSolidsFromTopology(partition.other, clip);
+  const combined = assembleParallelMaterialSolids(partition, heavy, other, { expectedIds });
+  assert.equal(hash(combined), hash(serialSolids));
+  assert.equal(
+    hash(buildRenderSurfacePlan(structuredClone(model), clip, combined)),
+    hash(buildRenderSurfacePlan(structuredClone(model), clip)),
+    'complete Surface Plan, including solidIndex, is byte-identical',
+  );
+  class SimulatedWorker {
+    postMessage({ model: childModel, clip: childClip }) {
+      const solids = materialSolidsFromTopology(childModel, childClip);
+      queueMicrotask(() => this.onmessage({ data: { id: 1, type: 'done', solids } }));
+    }
+    terminate() { this.terminated = true; }
+  }
+  const actual = await parallelMaterialSolids(model, clip, {
+    WorkerClass: SimulatedWorker,
+    hardwareConcurrency: 8,
+    deviceMemory: 8,
+  });
+  assert.equal(hash(actual), hash(serialSolids));
+  class PartialWorker extends SimulatedWorker {
+    postMessage() {
+      queueMicrotask(() => this.onmessage({ data: { id: 1, type: 'done', solids: [] } }));
+    }
+  }
+  const warn = console.warn;
+  console.warn = () => {};
+  try {
+    assert.equal(
+      await parallelMaterialSolids(model, clip, {
+        WorkerClass: PartialWorker,
+        hardwareConcurrency: 8,
+        deviceMemory: 8,
+      }),
+      null,
+      'incomplete done payload must trigger full serial recomputation in Surface Plan worker',
+    );
+  } finally {
+    console.warn = warn;
+  }
+});
+

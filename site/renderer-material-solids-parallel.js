@@ -1,5 +1,6 @@
 import { visibleMaterialModel } from './model.js';
 import { materialSolidsFromTopology } from './process-topology.js';
+import { intersection, isEmpty } from './vector-geometry.js';
 
 // This optional two-thread path runs only *inside* the existing disposable
 // Surface Plan worker. The primary worker computes the remaining materials,
@@ -55,30 +56,46 @@ export function splitHeavyMaterialLayer(model, hardwareConcurrency = 0, deviceMe
   };
 }
 
+// Match extrusionGroupsFromTopology: clip every Region *before* selecting
+// first-occurrence material order. An ROI may exclude the first Region of a
+// layer while preserving a later Region of the same layer.
+export function survivingMaterialLayerIds(model, clip = null) {
+  const ids = new Set();
+  for (const region of model?.regions || []) {
+    if (!region.stack?.length) continue;
+    const geom = clip == null ? region.geom : intersection(region.geom, clip);
+    if (isEmpty(geom)) continue;
+    for (const segment of region.stack) ids.add(segment.layerId);
+  }
+  return [...ids];
+}
+
 export function assembleParallelMaterialSolids(
   partition,
   heavy,
   other,
-  { allowClippedLayers = false } = {},
+  { expectedIds = partition.orderedIds } = {},
 ) {
   const solids = [...heavy, ...other];
   const byId = new Map(solids.map((item) => [item.layerId, item]));
   const permitted = new Set(partition.orderedIds);
-  // An ROI can legitimately remove every extrusion of an otherwise visible
-  // material. Preserve exact source order for the remaining materials while
-  // rejecting missing *unclipped* layers, duplicate IDs, and foreign results.
+  const expected = new Set(expectedIds);
+  // The worker can omit only layers proven empty by the same ROI rules as
+  // serial extrusion grouping. Reject duplicates, foreign IDs, and every
+  // incomplete child result instead of publishing silently missing geometry.
   if (
+    expected.size !== expectedIds.length ||
+    expectedIds.some((id) => !permitted.has(id)) ||
     heavy.length > 1 ||
-    (heavy.length === 0 && !allowClippedLayers) ||
     (heavy.length === 1 && heavy[0].layerId !== partition.heavyId) ||
     other.some((item) => item.layerId === partition.heavyId) ||
     byId.size !== solids.length ||
-    solids.some((item) => !permitted.has(item.layerId)) ||
-    (!allowClippedLayers && byId.size !== permitted.size)
+    byId.size !== expected.size ||
+    solids.some((item) => !expected.has(item.layerId))
   ) {
     throw new Error('Parallel material topology has incomplete or duplicate layer results.');
   }
-  return partition.orderedIds.filter((id) => byId.has(id)).map((id) => byId.get(id));
+  return expectedIds.map((id) => byId.get(id));
 }
 
 export async function parallelMaterialSolids(
@@ -99,6 +116,7 @@ export async function parallelMaterialSolids(
   let worker;
   let timeoutId;
   try {
+    const expectedIds = survivingMaterialLayerIds(visible, clip);
     const url = new URL('./renderer-material-solids-worker.js', import.meta.url);
     url.search = new URL(import.meta.url).search;
     worker = new WorkerClass(url);
@@ -127,9 +145,7 @@ export async function parallelMaterialSolids(
       boundedTimeoutMs,
     );
     const heavy = await heavyResult;
-    return assembleParallelMaterialSolids(partition, heavy, other, {
-      allowClippedLayers: clip != null,
-    });
+    return assembleParallelMaterialSolids(partition, heavy, other, { expectedIds });
   } catch (error) {
     // Never publish partial geometry. The original whole-model calculation
     // in renderer-surface-plan-worker.js remains the fallback.
