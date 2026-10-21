@@ -187,7 +187,9 @@ export function fullQualityVerification(steps) {
   ) {
     return null;
   }
-  return completed[0].name === 'Require full local Quality evidence' ? 'local-evidence' : 'executed';
+  return completed[0].name === 'Require full local Quality evidence'
+    ? 'local-evidence'
+    : 'executed';
 }
 
 function git(...args) {
