@@ -80,6 +80,7 @@ import {
   adaptiveRoughMeshLod,
   roughDisplayHeightBlend,
   roughTaskDisplaySampling,
+  trimSaturatedRoughLodBudgets,
   roughFarFieldContrast,
   allocateRoughTriangleBudgets,
   projectedPixelsPerUnit,
@@ -2548,6 +2549,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
     // Equal seeded rough surfaces need identical display tessellation to
     // preserve thin conformal spacing between their independent layer caps.
     const conformalLodPairs = synchronizeConformalRoughLods(requests, allocations);
+    // Avoid spending a 4x Quality subdivision on a field that is already
+    // visually saturated at the same 0.12 blend in both modes. Reuse the
+    // normal Section sampler/LOD blend calculation to reject unsafe trims.
+    const saturatedLodTrim =
+      !interactive && policy.mode === 'quality' && trimSaturatedRoughLodBudgets(tasks);
+    host.dataset.roughSaturatedLodTrim = String(saturatedLodTrim);
     host.dataset.roughConformalLodPairs = String(conformalLodPairs);
     const parity = tasks.map((task) => task.gpuHeightParity).filter(Boolean);
     host.dataset.roughGpuParityCheckedTasks = String(parity.length);

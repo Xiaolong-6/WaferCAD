@@ -562,6 +562,83 @@ export function roughTaskDisplaySampling(tasks) {
   return sampling.map((key) => ({ pitch: fields.get(key) }));
 }
 
+// A whole seeded-field cohort may surrender one Quality subdivision level
+// only when all its CPU rough caps (including coating and implant overlays)
+// have reached the minimum display-height blend. Strictly presentation-only:
+// keep stored morphology, Section geometry, GPU and array paths unchanged.
+export function trimSaturatedRoughLodBudgets(tasks) {
+  if (!tasks?.length) return false;
+  const before = roughTaskDisplaySampling(tasks);
+  const localBefore = tasks.map((task) => roughTaskDisplaySampling([task])[0]);
+  const blend = (task, sample) => {
+    const profile = task.cap?.appearance;
+    return profile?.kind === 'rough' && ['stochastic', 'stochastic-v2'].includes(profile.morphology)
+      ? roughDisplayHeightBlend(profile.featureSize, sample.pitch)
+      : 1;
+  };
+  // Co-registered caps (including implant overlays and conformal coatings)
+  // must not be re-tessellated at different rates. Only optimize a *whole*
+  // seeded heightfield cohort if every cap is unresolved and CPU-based.
+  const cohorts = new Map();
+  tasks.forEach((task, i) => {
+    const appearance = task.cap?.appearance;
+    const key = JSON.stringify(
+      Object.fromEntries(
+        Object.entries(appearance || {})
+          .filter(([name]) => name !== 'displayRoughBlend')
+          .sort(([a], [b]) => a.localeCompare(b)),
+      ),
+    );
+    if (!cohorts.has(key)) cohorts.set(key, []);
+    cohorts.get(key).push(i);
+  });
+  const eligible = new Set();
+  for (const indices of cohorts.values()) {
+    if (
+      indices.every((i) => {
+        const task = tasks[i];
+        return (
+          !task.gpuDisplacement &&
+          !task.cap?.instanceTranslations?.length &&
+          !task.implant?.instanceTranslations?.length &&
+          Math.abs(blend(task, before[i]) - 0.12) <= 1e-12 &&
+          Math.abs(blend(task, localBefore[i]) - 0.12) <= 1e-12
+        );
+      })
+    )
+      indices.forEach((i) => eligible.add(i));
+  }
+  const old = tasks.map((task) => (task.zones || []).map((zone) => zone.triangleBudget));
+  let changed = false;
+  tasks.forEach((task, i) => {
+    if (!eligible.has(i)) return;
+    for (const zone of task.zones || []) {
+      const budget = Number(zone.triangleBudget);
+      if (!(budget > zone.baseTriangles.length)) continue;
+      zone.triangleBudget = Math.max(zone.baseTriangles.length, Math.floor(budget / 4));
+      changed ||= zone.triangleBudget !== budget;
+    }
+  });
+  if (!changed) return false;
+  const after = roughTaskDisplaySampling(tasks);
+  const localAfter = tasks.map((task) => roughTaskDisplaySampling([task])[0]);
+  if (
+    tasks.some(
+      (task, i) =>
+        Math.abs(blend(task, after[i]) - blend(task, before[i])) > 1e-12 ||
+        Math.abs(blend(task, localAfter[i]) - blend(task, localBefore[i])) > 1e-12,
+    )
+  ) {
+    tasks.forEach((task, i) =>
+      (task.zones || []).forEach((zone, j) => {
+        zone.triangleBudget = old[i][j];
+      }),
+    );
+    return false;
+  }
+  return true;
+}
+
 export function roughDisplayProfileOffsetAtPoint(x, y, appearance) {
   const original = roughProfileOffsetAtPoint(x, y, appearance),
     weight = Number(appearance?.displayRoughBlend);

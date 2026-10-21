@@ -170,7 +170,17 @@ UI orchestration that does not own canonical geometry lives under `site/controll
 Rough display filtering estimates XY sample pitch from each cap's actual
 triangulated area and allocated LOD, independently of the ROI bounding box
 and repeated material layers. Caps with the same seeded appearance use the
-coarsest shared pitch to preserve conformal registration. This display-only
+coarsest shared pitch to preserve conformal registration. Quality can surrender
+one CPU rough-mesh subdivision when every cap of the same seeded appearance,
+including conformal layers and implant overlays, is already at the minimum
+0.12 display-height blend, both locally and across the scene. GPU-displaced
+and instanced cohorts are ineligible. The renderer rechecks the exact blend
+after changing the candidate display triangle budgets and cancels the change
+if any cohort's blend would change. This is only a performance/presentation
+tradeoff: the mesh interpolation residual can change, and it is **not** a
+Section/3D scientific convergence fix. The read-only native cutline runner
+must quantify both interpolation and display attenuation before promotion.
+This display-only
 filter does not establish Section/3D interior height parity. The legacy
 variable-feature stochastic field evaluates noise using a spatially varying
 feature size; at large world coordinates it can vary much faster than its
