@@ -544,6 +544,23 @@ def run(args):
                     selection['imageChanged'] = snapshot_sha(base_img) != snapshot_sha(selected_img)
                     selection['beforeSha256'] = snapshot_sha(base_img)
                     selection['afterSha256'] = snapshot_sha(selected_img)
+                    alternate = page.evaluate('''() => {
+                      const item = window.__wafercadOfflineModel;
+                      const layers = item.model.layers.filter(layer => layer.visible !== false);
+                      const current = item.host.dataset.highlightLayerId;
+                      const next = layers.find(layer => String(layer.id) !== current);
+                      if (!next) return {available: false};
+                      item.renderer.highlightLayer(next.id);
+                      return {available: true, selectedLayerId: String(next.id),
+                        hostLayerId: item.host.dataset.highlightLayerId};
+                    }''')
+                    if alternate['available']:
+                        page.wait_for_timeout(300)
+                        switched_img = out / 'isolated-switched-focus.png'
+                        page.screenshot(path=str(switched_img), animations='disabled')
+                        alternate['imageChanged'] = snapshot_sha(switched_img) != snapshot_sha(selected_img)
+                        alternate['switchedSha256'] = snapshot_sha(switched_img)
+                    selection['alternateFocus'] = alternate
                     selection.update(page.evaluate('''() => {
                       const item = window.__wafercadOfflineModel;
                       item.renderer.highlightLayer(null);

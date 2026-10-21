@@ -344,6 +344,16 @@ export function createSectionView({ store, main, workstation }) {
   }
   function renderLegend() {
     if (preview) return;
+    // A rebuilt or hidden layer cannot remain the focus of an unrelated model.
+    if (
+      local.selectedEntity?.kind === 'layer' &&
+      !state.model.layers.some(
+        (layer) => String(layer.id) === String(local.selectedEntity.id) && layer.visible !== false,
+      )
+    ) {
+      local.selectedEntity = null;
+      store.views.get('three')?.runtime.highlightLayer?.(null);
+    }
     syncLegendPlacement();
     const annotations = [
       ...(state.model.implants || []).map((item) => ({ ...item, kind: 'Implant' })),
@@ -380,6 +390,15 @@ export function createSectionView({ store, main, workstation }) {
             ? setImplantVisible
             : setElectricalRegionVisible;
         fn(state.model, item.id, !visible);
+        if (
+          row.dataset.layerId &&
+          visible &&
+          local.selectedEntity?.kind === 'layer' &&
+          String(local.selectedEntity.id) === String(item.id)
+        ) {
+          local.selectedEntity = null;
+          store.views.get('three')?.runtime.highlightLayer?.(null);
+        }
         store.renderAll();
       };
       const name = row.querySelector('.v2-legend-name');
@@ -389,8 +408,11 @@ export function createSectionView({ store, main, workstation }) {
       name.tabIndex = 0;
       name.setAttribute('role', 'button');
       name.setAttribute('aria-pressed', String(selected));
-      name.setAttribute('aria-label', `Highlight ${item.name}`);
-      name.title = 'Highlight this layer without editing History';
+      name.setAttribute('aria-label', `Focus ${item.name}`);
+      name.title =
+        entityKind === 'layer'
+          ? 'Focus this layer and deemphasize other layers without editing History'
+          : 'Select this annotation without editing History';
       const select = () => {
         local.selectedEntity = selected ? null : { kind: entityKind, id: item.id };
         renderLegend();

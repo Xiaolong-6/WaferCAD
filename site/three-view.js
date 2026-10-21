@@ -17,6 +17,11 @@ import {
 import { shouldYieldDuringSceneAssembly } from './renderer-cooperative-assembly.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
+  LAYER_INSPECTION_NEUTRAL,
+  LAYER_INSPECTION_DIM,
+  layerInspectionTone,
+} from './layer-inspection-presentation.js';
+import {
   annotationInspectionCutSegments,
   electricalRegionSolids,
   implantSolids,
@@ -167,10 +172,11 @@ export function createThreeView({
   let lastTransparencySort = -Infinity;
   let transparencyOrderDirty = true;
   let presentationObjects = new Set();
-  // View-only selection: emissive accents never mutate canonical layer colors,
-  // mesh ownership, geometry or the project's persistent inspection options.
+  // Focus is view-only: neutralize other materials without touching visibility,
+  // opacity, depth ownership, geometry or persistent layer colors.
   let highlightedLayerId = null;
-  const originalInspectionEmissive = new WeakMap();
+  const originalInspectionAppearance = new WeakMap();
+  let inspectionNeutralColor = null;
   let surfaceMaterialPool = new Map();
   let presentationUpdateCount = 0;
   let physicalSceneModel = null;
@@ -1230,35 +1236,41 @@ export function createThreeView({
     if (transparentChanged || depthWriteChanged || depthTestChanged) material.needsUpdate = true;
   }
 
-  function applyLayerInspectionMaterial(material, selected) {
-    if (!material?.emissive) return;
-    if (!originalInspectionEmissive.has(material)) {
-      originalInspectionEmissive.set(material, {
-        color: material.emissive.clone(),
+  function applyLayerInspectionMaterial(material, tone) {
+    if (!material?.color) return;
+    if (!originalInspectionAppearance.has(material)) {
+      originalInspectionAppearance.set(material, {
+        color: material.color.clone(),
+        emissive: material.emissive?.clone(),
         intensity: material.emissiveIntensity,
       });
     }
-    const original = originalInspectionEmissive.get(material);
-    material.emissive.copy(original.color);
-    material.emissiveIntensity = original.intensity;
-    if (selected) {
-      material.emissive.set('#ffd04d');
-      material.emissiveIntensity = 0.9;
+    const original = originalInspectionAppearance.get(material);
+    material.color.copy(original.color);
+    if (original.emissive && material.emissive) {
+      material.emissive.copy(original.emissive);
+      material.emissiveIntensity = original.intensity;
     }
+    if (tone === 'deemphasized') {
+      inspectionNeutralColor ||= new THREE.Color(LAYER_INSPECTION_NEUTRAL);
+      material.color.lerp(inspectionNeutralColor, LAYER_INSPECTION_DIM);
+    }
+  }
+
+  function isLayerInspectionMaterial(descriptor) {
+    return descriptor?.kind === 'material-exterior' || descriptor?.kind === 'material-interface';
   }
 
   function updateLayerInspection() {
     const visited = new Set();
     for (const object of presentationObjects) {
       const descriptor = object.userData?.waferCadPresentation;
-      const selected =
-        descriptor?.kind === 'material-exterior' &&
-        descriptor.layerId != null &&
-        String(descriptor.layerId) === highlightedLayerId;
+      if (!isLayerInspectionMaterial(descriptor)) continue;
+      const tone = layerInspectionTone(descriptor.layerId, highlightedLayerId);
       for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
-        if (visited.has(material)) continue;
+        if (!material || visited.has(material)) continue;
         visited.add(material);
-        applyLayerInspectionMaterial(material, selected);
+        applyLayerInspectionMaterial(material, tone);
       }
     }
     host.dataset.highlightLayerId = highlightedLayerId ?? '';
@@ -1279,9 +1291,9 @@ export function createThreeView({
       materials = Array.isArray(object.material) ? object.material : [object.material];
     object.visible = Boolean(state.visible);
     for (const material of materials) applyMaterialPresentation(material, state.materialState);
-    if (highlightedLayerId !== null && descriptor.kind === 'material-exterior') {
-      for (const material of materials)
-        applyLayerInspectionMaterial(material, String(descriptor.layerId) === highlightedLayerId);
+    if (isLayerInspectionMaterial(descriptor)) {
+      const tone = layerInspectionTone(descriptor.layerId, highlightedLayerId);
+      for (const material of materials) applyLayerInspectionMaterial(material, tone);
     }
     if (
       object.isLineSegments &&
@@ -3215,7 +3227,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     // Group disposal also drops any stale surface variants and GPU resources.
     disposeGroup();
     const data = buildPhysicalFacetPresentation(model);
-    const exterior = { kind: 'material-exterior' };
+    const exterior = { kind: 'material-exterior', layerId: owner.layerId };
     const materialState = presentationState(exterior, inspection).materialState;
     let built = 0;
     for (const face of ['top', 'bottom', 'side']) {
@@ -3255,6 +3267,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         name: 'Experimental physical SiO2',
         color: '#d88b37',
       };
+      const oxideExterior = { kind: 'material-exterior', layerId: data.oxideLayerId };
       let builtOxideFaces = 0;
       for (const face of ['top', 'bottom', 'side']) {
         const positions = data.oxidePositions[face];
@@ -3262,7 +3275,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
         geometry.computeVertexNormals();
-        const material = createSurfaceMaterial(physicalOxideLayer, materialState, null, exterior);
+        const material = createSurfaceMaterial(
+          physicalOxideLayer,
+          materialState,
+          null,
+          oxideExterior,
+        );
         material.flatShading = true;
         const mesh = addSurfaceMesh(
           geometry,
@@ -3272,7 +3290,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           0,
           false,
           null,
-          exterior,
+          oxideExterior,
         );
         if (mesh) {
           mesh.name = `physical-${face}-${data.oxideLayerId}`;
