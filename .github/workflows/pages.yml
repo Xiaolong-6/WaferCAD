@@ -57,7 +57,7 @@ jobs:
         run: node scripts/release/verified-pr-release.mjs
 
   release-quality:
-    name: Release lint, format, docs and Node tests
+    name: Release local Quality evidence
     needs: release-evidence
     if: ${{ needs.release-evidence.outputs.fast != 'true' && needs.release-evidence.outputs.mode != 'superseded' }}
     runs-on: ubuntu-latest
@@ -67,9 +67,8 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
-          cache: npm
-      - run: npm ci --ignore-scripts --no-audit --no-fund
-      - run: npm run check
+      - name: Require full local Quality for this release tree
+        run: node scripts/local-verification.mjs verify full
 
   release-browser:
     name: Release targeted browser regression
@@ -143,6 +142,8 @@ jobs:
     needs: [release-evidence, release-impact]
     if: ${{ needs.release-evidence.outputs.fast != 'true' && needs.release-evidence.outputs.mode != 'superseded' && needs.release-impact.outputs.recipe == 'true' }}
     uses: ./.github/workflows/process-recipe-safety.yml
+    with:
+      skip_shared_node_gate: true
     permissions:
       contents: read
 
