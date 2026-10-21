@@ -213,10 +213,7 @@ export function sourceSnapshot(root, scheme = 'files-sha256-v2') {
           JSON.parse(
             readBounded(join(root, SOURCE_MANIFEST), MAX_LOG),
           ).excludedDependencyArchives?.includes(path);
-        requireValue(
-          allowedOmission,
-          'Pinned archive missing without explicit manifest omission',
-        );
+        requireValue(allowedOmission, 'Pinned archive missing without explicit manifest omission');
       }
       hash.update(JSON.stringify([path, pinnedArchiveDigest(root)]) + '\n');
     } else {
