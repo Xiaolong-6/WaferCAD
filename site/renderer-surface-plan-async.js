@@ -18,7 +18,7 @@ export function shouldBuildSurfacePlanInWorker(model) {
   );
 }
 
-export async function buildRenderSurfacePlanAsync(model, clip = null, { signal } = {}) {
+export async function buildRenderSurfacePlanAsync(model, clip = null, { signal, onPreview } = {}) {
   if (!shouldBuildSurfacePlanInWorker(model)) {
     return buildRenderSurfacePlan(model, clip);
   }
@@ -47,7 +47,17 @@ export async function buildRenderSurfacePlanAsync(model, clip = null, { signal }
       worker.onmessage = ({ data }) => {
         if (settled || data?.id !== 1) return;
         try {
-          if (data.type === 'done' && data.plan) finish(null, data.plan);
+          if (data.type === 'preview') {
+            // Preview is display-only. Callback failure must not discard the
+            // authoritative Worker result or populate the exact-plan cache.
+            if (typeof onPreview === 'function' && !signal?.aborted) {
+              try {
+                onPreview(data.preview);
+              } catch (error) {
+                console.warn('Progressive 3D preview rejected:', error);
+              }
+            }
+          } else if (data.type === 'done' && data.plan) finish(null, data.plan);
           else if (data.type === 'error')
             finish(new Error(data.message || 'Surface ownership worker failed.'));
           else if (data.type?.startsWith('stream-')) {
@@ -67,7 +77,13 @@ export async function buildRenderSurfacePlanAsync(model, clip = null, { signal }
         onAbort();
         return;
       }
-      worker.postMessage({ id: 1, action: 'surface-plan', model, clip });
+      worker.postMessage({
+        id: 1,
+        action: 'surface-plan',
+        model,
+        clip,
+        preview: typeof onPreview === 'function',
+      });
     } catch (error) {
       finish(error);
     }
