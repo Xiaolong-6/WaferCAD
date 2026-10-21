@@ -169,8 +169,8 @@ function validateSurfaceAppearance(appearance, path) {
   assertFinite(appearance.featureCv, `${path}.featureCv`, { min: 0, max: 1 });
   assertFinite(appearance.heightCv, `${path}.heightCv`, { min: 0, max: 1 });
   assertString(appearance.morphology, `${path}.morphology`);
-  if (!['stochastic', 'pyramid'].includes(appearance.morphology)) {
-    fail(`${path}.morphology`, 'must be stochastic or pyramid.');
+  if (!['stochastic', 'stochastic-v2', 'pyramid'].includes(appearance.morphology)) {
+    fail(`${path}.morphology`, 'must be stochastic, stochastic-v2 or pyramid.');
   }
   assertString(appearance.polarity, `${path}.polarity`);
   if (!['inverted', 'normal'].includes(appearance.polarity)) {
@@ -1288,25 +1288,6 @@ function validateDisplay(display) {
   }
   if (display.structurePalette != null) {
     assertString(display.structurePalette, 'display.structurePalette', { max: 64 });
-  }
-  if (display.layerAppearance != null) {
-    const appearance = assertObject(display.layerAppearance, 'display.layerAppearance');
-    const entries = Object.entries(appearance);
-    if (entries.length > LIMITS.layers * 3) {
-      fail('display.layerAppearance', 'too many appearance entries.');
-    }
-    for (const [key, value] of entries) {
-      if (!/^(layers|implants|electricalRegions):.{1,128}$/.test(key)) {
-        fail('display.layerAppearance', 'contains an invalid layer identity.');
-      }
-      const item = assertObject(value, 'display.layerAppearance entry');
-      if (typeof item.color !== 'string' || !/^#[0-9a-f]{6}$/i.test(item.color)) {
-        fail('display.layerAppearance', 'contains an invalid color.');
-      }
-      if (typeof item.visible !== 'boolean') {
-        fail('display.layerAppearance', 'contains an invalid visibility.');
-      }
-    }
   }
   if (display.customStructurePalette != null) {
     const colors = assertArray(

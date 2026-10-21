@@ -16,6 +16,7 @@ import {
 } from './border-inspector.js';
 import { shouldYieldDuringSceneAssembly } from './renderer-cooperative-assembly.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
+import { intersection, multiBounds } from './vector-geometry.js';
 import {
   annotationInspectionCutSegments,
   electricalRegionSolids,
@@ -46,8 +47,10 @@ import {
 } from './renderer-line-reduction.js';
 import {
   canUseGpuRoughTask,
+  checkGpuRoughHeightParity,
   decorateGpuRoughMaterial,
   decorateRoughFarFieldMaterial,
+  gpuRoughParitySamples,
   supportsPreciseGpuRoughDisplacement,
 } from './gpu-rough-surface.js?v=rough-farfield-v1';
 import { triangulatePolygon } from './polygon-triangulation.js';
@@ -57,6 +60,14 @@ import {
   translatedSidewallInstanceGroups,
 } from './renderer-instancing.js';
 import { createCollapsedZDisplayTransform, resolveSectionCollapse } from './section-z-collapse.js';
+import {
+  createThreeRoughReliefDisplayTransform,
+  normalizeThreeRoughReliefFactor,
+  normalizeThreeZDisplayFactor,
+  threeRoughReliefBands,
+  threeZDisplayScale,
+  refreshThreeDashedBorderDistances,
+} from './three-z-display.js';
 import { geometryFromRoughCap, geometryFromRoughMeshData } from './rough-mesh-geometry.js';
 import {
   boundaryProfileFromPositions,
@@ -68,9 +79,12 @@ import { buildRoughSpatialZones, prepareMorphologyExportTasks } from './morpholo
 import {
   adaptiveRoughMeshLod,
   roughDisplayHeightBlend,
+  roughTaskDisplaySampling,
+  trimSaturatedRoughLodBudgets,
   roughFarFieldContrast,
   allocateRoughTriangleBudgets,
   projectedPixelsPerUnit,
+  roughProfileOffsetAtPixelFootprint,
   roughDisplayProfileOffsetAtPoint,
   roughSceneTriangleBudget,
   synchronizeConformalRoughLods,
@@ -113,6 +127,8 @@ export function createThreeView({
   getClipGeometry = () => null,
   getInspection = () => ({ opacity: 1, borders: false }),
   getZCollapse = () => null,
+  getZDisplayFactor = () => 1,
+  getRoughReliefFactor = () => 1,
   onViewChanged = () => {},
 } = {}) {
   if (!host) throw new TypeError('3D host is required.');
@@ -343,13 +359,48 @@ export function createThreeView({
         collapse,
         breakFraction: 0,
       }),
+      reliefFactor = normalizeThreeRoughReliefFactor(getRoughReliefFactor()),
+      clip = reliefFactor > 1 ? getClipGeometry() : null,
+      clipBounds = clip?.length ? multiBounds(clip) : null,
+      display = createThreeRoughReliefDisplayTransform(
+        transform,
+        reliefFactor > 1
+          ? threeRoughReliefBands(
+              model,
+              0.12,
+              clipBounds
+                ? (region) => {
+                    const bounds = multiBounds(region.geom);
+                    // Reject nonoverlapping owners without invoking the robust
+                    // Boolean kernel. A bbox hit alone is insufficient for a
+                    // clipped hole or disconnected polygon component.
+                    if (
+                      bounds.maxX <= clipBounds.minX ||
+                      bounds.minX >= clipBounds.maxX ||
+                      bounds.maxY <= clipBounds.minY ||
+                      bounds.minY >= clipBounds.maxY
+                    )
+                      return false;
+                    return intersection(region.geom, clip).length > 0;
+                  }
+                : null,
+            )
+          : [],
+        reliefFactor,
+      ),
       bounds = visibleBounds(model, getClipGeometry()),
       xySpan = Math.max(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY, 1e-12),
-      scale = (xySpan * 0.12) / Math.max(transform.displaySpan, 1e-12);
+      baseScale = (xySpan * 0.12) / Math.max(display.displaySpan, 1e-12),
+      // An opt-in, uniformly applied display multiplier. All mesh, border,
+      // sidewall and conformal geometry shares group.scale.z; Process and GLB
+      // export operate on the original unscaled physical model.
+      displayFactor = normalizeThreeZDisplayFactor(getZDisplayFactor()),
+      scale = threeZDisplayScale(baseScale, displayFactor);
 
     return {
-      ...transform,
+      ...display,
       scale,
+      displayFactor,
     };
   }
 
@@ -416,7 +467,8 @@ export function createThreeView({
         : fullyLower
           ? Number(state.backScale) || 1
           : 1,
-      canTranslateSide = (fullyUpper || fullyLower) && Math.abs(sideScale - 1) <= 1e-12;
+      canTranslateSide =
+        !state.reliefActive && (fullyUpper || fullyLower) && Math.abs(sideScale - 1) <= 1e-12;
 
     object.visible = !fullyHidden;
     if (fullyHidden) return;
@@ -426,6 +478,7 @@ export function createThreeView({
         restoreCanonicalZ(record, positions);
         refreshGeometryBounds(object);
       }
+      refreshThreeDashedBorderDistances(object, state.scale);
       const sample = fullyUpper ? record.minZ : record.maxZ;
       object.position.z = state.mapZ(sample) - sample;
       record.mode = 'translated';
@@ -442,6 +495,7 @@ export function createThreeView({
       object.geometry.computeVertexNormals();
     }
     refreshGeometryBounds(object);
+    refreshThreeDashedBorderDistances(object, state.scale);
     record.mode = 'mapped';
   }
 
@@ -464,6 +518,10 @@ export function createThreeView({
     host.dataset.zCollapseBottomUm = String(currentZDisplay.bottom);
     host.dataset.zCollapseGapUm = String(currentZDisplay.gap);
     host.dataset.zDisplayScale = String(currentZDisplay.scale);
+    host.dataset.zDisplayFactor = String(currentZDisplay.displayFactor);
+    host.dataset.zDisplayOnly = 'true';
+    host.dataset.zRoughReliefFactor = String(currentZDisplay.reliefFactor);
+    host.dataset.zRoughReliefBands = String(currentZDisplay.reliefBands);
     host.dataset.zFrontScale = String(currentZDisplay.frontScale);
     host.dataset.zBackScale = String(currentZDisplay.backScale);
     host.dataset.zScaleLinked = String(currentZDisplay.scaleLinked !== false);
@@ -2382,16 +2440,25 @@ diffuseColor.a *= waferCadAlphaScale;`,
     return Math.max(0, Math.min(1, visibleArea / modelArea));
   }
 
-  function gpuRoughTask(task) {
-    return (
+  function gpuRoughTask(task, zones) {
+    delete task.gpuHeightParity;
+    const candidate =
       preciseGpuRoughDisplacement &&
       canUseGpuRoughTask({
         appearance: task?.cap?.appearance,
         buried: task?.cap?.buried,
         implant: Boolean(task?.implant),
+        instanceTranslations: task?.cap?.instanceTranslations,
         zDisplay: currentZDisplay,
-      })
+      });
+    if (!candidate) return false;
+    task.gpuHeightParity = checkGpuRoughHeightParity(
+      THREE,
+      renderer,
+      task.cap.appearance,
+      gpuRoughParitySamples(zones),
     );
+    return task.gpuHeightParity.eligible;
   }
 
   function prepareAdaptiveRoughTasks({ interactive = false } = {}) {
@@ -2401,7 +2468,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
       focus = focusBounds(),
       requests = [],
       tasks = roughTasks.map((task) => {
-        const gpuDisplacement = gpuRoughTask(task),
+        const sourceZones = prepareRoughSpatialZones(task),
+          gpuDisplacement = gpuRoughTask(task, sourceZones),
           gpuGeometryDetail = gpuDisplacement
             ? interactive
               ? 0.35
@@ -2416,7 +2484,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
                 ? 8
                 : 6
             : policy.maxDepth,
-          zones = prepareRoughSpatialZones(task).map((zone) => {
+          zones = sourceZones.map((zone) => {
             const priority = roughZonePriority(zone.bounds, focus),
               roughnessDetail =
                 policy.roughnessDetail *
@@ -2436,6 +2504,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
                 triangleCount: zone.baseTriangles.length,
                 maxEdge: zone.maxEdge,
                 featureSize: task.cap.appearance?.featureSize,
+                morphology: task.cap.appearance?.morphology,
                 ...lodContext,
                 roughnessDetail,
               }),
@@ -2480,34 +2549,37 @@ diffuseColor.a *= waferCadAlphaScale;`,
     // Equal seeded rough surfaces need identical display tessellation to
     // preserve thin conformal spacing between their independent layer caps.
     const conformalLodPairs = synchronizeConformalRoughLods(requests, allocations);
+    // Avoid spending a 4x Quality subdivision on a field that is already
+    // visually saturated at the same 0.12 blend in both modes. Reuse the
+    // normal Section sampler/LOD blend calculation to reject unsafe trims.
+    const saturatedLodTrim =
+      !interactive && policy.mode === 'quality' && trimSaturatedRoughLodBudgets(tasks);
+    host.dataset.roughSaturatedLodTrim = String(saturatedLodTrim);
     host.dataset.roughConformalLodPairs = String(conformalLodPairs);
+    const parity = tasks.map((task) => task.gpuHeightParity).filter(Boolean);
+    host.dataset.roughGpuParityCheckedTasks = String(parity.length);
+    host.dataset.roughGpuParityFallbackTasks = String(
+      parity.filter((probe) => !probe.eligible).length,
+    );
+    host.dataset.roughGpuParityMaximumErrorUm = String(
+      Math.max(0, ...parity.map((probe) => probe.maximumErrorUm || 0)),
+    );
     // Anti-alias unresolved features in the *displayed* stochastic heightfield
     // without increasing the scene triangle budget or changing stored geometry.
-    const visibleArea = Math.max(1e-12, boundsArea(visibleBounds(context.model, context.clip))),
-      triangles = requests.reduce((sum, request) => {
-        const zone = request.zone;
-        return (
-          sum +
-          adaptiveRoughMeshLod({
-            triangleCount: request.baseTriangles,
-            maxEdge: zone.maxEdge,
-            featureSize: request.appearance?.featureSize,
-            ...zone.lodContext,
-            triangleBudget: zone.triangleBudget,
-          }).estimatedTriangles
-        );
-      }, 0),
-      pitch = Math.sqrt((2 * visibleArea) / Math.max(1, triangles));
+    const sampling = roughTaskDisplaySampling(tasks);
     tasks.forEach((task, index) => {
       const appearance = task.cap.appearance,
         blend =
-          appearance?.kind === 'rough' && appearance.morphology === 'stochastic'
-            ? roughDisplayHeightBlend(appearance.featureSize, pitch)
+          appearance?.kind === 'rough' &&
+          ['stochastic', 'stochastic-v2'].includes(appearance.morphology)
+            ? roughDisplayHeightBlend(appearance.featureSize, sampling[index].pitch)
             : 1;
       task.visualAppearance = blend < 1 ? { ...appearance, displayRoughBlend: blend } : appearance;
       roughTasks[index].visualAppearance = task.visualAppearance;
     });
-    host.dataset.roughDisplaySamplePitchUm = String(pitch);
+    host.dataset.roughDisplaySamplePitchUm = String(
+      Math.max(0, ...sampling.map((item) => item.pitch)),
+    );
     host.dataset.roughDisplayBlendMin = String(
       Math.min(1, ...tasks.map((task) => task.visualAppearance?.displayRoughBlend ?? 1)),
     );
@@ -2587,6 +2659,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         decorateGpuRoughMaterial(material, task.visualAppearance || cap.appearance, {
           profileNormal: cap.profileNormal ?? cap.normal,
           normalStrength: mode === 'interactive' ? 0.82 : 1,
+          precisionAnchor: task.gpuHeightParity?.precisionAnchor,
         });
       } else if (!task.implant && !cap.buried && roughFarFieldContrast(0, cap.appearance) > 0) {
         decorateRoughFarFieldMaterial(material, task.visualAppearance || cap.appearance);
@@ -2608,6 +2681,14 @@ diffuseColor.a *= waferCadAlphaScale;`,
       );
       if (mesh) {
         roughOwnedObjects.add(mesh);
+        // The diagnostic observes real CPU mesh geometry without editing the model.
+        mesh.userData.waferCadRoughCutline = {
+          layerId: cap.layerId,
+          z: cap.z,
+          profileNormal: cap.profileNormal ?? cap.normal,
+          appearance: cap.appearance,
+          displayAppearance: task.visualAppearance || cap.appearance,
+        };
         if (task.name) mesh.name = task.name;
       }
 
@@ -2913,6 +2994,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           decorateGpuRoughMaterial(material, task.visualAppearance || cap.appearance, {
             profileNormal: cap.profileNormal ?? cap.normal,
             normalStrength: interactive ? 0.82 : 1,
+            precisionAnchor: task.gpuHeightParity?.precisionAnchor,
           });
         } else if (!task.implant && !cap.buried && roughFarFieldContrast(0, cap.appearance) > 0) {
           decorateRoughFarFieldMaterial(material, task.visualAppearance || cap.appearance);
@@ -2934,6 +3016,14 @@ diffuseColor.a *= waferCadAlphaScale;`,
         );
         if (mesh) {
           roughOwnedObjects.add(mesh);
+          // The diagnostic observes real CPU mesh geometry without editing the model.
+          mesh.userData.waferCadRoughCutline = {
+            layerId: cap.layerId,
+            z: cap.z,
+            profileNormal: cap.profileNormal ?? cap.normal,
+            appearance: cap.appearance,
+            displayAppearance: task.visualAppearance || cap.appearance,
+          };
           if (task.name) mesh.name = task.name;
         }
 
@@ -4646,10 +4736,180 @@ diffuseColor.a *= waferCadAlphaScale;`,
     });
   }
 
+  // Read-only acceptance probe: actual CPU rough triangles versus Section's physical sampler.
+  // GPU vertex displacement, array instances and synced Section raster are out of scope.
+  function sampleRoughCutline({
+    xMin,
+    xMax,
+    y,
+    samples = 65,
+    pixelsPerUm = 100,
+    layerId = null,
+  } = {}) {
+    if (!ready || !THREE || !group || !currentZDisplay || currentRoughMode !== 'detailed') {
+      throw new Error('Detailed native rough mesh must finish before cutline sampling');
+    }
+    if (
+      ![xMin, xMax, y, pixelsPerUm].every(Number.isFinite) ||
+      !(xMax > xMin) ||
+      !(pixelsPerUm > 0) ||
+      !Number.isInteger(samples) ||
+      samples < 2 ||
+      samples > 2048
+    ) {
+      throw new Error('Invalid physical rough cutline or Section pixel calibration');
+    }
+    const candidates = roughMeshes
+      .map(({ mesh }) => mesh)
+      .filter((mesh) => mesh?.visible && mesh.userData.waferCadRoughCutline);
+    const top = candidates.reduce(
+      (best, mesh) =>
+        mesh.userData.waferCadRoughCutline.z > (best?.userData.waferCadRoughCutline.z ?? -Infinity)
+          ? mesh
+          : best,
+      null,
+    );
+    const targetLayer = layerId || top?.userData.waferCadRoughCutline.layerId;
+    const meshes = candidates.filter(
+      (mesh) => mesh.userData.waferCadRoughCutline.layerId === targetLayer,
+    );
+    if (!meshes.length) throw new Error('No visible rough mesh for requested material layer');
+    if (
+      meshes.some((mesh) => mesh.isInstancedMesh || mesh.geometry?.userData?.roughGpuDisplacement)
+    ) {
+      throw new Error('CPU raycast cannot qualify GPU/instanced rough meshes');
+    }
+    group.updateMatrixWorld(true);
+    const scale = Number(currentZDisplay.scale);
+    if (!(scale > 0)) throw new Error('Invalid rendered Z scale');
+    // Limit the raycast to triangles that can intersect the requested line.
+    // The full-area Quality geometry can have >100k triangles: 65 full mesh
+    // raycasts can dominate the actual render and hang the acceptance runner.
+    // This temporary probe mesh reuses the *actual* BufferGeometry vertices and
+    // original material facing, but never changes a production mesh/drawRange.
+    const probeMeshes = [];
+    for (const mesh of meshes) {
+      const source = mesh.geometry;
+      const position = source.getAttribute('position');
+      const indices = source.getIndex();
+      if (!position) continue;
+      const picked = [];
+      const a = new THREE.Vector3(),
+        b = new THREE.Vector3(),
+        c = new THREE.Vector3();
+      const triangles = indices ? indices.count / 3 : position.count / 3;
+      for (let t = 0; t < triangles; t++) {
+        const i = t * 3;
+        const ai = indices ? indices.getX(i) : i;
+        const bi = indices ? indices.getX(i + 1) : i + 1;
+        const ci = indices ? indices.getX(i + 2) : i + 2;
+        a.fromBufferAttribute(position, ai).applyMatrix4(mesh.matrixWorld);
+        b.fromBufferAttribute(position, bi).applyMatrix4(mesh.matrixWorld);
+        c.fromBufferAttribute(position, ci).applyMatrix4(mesh.matrixWorld);
+        if (
+          Math.min(a.y, b.y, c.y) > y ||
+          Math.max(a.y, b.y, c.y) < y ||
+          Math.min(a.x, b.x, c.x) > xMax ||
+          Math.max(a.x, b.x, c.x) < xMin
+        )
+          continue;
+        // Store the original local-space Float32 vertices: the Raycaster uses
+        // precisely the same transformed coordinates as the production mesh.
+        for (const vertex of [ai, bi, ci]) {
+          picked.push(position.getX(vertex), position.getY(vertex), position.getZ(vertex));
+        }
+      }
+      if (!picked.length) continue;
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(picked, 3));
+      geometry.computeBoundingBox();
+      geometry.computeBoundingSphere();
+      const probe = new THREE.Mesh(geometry, mesh.material);
+      probe.matrixAutoUpdate = false;
+      probe.matrixWorld.copy(mesh.matrixWorld);
+      probe.userData = mesh.userData;
+      probeMeshes.push({ mesh: probe, source: mesh, triangles: picked.length / 9 });
+    }
+    const ray = new THREE.Raycaster(),
+      points = [];
+    for (let index = 0; index < samples; index++) {
+      const x = xMin + ((xMax - xMin) * (index + 0.5)) / samples;
+      let best = null;
+      for (const { mesh, source } of probeMeshes) {
+        const info = mesh.userData.waferCadRoughCutline;
+        const height = roughProfileOffsetAtPixelFootprint(x, y, info.appearance, {
+          pixelsPerUm,
+          unitX: 1,
+          unitY: 0,
+        });
+        const physicalZ = info.z + (Number(info.profileNormal) || 1) * height;
+        const expectedZ = currentZDisplay.mapZ(physicalZ) * scale;
+        const displayHeight = roughDisplayProfileOffsetAtPoint(x, y, info.displayAppearance);
+        const visualZ = info.z + (Number(info.profileNormal) || 1) * displayHeight;
+        const visualExpectedZ = currentZDisplay.mapZ(visualZ) * scale;
+        const bounds = new THREE.Box3().setFromObject(source);
+        if (x < bounds.min.x || x > bounds.max.x || y < bounds.min.y || y > bounds.max.y) continue;
+        ray.set(
+          new THREE.Vector3(x, y, bounds.max.z + Math.max(1, bounds.max.z - bounds.min.z + 1)),
+          new THREE.Vector3(0, 0, -1),
+        );
+        const hit = ray.intersectObject(mesh, false)[0];
+        if (!hit) continue;
+        const dz = Math.max(1e-5, Math.abs(physicalZ) * 1e-9);
+        const derivative =
+          (currentZDisplay.mapZ(physicalZ + dz) - currentZDisplay.mapZ(physicalZ - dz)) / (2 * dz);
+        if (!(derivative > 1e-9)) continue;
+        const result = {
+          xUm: x,
+          yUm: y,
+          layerId: targetLayer,
+          expectedPhysicalZUm: physicalZ,
+          expectedDisplayZ: expectedZ,
+          actualDisplayZ: hit.point.z,
+          errorUm: (hit.point.z - expectedZ) / (scale * derivative),
+          meshInterpolationErrorUm: (hit.point.z - visualExpectedZ) / (scale * derivative),
+          displayAttenuationErrorUm: (visualExpectedZ - expectedZ) / (scale * derivative),
+          displayHeightBlend: info.displayAppearance?.displayRoughBlend ?? 1,
+        };
+        if (!best || Math.abs(result.errorUm) < Math.abs(best.errorUm)) best = result;
+      }
+      points.push(best || { xUm: x, yUm: y, missing: true });
+    }
+    const clippedTriangleCount = probeMeshes.reduce((sum, p) => sum + p.triangles, 0);
+    for (const { mesh } of probeMeshes) mesh.geometry.dispose();
+    const valid = points.filter((p) => Number.isFinite(p.errorUm));
+    return {
+      layerId: targetLayer,
+      sampleCount: samples,
+      hitCount: valid.length,
+      missingCount: samples - valid.length,
+      rmsErrorUm: valid.length
+        ? Math.sqrt(valid.reduce((sum, p) => sum + p.errorUm ** 2, 0) / valid.length)
+        : null,
+      maximumErrorUm: valid.length ? Math.max(...valid.map((p) => Math.abs(p.errorUm))) : null,
+      sectionPixelsPerUm: pixelsPerUm,
+      displayScale: scale,
+      roiLine: [xMin, xMax, y],
+      clippedTriangleCount,
+      meshInterpolationRmsUm: valid.length
+        ? Math.sqrt(
+            valid.reduce((sum, p) => sum + p.meshInterpolationErrorUm ** 2, 0) / valid.length,
+          )
+        : null,
+      displayAttenuationRmsUm: valid.length
+        ? Math.sqrt(
+            valid.reduce((sum, p) => sum + p.displayAttenuationErrorUm ** 2, 0) / valid.length,
+          )
+        : null,
+      points,
+    };
+  }
+
   return {
     init,
     render,
     fit,
+    sampleRoughCutline,
     getViewState,
     setViewState,
     setGestureMode,

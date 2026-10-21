@@ -244,7 +244,7 @@ export function createProcessPanelController({
     $('etchSurfaceRow').classList.toggle('hidden', t !== 'etch' || advancedEtch);
     const surfaceMode = $('etchSurfaceMode').value,
       texturedEtch = t === 'etch' && !advancedEtch && surfaceMode !== 'smooth',
-      stochasticEtch = texturedEtch && surfaceMode === 'rough',
+      stochasticEtch = texturedEtch && ['rough', 'rough-stable'].includes(surfaceMode),
       pyramidEtch = texturedEtch && surfaceMode === 'pyramid';
     $('roughPolarityRow').classList.toggle('hidden', !texturedEtch);
     $('roughSeedRow').classList.toggle('hidden', !texturedEtch);
@@ -427,7 +427,7 @@ export function createProcessPanelController({
                       ? 'Isotropic release propagates from the selected exposed material into the solid with the chosen radius, including lateral undercut beneath other materials. The selected etch material is removed; masks and stop materials remain.'
                       : 'Choose one exposed material for Isotropic release. This mode creates physical undercut/cavity geometry and does not combine with Rough/Pyramid display morphology.'
                     : stochasticEtch
-                      ? `Depth is the maximum etch depth; Height and Feature XY are means, with CV controlling their spread. ${$('roughPolarity').value === 'normal' ? 'Normal points features outward (peaks).' : 'Inverted keeps the existing inward pit/valley orientation.'} Display morphology only for process simulation: the canonical process stack remains ideal, while 3D and GLB inspection surfaces include the deterministic morphology.`
+                      ? `${surfaceMode === 'rough-stable' ? 'Stable scale uses bounded local spacing variation and a different seeded shape from Rough. ' : ''}Depth is the maximum etch depth; Height and Feature XY are means, with CV controlling their spread. ${$('roughPolarity').value === 'normal' ? 'Normal points features outward (peaks).' : 'Inverted keeps the existing inward pit/valley orientation.'} Display morphology only for process simulation: the canonical process stack remains ideal, while 3D and GLB inspection surfaces include the deterministic morphology.`
                       : pyramidEtch
                         ? `Pyramid XY and Height are means; CV controls deterministic base-size/position and height variation, and Seed makes the random field reproducible. ${$('roughPolarity').value === 'normal' ? 'Normal gives outward pyramids.' : 'Inverted gives inward pyramid pits.'} Display morphology only for process simulation: the canonical process stack remains ideal, while 3D and GLB inspection surfaces include the deterministic morphology.`
                         : $('etchTargetLayer').value
@@ -518,7 +518,9 @@ export function createProcessPanelController({
       $('etchSurfaceMode').value = surface
         ? surface.morphology === 'pyramid'
           ? 'pyramid'
-          : 'rough'
+          : surface.morphology === 'stochastic-v2'
+            ? 'rough-stable'
+            : 'rough'
         : 'smooth';
       if (surface) {
         $('roughPolarity').value = surface.polarity === 'normal' ? 'normal' : 'inverted';
@@ -990,7 +992,11 @@ export function createProcessPanelController({
       }
       roughSurface = {
         kind: 'rough',
-        morphology: pyramid ? 'pyramid' : 'stochastic',
+        morphology: pyramid
+          ? 'pyramid'
+          : etchSurfaceMode === 'rough-stable'
+            ? 'stochastic-v2'
+            : 'stochastic',
         polarity: $('roughPolarity').value === 'normal' ? 'normal' : 'inverted',
         featureSize,
         meanHeight,

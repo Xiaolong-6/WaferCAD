@@ -53,8 +53,6 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
   let processFace = 'front';
   const undo = [],
     redo = [];
-  let processUndoButton = null,
-    processRedoButton = null;
   const status = workstation.status;
   const dirty = () => {
     if (!readOnly) persistence?.scheduleStructural();
@@ -65,8 +63,6 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
     hooks.get('faceToggleBtn').value = processFace;
     hooks.get('undoBtn').disabled = !undo.length || task.isBusy();
     hooks.get('redoBtn').disabled = !redo.length || task.isBusy();
-    if (processUndoButton) processUndoButton.disabled = !undo.length || task.isBusy();
-    if (processRedoButton) processRedoButton.disabled = !redo.length || task.isBusy();
     if (!readOnly) persistence?.schedule();
     workstation.render();
     // Shell adapter onShow can call process.updateUi() and reset the button contents.
@@ -108,8 +104,6 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
         ?.toggleAttribute('disabled', busy);
       hooks.get('undoBtn')?.toggleAttribute('disabled', busy || !undo.length);
       hooks.get('redoBtn')?.toggleAttribute('disabled', busy || !redo.length);
-      processUndoButton?.toggleAttribute('disabled', busy || !undo.length);
-      processRedoButton?.toggleAttribute('disabled', busy || !redo.length);
     },
   });
   task.bind();
@@ -150,7 +144,7 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
   }
   function restoreTransaction(value) {
     if (!value?.project) return false;
-    store.restore(value.project, { preserveInspection: true });
+    store.restore(value.project);
     history.importRecords(value.project.snapshots || [], value.project.snapshotBranches);
     mutation?.cancelEdit();
     mutation?.cancelInsert();
@@ -247,6 +241,7 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
         choice('Surface', 'etchSurfaceMode', [
           ['smooth', 'Smooth'],
           ['rough', 'Rough'],
+          ['rough-stable', 'Rough (stable scale)'],
           ['pyramid', 'Pyramid'],
         ]),
       ),
@@ -364,11 +359,19 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
   ]) {
     const control = button(direction < 0 ? '−' : '+', null, null, { 'aria-label': label });
     control.onclick = () => {
+      const before = formSnapshot();
+      commitDraft(); // Finish an earlier focused edit before the button owns this change.
       const current = units.parse(thickness.value);
       if (!Number.isFinite(current)) return;
       const physical = Math.max(0, current + direction * 0.001);
       thickness.value = units.format(physical);
       thickness.dispatchEvent(new Event('change', { bubbles: true }));
+      if (JSON.stringify(before) !== JSON.stringify(formSnapshot())) {
+        draftPast.push(before);
+        draftFuture.length = 0;
+        draftUndo.disabled = false;
+        draftRedo.disabled = true;
+      }
     };
     stepActions.append(control);
   }
@@ -389,26 +392,69 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
   const operationButtons = hooks.get('applyOperationBtn').parentElement;
   operationButtons.className = 'p-apply-actions';
   hooks.get('applyOperationBtn').dataset.action = 'apply';
-  processUndoButton = button('', null, 'undo', {
-    'aria-label': 'Undo model operation',
-    'data-help': 'history.undo',
+  hooks.get('undoBtn').remove();
+  hooks.get('redoBtn').remove();
+  const draftUndo = button('', null, 'undo', {
+    'aria-label': 'Undo form edit',
+    title: 'Undo form edit',
+    'data-help': 'process.form.undo',
     disabled: true,
   });
-  processRedoButton = button('', null, 'redo', {
-    'aria-label': 'Redo model operation',
-    'data-help': 'history.redo',
+  const draftRedo = button('', null, 'redo', {
+    'aria-label': 'Redo form edit',
+    title: 'Redo form edit',
+    'data-help': 'process.form.redo',
     disabled: true,
   });
-  processUndoButton.onclick = () => hooks.get('undoBtn').click();
-  processRedoButton.onclick = () => hooks.get('redoBtn').click();
   operationButtons.append(
     el(
       'div',
-      { class: 'p-edit-actions', role: 'toolbar', 'aria-label': 'Model history' },
-      processUndoButton,
-      processRedoButton,
+      { class: 'p-edit-actions', role: 'toolbar', 'aria-label': 'Form edits' },
+      draftUndo,
+      draftRedo,
     ),
   );
+  const draftPast = [],
+    draftFuture = [];
+  let draftBefore = null;
+  const formSnapshot = () => ({
+    unit: units.key(),
+    values: [...form.querySelectorAll('input,select')].map((node) => [node.id, node.value]),
+  });
+  const commitDraft = () => {
+    if (draftBefore && JSON.stringify(draftBefore) !== JSON.stringify(formSnapshot())) {
+      draftPast.push(draftBefore);
+      draftFuture.length = 0;
+    }
+    draftBefore = null;
+    draftUndo.disabled = !draftPast.length;
+    draftRedo.disabled = !draftFuture.length;
+  };
+  form.addEventListener('focusin', (event) => {
+    if (event.target.matches('input,select')) draftBefore = formSnapshot();
+  });
+  form.addEventListener('change', commitDraft);
+  form.addEventListener('focusout', commitDraft);
+  for (const [control, source, destination] of [
+    [draftUndo, draftPast, draftFuture],
+    [draftRedo, draftFuture, draftPast],
+  ])
+    control.onclick = () => {
+      if (!source.length) return;
+      destination.push(formSnapshot());
+      const saved = source.pop();
+      for (const [id, value] of saved.values) {
+        const node = root.getElementById(id);
+        if (!node) continue;
+        node.value = value;
+        if (node.dataset.displayLength) node.dataset.displayLength = saved.unit;
+      }
+      processFace = hooks.get('faceToggleBtn').value;
+      syncDisplayUnitFields(form, units.key());
+      draftUndo.disabled = !draftPast.length;
+      draftRedo.disabled = !draftFuture.length;
+      refresh();
+    };
   const parameterRows = [
     'layerNameRow',
     'growthModeRow',
@@ -633,26 +679,8 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
     },
     captureReplayTransaction: transaction,
     restoreReplayTransaction: restoreTransaction,
-    beginReplayInteraction: () => persistence?.beginInteraction(),
-    endReplayInteraction: () => persistence?.endInteraction(),
     status,
   });
-  // Process-layer names are owned by their originating History Step.
-  // A Layers legend action must never mutate the process lineage directly.
-  store.editHistoryEntity = (kind, id) => {
-    const creator = history.historyEntityCreator(kind, id);
-    const step = creator && history.listHistory().find((entry) => entry.id === creator.id);
-    if (!step) {
-      status(
-        kind === 'layer' && id === 'base'
-          ? 'To edit Starting Wafer Step 0, open the Project → Base controls.'
-          : 'This entity has no editable source Step in the current Variant.',
-        'warning',
-      );
-      return false;
-    }
-    return mutation.beginEdit(step);
-  };
   const color = (kind, id) => {
     const values =
       kind === 'layer'
@@ -725,12 +753,6 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
     getProject: () => project,
     refreshRecovery,
     dirty,
-    beginReplayInteraction: () => persistence?.beginInteraction(),
-    endReplayInteraction: () => persistence?.endInteraction(),
-    replayBaseOperations: (steps) =>
-      process.replayOperations(steps, {
-        taskLabel: `Replaying ${steps.length} Process Steps on new Starting Wafer…`,
-      }),
   });
   recoveryPanel.querySelector('.p-actions').prepend(hooks.get('saveProjectBtn'));
   host('panel.base').append(recoveryPanel, conflict);
@@ -738,14 +760,6 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
   project = createProjectController({
     root,
     compactHistory: true,
-    getStartingWafer: () => state.model,
-    openStartingWafer: () => {
-      workstation.uiState.domain = 'project';
-      workstation.uiState.mobile = 'edit';
-      workstation.uiState.editorHidden = false;
-      refresh();
-      status('Editing Starting Wafer Step 0. Use Rebuild Base to apply changes.', 'info');
-    },
     decorateHistoryMenu({ details, trigger, content }) {
       // Keep controller-owned content in place while native top-layer popovers
       // avoid clipping inside the History scroller and share overlay lifecycle.

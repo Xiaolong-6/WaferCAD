@@ -161,6 +161,39 @@ test('historical Apply does not commit a variant when the worker does not change
   }
 });
 
+test('History edit restores the explicit rough algorithm instead of downgrading stable scale', () => {
+  const controller = controllerForTask(() => ({ result: { changed: false } }), []);
+  for (const [morphology, mode] of [
+    ['stochastic', 'rough'],
+    ['stochastic-v2', 'rough-stable'],
+    ['pyramid', 'pyramid'],
+  ]) {
+    controller.loadOperationForEdit({
+      kind: 'etch',
+      replay: {
+        version: 1,
+        params: {
+          type: 'etch',
+          thickness: 0.75,
+          face: 'front',
+          surface: {
+            kind: 'rough',
+            morphology,
+            featureSize: 0.3,
+            meanHeight: 0.4,
+            featureCv: 0.25,
+            heightCv: 0.3,
+            polarity: 'inverted',
+            seed: 123,
+          },
+        },
+      },
+    });
+    assert.equal(controller.__root.getElementById('etchSurfaceMode').value, mode);
+    assert.equal(controller.__root.getElementById('roughSeed').value, '123');
+  }
+});
+
 test('historical Apply commits the variant only after a successful changed worker result', async () => {
   const events = [];
   const controller = controllerForTask(
