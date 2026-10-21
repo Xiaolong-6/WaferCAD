@@ -201,7 +201,14 @@ try {
     // This replays from a real rebuilt Base, never substituting legacy N-band Etch.
     await page.locator('[data-action="domain:process"]').click();
     await page.locator('[data-action="process-mode:recipe"]').click();
-    await page.locator('#recipeCodeTab').click();
+    // The v2 Workstation exposes Code as a top-level Process mode. The
+    // nested Recipe Code tab remains in the DOM but is hidden in inline UI.
+    await page.locator('[data-action="process-mode:code"]').click();
+    assert.equal(
+      await page.locator('#recipeCodeEditor').isVisible(),
+      true,
+      'Code mode must show the real Recipe editor before filling it',
+    );
     await page
       .locator('#recipeCodeEditor')
       .fill(
