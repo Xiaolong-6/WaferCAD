@@ -21,7 +21,12 @@ self.onmessage = async ({ data }) => {
       // Material Solids Boolean. Never cache or serialize this sketch.
       const { buildProgressiveSurfacePreview } = await previewModule;
       const preview = buildProgressiveSurfacePreview(data.model, data.clip ?? null);
-      if (preview) self.postMessage({ id: 1, type: 'preview', preview });
+      if (preview) {
+        self.postMessage(
+          { id: 1, type: 'preview', preview },
+          [preview.borderPositions.buffer],
+        );
+      }
     }
     const [{ buildRenderSurfacePlan }, { shouldStreamSurfacePlan, surfacePlanStreamPackets }] =
       await Promise.all([geometryModule, streamModule]);
