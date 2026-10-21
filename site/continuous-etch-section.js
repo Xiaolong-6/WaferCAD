@@ -19,12 +19,13 @@ export function continuousSectionContours(
   model,
   a,
   b,
-  { maxStepUm = 0.35, maxPoints = 4096 } = {},
+  { maxStepUm = 0.35, maxPoints = 4096, maxChordErrorUm = 0.05 } = {},
 ) {
   if (model?.kernel !== 'vector-continuous-etch-v1')
     throw new RangeError('Continuous Section requires dedicated model kernel');
   if (
     !(Number.isFinite(maxStepUm) && maxStepUm > 0) ||
+    !(Number.isFinite(maxChordErrorUm) && maxChordErrorUm > 0) ||
     !Number.isSafeInteger(maxPoints) ||
     maxPoints < 2 ||
     maxPoints > 16384
@@ -46,24 +47,84 @@ export function continuousSectionContours(
     for (const [t0, t1] of lineIntervalsInMulti(a, b, region.geom)) {
       if (!(t1 > t0)) continue;
       const count = Math.max(2, Math.min(maxPoints, Math.ceil(((t1 - t0) * length) / maxStepUm)));
-      const active = new Map();
-      for (let index = 0; index <= count; index++) {
-        const t = t0 + ((t1 - t0) * index) / count;
-        const interior =
-          index === 0 ? t0 + (t1 - t0) * 1e-9 : index === count ? t1 - (t1 - t0) * 1e-9 : t;
+      // A uniform XY step alone misses the near-vertical shoulder of a
+      // circular/elliptical front. Refine ONLY the derived Section polyline
+      // where an exact midpoint differs from its linear chord. The physical
+      // owner, saved material and 3D mesh remain completely unchanged.
+      const sample = (t, interior = t) => {
+        const columns = new Map();
         const ordinalByLayer = new Map();
-        const present = new Set();
         for (const { layerId, z0, z1 } of continuousOwnerColumnAtXY(owner, at(interior))) {
           if (!layers.get(layerId)) continue;
           const ordinal = ordinalByLayer.get(layerId) || 0;
           ordinalByLayer.set(layerId, ordinal + 1);
-          const key = layerId + ':' + ordinal;
-          present.add(key);
+          columns.set(layerId + ':' + ordinal, { layerId, z0, z1 });
+        }
+        return { t, columns };
+      };
+      const sampleAtIndex = (index) => {
+        const t = t0 + ((t1 - t0) * index) / count;
+        const interior =
+          index === 0 ? t0 + (t1 - t0) * 1e-9 : index === count ? t1 - (t1 - t0) * 1e-9 : t;
+        return sample(t, interior);
+      };
+      const chordError = (left, middle, right) => {
+        if (
+          left.columns.size !== right.columns.size ||
+          middle.columns.size !== left.columns.size ||
+          [...left.columns.keys()].some(
+            (key) => !right.columns.has(key) || !middle.columns.has(key),
+          )
+        ) {
+          // A material interval can appear/disappear within one initial
+          // segment. Resolve its boundary rather than connecting a false span.
+          return Infinity;
+        }
+        let error = 0;
+        for (const [key, start] of left.columns) {
+          const mid = middle.columns.get(key),
+            end = right.columns.get(key);
+          error = Math.max(
+            error,
+            Math.abs(mid.z0 - (start.z0 + end.z0) / 2),
+            Math.abs(mid.z1 - (start.z1 + end.z1) / 2),
+          );
+        }
+        return error;
+      };
+      const samples = [sampleAtIndex(0)];
+      for (let index = 0; index < count; index++) {
+        const left = samples.at(-1),
+          right = sampleAtIndex(index + 1);
+        const pending = [{ left, right, depth: 0 }];
+        while (pending.length) {
+          const segment = pending.pop();
+          const midpoint = sample((segment.left.t + segment.right.t) / 2);
+          const error = chordError(segment.left, midpoint, segment.right);
+          const widthUm = (segment.right.t - segment.left.t) * length;
+          // Sharp topology changes are localized to 0.01 um; smooth curved
+          // boundaries are refined until the requested physical chord error.
+          const refine = error === Infinity ? widthUm > 0.01 : error > maxChordErrorUm;
+          if (refine) {
+            if (samples.length + pending.length + 2 >= maxPoints)
+              throw new RangeError('Continuous Section exceeded adaptive display point budget');
+            if (segment.depth >= 20)
+              throw new RangeError('Continuous Section cannot resolve curved material boundary');
+            pending.push({ left: midpoint, right: segment.right, depth: segment.depth + 1 });
+            pending.push({ left: segment.left, right: midpoint, depth: segment.depth + 1 });
+          } else {
+            samples.push(segment.right);
+          }
+        }
+      }
+      const active = new Map();
+      for (const { t, columns } of samples) {
+        for (const [key, { layerId, z0, z1 }] of columns) {
           if (!active.has(key)) active.set(key, { layerId, points: [] });
           active.get(key).points.push({ t, z0, z1 });
         }
         for (const [key, ribbon] of active) {
-          if (present.has(key)) continue;
+          if (columns.has(key)) continue;
           append(ribbon);
           active.delete(key);
         }
