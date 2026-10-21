@@ -210,6 +210,18 @@ self.onmessage = async (event) => {
     }
 
     self.postMessage({ id, type: 'progress', stage: 'Computing process geometry…' });
+    if (params?.type === 'etch' && params.etchProfile === 'continuous') {
+      // Keep exact physical material in its dedicated model and avoid
+      // mutating the old 2.5D candidate through the generic Process path.
+      const continuousUrl = new URL('./continuous-etch-process.js', self.location.href);
+      continuousUrl.search = versionQuery;
+      const { applyContinuousRelease } = await import(continuousUrl.href);
+      const result = applyContinuousRelease(model, params, area);
+      self.postMessage({ id, type: 'progress', stage: 'Validating exact continuous material…' });
+      projectSchema.validateProcessModel(result.model);
+      self.postMessage({ id, type: 'done', ...result, validated: true });
+      return;
+    }
     const apply = (candidate, localParams) =>
       advancedApi.applyAdvancedProcessOperation(
         candidate,

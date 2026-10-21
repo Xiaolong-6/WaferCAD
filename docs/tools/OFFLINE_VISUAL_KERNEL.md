@@ -249,6 +249,13 @@ Open-file UI attempt and records a screenshot/Worker errors, but it
 complete**. Independent review and the original targeted science gates
 are still required.
 
+For native UI shell diagnosis, add `--inspect-history` to the existing capture command.
+It records `history-step0.png`, `step0-base-editor.png`, and `process-undo.png`,
+and asserts that Step 0 opens the real Base editor and Process exposes model-level
+Undo/Redo controls. In null-origin mode these screenshots prove **only** native
+presentation and navigation; Step replay, Workers, autosave, and Recovery remain
+unverified.
+
 Focused checks: `python3 scripts/offline-native-app-capture.test.py`.
 The real Chromium screenshot run is manual and intentionally not part of
 the ordinary unit-test/CI loop.
@@ -270,6 +277,18 @@ python3 scripts/offline-native-app-capture.py \
   --root . --output test-results/offline-native-photodetector \
   --inmemory-project site/examples/photodetector-literature-examples.wafercad
 ```
+
+To inspect an actual Continuous Release ROI from a reproducible physical
+camera, add `--inmemory-roi=xMin,yMin,xMax,yMax` and
+`--inmemory-camera=x,y,z,targetX,targetY,targetZ` to the **existing**
+`--inmemory-project` capture. For example, the experimental Microdisk M07
+36 µm circular-release candidate can use ROI `-170,0,170,75` and camera
+`0,-330,65,0,35,21`. The resulting `continuous-physical-camera.png`
+comes from the production ThreeView, and its exact pose is recorded in
+`native-app.evidence.json` for reproduction. Under null Origin this remains
+an isolated Renderer **diagnostic**, not a full Workstation interaction,
+History, Recovery or release acceptance. Do not present the surrounding
+uninitialized Workstation panels as the loaded candidate project.
 
 The project helper invokes the production `readProjectFile()` with the pinned
 polygon-boolean vendor, including storage expansion, migrations, full strict

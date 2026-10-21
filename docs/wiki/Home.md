@@ -30,7 +30,7 @@ _This is the user journey, not a capture of the live interface. Actual device pr
 
 **I want to build a process sequence.** Read [Process and Recipes](Process-and-Recipes); then the [Recipe Code Tutorial](Recipe-Code-Tutorial).
 
-**An operation gave me the wrong geometry.** Start with [Troubleshooting](Troubleshooting). For all 19 before/after operation diagrams, use [Illustrated Process Operations](Process-Operations).
+**An operation gave me the wrong geometry.** Start with [Troubleshooting](Troubleshooting). For all 20 before/after operation diagrams, use [Illustrated Process Operations](Process-Operations).
 
 ## Three things to understand
 

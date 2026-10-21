@@ -1,3 +1,4 @@
+import { CONTINUOUS_ETCH_MODEL_KERNEL } from './continuous-etch-model.js';
 import { isArrayModel, storedModelParts } from './model-array.js';
 import { migrateProjectFile, validateProjectFile } from './project-schema.js';
 import { compactGeometryDictionary, expandGeometryDictionary } from './project-geometry-storage.js';
@@ -741,8 +742,19 @@ function hasSubgridModelLengths(project) {
   );
 }
 
+function projectHasContinuousEtch(project) {
+  const isContinuous = (model) =>
+    model?.kernel === CONTINUOUS_ETCH_MODEL_KERNEL || model?.continuousEtchOwner != null;
+  return (
+    isContinuous(project.model) ||
+    (project.snapshots || []).some((s) => isContinuous(s.state?.model)) ||
+    (project.snapshotBranches?.nodes || []).some((n) => isContinuous(n.state?.model)) ||
+    (project.snapshotBranches?.branches || []).some((b) => isContinuous(b.headState?.model))
+  );
+}
+
 export function prepareProjectForExport(project) {
-  if (hasSubgridModelLengths(project)) {
+  if (projectHasContinuousEtch(project) || hasSubgridModelLengths(project)) {
     return { stored: prepareProjectForWorkspaceStorage(project), mode: 'lossless' };
   }
   try {
@@ -756,9 +768,13 @@ export function prepareProjectForExport(project) {
 }
 
 function serializedProject(project, maxBytes, { allowLosslessFallback = false } = {}) {
-  const result = allowLosslessFallback
-    ? prepareProjectForExport(project)
-    : { stored: prepareProjectForStorage(project), mode: 'compact' };
+  // The canonical continuous owner includes exact analytic parameters and
+  // restorable History states. Never send it through compact 2.5D storage,
+  // including callers of the legacy serializeProject() helper.
+  const result =
+    allowLosslessFallback || projectHasContinuousEtch(project)
+      ? prepareProjectForExport(project)
+      : { stored: prepareProjectForStorage(project), mode: 'compact' };
   const text = JSON.stringify(result.stored);
   const blob = new Blob([text], { type: 'application/json' });
   if (blob.size > maxBytes) {
@@ -796,7 +812,11 @@ export function downloadProject(project, filename = 'wafercad-project.wafercad')
 
 export async function readProjectFile(
   file,
-  { experimentalPhysicalFacetReadOnly = false, trustedBundledExample = null } = {},
+  {
+    experimentalPhysicalFacetReadOnly = false,
+    experimentalContinuousEtchReadOnly = false,
+    trustedBundledExample = null,
+  } = {},
 ) {
   if (!file) throw new Error('No project file selected.');
   if (file.size > MAX_PROJECT_FILE_BYTES) {
@@ -832,11 +852,19 @@ export async function readProjectFile(
       throw Error('Invalid bundled project header.');
   }
   expandProjectStorage(parsed);
-  const project = trustedBundledExample
-    ? migrateProjectFile(parsed)
-    : validateProjectFile(migrateProjectFile(parsed));
-  // The opt-in owner is persisted and strictly validated, but the default
-  // Workstation must not draw its physical material as a flat surrogate.
+  const migrated = migrateProjectFile(parsed);
+  // Continuous physical ownership is new and must be checked in every
+  // restorable state even when the bundled-file hash matches an attestation.
+  const project =
+    trustedBundledExample && !projectHasContinuousEtch(migrated)
+      ? migrated
+      : validateProjectFile(migrated);
+  // Native Section/3D and the transactional Process worker consume the exact
+  // owner. Production Open/History/Recovery now admit it only after the normal
+  // strict model-and-snapshot validation above. Main deliberately refuses a
+  // misleading flat 2.5D projection; compact serialization stays disabled.
+  // Keep the historical opt-in parameter source-compatible for lab callers.
+  void experimentalContinuousEtchReadOnly;
   if (
     validateExperimentalPhysicalFacetModel(project.model) &&
     experimentalPhysicalFacetReadOnly !== true

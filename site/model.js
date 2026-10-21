@@ -2,6 +2,10 @@ import { indexedIntersectionInputs } from './process-boundary-index.js';
 import { addQualitativeDopantRegion, resolveQualitativeDopantRegion } from './dopant-regions.js';
 import { adaptiveReleaseDepthBands } from './isotropic-release-oracle.js';
 import {
+  assertContinuousEtchNotProcessed,
+  assertContinuousEtchNotRendered,
+} from './continuous-etch-model.js';
+import {
   assertExperimentalPhysicalFacetNotProcessed,
   applyExperimentalPhysicalFacetConformal,
   assertExperimentalPhysicalFacetNotRendered,
@@ -236,7 +240,9 @@ export function recolorLayer(model, id, color) {
   const layer = layerById(model, id);
   if (!layer || !/^#[0-9a-f]{6}$/i.test(color || '')) return false;
   layer.color = color;
-  model.revision++;
+  // Continuous release owns a frozen physical predecessor: styling does not
+  // advance its canonical process revision or invalidate the exact material.
+  if (model.kernel !== 'vector-continuous-etch-v1') model.revision++;
   return true;
 }
 
@@ -244,11 +250,12 @@ export function setLayerVisible(model, id, visible) {
   const layer = layerById(model, id);
   if (!layer) return false;
   layer.visible = Boolean(visible);
-  model.revision++;
+  if (model.kernel !== 'vector-continuous-etch-v1') model.revision++;
   return true;
 }
 
 export function visibleMaterialModel(model) {
+  assertContinuousEtchNotRendered(model);
   assertExperimentalPhysicalFacetNotRendered(model);
   const hidden = new Set(
     (model?.layers || []).filter((layer) => layer.visible === false).map((layer) => layer.id),
@@ -1809,6 +1816,8 @@ function applyOperationImpl(
 }
 
 export function applyOperation(model, params) {
+  const continuousUnsupported = assertContinuousEtchNotProcessed(model);
+  if (continuousUnsupported) return continuousUnsupported;
   const physicalConformal = applyExperimentalPhysicalFacetConformal(model, params);
   if (physicalConformal) return physicalConformal;
   const unsupported = assertExperimentalPhysicalFacetNotProcessed(model);

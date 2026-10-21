@@ -4,9 +4,18 @@ on:
     branches: [main]
     paths:
       - 'scripts/v2/check-history-recovery-lease.mjs'
+      - 'scripts/v2/check-history-base-replay-acceptance.mjs'
+      - 'scripts/v2/check-history-view-persistence.mjs'
       - 'site/controllers/workspace-persistence-controller.js'
       - 'site/controllers/workspace-session-controller.js'
       - 'site/ui-v2/workstation-workflow.js'
+      - 'site/continuous-etch*.js'
+      - 'site/continuous-material-owner.js'
+      - 'site/plan-renderers.js'
+      - 'site/three-view.js'
+      - 'site/controllers/process-panel-controller.js'
+      - 'site/process-worker.js'
+      - 'scripts/v2/check-continuous-etch-workstation.mjs'
       - '.github/workflows/v2-history-recovery-lease.yml'
   workflow_dispatch:
 permissions:
@@ -38,6 +47,30 @@ jobs:
           exit 1
       - name: Verify History and Recovery transaction isolation
         run: node scripts/v2/check-history-recovery-lease.mjs
+      - name: Verify Starting Wafer Base Replay with real Workers
+        run: node scripts/v2/check-history-base-replay-acceptance.mjs
+      - name: Verify History View State and mobile navigation
+        run: node scripts/v2/check-history-view-persistence.mjs
+      - name: Verify Continuous Etch real Workstation transaction
+        run: node scripts/v2/check-continuous-etch-workstation.mjs
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: pr350-base-replay-browser-evidence
+          path: |
+            test-results/pr350-history-base/
+            test-results/pr350-history-view/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: v2-history-recovery-continuous-evidence
+          path: |
+            serve-v2.log
+            test-results/continuous-etch-workstation/
+          retention-days: 14
       - uses: actions/upload-artifact@v6
         if: failure()
         with:

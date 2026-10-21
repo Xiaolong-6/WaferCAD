@@ -155,6 +155,13 @@ def parse_native_bounds(raw: str | None, label: str, count: int):
     return values
 
 
+def parse_native_camera(raw: str | None):
+    pose = parse_native_bounds(raw, 'Camera pose', 6)
+    if pose is not None and math.dist(pose[:3], pose[3:]) <= 1e-6:
+        raise ValueError('Camera position must differ from target')
+    return pose
+
+
 def snapshot_sha(path: Path):
     return hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else None
 
@@ -270,6 +277,53 @@ def run(args):
             before = runtime_probe(page)
             report['beforeInteraction'] = before
             report['images'] = {'fourView': {'file': base.name, 'sha256': snapshot_sha(base)}}
+            if args.inspect_history:
+                # These are real app controls; null-origin remains diagnostic-only
+                # because process Workers and Recovery cannot operate there.
+                history_nav = page.locator('button[data-action="domain:history"]')
+                process_nav = page.locator('button[data-action="domain:process"]')
+                if history_nav.count() != 1 or process_nav.count() != 1:
+                    raise RuntimeError('Native History/Process navigation controls are missing')
+                history_nav.click()
+                page.wait_for_timeout(350)
+                base_step = page.locator('#snapshotList .snapshot-base-step')
+                history_visible = base_step.count() == 1 and base_step.is_visible()
+                history_img = out / 'history-step0.png'
+                page.mouse.move(args.width - 8, args.height - 8)
+                page.screenshot(path=str(history_img), animations='disabled')
+                report['images']['historyStep0'] = {
+                    'file': history_img.name, 'sha256': snapshot_sha(history_img)}
+                base_step.click()
+                page.wait_for_timeout(350)
+                project_selected = page.locator('button[data-action="domain:project"][aria-pressed="true"]')
+                base_editor_visible = page.locator('#applyBaseBtn').is_visible()
+                step0_opens_editor = bool(project_selected.count() == 1 and base_editor_visible)
+                editor_img = out / 'step0-base-editor.png'
+                page.mouse.move(args.width - 8, args.height - 8)
+                page.screenshot(path=str(editor_img), animations='disabled')
+                report['images']['step0BaseEditor'] = {
+                    'file': editor_img.name, 'sha256': snapshot_sha(editor_img)}
+                process_nav.click()
+                page.wait_for_timeout(350)
+                undo = page.get_by_role('button', name='Undo model operation')
+                redo = page.get_by_role('button', name='Redo model operation')
+                process_actions = undo.count() == 1 and redo.count() == 1
+                process_img = out / 'process-undo.png'
+                page.mouse.move(args.width - 8, args.height - 8)
+                page.screenshot(path=str(process_img), animations='disabled')
+                report['images']['processUndo'] = {
+                    'file': process_img.name, 'sha256': snapshot_sha(process_img)}
+                report['historyProcessDiagnostic'] = {
+                    'stepZeroVisible': history_visible,
+                    'processUndoRedoVisible': process_actions,
+                    'stepZeroOpensBaseEditor': step0_opens_editor,
+                    'historyRecoveryVerified': False,
+                }
+                fail = fail or not (history_visible and process_actions and step0_opens_editor)
+                project_nav = page.locator('button[data-action="domain:project"]')
+                if project_nav.count():
+                    project_nav.click()
+                    page.wait_for_timeout(200)
             three_rect = before.get('three')
             three_ok = (bool(before['webgl']['available'])
                         and bool(before['webgl']['nativeThreeContext'])
@@ -278,6 +332,32 @@ def run(args):
             report['nativeThreeRendered'] = three_ok
             report['fourViewsVisible'] = all(bool(before[k] and before[k]['width'] > 100)
                                              for k in ('main', 'mask', 'three', 'section'))
+            if args.capture_continuous_ui:
+                # Capture the actual production Workstation form, not a mock.
+                # This is UI evidence only: a null-origin Worker cannot Apply.
+                page.get_by_text('Process', exact=True).first.click()
+                page.locator('#operationType').select_option('etch')
+                page.locator('#etchProfile').select_option('continuous')
+                page.locator('#continuousShape').select_option('elliptical')
+                page.locator('#operationThickness').fill('3')
+                page.locator('#continuousLateral').fill('5')
+                page.wait_for_timeout(350)
+                continuous_ui = out / 'continuous-etch-process-form.png'
+                page.screenshot(path=str(continuous_ui), animations='disabled')
+                report['images']['continuousEtchProcessForm'] = {
+                    'file': continuous_ui.name, 'sha256': snapshot_sha(continuous_ui)}
+                report['continuousEtchProcessForm'] = page.evaluate('''() => ({
+                  mode:document.querySelector('#operationType')?.value,
+                  profile:document.querySelector('#etchProfile')?.value,
+                  front:document.querySelector('#continuousShape')?.value,
+                  vertical:document.querySelector('#operationThickness')?.value,
+                  lateral:document.querySelector('#continuousLateral')?.value,
+                  shapeVisible:!document.querySelector('#continuousShapeRow')?.classList.contains('hidden'),
+                  lateralVisible:!document.querySelector('#continuousLateralRow')?.classList.contains('hidden')
+                })''')
+                if (report['continuousEtchProcessForm']['profile'] != 'continuous' or
+                    not report['continuousEtchProcessForm']['lateralVisible']):
+                    raise ValueError('Continuous Etch production form failed visibility diagnostics')
             if three_ok:
                 box = page.locator('[data-view="three"] canvas').bounding_box()
                 if box:
@@ -338,6 +418,36 @@ def run(args):
                     model_input['model'] = validated.pop('model')
                     input_evidence = {**validated, 'validatedModelFile': model_path.name,
                                       'validatedModelSha256': snapshot_sha(model_path)}
+                if model_input['model'] and model_input['model'].get('kernel') == 'vector-continuous-etch-v1':
+                    # Real production 2D renderer on the native canvas, with an
+                    # isolated read-only model. This does not replace the Workstation
+                    # project/Worker/History state or claim transactional acceptance.
+                    main_expression = (root / 'scripts/offline-native-main-view.js').read_text(
+                        encoding='utf-8')
+                    restore = page.get_by_role('button', name='3D restore')
+                    if restore.count() and restore.is_visible():
+                        restore.click()
+                        page.wait_for_timeout(200)
+                    main_details = page.evaluate(main_expression, {'model': model_input['model']})
+                    main_image = out / 'continuous-main-native.png'
+                    page.locator('#mainCanvas').screenshot(path=str(main_image), animations='disabled')
+                    report['images']['continuousMainNative'] = {
+                        'file': main_image.name, 'sha256': snapshot_sha(main_image)}
+                    report['continuousMainNative'] = main_details
+                    if (main_details.get('unsupportedFlag') or not main_details.get('solidPixels')):
+                        raise ValueError('Continuous Main native projection failed')
+                    section_expression = (root / 'scripts/offline-native-section-view.js').read_text(
+                        encoding='utf-8')
+                    section_a_b = {'a': [-170, 0], 'b': [170, 0]}
+                    section_result = page.evaluate(section_expression, {
+                        'model': model_input['model'], 'section': section_a_b})
+                    section_image = out / 'continuous-section-native.png'
+                    page.locator('#wc-offline-section-capture').screenshot(
+                        path=str(section_image), animations='disabled')
+                    report['images']['continuousSectionNative'] = {
+                        'file': section_image.name, 'sha256': snapshot_sha(section_image)}
+                    report['continuousSectionNative'] = section_result
+                    page.locator('#wc-offline-section-capture').evaluate('(el) => el.remove()')
                 expression = (root / 'scripts/offline-native-model-view.js').read_text(
                     encoding='utf-8')
                 details = page.evaluate(expression, model_input)
@@ -364,13 +474,24 @@ def run(args):
                     roughMeshBackend:canvas?.dataset?.roughMeshBackend || null,
                     roughTriangleCount:Number(canvas?.dataset?.roughTriangleCount || 0),
                     roughRebuildCount:Number(canvas?.dataset?.roughRebuildCount || 0),
+                    continuousRoiMode:item?.host?.dataset?.continuousEtchRoi || null,
+                    continuousRoiMeshMode:item?.host?.dataset?.continuousEtchRoiMeshMode || null,
+                    continuousRoiMeshTriangles:Number(item?.host?.dataset?.continuousEtchRoiMeshTriangles || 0),
+                    continuousRoiCapTriangles:Number(item?.host?.dataset?.continuousEtchRoiCapTriangles || 0),
                     width:bounds?.width || 0,height:bounds?.height || 0};
                 }''')
                 rough_ready = (not details.get('roughCaps') or
                                (state['roughMeshMode'] == 'detailed' and
                                 state['roughTriangleCount'] > 0 and
                                 not rough_completion_timeout))
-                ready = bool(details['initialized'] and state['ready'] and rough_ready
+                continuous_roi = bool(args.inmemory_roi and model_input['model'] and
+                                      model_input['model'].get('kernel') == 'vector-continuous-etch-v1')
+                clipped_ready = (not continuous_roi or
+                                 (state['continuousRoiMode'] == 'rect-clipped' and
+                                  state['continuousRoiMeshMode'] == 'geometry-clipped' and
+                                  state['continuousRoiMeshTriangles'] > 0 and
+                                  state['continuousRoiCapTriangles'] > 0))
+                ready = bool(details['initialized'] and state['ready'] and rough_ready and clipped_ready
                              and state['renderState'] == 'ready'
                              and state['width'] > 100 and state['height'] > 100)
                 image = out / 'isolated-native-model.png'
@@ -383,6 +504,90 @@ def run(args):
                     'geometry': details, 'renderer': state,
                     'source': input_evidence or 'production createModel three-material demo',
                     'workstationStateLoaded': False, 'recoveryVerified': False}
+                if args.capture_continuous_appearance:
+                    appearance = page.evaluate('''async () => {
+                      const {model, renderer, host} = window.__wafercadOfflineModel;
+                      const api = await import('https://wafercad.local/model.js');
+                      const {validateContinuousEtchModel} = await import('https://wafercad.local/continuous-etch-model.js');
+                      const oldRevision = model.revision;
+                      const originalTriangles = host.dataset.continuousEtchTriangles;
+                      const oxide = model.layers.find(l => l.id !== 'base');
+                      if (!oxide) throw Error('Missing physical oxide in continuous presentation');
+                      api.recolorLayer(model, oxide.id, '#ef852f');
+                      api.setLayerVisible(model, 'base', false);
+                      validateContinuousEtchModel(model);
+                      await renderer.render();
+                      if (model.revision !== oldRevision) throw Error('Display edit changed physical revision');
+                      if (host.dataset.continuousEtchTriangles !== originalTriangles)
+                        throw Error('Display edit rebuilt canonical continuous geometry');
+                      return {modelRevision: model.revision, triangleCount: originalTriangles,
+                        hiddenBase: model.layers.find(l=>l.id==='base').visible===false,
+                        oxideColor: oxide.color, renderState:host.dataset.renderState};
+                    }''')
+                    page.wait_for_timeout(350)
+                    appearance_image = out / 'continuous-appearance-hidden-base.png'
+                    page.screenshot(path=str(appearance_image), animations='disabled')
+                    report['images']['continuousAppearanceHidden'] = {
+                        'file': appearance_image.name, 'sha256': snapshot_sha(appearance_image)}
+                    report['continuousAppearance'] = appearance
+                    restored = page.evaluate('''async () => {
+                      const {model, renderer, host} = window.__wafercadOfflineModel;
+                      const api = await import('https://wafercad.local/model.js');
+                      api.setLayerVisible(model, 'base', true);
+                      await renderer.render();
+                      return {visible: model.layers.find(l=>l.id==='base').visible,
+                        renderState: host.dataset.renderState};
+                    }''')
+                    page.wait_for_timeout(350)
+                    restored_image = out / 'continuous-appearance-restored.png'
+                    page.screenshot(path=str(restored_image), animations='disabled')
+                    report['images']['continuousAppearanceRestored'] = {
+                        'file': restored_image.name, 'sha256': snapshot_sha(restored_image)}
+                    report['continuousAppearanceRestored'] = restored
+                    if not (appearance['hiddenBase'] and restored['visible']):
+                        raise ValueError('Continuous display toggle failed')
+                if args.inmemory_camera is not None:
+                    # Explicit physical camera pose uses production ThreeView
+                    # OrbitControls (not a fabricated geometry/camera overlay).
+                    camera = page.evaluate('''(values) => {
+                      const renderer = window.__wafercadOfflineModel?.renderer;
+                      const old = renderer?.getViewState?.();
+                      if (!old) throw new Error('Production 3D view has no camera state');
+                      const next = {
+                        position: values.slice(0, 3),
+                        target: values.slice(3),
+                        fov: old.fov,
+                      };
+                      if (!renderer.setViewState(next)) throw new Error('Camera pose rejected');
+                      return renderer.getViewState();
+                    }''', list(args.inmemory_camera))
+                    page.wait_for_timeout(450)
+                    camera_image = out / 'continuous-physical-camera.png'
+                    page.screenshot(path=str(camera_image), animations='disabled')
+                    report['images']['continuousPhysicalCamera'] = {
+                        'file': camera_image.name, 'sha256': snapshot_sha(camera_image)}
+                    report['continuousPhysicalCamera'] = camera
+                if args.inmemory_camera is None and model_input['model'] and model_input['model'].get('kernel') == 'vector-continuous-etch-v1':
+                    # The default underside diagnostic runs only without an
+                    # explicit physical camera; a second view switch is
+                    # redundant and can stall software WebGL on dense meshes.
+                    # Switch the *production* ThreeView camera to the underside
+                    # without repeated SwiftShader interactions or synthetic geometry.
+                    camera_state = page.evaluate('''() => {
+                      const renderer=window.__wafercadOfflineModel?.renderer;
+                      const state=renderer?.getViewState?.();
+                      if(!state) return null;
+                      const [x,y,z]=state.position, [tx,ty,tz]=state.target;
+                      return renderer.setViewState({
+                        ...state, position:[x,y,tz-Math.max(5,Math.abs(z-tz)*1.4)]
+                      });
+                    }''')
+                    if camera_state:
+                        page.wait_for_timeout(500)
+                        underside = out / 'continuous-release-underneath.png'
+                        page.screenshot(path=str(underside), animations='disabled')
+                        report['images']['continuousUnderside'] = {
+                            'file': underside.name, 'sha256': snapshot_sha(underside)}
                 report['limitations'].append(
                     'Isolated native Three.js viewport: Main/Mask/Section, History and Recovery are not synchronized.')
                 if not ready:
@@ -426,19 +631,29 @@ def main():
                              help='Strictly parse a real .wafercad in Node and render its model in isolated ThreeView')
     parser.add_argument('--inmemory-roi', help='xMin,yMin,xMax,yMax in physical micrometres; for --inmemory-project')
     parser.add_argument('--inmemory-z-break', help='top,bottom Z coordinates in physical micrometres; for --inmemory-project')
+    parser.add_argument('--inmemory-camera', help='Camera x,y,z,targetX,targetY,targetZ in physical micrometres; for --inmemory-project')
+    parser.add_argument('--capture-continuous-appearance', action='store_true',
+                        help='Test real continuous-material layer color and visibility without rebuilding mesh')
+    parser.add_argument('--capture-continuous-ui', action='store_true',
+                        help='Capture and inspect the real experimental Continuous Etch Process form')
     parser.add_argument('--wait-ms', type=int, default=5500)
     parser.add_argument('--width', type=int, default=1600)
     parser.add_argument('--height', type=int, default=1000)
     parser.add_argument('--headless', action='store_true', help='Opt out of headful/Xvfb; may disable WebGL')
     parser.add_argument('--require-origin', action='store_true', help='Fail rather than use null-origin diagnostic')
+    parser.add_argument('--inspect-history', action='store_true',
+                        help='Capture real History Step 0 and Process Undo controls (visual only)')
     args = parser.parse_args()
     if not 300 <= args.width <= 4096 or not 300 <= args.height <= 4096 or not 500 <= args.wait_ms <= 60000:
         parser.error('Invalid dimensions or wait interval')
-    if (args.inmemory_roi or args.inmemory_z_break) and not args.inmemory_project:
-        parser.error('ROI and Z break require --inmemory-project')
+    if args.capture_continuous_appearance and not args.inmemory_project:
+        parser.error('Continuous appearance capture requires an in-memory project')
+    if (args.inmemory_roi or args.inmemory_z_break or args.inmemory_camera) and not args.inmemory_project:
+        parser.error('ROI, Z break and camera require --inmemory-project')
     try:
         args.inmemory_roi = parse_native_bounds(args.inmemory_roi, 'ROI', 4)
         args.inmemory_z_break = parse_native_bounds(args.inmemory_z_break, 'Z break', 2)
+        args.inmemory_camera = parse_native_camera(args.inmemory_camera)
     except ValueError as exc:
         parser.error(str(exc))
     try:

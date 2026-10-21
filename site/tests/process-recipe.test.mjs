@@ -246,3 +246,40 @@ test('rectangular GRID Base normalizes without changing circular wafer contracts
   };
   assert.deepEqual(normalizeRecipeBase(wafer), wafer);
 });
+
+test('Exact Continuous Etch Recipe preserves front and physical lengths through code round-trip', () => {
+  for (const [shape, lateral] of [
+    ['circular', '2 µm'],
+    ['elliptical', '5 µm'],
+    ['vertical', '4 µm'],
+  ]) {
+    const script = `etch({ target: "Base", depth: "2 µm", profile: "continuous", shape: "${shape}", lateral: "${lateral}", face: "front", area: "full" });`;
+    const parsed = parseProcessRecipeSource(script);
+    const p = parsed.steps[0].params;
+    assert.equal(p.profile, 'continuous');
+    assert.equal(p.continuousShape, shape);
+    assert.equal(p.thicknessUm, 2);
+    assert.equal(p.continuousLateralUm, Number(lateral.split(' ')[0]));
+    const restored = parseProcessRecipeSource(serializeProcessRecipe(parsed));
+    assert.deepEqual(restored.steps[0].params, p);
+  }
+});
+
+test('Exact Continuous Etch Recipe rejects invalid material, face, shape and reach', () => {
+  const source = (fields) =>
+    `etch({ profile: "continuous", depth: "2 µm", target: "Base", ${fields} });`;
+  assert.throws(
+    () => parseProcessRecipeSource('etch({ profile: "continuous", depth: "2 µm" });'),
+    /target is required/,
+  );
+  assert.throws(() => parseProcessRecipeSource(source('face: "both"')), /Front or Back/);
+  assert.throws(() => parseProcessRecipeSource(source('shape: "circle"')), /etch.shape/);
+  assert.throws(
+    () => parseProcessRecipeSource(source('shape: "elliptical"')),
+    /lateral must be positive/,
+  );
+  assert.throws(
+    () => parseProcessRecipeSource(source('shape: "circular", lateral: "3 µm"')),
+    /equal lateral/,
+  );
+});
