@@ -1021,7 +1021,14 @@ export function createThreeView({
   }
 
   function cacheActiveSceneVariant() {
-    if (!activeSceneVariant || !group) return;
+    // Approximate preview groups never own canonical topology. In particular,
+    // a rolled-back preview must not enter the exact variant cache when its
+    // next rebuild starts.
+    if (
+      (activeSceneVariant !== 'opaque' && activeSceneVariant !== 'transparent') ||
+      !group ||
+      !physicalSceneModel
+    ) return;
     sceneVariantCache.set(activeSceneVariant, snapshotSceneVariant(activeSceneVariant));
   }
 
@@ -4341,6 +4348,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
         );
         if (progressiveRollback) {
           restoreSceneVariant(progressiveRollback);
+          // The restored group is display-only, not a reusable exact variant.
+          activeSceneVariant = null;
+          delete host.dataset.sceneVariant;
           physicalSurfacePlan = null;
         } else if (cached) restoreSceneVariant(cached);
         else {
