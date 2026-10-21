@@ -101,7 +101,6 @@ function legacyIndexSnapshot(root) {
   return { digest: hash.digest('hex'), fileCount };
 }
 
-
 function gitInventory(root) {
   const files = git(root, ['ls-files', '--stage', '-z']).split('\0').filter(Boolean);
   const flags = git(root, ['ls-files', '-v', '-z']).split('\0').filter(Boolean);
@@ -200,7 +199,9 @@ export function sourceSnapshot(root, scheme = 'files-sha256-v2') {
   for (const path of [...files].sort()) {
     if (EVIDENCE_FILES.includes(path)) continue;
     requireValue(
-      path && !path.startsWith('/') && !path.includes('\\') &&
+      path &&
+        !path.startsWith('/') &&
+        !path.includes('\\') &&
         path.split('/').every((part) => part && part !== '.' && part !== '..'),
       'Unsafe source path: ' + path,
     );
@@ -209,9 +210,13 @@ export function sourceSnapshot(root, scheme = 'files-sha256-v2') {
       if (!existsSync(file)) {
         const allowedOmission =
           !existsSync(join(root, '.git')) &&
-          JSON.parse(readBounded(join(root, SOURCE_MANIFEST), MAX_LOG))
-            .excludedDependencyArchives?.includes(path);
-        requireValue(allowedOmission, 'Pinned archive missing without explicit manifest omission');
+          JSON.parse(
+            readBounded(join(root, SOURCE_MANIFEST), MAX_LOG),
+          ).excludedDependencyArchives?.includes(path);
+        requireValue(
+          allowedOmission,
+          'Pinned archive missing without explicit manifest omission',
+        );
       }
       hash.update(JSON.stringify([path, pinnedArchiveDigest(root)]) + '\n');
     } else {
