@@ -74,8 +74,9 @@ and the complete inventory; CI independently recomputes the fingerprint on the
 proposed merge tree. Existing Git-index v1 reports remain supported. A changed
 source tree invalidates its earlier blanket Quality proof, **not the value of
 prior diagnostic results**. Prefer valid full reports to avoid duplicate CI;
-if proof is unavailable or stale, CI executes the matching real Draft/Full
-checks, failing on any actual test failure. No evidence shortcut may weaken
+missing or stale PR proof fails closed and must be regenerated locally.
+The scheduled nightly and production release workflows retain their separately
+specified real test execution paths. No evidence shortcut may weaken
 scientific, Worker/History/Recovery, visual or release gates. See `docs/CI.md`.
 
 - Keep approved platform-specific visual baselines separate. Do not replace an approved baseline merely to hide a failed comparison.
