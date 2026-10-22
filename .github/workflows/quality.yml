@@ -16,10 +16,9 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 25
     steps:
-      # The default PR checkout is the proposed merge tree. Source-bound evidence
-      # must cover that integrated content, not only an outdated branch head.
+      # The default PR checkout is the proposed merge tree. Test precisely that tree.
       - name: Checkout
         uses: actions/checkout@v6
 
@@ -28,10 +27,35 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Require Draft local Quality evidence
-        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft }}
-        run: node scripts/local-verification.mjs verify draft
+      # Use committed local evidence when source-bound, valid and complete.
+      # A rejected probe is NOT proof of success; the fallback must execute.
+      - name: Probe source-bound local Quality evidence
+        id: evidence
+        continue-on-error: true
+        env:
+          QUALITY_SCOPE: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft && 'draft' || 'full' }}
+        run: node scripts/local-verification.mjs verify "$QUALITY_SCOPE"
 
+      # Strict second verification is named for the fast-release provenance gate.
+      # Never give a tolerated probe the 'Require full' step name.
       - name: Require full local Quality evidence
-        if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+        if: ${{ steps.evidence.outcome == 'success' && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
         run: node scripts/local-verification.mjs verify full
+
+      - name: Install locked dependencies only for missing or stale evidence
+        if: ${{ !cancelled() && steps.evidence.outcome != 'success' }}
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Execute Draft Quality fallback
+        if: ${{ !cancelled() && steps.evidence.outcome != 'success' && github.event_name == 'pull_request' && github.event.pull_request.draft }}
+        run: |
+          npm run lint
+          npm run format:check
+          npm run docs:check
+          node --test site/tests/ci-test-plan.test.mjs site/tests/ci-development-gates.test.mjs site/tests/ci-workflow-architecture.test.mjs site/tests/local-verification.test.mjs site/tests/documentation-suite.test.mjs
+
+      # Full CI execution counts as full proof only when every command passes.
+      # This exact name is recognized by the fast-release provenance gate.
+      - name: Final lint, formatting, generated documentation and Node tests
+        if: ${{ !cancelled() && steps.evidence.outcome != 'success' && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
+        run: npm run check

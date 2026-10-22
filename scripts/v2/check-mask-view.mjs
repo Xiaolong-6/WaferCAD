@@ -46,6 +46,20 @@ try {
         await page.locator('#app-root').innerText(),
       );
       const snapshot = () => page.evaluate(() => window.WaferCadV2Mask.snapshot());
+      const clickMaskTool = async (action) => {
+        const control = page.locator(`[data-action="tool:${action}:mask"]`);
+        if (!(await control.isVisible())) {
+          await page.getByRole('button', { name: 'Mask more tools', exact: true }).click();
+          assert.equal(await control.isVisible(), true, `${action} should be visible in More`);
+        }
+        await control.click();
+        await waitForPaint(page);
+        assert.equal(
+          await page.locator('#p-overflow-mask:popover-open').count(),
+          0,
+          'Choosing a Mask command must dismiss More',
+        );
+      };
       const initial = await snapshot(),
         ref = await reference.evaluate(() => window.WaferCadV2Shell.snapshot());
       assert.equal(initial.hash, ref.hash);
@@ -140,19 +154,19 @@ try {
         [box.x + box.width * 0.25 + 24, box.y + box.height * 0.7 + 16],
       ];
       assert.equal((await snapshot()).zoomEnabled, true);
-      await page.locator('[data-action="tool:zoom:mask"]').click();
+      await clickMaskTool('zoom');
       await drag(...nav);
       let current = await snapshot();
       assert.ok(Math.abs(current.plan.panX - 24) < 0.01, 'Mask pan moves 24 px in X');
       assert.ok(Math.abs(current.plan.panY - 16) < 0.01, 'Mask pan moves 16 px in Y');
-      await page.locator('[data-action="tool:pan:mask"]').click();
+      await clickMaskTool('pan');
       const beforeOff = await snapshot();
       await drag(...nav);
       await page.mouse.wheel(0, -100);
       await waitForPaint(page);
       assert.deepEqual((await snapshot()).plan, beforeOff.plan);
-      await page.locator('[data-action="tool:pan:mask"]').click();
-      await page.locator('[data-action="tool:zoom:mask"]').click();
+      await clickMaskTool('pan');
+      await clickMaskTool('zoom');
       assert.equal(
         await page.locator('dialog[open], :popover-open:not([role="tooltip"])').count(),
         0,
@@ -250,7 +264,7 @@ try {
       await page.locator('[data-action="mask-roi-tool:square"]').click();
       await drag(await world([-18, 7]), await world([-14, 3]));
       assert.equal((await snapshot()).maskRoi.type, 'square');
-      await page.locator('[data-action="tool:pan:mask"]').click();
+      await clickMaskTool('pan');
       assert.equal((await snapshot()).panEnabled, true);
       await page.locator('[data-action="mask-roi-tool:select"]').click();
       assert.equal((await snapshot()).panEnabled, false);

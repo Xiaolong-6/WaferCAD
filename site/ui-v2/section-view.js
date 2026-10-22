@@ -26,7 +26,7 @@ import {
 } from '../model.js';
 
 export function createSectionView({ store, main, workstation }) {
-  const { el, button, toolbar } = window.WaferCadV2Components;
+  const { el, button, toolbar, visibilityButton } = window.WaferCadV2Components;
   const state = store.state,
     local = store.local.section,
     preview = workstation.readOnlyPreview === true;
@@ -270,7 +270,11 @@ export function createSectionView({ store, main, workstation }) {
   });
   renderer = createPlanRenderers({
     root,
-    getState: () => ({ ...state, model: store.renderModel() }),
+    getState: () => ({
+      ...state,
+      model: store.renderModel(),
+      inspectionLayerId: local.selectedEntity?.kind === 'layer' ? local.selectedEntity.id : null,
+    }),
     ...main.runtime.plan,
     getSectionCollapseController: () => collapse,
     syncSectionInputs: () => main.runtime.slice.syncInputs(),
@@ -340,6 +344,16 @@ export function createSectionView({ store, main, workstation }) {
   }
   function renderLegend() {
     if (preview) return;
+    // A rebuilt or hidden layer cannot remain the focus of an unrelated model.
+    if (
+      local.selectedEntity?.kind === 'layer' &&
+      !state.model.layers.some(
+        (layer) => String(layer.id) === String(local.selectedEntity.id) && layer.visible !== false,
+      )
+    ) {
+      local.selectedEntity = null;
+      store.views.get('three')?.runtime.highlightLayer?.(null);
+    }
     syncLegendPlacement();
     const annotations = [
       ...(state.model.implants || []).map((item) => ({ ...item, kind: 'Implant' })),
@@ -366,38 +380,74 @@ export function createSectionView({ store, main, workstation }) {
       const item =
         state.model.layers.find((item) => String(item.id) === id) ||
         annotations.find((item) => String(item.id) === id);
-      const checkbox = el('input', {
-        type: 'checkbox',
-        checked: item.visible !== false,
-        'aria-label': `Show ${item.name}`,
-        'data-help': 'section.visibility',
-      });
-      checkbox.onchange = () => {
+      const entityKind = row.dataset.layerId ? 'layer' : item.kind.toLowerCase();
+      const visible = item.visible !== false;
+      const visibility = visibilityButton(item.name, visible);
+      visibility.onclick = () => {
         const fn = row.dataset.layerId
           ? setLayerVisible
           : item.kind === 'Implant'
             ? setImplantVisible
             : setElectricalRegionVisible;
-        fn(state.model, item.id, checkbox.checked);
+        fn(state.model, item.id, !visible);
+        if (
+          row.dataset.layerId &&
+          visible &&
+          local.selectedEntity?.kind === 'layer' &&
+          String(local.selectedEntity.id) === String(item.id)
+        ) {
+          local.selectedEntity = null;
+          store.views.get('three')?.runtime.highlightLayer?.(null);
+        }
         store.renderAll();
       };
       const name = row.querySelector('.v2-legend-name');
-      const entityKind = row.dataset.layerId ? 'layer' : item.kind.toLowerCase();
-      name.tabIndex = preview ? -1 : 0;
+      const selected =
+        local.selectedEntity?.kind === entityKind && local.selectedEntity.id === item.id;
+      row.dataset.selected = String(selected);
+      name.tabIndex = 0;
       name.setAttribute('role', 'button');
-      name.setAttribute('aria-label', `Edit ${item.name} in History`);
-      name.title = 'Edit the originating Process Step in History';
-      const editSourceStep = () => {
-        if (preview) return;
-        void store.editHistoryEntity?.(entityKind, item.id);
+      name.setAttribute('aria-pressed', String(selected));
+      name.setAttribute('aria-label', `Focus ${item.name}`);
+      name.title =
+        entityKind === 'layer'
+          ? 'Focus this layer and deemphasize other layers without editing History'
+          : 'Select this annotation without editing History';
+      const select = () => {
+        local.selectedEntity = selected ? null : { kind: entityKind, id: item.id };
+        renderLegend();
+        render();
+        store.views
+          .get('three')
+          ?.runtime.highlightLayer?.(
+            local.selectedEntity?.kind === 'layer' ? local.selectedEntity.id : null,
+          );
       };
-      name.onclick = editSourceStep;
+      name.onclick = select;
       name.onkeydown = (event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
-          editSourceStep();
+          select();
         }
       };
+      const more = button('', null, 'more', {
+        class: 'wc-button v2-legend-actions',
+        'aria-label': `Actions for ${item.name}`,
+        title: `Actions for ${item.name}`,
+      });
+      more.onclick = () =>
+        mountToolPopover(workstation.overlays, {
+          trigger: more,
+          label: `${item.name} actions`,
+          content: (() => {
+            const action = button('Edit source step in History', null, 'history');
+            action.onclick = () => {
+              workstation.overlays.close('popover');
+              void store.editHistoryEntity?.(entityKind, item.id);
+            };
+            return action;
+          })(),
+        });
       if (row.dataset.annotationId) {
         const smooth = item.depthProfile === 'smooth';
         const profile = icon(
@@ -416,7 +466,7 @@ export function createSectionView({ store, main, workstation }) {
         };
         row.append(profile);
       }
-      row.append(checkbox);
+      row.append(visibility, more);
     });
     if (legend) legend.replaceWith(next);
     else body.append(next);
@@ -536,6 +586,8 @@ export function createSectionView({ store, main, workstation }) {
     collapse,
     resetTransient() {
       paletteOpen = null;
+      local.selectedEntity = null;
+      store.views.get('three')?.runtime.highlightLayer?.(null);
       workstation.overlays.closeFloatings();
     },
     runtime: {

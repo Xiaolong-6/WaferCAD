@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { readFile as readFileAsync } from 'node:fs/promises';
 import test from 'node:test';
 import { createHash } from 'node:crypto';
+import { createSnapshotManager } from '../workspace-snapshots.js';
 
 const vendor = { exports: {} };
 new Function(
@@ -134,7 +135,7 @@ test('published M08/M09 Bookmarks, process nodes, branch head, Recipe and Export
   assert.equal(releaseNode.processRevision, released.model.processRevision);
   assert.equal(recordNode.processRevision, released.model.processRevision);
   assert.equal(recordNode.processRevision, recordNode.state.model.processRevision);
-  const { createSnapshotManager } = await import('../workspace-snapshots.js');
+
   const headState = released.snapshotBranches.branches[0].headState;
   const manager = createSnapshotManager({
     capture: () => structuredClone(headState),

@@ -12,6 +12,7 @@ import {
 } from './continuous-etch-model.js';
 import { visibleSurfaceGroups } from './process-topology.js';
 import { layerById, modelBoundsZ } from './model.js';
+import { layerInspectionTone, sectionInspectionFill } from './layer-inspection-presentation.js';
 import { drawPlanGrid } from './plan-grid.js';
 import { validateExperimentalPhysicalFacetModel } from './experimental/physical-facets/physical-facet-model.js';
 import {
@@ -729,6 +730,7 @@ export function createPlanRenderers({
       sectionShowBorders,
       sectionCollapse,
       sectionViewport,
+      inspectionLayerId,
     } = getState();
     const physicalOwner = validateExperimentalPhysicalFacetModel(model);
     const mainCanvas = $('sectionCanvas'),
@@ -853,12 +855,26 @@ export function createPlanRenderers({
           });
           ctx.closePath();
         }
-      ctx.fillStyle = experimentalOxide ? '#d88b37' : layer.color;
+      const tone = layerInspectionTone(contour.layerId, inspectionLayerId);
+      ctx.fillStyle = sectionInspectionFill(
+        experimentalOxide ? '#d88b37' : layer.color,
+        contour.layerId,
+        inspectionLayerId,
+      );
       ctx.fill('evenodd');
-      if (sectionShowBorders) {
+      // Keep the physical contour draw order: buried layers remain buried.
+      // Focus never overrides model visibility, stacking or shared rough boundaries.
+      if (sectionShowBorders || tone === 'focused') {
         ctx.setLineDash([]);
-        ctx.strokeStyle = experimentalOxide ? 'rgba(216,139,55,.93)' : 'rgba(17,24,32,.72)';
-        ctx.lineWidth = 0.8;
+        ctx.strokeStyle =
+          tone === 'deemphasized'
+            ? 'rgba(126,135,145,.28)'
+            : tone === 'focused'
+              ? '#293847'
+              : experimentalOxide
+                ? 'rgba(216,139,55,.93)'
+                : 'rgba(17,24,32,.72)';
+        ctx.lineWidth = tone === 'focused' ? 1.35 : 0.8;
         ctx.stroke();
       }
     }
@@ -1000,7 +1016,7 @@ export function createPlanRenderers({
           ctx.lineTo(drawX, y);
         }
         ctx.closePath();
-        ctx.fillStyle = layer.color;
+        ctx.fillStyle = sectionInspectionFill(layer.color, segment.layerId, inspectionLayerId);
         ctx.fill();
       }
 
