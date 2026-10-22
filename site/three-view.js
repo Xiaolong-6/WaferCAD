@@ -24,10 +24,7 @@ import {
   buildExactFilmComponents,
   exactUnetchedFilmCandidates,
 } from './continuous-exact-film-mesh.js';
-import {
-  buildContinuousSiHeightfieldMesh,
-  canBuildContinuousSiHeightfield,
-} from './continuous-heightfield-mesh.js';
+import { canBuildContinuousSiHeightfield } from './continuous-heightfield-mesh.js';
 import {
   CONTINUOUS_ETCH_MODEL_KERNEL,
   validateContinuousEtchModel,
