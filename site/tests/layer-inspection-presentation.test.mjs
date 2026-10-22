@@ -38,7 +38,7 @@ test('Three.js uses shared focus state without changing geometry or transparency
   assert.match(three, /const exterior = \{ kind: 'material-exterior', layerId: owner\.layerId \}/);
   assert.match(
     three,
-    /const oxideExterior = \{ kind: 'material-exterior', layerId: data\.oxideLayerId \}/,
+    /const oxideExterior = \{\s*kind: 'material-exterior',\s*layerId: data\.oxideLayerId,?\s*\}/,
   );
   assert.match(three, /material\.color\.copy\(original\.color\)/);
   assert.match(three, /material\.color\.lerp\(inspectionNeutralColor, LAYER_INSPECTION_DIM\)/);

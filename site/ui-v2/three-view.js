@@ -78,6 +78,7 @@ export function createWorkstationThreeView({ store, workstation }) {
   // project's persisted Quality choice or change canonical scene geometry.
   let startupPreview = Boolean(workstation.progressive);
   let firstSceneFrame = false;
+  let firstExactSceneFrame = false;
   let backgroundRefine = false;
   let assemblyFinished = false;
   let refinementStartSerial = 0;
@@ -159,10 +160,40 @@ export function createWorkstationThreeView({ store, workstation }) {
   function inspectCommittedFrame() {
     if (!progressive || progressive.snapshot().project !== 'ready') return;
     const serial = Number(host.dataset.rendererFrameSerial || 0);
-    if (!serial || !['ready', 'refining'].includes(host.dataset.renderState)) return;
-    if (!firstSceneFrame) {
+    const approximate = host.dataset.renderFidelity === 'approximate';
+    // The exact Worker can fail between the preview mesh commit and the
+    // first painted preview frame. Keep the painted approximate scene visible
+    // and interactive; it is never promoted to exact Ready.
+    if (
+      !serial ||
+      (!['ready', 'refining'].includes(host.dataset.renderState) &&
+        !(approximate && host.dataset.renderState === 'error'))
+    )
+      return;
+    // A caps-only frame is interactive but must never start a second Quality
+    // build while Material Solids Boolean is still running in the first Worker.
+    if (approximate) {
+      if (!host.dataset.rendererProgressiveFirstFrameMs) return;
+      if (!firstSceneFrame) {
+        firstSceneFrame = true;
+        progressive.viewFrame('three', 'coarse');
+      }
+      return;
+    }
+    // These native exact geometry owners do not use the Surface Plan
+    // Fast/Quality refinement tier; a painted frame is already final.
+    const exactNativeMaterial =
+      host.dataset.renderFidelity === 'exact-physical-facet' ||
+      host.dataset.renderFidelity === 'exact-continuous-etch';
+    if (
+      (host.dataset.renderFidelity !== 'exact-surface-plan' && !exactNativeMaterial) ||
+      !host.dataset.rendererExactFirstFrameMs
+    )
+      return;
+    if (!firstExactSceneFrame) {
       firstSceneFrame = true;
-      if (state.threeFastMode === false) {
+      firstExactSceneFrame = true;
+      if (state.threeFastMode === false && !exactNativeMaterial) {
         progressive.viewFrame('three', 'coarse');
         scheduleQualityRefinement();
       } else {
@@ -527,7 +558,9 @@ export function createWorkstationThreeView({ store, workstation }) {
         content: el(
           'div',
           { class: 'p-form v2-three-floating' },
-          button('PNG · 3×', 'export:three:png', 'export', { 'data-help': 'three.export.png' }),
+          button('PNG · 3×', 'export:three:png', 'export', {
+            'data-help': 'three.export.png',
+          }),
           button('GLB · physical units', 'export:three:glb', 'export', {
             'data-help': 'three.export.glb',
           }),

@@ -2,6 +2,12 @@ name: M3D welcome integration
 
 on:
   workflow_dispatch:
+    inputs:
+      run_first_frame_benchmark:
+        description: 'Opt in to repeated cold M3D first-frame A/B validation'
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -38,6 +44,9 @@ jobs:
         run: node scripts/build-example-thumbnails.mjs --id=m3d-selfpowered-heterogeneous-ic
       - name: Welcome-card open and preview regression
         run: node scripts/m3d-welcome-regression.mjs
+      - name: Repeated cold M3D first-frame A/B (opt-in review gate)
+        if: ${{ inputs.run_first_frame_benchmark }}
+        run: node scripts/m3d-progressive-ab-benchmark.mjs
       - name: M3D scientific and History Node contracts
         run: |
           node --check site/three-view.js
