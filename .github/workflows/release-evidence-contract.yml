@@ -6,11 +6,11 @@ on:
     branches: [main]
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
-      - '.github/workflows/pages.yml'
-      - '.github/workflows/release-evidence-contract.yml'
+      - '.github/workflows/**'
       - 'scripts/release/verified-pr-release.mjs'
-      - '.github/workflows/quality.yml'
       - 'scripts/local-verification.mjs'
+      - 'scripts/ci-trigger-policy.mjs'
+      - 'site/tests/ci-trigger-policy.test.mjs'
       - 'site/tests/local-verification.test.mjs'
       - 'site/tests/release-evidence.test.mjs'
       - 'site/tests/ci-development-gates.test.mjs'

@@ -35,6 +35,8 @@ jobs:
         run: node scripts/v2/check-history-base-replay-acceptance.mjs
       - name: Verify History View State and mobile navigation
         run: node scripts/v2/check-history-view-persistence.mjs
+      - name: Verify Continuous Etch real Workstation transaction
+        run: node scripts/v2/check-continuous-etch-workstation.mjs
       - uses: actions/upload-artifact@v6
         if: always()
         with:
@@ -43,6 +45,15 @@ jobs:
             test-results/pr350-history-base/
             test-results/pr350-history-view/
           if-no-files-found: ignore
+          retention-days: 14
+
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: v2-history-recovery-continuous-evidence
+          path: |
+            serve-v2.log
+            test-results/continuous-etch-workstation/
           retention-days: 14
       - uses: actions/upload-artifact@v6
         if: failure()
