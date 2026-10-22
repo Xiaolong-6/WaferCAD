@@ -3624,6 +3624,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
       const roiChanged = updateRoiCaps();
       updateMaterialAppearance();
       host.dataset.continuousEtchRoiUpdateMs = String(performance.now() - roiStartAt);
+      // A presentation-only ROI/style update is a completed render, not a
+      // pending exact mesh build. Restore the Workstation's ready state.
+      host.dataset.renderPhase = 'complete';
+      host.dataset.renderState = 'ready';
       // The default camera still targets the full wafer after an ROI change.
       // Reframe only when the actual rectangle changes; ordinary orbit/pan and
       // layer restyling must not reset the user's view.
