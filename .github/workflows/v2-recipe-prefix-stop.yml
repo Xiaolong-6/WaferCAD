@@ -1,16 +1,6 @@
 name: V2 Recipe prefix and Stop parity
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'scripts/v2/check-recipe-prefix-stop-parity.mjs'
-      - 'site/controllers/process-recipe-controller.js'
-      - 'site/controllers/process-task-controller.js'
-      - 'site/tests/process-task-controller.test.mjs'
-      - 'site/process-recipe-preflight.js'
-      - 'site/process-recipe.js'
-      - '.github/workflows/v2-recipe-prefix-stop.yml'
   workflow_dispatch:
 
 permissions:

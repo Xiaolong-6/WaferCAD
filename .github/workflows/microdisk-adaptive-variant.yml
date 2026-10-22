@@ -1,18 +1,6 @@
 name: Microdisk adaptive saved Variant acceptance
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'site/experimental/microdisk/generate-microdisk-adaptive-variant.mjs'
-      - 'site/experimental/microdisk/microdisk-adaptive-persisted-variant.test.mjs'
-      - 'site/experimental/microdisk/check-microdisk-adaptive-persisted-workstation.mjs'
-      - '.github/workflows/microdisk-adaptive-variant.yml'
-      - 'site/model.js'
-      - 'site/process-topology.js'
-      - 'site/tests/process-topology.test.mjs'
-      - 'site/examples/suspended-silica-microdisks.wafercad'
-      - 'site/experimental/microdisk/suspended-silica-microdisks-adaptive.wafercad'
   workflow_dispatch:
 
 permissions:

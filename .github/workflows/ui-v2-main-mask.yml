@@ -2,15 +2,6 @@ name: UI v2 Main, Mask and Mobile acceptance
 
 on:
   workflow_call:
-  pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened, ready_for_review]
-    paths:
-      - 'site/**'
-      - '!site/tests/**'
-      - 'scripts/v2/**'
-      - '!scripts/v2/capture-visual-first.mjs'
-      - '.github/workflows/ui-v2-main-mask.yml'
   workflow_dispatch:
 
 permissions:

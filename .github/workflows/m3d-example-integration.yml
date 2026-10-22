@@ -1,17 +1,6 @@
 name: M3D welcome integration
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'site/bundled-examples.js'
-      - 'site/examples/m3d-selfpowered-full-replay.wafercad'
-      - 'site/examples/previews/m3d-selfpowered-heterogeneous-ic.wafercad'
-      - 'site/three-view.js'
-      - 'site/ui-v2/three-view.js'
-      - 'site/ui-v2/workstation-workflow.js'
-      - 'scripts/m3d-welcome-regression.mjs'
-      - '.github/workflows/m3d-example-integration.yml'
   workflow_dispatch:
 
 permissions:

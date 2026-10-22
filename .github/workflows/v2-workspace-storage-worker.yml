@@ -1,18 +1,6 @@
 name: V2 Workspace Storage Worker scientific regression
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'scripts/workspace-storage-worker-regression.mjs'
-      - 'scripts/test-helpers/ui.mjs'
-      - 'scripts/process-benchmarks.mjs'
-      - 'site/workspace-persistence*.js'
-      - 'site/workspace-storage-worker.js'
-      - 'site/controllers/workspace-persistence-controller.js'
-      - 'site/controllers/workspace-session-controller.js'
-      - 'site/project-*.js'
-      - '.github/workflows/v2-workspace-storage-worker.yml'
   workflow_dispatch:
 
 permissions:

@@ -8,16 +8,44 @@ Read `docs/COLLABORATION.md` for the shared ChatGPT/Codex handoff workflow, `doc
 - Use stable internal entity IDs and preserve project migration, transactional workers, History restore and browser recovery contracts.
 - Add regressions to the suite that owns the behavior. Avoid file splitting solely to reduce line counts.
 - Use locked dependencies via `npm ci`. During iteration run focused checks and (for UI/Renderer/Example changes) inspect real-browser output before broad CI. Before final acceptance run the required Quality, targeted CI and scientific/regression gates; do not weaken tolerances or skip data-integrity checks. Report exact commands, results, commit and environment.
-**Source retrieval before requesting uploads:** Reuse the existing exact-SHA
-source-only GitHub Artifact, verify `wafercad-source-manifest.json`, and
-obtain the pinned Three.js 0.179.1 tarball separately. Search the WaferCAD
-Project Sources/current workspace first; use the tracked
-`vendor/npm/three-0.179.1.tgz` fallback only if missing. Restore via
-`python3 scripts/restore-pinned-three.py --archive <path>` (or
-`WAFERCAD_THREE_ARCHIVE`), which checks `package-lock.json` SHA-512.
-Never package Three.js in a source-only Actions Artifact. See
-[offline bootstrap](docs/DEVELOPMENT.md#offline-source-transport-and-threejs-priority)
-before retrying blocked `git clone` or requesting another ZIP.
+  **Source retrieval before requesting uploads:** Reuse the existing exact-SHA
+  source-only GitHub Artifact, verify `wafercad-source-manifest.json`, and
+  obtain the pinned Three.js 0.179.1 tarball separately. Search the WaferCAD
+  Project Sources/current workspace first; use the tracked
+  `vendor/npm/three-0.179.1.tgz` fallback only if missing. Restore via
+  `python3 scripts/restore-pinned-three.py --archive <path>` (or
+  `WAFERCAD_THREE_ARCHIVE`), which checks `package-lock.json` SHA-512.
+  Never package Three.js in a source-only Actions Artifact. See
+  [offline bootstrap](docs/DEVELOPMENT.md#offline-source-transport-and-threejs-priority)
+  before retrying blocked `git clone` or requesting another ZIP.
+
+## CI execution policy (mandatory; 2026-10-22)
+
+**One scheduled integration run per day at 02:30 UTC. No browser,
+Renderer, Example, scientific matrix or History/Recovery suite runs automatically
+for ordinary Draft pushes.** Before pushing, run the smallest owning Node tests,
+science contracts and actual local Chromium/Playwright captures; keep exact-SHA
+source-bound verification receipts. Draft PRs must have a valid local `draft`
+(or `full`) receipt and receive proof-only Quality verification, not a remote
+fallback run. Missing/stale proof means stop and fix locally, not automatic
+CI execution. A Ready PR must have a valid `full` receipt and receives only the
+risk-selected reusable acceptance gates from `ready-impact.yml`.
+
+The only automatic PR workflows are `Quality`, `Release evidence contract`,
+and `Ready risk-targeted acceptance`. All heavyweight workflows are called by
+these governed entrypoints when needed, by `daily-full.yml` at 02:30 UTC,
+by an explicitly authorized manual dispatch, or by the existing fail-closed
+production Pages release chain. The one schedule is the daily controller; do
+not reintroduce workflow-specific weekly/daily schedules or broad PR events.
+
+**Local enforcement:** `node scripts/ci-trigger-policy.mjs` and
+`node --test site/tests/ci-trigger-policy.test.mjs`. They are also run in the
+lightweight release-contract gate; all changes to automatic triggers need
+explicit review. Nightly measures total Runner minutes against a 75-minute
+operating target; a budget alert is not a reason to weaken a scientific gate.
+A scheduled result is valid for **only its tested SHA**; Ready and release
+checks still verify the actual candidate SHA. `pages.yml` retains independent
+fail-closed publication and rollback gates. See `docs/CI.md`.
 
 ## Chromium-first local visual acceptance
 

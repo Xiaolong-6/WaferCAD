@@ -1,0 +1,125 @@
+name: Ready risk-targeted acceptance
+
+# Draft PRs pay only for Quality provenance; Ready PRs select real owner gates.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ready-impact-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  impact:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      browser: ${{ steps.plan.outputs.browser }}
+      main_mask: ${{ steps.plan.outputs.main_mask }}
+      klayout: ${{ steps.plan.outputs.klayout }}
+      recipe: ${{ steps.plan.outputs.recipe }}
+      history: ${{ steps.plan.outputs.history_required }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Route exact changed paths
+        id: plan
+        shell: bash
+        run: |
+          git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}" \
+            | node scripts/ci-test-plan.mjs --stdin \
+              --base=${{ github.event.pull_request.base.sha }} \
+              --head=${{ github.event.pull_request.head.sha }}
+          # Browser is reserved for changed Renderer/Section, Process, app
+          # interaction and compatibility owners (not every source edit).
+          # Classify the planner outputs without adding another Runner Job.
+          if grep -Eq '^(renderer|process|interaction|workstation|resilience|product_layout)=true$' "$GITHUB_OUTPUT"; then
+            echo 'browser=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'browser=false' >> "$GITHUB_OUTPUT"
+          fi
+          if grep -Eq '^(history|persistence)=true$' "$GITHUB_OUTPUT"; then
+            echo 'history_required=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'history_required=false' >> "$GITHUB_OUTPUT"
+          fi
+  browser:
+    needs: impact
+    if: ${{ needs.impact.outputs.browser == 'true' }}
+    uses: ./.github/workflows/browser-regression.yml
+    with:
+      skip_node_gate: true
+    permissions:
+      contents: read
+
+  main-mask:
+    needs: impact
+    if: ${{ needs.impact.outputs.main_mask == 'true' }}
+    uses: ./.github/workflows/ui-v2-main-mask.yml
+    permissions:
+      contents: read
+
+  recipe:
+    needs: impact
+    if: ${{ needs.impact.outputs.recipe == 'true' }}
+    uses: ./.github/workflows/process-recipe-safety.yml
+    with:
+      skip_shared_node_gate: true
+    permissions:
+      contents: read
+
+  klayout:
+    needs: impact
+    if: ${{ needs.impact.outputs.klayout == 'true' }}
+    uses: ./.github/workflows/klayout-compat.yml
+    with:
+      scope: core
+    permissions:
+      contents: read
+
+  history-recovery:
+    needs: impact
+    if: ${{ needs.impact.outputs.history == 'true' }}
+    uses: ./.github/workflows/v2-history-recovery-lease.yml
+    permissions:
+      contents: read
+
+  verdict:
+    name: Ready impact verdict
+    if: ${{ always() && !github.event.pull_request.draft }}
+    needs: [impact, browser, main-mask, recipe, klayout, history-recovery]
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Require every selected owner gate
+        env:
+          PLAN: ${{ needs.impact.result }}
+          BROWSER_SELECTED: ${{ needs.impact.outputs.browser }}
+          BROWSER_RESULT: ${{ needs.browser.result }}
+          MAIN_MASK_SELECTED: ${{ needs.impact.outputs.main_mask }}
+          MAIN_MASK_RESULT: ${{ needs.main-mask.result }}
+          RECIPE_SELECTED: ${{ needs.impact.outputs.recipe }}
+          RECIPE_RESULT: ${{ needs.recipe.result }}
+          KLAYOUT_SELECTED: ${{ needs.impact.outputs.klayout }}
+          KLAYOUT_RESULT: ${{ needs.klayout.result }}
+          HISTORY_SELECTED: ${{ needs.impact.outputs.history }}
+          HISTORY_RESULT: ${{ needs.history-recovery.result }}
+        shell: bash
+        run: |
+          test "$PLAN" = success
+          for type in BROWSER MAIN_MASK RECIPE KLAYOUT HISTORY; do
+            selected="${type}_SELECTED"
+            result="${type}_RESULT"
+            if [[ "${!selected}" == true ]]; then
+              test "${!result}" = success || { echo "::error::${type} selected but result=${!result}"; exit 1; }
+            else
+              test "${!result}" = skipped || { echo "::error::Unexpected ${type} result=${!result}"; exit 1; }
+            fi
+          done
+          echo 'All selected Ready owner gates passed on the PR merge tree.'

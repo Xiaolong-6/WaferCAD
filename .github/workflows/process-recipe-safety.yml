@@ -7,27 +7,6 @@ on:
         required: false
         type: boolean
         default: false
-  push:
-    branches:
-      - fix/process-recipe-safety-r1-r7
-      - feat/process-recipe-v1
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-    paths:
-      - "site/process-recipe.js"
-      - "site/model.js"
-      - "site/process-numerical-contract.js"
-      - "site/process-face-execution.js"
-      - "site/process-worker.js"
-      - "site/controllers/process-task-controller.js"
-      - "site/controllers/process-panel-controller.js"
-      - "site/process-recipe-preflight.js"
-      - "site/controllers/process-recipe-controller.js"
-      - "site/tests/process-recipe-preflight.test.mjs"
-      - "scripts/process-recipe-safety-regression.mjs"
-      - "scripts/process-transaction-ui-regression.mjs"
-      - ".github/workflows/process-recipe-safety.yml"
-
 permissions:
   contents: read
 

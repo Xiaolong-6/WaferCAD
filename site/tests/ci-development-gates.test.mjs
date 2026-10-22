@@ -7,60 +7,97 @@ function workflow(name) {
   return readFileSync(new URL('../../.github/workflows/' + name, import.meta.url), 'utf8');
 }
 
-test('Quality runs from matching local proof or real scoped CI fallback, never neither', () => {
+test('PR Quality is proof-only while nightly executes real full checks', () => {
   const quality = workflow('quality.yml');
-  assert.match(quality, /name: Quality/);
   assert.match(quality, /branches: \[main\]/);
   assert.match(quality, /id: evidence\n        continue-on-error: true/);
-  assert.match(quality, /run: node scripts\/local-verification\.mjs verify "\$QUALITY_SCOPE"/);
+  assert.match(quality, /node scripts\/local-verification\.mjs verify "\$QUALITY_SCOPE"/);
   assert.match(
     quality,
     /name: Require full local Quality evidence[\s\S]*?run: node scripts\/local-verification\.mjs verify full/,
   );
+  assert.match(quality, /name: Reject missing or stale PR proof before remote tests[\s\S]*?exit 1/);
   assert.match(
     quality,
     /name: Install locked dependencies only for missing or stale evidence[\s\S]*?run: npm ci --ignore-scripts --no-audit --no-fund/,
   );
   assert.match(
     quality,
-    /name: Execute Draft Quality fallback[\s\S]*?npm run lint[\s\S]*?npm run format:check[\s\S]*?npm run docs:check[\s\S]*?node --test site\/tests\/ci-test-plan\.test\.mjs/,
-  );
-  assert.match(
-    quality,
     /name: Final lint, formatting, generated documentation and Node tests[\s\S]*?run: npm run check/,
   );
-
-  const matchCondition = (step) =>
-    quality.match(new RegExp('name: ' + step + '\\n        if: \\$\\{\\{ (.+) \\}\\}'))?.[1];
-  const condition = (step, evidence, draft) => {
+  const matchCondition = (step) => {
+    const firstLine = quality.split(`name: ${step}\n`)[1]?.split('\n')[0];
+    return firstLine?.trim().match(/^if: \$\{\{ (.+) \}\}$/)?.[1];
+  };
+  const condition = (step, event, evidence, draft) => {
     const expr = matchCondition(step);
     assert.ok(expr, 'missing guarded step: ' + step);
     return runInNewContext(expr, {
       steps: { evidence: { outcome: evidence } },
-      github: { event_name: 'pull_request', event: { pull_request: { draft } } },
+      github: { event_name: event, event: { pull_request: { draft } } },
       cancelled: () => false,
     });
   };
   for (const draft of [true, false]) {
     assert.equal(
-      condition('Install locked dependencies only for missing or stale evidence', 'success', draft),
-      false,
-    );
-    assert.equal(
-      condition('Install locked dependencies only for missing or stale evidence', 'failure', draft),
+      condition(
+        'Reject missing or stale PR proof before remote tests',
+        'pull_request',
+        'failure',
+        draft,
+      ),
       true,
     );
-    assert.equal(condition('Require full local Quality evidence', 'success', draft), !draft);
-    assert.equal(condition('Require full local Quality evidence', 'failure', draft), false);
-    assert.equal(condition('Execute Draft Quality fallback', 'failure', draft), draft);
     assert.equal(
-      condition('Final lint, formatting, generated documentation and Node tests', 'failure', draft),
+      condition(
+        'Reject missing or stale PR proof before remote tests',
+        'pull_request',
+        'success',
+        draft,
+      ),
+      false,
+    );
+    assert.equal(
+      condition(
+        'Install locked dependencies only for missing or stale evidence',
+        'pull_request',
+        'failure',
+        draft,
+      ),
+      false,
+    );
+    assert.equal(
+      condition(
+        'Final lint, formatting, generated documentation and Node tests',
+        'pull_request',
+        'failure',
+        draft,
+      ),
+      false,
+    );
+    assert.equal(
+      condition('Require full local Quality evidence', 'pull_request', 'success', draft),
       !draft,
     );
-    assert.equal(condition('Execute Draft Quality fallback', 'success', draft), false);
+  }
+  for (const event of ['schedule', 'workflow_dispatch']) {
     assert.equal(
-      condition('Final lint, formatting, generated documentation and Node tests', 'success', draft),
-      false,
+      condition(
+        'Install locked dependencies only for missing or stale evidence',
+        event,
+        'success',
+        false,
+      ),
+      true,
+    );
+    assert.equal(
+      condition(
+        'Final lint, formatting, generated documentation and Node tests',
+        event,
+        'success',
+        false,
+      ),
+      true,
     );
   }
   const release = workflow('pages.yml')
@@ -182,7 +219,7 @@ test('visual evidence is explicitly unreviewed, never a merge gate', () => {
   assert.match(source, /workflow_dispatch:/);
 });
 
-test('heavy PR scopes ignore documentation tests and isolated screenshot collection', () => {
+test('heavy owners have no automatic PR trigger, and release call remains available', () => {
   const retiredD1 = new URL('../../.github/workflows/ui-v2-d1.yml', import.meta.url);
   assert.equal(existsSync(retiredD1), false);
   for (const name of [
@@ -190,19 +227,22 @@ test('heavy PR scopes ignore documentation tests and isolated screenshot collect
     'ui-v2-main-mask.yml',
     'example-recipe-reconstruction.yml',
     'native-fig3-full-replay.yml',
+    'browser-regression.yml',
   ]) {
-    const source = workflow(name).replaceAll('"', "'");
-    assert.ok(source.includes("      - '!site/tests/**'"));
-    assert.ok(source.includes("      - 'site/**'"));
+    const source = workflow(name);
+    assert.doesNotMatch(source, /^  pull_request:/m);
   }
-  for (const name of ['ui-v2-stage-c-m4.yml', 'ui-v2-main-mask.yml', 'ui-v2-three.yml']) {
-    const source = workflow(name).replaceAll('"', "'");
-    assert.ok(source.includes("      - '!scripts/v2/capture-visual-first.mjs'"));
-  }
+  for (const name of [
+    'ui-v2-stage-c-m4.yml',
+    'ui-v2-main-mask.yml',
+    'example-recipe-reconstruction.yml',
+    'browser-regression.yml',
+  ])
+    assert.match(workflow(name), /^  workflow_call:/m);
   const browser = workflow('browser-regression.yml');
-  assert.ok(browser.includes('      - "!examples/**/README.md"'));
   assert.ok(browser.includes('--base=${{ github.event.pull_request.base.sha }}'));
   assert.ok(browser.includes('--head=${{ github.event.pull_request.head.sha }}'));
+  assert.match(browser, /force_full:/);
 });
 
 test('documentation contracts have one automatic local Quality owner', () => {

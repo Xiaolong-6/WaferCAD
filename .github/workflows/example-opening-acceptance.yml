@@ -1,15 +1,6 @@
 name: Example opening acceptance
 
 on:
-  pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened, ready_for_review]
-    paths:
-      - "site/welcome.js"
-      - "site/example-asset.js"
-      - "site/controllers/project-controller.js"
-      - "scripts/example-open-benchmark.mjs"
-      - ".github/workflows/example-opening-acceptance.yml"
   workflow_dispatch:
 
 permissions:

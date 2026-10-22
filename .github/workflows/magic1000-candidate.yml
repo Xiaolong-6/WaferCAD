@@ -1,16 +1,6 @@
 name: MAGIC-1000 v2 visual acceptance
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'site/bundled-examples.js'
-      - 'site/examples/previews/magic-1000-mos2-beol.wafercad'
-      - 'site/ui-v2/three-view.js'
-      - 'site/ui-v2/section-view.js'
-      - 'site/ui-v2/workstation-preview.css'
-      - 'scripts/magic1000-visual-acceptance.mjs'
-      - '.github/workflows/magic1000-candidate.yml'
   workflow_dispatch:
 
 concurrency:

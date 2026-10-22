@@ -1,22 +1,6 @@
 name: UI v2 empty canvas focused acceptance
 
 on:
-  pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened]
-    paths:
-      - 'site/ui-v2/view-kit/empty-state.js'
-      - 'site/ui-v2/view-kit/plan-stage.css'
-      - 'site/ui-v2/main-view.js'
-      - 'site/ui-v2/mask-view.js'
-      - 'site/ui-v2/desktop-shell.css'
-      - 'site/ui-v2/tokens.css'
-      - 'site/model.js'
-      - 'site/plan-grid.js'
-      - 'site/plan-renderers.js'
-      - 'site/tests/function-panel-feedback.test.mjs'
-      - 'scripts/v2/check-empty-canvas-hints.mjs'
-      - '.github/workflows/ui-v2-empty-canvas.yml'
   workflow_dispatch:
 
 permissions:
