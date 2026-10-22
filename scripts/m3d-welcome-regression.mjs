@@ -17,6 +17,7 @@ try {
   let previewCapture = null;
   let previewCaptureTask = null;
   let previewInteraction = null;
+  let previewBackside = null;
   // Capture the REAL native canvas when the first approximate WebGL frame
   // commits; waiting until exact ready would erase the evidence we need.
   await page.exposeFunction('__wafercadCaptureM3DPreview', () => {
@@ -107,6 +108,60 @@ try {
           frameSerialBefore: phase.frameSerial,
           fidelity: 'approximate',
         };
+        // Verify the actual WebGL renderer can show the opposite cap normal,
+        // not merely that OrbitControls moved the camera. Move upward through
+        // the equator while the authoritative Worker remains in flight.
+        let flipped = false;
+        for (let attempt = 0; attempt < 2 && !flipped; attempt++) {
+          const nextBounds = await page.locator('#threeHost canvas').boundingBox();
+          assert.ok(nextBounds, 'Preview canvas must survive camera rotation');
+          const centerX = nextBounds.x + nextBounds.width / 2;
+          await page.mouse.move(centerX, nextBounds.y + nextBounds.height * 0.85);
+          await page.mouse.down();
+          await page.mouse.move(centerX, nextBounds.y + nextBounds.height * 0.12, {
+            steps: 8,
+          });
+          await page.mouse.up();
+          flipped = await page.evaluate(() => {
+            const d = document.getElementById('threeHost')?.dataset;
+            return (
+              d?.renderFidelity === 'approximate' &&
+              d.rendererProgressiveFacingNormal === '-1'
+            );
+          });
+        }
+        assert.ok(
+          flipped,
+          'Worker preview must remain visible from the opposite cap normal',
+        );
+        await page.waitForFunction(
+          (serial) => {
+            const d = document.getElementById('threeHost')?.dataset;
+            return (
+              d?.renderFidelity === 'approximate' &&
+              d.rendererProgressiveFacingNormal === '-1' &&
+              Number(d.rendererFrameSerial || 0) > serial
+            );
+          },
+          phase.frameSerial,
+          { timeout: 5000 },
+        );
+        previewBackside = await page.evaluate(() => {
+          const host = document.getElementById('threeHost');
+          const camera = window.WaferCadV2Workstation.snapshot().threeCamera;
+          return {
+            facingNormal: host?.dataset.rendererProgressiveFacingNormal,
+            fidelity: host?.dataset.renderFidelity,
+            state: host?.dataset.renderState,
+            frameSerial: Number(host?.dataset.rendererFrameSerial),
+            cameraBelowTarget: camera.position[2] < camera.target[2],
+          };
+        });
+        assert.equal(previewBackside.cameraBelowTarget, true);
+        await page.screenshot({
+          path: 'test-results/m3d/welcome/m3d-progressive-backside.png',
+          animations: 'disabled',
+        });
       } catch (error) {
         // The exact application acceptance must still run even if diagnostic
         // screenshot capture is blocked by a browser or compositor issue.
@@ -224,6 +279,7 @@ try {
     ...firstFrame,
     capturedPreview: previewCapture,
     previewInteraction,
+    previewBackside,
     source: 'real Chromium WaferCAD Workstation M3D Welcome',
     scope: 'same loaded model; not a cold baseline A/B or peak-memory measurement',
   };
@@ -237,6 +293,7 @@ try {
     previewInteraction?.realPointerOrbitDuringWorker,
     'Preview input must remain responsive',
   );
+  assert.equal(previewBackside?.facingNormal, '-1', 'Backside preview not verified');
   const border = page.locator('#threePanel [data-action="borders:three"]');
   await border.waitFor({ state: 'visible' });
   assert.equal(await border.getAttribute('aria-label'), 'Borders');
