@@ -6,8 +6,6 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { launchBrowser, newUiPage, waitForPaint, canvasInkFraction } from '../test-helpers/ui.mjs';
-import { selectScientificView } from './desktop-view-selector.mjs';
 
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4173';
 const output = resolve('test-results/literature-figure-cuts/native-v2-nine-family');
@@ -60,6 +58,9 @@ async function run() {
     cases: [],
   };
   await mkdir(output, { recursive: true });
+  const { launchBrowser, newUiPage, waitForPaint, canvasInkFraction } =
+    await import('../test-helpers/ui.mjs');
+  const { selectScientificView } = await import('./desktop-view-selector.mjs');
   const browser = await launchBrowser();
   try {
     for (const item of selected) {
