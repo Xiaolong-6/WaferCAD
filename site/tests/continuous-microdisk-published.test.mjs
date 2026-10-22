@@ -127,6 +127,21 @@ test('published M08/M09 Bookmarks, process nodes, branch head, Recipe and Export
     assert.deepEqual(snapshot.state.processRecipe, node.state.processRecipe);
   }
   assert.deepEqual(released.snapshotBranches.branches[0].headState.model, released.model);
+  // A trailing record-only Step must not retain the legacy 9th physical
+  // revision: History HEAD sync rejects it, preventing any Step navigation.
+  const releaseNode = nodes.get('process-microdisk-08');
+  const recordNode = nodes.get('process-microdisk-09');
+  assert.equal(releaseNode.processRevision, released.model.processRevision);
+  assert.equal(recordNode.processRevision, released.model.processRevision);
+  assert.equal(recordNode.processRevision, recordNode.state.model.processRevision);
+  const { createSnapshotManager } = await import('../workspace-snapshots.js');
+  const headState = released.snapshotBranches.branches[0].headState;
+  const manager = createSnapshotManager({
+    capture: () => structuredClone(headState),
+    restore: () => {},
+  });
+  assert.equal(manager.importRecords(released.snapshots, released.snapshotBranches), 9);
+  assert.equal(manager.syncActiveHeadState(), true, 'Published HEAD must allow safe navigation');
   assert.deepEqual(
     released.snapshotBranches.branches[0].headState.processRecipe,
     released.processRecipe,
