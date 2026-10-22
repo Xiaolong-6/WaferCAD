@@ -16,11 +16,12 @@ export function clipContinuousSurfaceToRect(part, bounds) {
     [1, minY, true],
     [1, maxY, false],
   ];
-  for (let start = 0; start < part.positions.length; start += 9) {
+  const p = part.positions,
+    n = part.normals;
+  for (let start = 0; start < p.length; start += 9) {
     // Most full-wafer triangles lie completely outside a small inspection
     // rectangle. Reject them before allocating vertices or clipping planes.
     // A strict inequality retains triangles touching a ROI cut plane.
-    const p = part.positions;
     const ax = p[start],
       bx = p[start + 3],
       cx = p[start + 6];
@@ -38,12 +39,12 @@ export function clipContinuousSurfaceToRect(part, bounds) {
     for (let i = 0; i < 3; i++) {
       const k = start + i * 3;
       polygon.push([
-        part.positions[k],
-        part.positions[k + 1],
-        part.positions[k + 2],
-        part.normals[k],
-        part.normals[k + 1],
-        part.normals[k + 2],
+        p[k],
+        p[k + 1],
+        p[k + 2],
+        n[k],
+        n[k + 1],
+        n[k + 2],
       ]);
     }
     for (const [axis, limit, lower] of planes) {
