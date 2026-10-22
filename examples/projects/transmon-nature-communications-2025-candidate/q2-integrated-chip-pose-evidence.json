@@ -95,7 +95,35 @@
       "section3dVisualAccepted": false
     },
     "exactMergedBranchFullQuality": false,
-    "scientificallyCompleteJosephsonJunction": false
+    "scientificallyCompleteJosephsonJunction": false,
+    "localTargetedCommand": "node --test site/tests/gds-smoke.test.mjs site/tests/report-section-svg.test.mjs site/tests/project-geometry-storage.test.mjs site/tests/process-history-project.test.mjs",
+    "localTargetedResult": {
+      "passed": 22,
+      "failed": 0,
+      "source": "source-only artifact, not exact current branch HEAD"
+    },
+    "nativeSectionAnd3DSolidData": {
+      "lineAUm": [
+        -5.511650303975799,
+        -1.6099365646917906e-7
+      ],
+      "lineBUm": [
+        -4.511650303975799,
+        -1.6099365646917906e-7
+      ],
+      "physicalSectionSliceCount": 7,
+      "junctionMaterialSectionSliceCount": 4,
+      "matching3DSlabZIntervals": "4/4",
+      "visualSectionThreeParity": "not accepted; data-level only"
+    },
+    "actualChromiumCapture": {
+      "method": "scripts/offline-native-app-capture.py headed Chromium+SwiftShader",
+      "origin": "null-origin fallback",
+      "nativeThreeRendered": true,
+      "pageErrors": 0,
+      "nanofilmVisuallyResolved": false,
+      "fullWorkstationOpen": false
+    }
   },
   "assumptionsAndMissing": [
     "Wafer-angle azimuth axes have not been independently matched to paper evaporator geometry",

@@ -6,6 +6,7 @@ import { replayQ2ChipPose } from '../../scripts/transmon-q2-integrated-diagnosti
 import { expandProjectStorage } from '../project-io.js';
 import { validateProjectFile } from '../project-schema.js';
 import { pointInMulti } from '../vector-geometry.js';
+import { materialSolids, sectionSlices } from '../model-view-geometry.js';
 
 test('Q2 actual chip2 pose + Nb/Si recess + three static Al shadows share one recoverable model', {
   skip: !process.env.WAFERCAD_TRANSMON_GDS,
@@ -60,4 +61,36 @@ test('illustrative tunnel spacer remains opt-in, not a fabricated material by de
   expandProjectStorage(restored);
   validateProjectFile(restored);
   assert.equal(restored.model.layers.some((l) => /AlOx/.test(l.name)), false);
+});
+
+
+test('Q2 cross-section material interfaces match the native 3D solid slab Z ownership', {
+  skip: !process.env.WAFERCAD_TRANSMON_GDS,
+}, async () => {
+  const source = await readFile(process.env.WAFERCAD_TRANSMON_GDS);
+  const { project } = replayQ2ChipPose(source, {
+    oxide: { thicknessUm: 0.002, source: 'Illustrative geometry, not measured AlOx' },
+  });
+  const restored = JSON.parse(project);
+  expandProjectStorage(restored);
+  validateProjectFile(restored);
+  const slices = sectionSlices(
+    restored.model,
+    restored.section.a,
+    restored.section.b,
+  ).filter((slice) => slice.layerId !== 'base');
+  assert.equal(slices.length, 4);
+  const solids = materialSolids(restored.model);
+  for (const section of slices) {
+    const solid = solids.find((item) => item.layerId === section.layerId);
+    assert.ok(solid, '3D material layer missing for ' + section.layerId);
+    assert.ok(
+      solid.slabs.some((slab) =>
+        Math.abs(slab.z0 - section.z0) < 1e-8 &&
+        Math.abs(slab.z1 - section.z1) < 1e-8,
+      ),
+      '3D physical Z slab mismatch for ' + section.layerId,
+    );
+  }
+  assert.ok(Math.abs((slices[0].t1 - slices[0].t0) - 0.2540003) < 1e-4);
 });
