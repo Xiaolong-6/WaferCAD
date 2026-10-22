@@ -8,6 +8,7 @@ async ({
   zDisplayFactor = 1,
   roughReliefFactor = 1,
   quality = false,
+  inspectionOpacity = 1,
 }) => {
   const [{ createThreeView }, { buildRenderSurfacePlan, rememberRenderSurfacePlan }] =
     await Promise.all([
@@ -84,7 +85,7 @@ async ({
     getZCollapse: () => collapse,
     getZDisplayFactor: () => zDisplayFactor,
     getRoughReliefFactor: () => roughReliefFactor,
-    getInspection: () => ({ opacity: 1, borders: true, fast: !quality }),
+    getInspection: () => ({ opacity: inspectionOpacity, borders: true, fast: !quality }),
   });
   const initialized = await renderer.init();
   // init() already schedules a full native scene build; another render()
@@ -97,6 +98,7 @@ async ({
     zDisplayFactor,
     roughReliefFactor,
     renderQuality: quality ? 'Quality' : 'Fast',
+    inspectionOpacity,
     roughCaps: plan.caps.filter((cap) => cap.appearance?.kind === 'rough').length,
     exposedRoughCaps: plan.caps.filter((cap) => !cap.buried && cap.appearance?.kind === 'rough')
       .length,
