@@ -76,10 +76,9 @@ test('already aborted render never allocates a Worker', async () => {
   await withWorker(StubWorker, async () => {
     const controller = new AbortController();
     controller.abort();
-    await assert.rejects(
-      buildContinuousSiHeightfieldMeshAsync({}, { signal: controller.signal }),
-      { name: 'AbortError' },
-    );
+    await assert.rejects(buildContinuousSiHeightfieldMeshAsync({}, { signal: controller.signal }), {
+      name: 'AbortError',
+    });
     assert.equal(instances.length, 0);
   });
 });
@@ -93,6 +92,9 @@ test('worker error and invalid geometry reject without committing a stale scene'
     const invalid = buildContinuousSiHeightfieldMeshAsync({});
     instances.at(-1).finish({ ...triangle, normals: new Float32Array(2) });
     await assert.rejects(invalid, /invalid mesh/);
-    assert.equal(instances.every((w) => w.terminated), true);
+    assert.equal(
+      instances.every((w) => w.terminated),
+      true,
+    );
   });
 });
