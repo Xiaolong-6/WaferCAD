@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { runTemporaryRendererCapture } from '../renderer-capture-transaction.js';
+import {
+  assertExactThreePngReady,
+  runTemporaryRendererCapture,
+} from '../renderer-capture-transaction.js';
 
 function setup({ failure = null } = {}) {
   const calls = [];
@@ -124,4 +127,49 @@ test('failed rough restoration still schedules main view redraw', async () => {
   assert.equal(h.mainRenderer.ratio, 1.25);
   assert.equal(h.camera.aspect, 1.4);
   assert.equal(h.calls.at(-1), 'frame');
+});
+
+test('PNG export cannot publish approximate, pending, superseded or unpainted geometry', () => {
+  const exact = ['exact-surface-plan', 'exact-physical-facet', 'exact-continuous-etch'];
+  for (const fidelity of exact) {
+    assert.doesNotThrow(() =>
+      assertExactThreePngReady({ fidelity, renderState: 'ready', exactFirstFrameMs: '12.5' }),
+    );
+    for (const renderState of ['building', 'refining', 'error', 'updating']) {
+      assert.throws(
+        () => assertExactThreePngReady({ fidelity, renderState, exactFirstFrameMs: '12.5' }),
+        /painted exact 3D frame/,
+      );
+    }
+    assert.throws(
+      () => assertExactThreePngReady({ fidelity, renderState: 'ready', exactFirstFrameMs: '' }),
+      /painted exact 3D frame/,
+    );
+  }
+  for (const fidelity of ['approximate', 'pending-exact', 'pending-continuous-etch', undefined]) {
+    assert.throws(
+      () => assertExactThreePngReady({ fidelity, renderState: 'ready', exactFirstFrameMs: '12.5' }),
+      /painted exact 3D frame/,
+    );
+  }
+});
+
+test('scene becoming approximate during PNG preparation refuses capture and restores GL', async () => {
+  const h = setup();
+  let fidelity = 'exact-surface-plan';
+  h.options.prepareScene = async () => {
+    h.calls.push('prepare');
+    fidelity = 'approximate';
+  };
+  h.options.capture = async () => {
+    assertExactThreePngReady({ fidelity, renderState: 'refining', exactFirstFrameMs: '1' });
+    h.calls.push('capture');
+    return 'not-allowed';
+  };
+  await assert.rejects(runTemporaryRendererCapture(h.options), /painted exact 3D frame/);
+  assert.equal(h.calls.includes('capture'), false);
+  assert.equal(h.calls.includes('dispose'), true);
+  assert.equal(h.calls.includes('restore-rough'), true);
+  assert.equal(h.mainRenderer.ratio, 1.25);
+  assert.equal(h.camera.aspect, 1.4);
 });

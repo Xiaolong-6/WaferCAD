@@ -215,3 +215,60 @@ test('worker chunks only publish to the cache at complete stream-done', async ()
     globalThis.Worker = original;
   }
 });
+
+test('optional worker sketch is delivered before exact ownership without caching it', async () => {
+  const original = globalThis.Worker;
+  const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 2 });
+  model.layers.push(...Array.from({ length: 5 }, (_, i) => ({ id: `preview-${i}` })));
+  let worker;
+  let requested;
+  globalThis.Worker = class {
+    constructor() {
+      worker = this;
+    }
+    postMessage(data) {
+      requested = data;
+    }
+    terminate() {
+      this.terminated = true;
+    }
+  };
+  try {
+    const sketch = {
+      kind: 'approximate-caps-preview',
+      caps: [],
+      borderPositions: new Float32Array(0),
+      lineCount: 0,
+    };
+    const exact = largeSurfacePlan();
+    const published = [];
+    const pending = buildRenderSurfacePlanAsync(model, null, {
+      onPreview: (preview) => published.push(preview),
+    });
+    assert.equal(requested.preview, true);
+    worker.onmessage({ data: { id: 1, type: 'preview', preview: sketch } });
+    assert.deepEqual(published, [sketch]);
+    assert.equal(cachedRenderSurfacePlan(model), null);
+    worker.onmessage({ data: { id: 1, type: 'done', plan: exact } });
+    assert.deepEqual(await pending, exact);
+    assert.equal(worker.terminated, true);
+    assert.deepEqual(cachedRenderSurfacePlan(model), exact);
+
+    const fresh = createModel({ shape: 'rect', width: 21, height: 21, thickness: 2 });
+    fresh.layers.push(...Array.from({ length: 5 }, (_, i) => ({ id: `cancel-${i}` })));
+    const controller = new AbortController();
+    let lateSketchCount = 0;
+    const cancelled = buildRenderSurfacePlanAsync(fresh, null, {
+      signal: controller.signal,
+      onPreview: () => lateSketchCount++,
+    });
+    controller.abort();
+    await assert.rejects(cancelled, { name: 'AbortError' });
+    worker.onmessage({ data: { id: 1, type: 'preview', preview: sketch } });
+    worker.onmessage({ data: { id: 1, type: 'done', plan: exact } });
+    assert.equal(lateSketchCount, 0);
+    assert.equal(cachedRenderSurfacePlan(fresh), null);
+  } finally {
+    globalThis.Worker = original;
+  }
+});
