@@ -861,9 +861,30 @@ export function createProcessRecipeController({
         bindSelect('Profile', 'profile', [
           { value: 'directional', label: 'Directional' },
           { value: 'isotropic', label: 'Isotropic' },
+          { value: 'continuous', label: 'Continuous release · experimental' },
           { value: 'planarize', label: 'Planarize' },
           { value: 'undercut', label: 'Undercut' },
         ]);
+        if (p.profile === 'continuous') {
+          const shapeSelect = selectInput(
+            [
+              { value: 'circular', label: 'Circular arc · equal XY/Z' },
+              { value: 'elliptical', label: 'Elliptical arc · independent XY/Z' },
+              { value: 'vertical', label: 'Vertical wall' },
+            ],
+            p.continuousShape,
+          );
+          attachCommit(shapeSelect, () =>
+            updateStep(step.id, (target) => {
+              target.params.continuousShape = shapeSelect.value;
+              if (shapeSelect.value === 'circular')
+                target.params.continuousLateralUm = target.params.thicknessUm;
+            }),
+          );
+          grid.append(field('Release front', shapeSelect));
+          if (p.continuousShape !== 'circular')
+            bindLength('Lateral reach', 'continuousLateralUm', p.continuousLateralUm);
+        }
         if (p.profile === 'directional') {
           const appearance = p.surface && p.surface !== 'smooth' ? p.surface : null,
             surfaceMode = appearance
@@ -1395,6 +1416,10 @@ export function createProcessRecipeController({
       } else if (step.command === 'etch') {
         $('operationType').value = 'etch';
         $('etchProfile').value = p.profile || 'directional';
+        if (p.profile === 'continuous') {
+          $('continuousShape').value = p.continuousShape;
+          $('continuousLateral').value = formatCanonicalLengthInput(p.continuousLateralUm);
+        }
         setThickness(p.thicknessUm);
         updateOperationUI();
         if (p.profile !== 'planarize') {
@@ -1448,6 +1473,7 @@ export function createProcessRecipeController({
     }
 
     const before = Number(getModel()?.processRevision || 0);
+    const priorHistoryPosition = snapshotManager?.currentPosition?.();
     await processPanelController.applyOperation({
       canonicalLengthUm: p.thicknessUm ?? p.depthUm ?? null,
       canonicalImplantStartDepthUm: step.command === 'implant' ? (p.startDepthUm ?? 0) : null,
@@ -1471,7 +1497,24 @@ export function createProcessRecipeController({
         step.command === 'etch' && p.face === 'both' && p.target ? bothMaterialId(p.target) : null,
     });
     const after = Number(getModel()?.processRevision || 0);
-    if (after <= before) throw new Error('The Process step did not commit a model revision.');
+    if (step.command === 'record' && getModel()?.kernel === 'vector-continuous-etch-v1') {
+      // A metadata-only record after an exact Continuous Etch must commit a
+      // History node WITHOUT changing its immutable physical source revision.
+      // Verify an actual History transaction, not just the unchanged model.
+      const position = snapshotManager?.currentPosition?.();
+      const node = snapshotManager?.listHistory?.().find((item) => item.id === position?.nodeId);
+      if (
+        after !== before ||
+        !position?.atHead ||
+        position.nodeId === priorHistoryPosition?.nodeId ||
+        node?.operation?.kind !== 'record' ||
+        node.processRevision !== after
+      ) {
+        throw new Error('The Record step did not commit a consistent History node.');
+      }
+    } else if (after <= before) {
+      throw new Error('The Process step did not commit a model revision.');
+    }
     return true;
   }
 
@@ -1693,6 +1736,12 @@ export function createProcessRecipeController({
           target: targetName,
           [p.etchProfile === 'planarize' ? 'targetZ' : 'depth']: Number(p.targetZ ?? p.thickness),
           profile: p.etchProfile || 'directional',
+          ...(p.etchProfile === 'continuous'
+            ? {
+                shape: p.continuousShape || 'circular',
+                lateral: p.continuousLateralUm ?? Number(p.thickness),
+              }
+            : {}),
           surface: p.surface || 'smooth',
           ...(p.faceSurfaces ? { faceSurfaces: clone(p.faceSurfaces) } : {}),
           ...common,

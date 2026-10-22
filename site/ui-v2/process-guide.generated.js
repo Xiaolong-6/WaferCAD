@@ -115,6 +115,17 @@
       'geometry',
     ),
     guide(
+      'etch-continuous',
+      'Etch',
+      'Continuous release · experimental',
+      'Subtracts material with an analytic circular, elliptical or vertical release front.',
+      'Uses one exact physical material owner derived from exposed selected material and the active mask. No Z band count or stepped surrogate is saved.',
+      'Exposed target · Vertical depth · Lateral reach · Front shape · Face · Area',
+      'One release per lineage; additional physical Process operations and non-rectangular 3D ROI shapes are not yet supported. Rectangular Main ROI inspection, Main material projection, and exact Recipe Run All replay are available in the experimental mode.',
+      'Suspended silica microdisk with an exact silicon undercut.',
+      'geometry',
+    ),
+    guide(
       'etch-undercut',
       'Etch',
       'Undercut release',
@@ -244,6 +255,7 @@
     }
     if (type === 'grow') return growth === 'conformal' ? 'extend-conformal' : 'extend-directional';
     if (type === 'etch') {
+      if (profile === 'continuous') return 'etch-continuous';
       if (profile === 'isotropic') return 'etch-isotropic';
       if (profile === 'undercut') return 'etch-undercut';
       if (profile === 'planarize') return 'etch-planarize';
@@ -315,7 +327,7 @@
           ? deposited(6, 46, 208, 11)
           : deposited(6, 20, 78, 37) + deposited(84, 36, 66, 21) + deposited(150, 46, 64, 11);
         shape += '<path d="M6 46H214" stroke="#ce913f" stroke-dasharray="5 4"/>';
-      } else if (id === 'etch-isotropic') {
+      } else if (id === 'etch-isotropic' || id === 'etch-continuous') {
         shape += deposited(6, 46, 82, 11, green) + deposited(132, 46, 82, 11, green);
         if (after)
           shape +=

@@ -215,7 +215,9 @@ function normalizeStep(command, input, index = 0) {
     delete params.target;
   } else if (command === 'etch') {
     params.profile = cleanText(params.profile, 'directional').toLowerCase();
-    if (!['directional', 'isotropic', 'planarize', 'undercut'].includes(params.profile)) {
+    if (
+      !['directional', 'isotropic', 'planarize', 'undercut', 'continuous'].includes(params.profile)
+    ) {
       throw new Error(`Unsupported etch profile "${params.profile}".`);
     }
     const lengthKey = params.profile === 'planarize' ? 'targetZ' : 'depth';
@@ -230,11 +232,42 @@ function normalizeStep(command, input, index = 0) {
       if (thicknessError) throw new Error(thicknessError);
     }
     params.target = cleanText(params.target);
-    if (['isotropic', 'undercut'].includes(params.profile) && !params.target) {
+    if (['isotropic', 'undercut', 'continuous'].includes(params.profile) && !params.target) {
       throw new Error(`etch.target is required for ${params.profile}.`);
     }
     params.area = normalizeArea(params.area);
     params.face = normalizeProcessFace(params.face);
+    if (params.profile === 'continuous') {
+      if (params.face === 'both') throw new Error('Continuous Etch requires Front or Back.');
+      params.continuousShape = cleanText(
+        params.continuousShape ?? params.shape,
+        'circular',
+      ).toLowerCase();
+      if (!['circular', 'elliptical', 'vertical'].includes(params.continuousShape)) {
+        throw new Error('etch.shape must be circular, elliptical or vertical.');
+      }
+      const lateral = params.continuousLateralUm ?? params.lateral;
+      params.continuousLateralUm =
+        lateral == null
+          ? params.continuousShape === 'circular'
+            ? params.thicknessUm
+            : NaN
+          : recipeLengthUm(lateral, 'etch.lateral');
+      if (!(params.continuousLateralUm > 0))
+        throw new Error('etch.lateral must be positive for continuous release.');
+      if (
+        params.continuousShape === 'circular' &&
+        params.continuousLateralUm !== params.thicknessUm
+      )
+        throw new Error('Circular Continuous Etch requires equal lateral reach and depth.');
+      delete params.shape;
+      delete params.lateral;
+    } else {
+      delete params.continuousShape;
+      delete params.continuousLateralUm;
+      delete params.shape;
+      delete params.lateral;
+    }
     params.surface =
       params.profile === 'directional'
         ? normalizeEtchSurface(params.surface, params.thicknessUm)
@@ -675,6 +708,11 @@ export function serializeProcessRecipe(recipeValue) {
         add('target', p.target);
         add(p.profile === 'planarize' ? 'targetZ' : 'depth', displayLength(p.thicknessUm));
         add('profile', p.profile);
+        if (p.profile === 'continuous') {
+          add('shape', p.continuousShape);
+          if (p.continuousShape !== 'circular')
+            add('lateral', displayLength(p.continuousLateralUm));
+        }
         if (p.surface && p.surface !== 'smooth') add('surface', JSON.stringify(p.surface), true);
         if (p.faceSurfaces) add('faceSurfaces', JSON.stringify(p.faceSurfaces), true);
       } else if (step.command === 'liftoff') {

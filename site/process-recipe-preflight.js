@@ -120,9 +120,18 @@ export function validateRecipeExecution(
     ? new Set(layout.elements.map((element) => `${element.layer}|${element.datatype ?? 0}`))
     : null;
 
+  let completedContinuous =
+    startMode !== 'new-base' && model?.kernel === 'vector-continuous-etch-v1';
   for (const [index, step] of steps.slice(0, total).entries()) {
     const prefix = `Step ${index + 1}`;
     const params = step.params || {};
+    if (completedContinuous && !['record', 'snapshot'].includes(step.command)) {
+      errors.push(`${prefix}: follow-on Process on exact continuous material is unsupported.`);
+    }
+    if (step.command === 'etch' && params.profile === 'continuous') {
+      if (params.face === 'both') errors.push(`${prefix}: Continuous Etch requires Front or Back.`);
+      completedContinuous = true;
+    }
     if (
       params.face === 'both' &&
       (step.command === 'liftoff' || (step.command === 'etch' && params.profile === 'planarize'))

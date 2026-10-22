@@ -43,11 +43,25 @@ class CapturePreflightTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     capture.parse_native_bounds(value, 'Z break', 2)
 
+    def test_explicit_physical_camera_fails_closed_on_nonfinite_or_coincident_view(self):
+        self.assertIsNone(capture.parse_native_camera(None))
+        self.assertEqual(capture.parse_native_camera('0,-330,65,0,35,21'),
+                         (0., -330., 65., 0., 35., 21.))
+        for raw in ('1,2,3,1,2,3', '0,0,0,0,0,0',
+                    '0,0,0,0,0', '0,0,0,0,0,nan', '0,0,0,0,inf,0'):
+            with self.subTest(raw=raw):
+                with self.assertRaises(ValueError):
+                    capture.parse_native_camera(raw)
+
     def test_native_model_does_not_duplicate_initial_renderer_build(self):
         source = (MODULE.parent / 'offline-native-model-view.js').read_text()
         self.assertIn('await renderer.init()', source)
         self.assertNotIn('await renderer.render()', source)
         self.assertIn('roughCaps:', source)
+
+    def test_explicit_camera_skips_redundant_software_webgl_underside_capture(self):
+        source = MODULE.read_text()
+        self.assertIn("if args.inmemory_camera is None and model_input['model']", source)
 
     def test_pinned_version_and_files(self):
         self.assertEqual(capture.check_three(self.root), ('0.179.1', self.three))

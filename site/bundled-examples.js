@@ -100,11 +100,11 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     figure: 'Basiri-Esfahani et al. · Fig. 2 reconstruction',
     kind: 'project',
     level: 'MEMS / photonics literature',
-    variants: ['Original paper-derived release', 'Adaptive 72-band release · illustrative'],
-    path: './examples/suspended-silica-microdisks-adaptive.wafercad',
-    filename: 'suspended-silica-microdisks-adaptive.wafercad',
-    // The interactive preview stays lightweight; the static cover now comes
-    // from the saved adaptive 72-band project shown when the user opens it.
+    variants: ['Continuous circular XeF₂ release · 36 µm assumed', 'M01–M09 process History'],
+    path: './examples/suspended-silica-microdisks-continuous.wafercad',
+    filename: 'suspended-silica-microdisks-continuous.wafercad',
+    // Keep the historical 2.5D preview lightweight; the static cover is captured
+    // from the current exact Continuous model, not the old 72-band variant.
     previewSourcePath: './examples/suspended-silica-microdisks.wafercad',
     previewProject: {
       path: './examples/previews/suspended-silica-microdisk.wafercad',
@@ -114,11 +114,11 @@ export const BUNDLED_EXAMPLES = Object.freeze([
       path: './examples/thumbnails/suspended-silica-microdisk-three.webp',
       view: 'three',
       coverSource: 'full',
-      alt: 'Real WaferCAD 3D render of the saved adaptive 72-band silica microdisk release',
-      label: '72-band adaptive 3D · interactive preview uses original lightweight geometry',
+      alt: 'Actual WaferCAD Three.js render of the continuous circular silica microdisk release',
+      label: 'Continuous circular 3D · interactive preview is historical 2.5D geometry',
     },
     summary:
-      'Paper-derived 148/82 µm spoked silica disk with 1.8 µm oxide. Opens the saved 72-band adaptive undercut Variant (36 µm assumed XeF₂ release), plus its original History branch; the 3D cover shows the 72-band release, while the interactive preview uses the original lightweight geometry.',
+      'Paper-derived 148/82 µm spoked silica disk with 1.8 µm oxide. The saved M08 uses a continuous circular XeF₂ release (36 µm lateral/vertical reach assumed) through the original inverted mask; M09 remains record-only. Opens all nine History steps. The small interactive Welcome preview retains historical lightweight 2.5D geometry.',
     sources: [
       {
         citation:
@@ -127,7 +127,7 @@ export const BUNDLED_EXAMPLES = Object.freeze([
         href: 'https://doi.org/10.1038/s41467-018-08038-4',
       },
     ],
-    tags: ['Literature', 'Release', 'Undercut', '72-band adaptive', 'Illustrative'],
+    tags: ['Literature', 'Release', 'Undercut', 'Continuous circular', 'Illustrative'],
   },
   {
     id: 'm3d-selfpowered-heterogeneous-ic',

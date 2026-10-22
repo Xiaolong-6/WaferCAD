@@ -1,3 +1,6 @@
+import { continuousRectRoiBounds } from './continuous-etch-roi.js';
+import { clipContinuousSurfaceToRect } from './continuous-etch-roi-mesh.js';
+import { buildContinuousRectMeshCaps } from './continuous-etch-roi-mesh-cap.js';
 import { isArrayModel, resolveArrayModel, geometryBounds, arrayParts } from './model-array.js';
 import { annotationDepthFraction, IMPLANT_DEPTH_GRADIENT } from './annotation-rendering.js';
 import { threeRenderPolicy } from './render-quality-policy.js';
@@ -15,6 +18,20 @@ import {
   borderPresentationState,
 } from './border-inspector.js';
 import { shouldYieldDuringSceneAssembly } from './renderer-cooperative-assembly.js';
+import { buildContinuousMaterialSurfaceMesh } from './continuous-etch-mesh.js';
+import {
+  buildExactFilmComponents,
+  exactUnetchedFilmCandidates,
+} from './continuous-exact-film-mesh.js';
+import {
+  buildContinuousSiHeightfieldMesh,
+  canBuildContinuousSiHeightfield,
+} from './continuous-heightfield-mesh.js';
+import {
+  CONTINUOUS_ETCH_MODEL_KERNEL,
+  validateContinuousEtchModel,
+  continuousEtchDisplayCollapse,
+} from './continuous-etch-model.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
   LAYER_INSPECTION_NEUTRAL,
@@ -180,6 +197,8 @@ export function createThreeView({
   let surfaceMaterialPool = new Map();
   let presentationUpdateCount = 0;
   let physicalSceneModel = null;
+  let continuousRoiCapObjects = [];
+  let continuousRoiCapSignature = null;
   let physicalSceneSignature = null;
   let physicalSurfacePlan = null;
   let activeSceneVariant = null;
@@ -346,7 +365,11 @@ export function createThreeView({
   function zDisplayState(model) {
     const [idealLo, idealHi] = modelBoundsZ(model),
       [lo, hi] = roughVisualBoundsZ(model, [idealLo, idealHi]),
-      collapse = resolveSectionCollapse(getZCollapse(), model, [lo, hi]),
+      collapse = resolveSectionCollapse(
+        continuousEtchDisplayCollapse(model, getZCollapse()),
+        model,
+        [lo, hi],
+      ),
       transform = createCollapsedZDisplayTransform({
         zMin: lo,
         zMax: hi,
@@ -449,7 +472,9 @@ export function createThreeView({
     }
     positions.needsUpdate = true;
     if (object.isMesh && object.geometry.getAttribute('normal')) {
-      object.geometry.computeVertexNormals();
+      // Preserve analytic normals in the native no-collapse renderer.
+      if (!object.geometry.userData?.analyticSurfaceNormals || state.enabled !== false)
+        object.geometry.computeVertexNormals();
     }
     refreshGeometryBounds(object);
     record.mode = 'mapped';
@@ -944,6 +969,8 @@ export function createThreeView({
     clearSceneVariantCache();
     activeSceneVariant = null;
     physicalSceneModel = null;
+    continuousRoiCapObjects = [];
+    continuousRoiCapSignature = null;
     physicalSceneSignature = null;
     physicalSurfacePlan = null;
   }
@@ -3323,6 +3350,232 @@ diffuseColor.a *= waferCadAlphaScale;`,
       : 'physical Si (experimental)';
   }
 
+  // Experimental native ThreeView path for exact continuous material. The
+  // displayed triangles are derived: the persisted owner remains analytic.
+  async function renderContinuousEtch(model) {
+    const clip = getClipGeometry();
+    const roiBounds = continuousRectRoiBounds(clip);
+    const owner = validateContinuousEtchModel(model);
+    if (!owner) throw new RangeError('Missing or invalid continuous material owner');
+    const updateRoiCaps = () => {
+      const signature = JSON.stringify(roiBounds);
+      if (continuousRoiCapSignature === signature) return false;
+      for (const mesh of continuousRoiCapObjects) {
+        group.remove(mesh);
+        presentationObjects.delete(mesh);
+        zDisplayObjects.delete(mesh);
+        mesh.geometry?.dispose?.();
+        mesh.material?.dispose?.();
+      }
+      continuousRoiCapObjects = [];
+      continuousRoiCapSignature = signature;
+      if (!roiBounds) {
+        host.dataset.continuousEtchRoiCapTriangles = '0';
+        return true;
+      }
+      const exterior = { kind: 'material-exterior' };
+      const state = presentationState(exterior, getInspection() || {}).materialState;
+      const clippedParts = [...presentationObjects]
+        .map((mesh) => mesh.userData?.continuousCroppedPart)
+        .filter(Boolean);
+      for (const part of buildContinuousRectMeshCaps(THREE, clippedParts, roiBounds)) {
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(part.positions, 3));
+        geometry.setAttribute('normal', new THREE.BufferAttribute(part.normals, 3));
+        let material = createSurfaceMaterial(layerById(model, part.layerId), state, null, exterior);
+        if (material.userData?.waferCadPooledPresentationMaterial) {
+          material = material.clone();
+          material.userData.waferCadPooledPresentationMaterial = false;
+        }
+        material.side = THREE.DoubleSide;
+        const mesh = addSurfaceMesh(geometry, material, state, null, 0, false, null, exterior);
+        if (mesh) {
+          mesh.userData.continuousLayerId = part.layerId;
+          mesh.userData.continuousRoiCap = true;
+          continuousRoiCapObjects.push(mesh);
+        }
+      }
+      // New cut faces need the same physical Z transform as the original mesh.
+      applyZDisplayState(model);
+      host.dataset.continuousEtchRoiCapTriangles = String(
+        continuousRoiCapObjects.reduce(
+          (total, m) => total + m.geometry.getAttribute('position').count / 3,
+          0,
+        ),
+      );
+      return true;
+    };
+    // Rebuild only display triangles on an ROI change. The original native
+    // meshes are retained as immutable typed arrays, so zoom, color changes
+    // and Undo/Redo never mutate or resample the analytical material owner.
+    const cropMaterialMeshes = () => {
+      const signature = JSON.stringify(roiBounds);
+      let changed = false;
+      for (const mesh of presentationObjects) {
+        const source = mesh.userData?.continuousFullPart;
+        if (!source || mesh.userData.continuousMeshCropSignature === signature) continue;
+        const cropped = clipContinuousSurfaceToRect(source, roiBounds);
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(cropped.positions, 3));
+        geometry.setAttribute('normal', new THREE.BufferAttribute(cropped.normals, 3));
+        geometry.userData.analyticSurfaceNormals = true;
+        const oldGeometry = mesh.geometry;
+        mesh.geometry = geometry;
+        mesh.userData.continuousMeshCropSignature = signature;
+        mesh.userData.continuousCroppedPart = cropped;
+        mesh.userData.continuousRoiEmpty = cropped.triangles === 0;
+        trackZDisplayObject(mesh);
+        oldGeometry?.dispose?.();
+        changed = true;
+      }
+      if (changed) applyZDisplayState(model);
+      host.dataset.continuousEtchRoiMeshMode = roiBounds ? 'geometry-clipped' : 'full-mesh';
+      host.dataset.continuousEtchRoiMeshTriangles = String(
+        [...presentationObjects].reduce((count, mesh) => {
+          if (!mesh.userData?.continuousFullPart) return count;
+          return count + (mesh.geometry.getAttribute('position')?.count || 0) / 3;
+        }, 0),
+      );
+      return changed;
+    };
+    const updateMaterialAppearance = () => {
+      for (const mesh of presentationObjects) {
+        const layerId = mesh.userData?.continuousLayerId;
+        if (!layerId) continue;
+        const layer = layerById(model, layerId);
+        mesh.visible = layer?.visible !== false && !mesh.userData.continuousRoiEmpty;
+        mesh.material?.color?.set(layer?.color || '#999');
+      }
+      if (renderer) renderer.localClippingEnabled = false;
+      host.dataset.continuousEtchRoi = roiBounds ? 'rect-clipped' : 'full-model';
+      scheduleFrame();
+    };
+    if (
+      physicalSceneModel === model &&
+      physicalSceneSignature === 'continuous-etch-v1' &&
+      presentationObjects.size
+    ) {
+      applyPresentationState();
+      cropMaterialMeshes();
+      const roiChanged = updateRoiCaps();
+      updateMaterialAppearance();
+      // The default camera still targets the full wafer after an ROI change.
+      // Reframe only when the actual rectangle changes; ordinary orbit/pan and
+      // layer restyling must not reset the user's view.
+      if (roiChanged) fit({ notify: false, preserveOrientation: true });
+      return;
+    }
+
+    disposeGroup();
+    const { edgeTable, triTable } = await import('three/addons/objects/MarchingCubes.js');
+    // Exact continuous Si topography replaces full-volume voxelization only
+    // for a fully covered, non-through-etched rectangular substrate. Other
+    // materials and unsupported morphologies retain the generic extractor.
+    const silicon = canBuildContinuousSiHeightfield(owner)
+      ? buildContinuousSiHeightfieldMesh(owner, { xyStepUm: 1 })
+      : null;
+    // Only the validated shallow-release fast path substitutes exact unetched
+    // film shells. Generic non-rectangular and multilayer stacks keep the
+    // standard implicit extractor and preserve their existing behavior.
+    const exactFilms = silicon ? exactUnetchedFilmCandidates(owner) : new Map();
+    const skipped = [...exactFilms.keys(), ...(silicon ? ['base'] : [])];
+    const materialIds = new Set(
+      owner.sourceModel.regions.flatMap((region) => region.stack.map((part) => part.layerId)),
+    );
+    const allExact = [...materialIds].every((id) => skipped.includes(id));
+    const data = allExact
+      ? {
+          kind: 'hybrid-continuous-analytic-surface-v1',
+          layers: [],
+          triangles: 0,
+          sourceRevision: owner.sourceModel.revision,
+        }
+      : buildContinuousMaterialSurfaceMesh(owner, {
+          cubeTables: { edgeTable, triTable },
+          xyStepUm: 1.75,
+          excludeLayerIds: skipped,
+        });
+    if (silicon) {
+      data.layers.unshift(silicon);
+      data.triangles += silicon.triangles;
+    }
+    for (const [layerId, { geom, z0, z1 }] of exactFilms) {
+      const film = buildExactFilmComponents(THREE, geom, z0, z1);
+      for (const part of film.parts) {
+        data.layers.push({ ...part, layerId, exactFlat: true });
+        data.triangles += part.triangles;
+      }
+    }
+    if (data.triangles > 1500000)
+      throw new RangeError('Continuous hybrid mesh exceeds triangle budget');
+    const represented = new Set(data.layers.map((part) => part.layerId));
+    for (const layerId of materialIds)
+      if (!represented.has(layerId))
+        throw new RangeError('Continuous display omitted physical material ' + layerId);
+    if (!data.layers.length) throw new RangeError('Continuous Etch has no visible solid');
+    const exterior = { kind: 'material-exterior' };
+    const materialState = presentationState(exterior, getInspection() || {}).materialState;
+    for (const part of data.layers) {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.BufferAttribute(part.positions, 3));
+      geometry.setAttribute('normal', new THREE.BufferAttribute(part.normals, 3));
+      geometry.userData.analyticSurfaceNormals = true;
+      let material = createSurfaceMaterial(
+        layerById(model, part.layerId),
+        materialState,
+        null,
+        exterior,
+      );
+      // Continuous meshes can restyle without a multi-second geometry rebuild.
+      // Keep their material private rather than mutating the pooled material
+      // shared with other scenes or display variants.
+      if (material.userData?.waferCadPooledPresentationMaterial) {
+        material = material.clone();
+        material.userData.waferCadPooledPresentationMaterial = false;
+      }
+      const mesh = addSurfaceMesh(
+        geometry,
+        material,
+        materialState,
+        null,
+        0,
+        false,
+        null,
+        exterior,
+      );
+      if (mesh) {
+        mesh.name = 'continuous-etch-' + part.layerId;
+        mesh.userData.continuousLayerId = part.layerId;
+        mesh.userData.continuousFullPart = {
+          layerId: part.layerId,
+          positions: part.positions.slice(),
+          normals: part.normals.slice(),
+        };
+      }
+    }
+    physicalSceneModel = model;
+    physicalSceneSignature = 'continuous-etch-v1';
+    activeSceneVariant = null;
+    physicalSurfacePlan = null;
+    host.dataset.continuousEtchTriangles = String(data.triangles);
+    host.dataset.continuousEtchLayers = String(data.layers.length);
+    host.dataset.rendererUpdateKind = 'continuous-etch-surface';
+    host.dataset.surfaceTopology = JSON.stringify({
+      continuousTriangles: data.triangles,
+      sourceRevision: data.sourceRevision,
+    });
+    delete host.dataset.rendererBuildFailure;
+    applyZDisplayState(model);
+    applyPresentationState({ profile: false, settle: true });
+    cropMaterialMeshes();
+    updateRoiCaps();
+    updateMaterialAppearance();
+    host.dataset.renderState = 'ready';
+    stats.textContent = 'Continuous Etch · analytic material, sampled display mesh';
+    fit({ notify: false });
+    scheduleFrame();
+  }
+
   async function render() {
     if (!ready) return;
     if (rendering) {
@@ -3332,6 +3585,19 @@ diffuseColor.a *= waferCadAlphaScale;`,
     }
     const model = getModel();
     if (!model) return;
+    if (model.kernel === CONTINUOUS_ETCH_MODEL_KERNEL || model.continuousEtchOwner != null) {
+      try {
+        await renderContinuousEtch(model);
+      } catch (error) {
+        disposeGroup();
+        host.dataset.renderState = 'error';
+        host.dataset.renderPhase = 'build-failed';
+        host.dataset.rendererBuildFailure = error?.message || String(error);
+        stats.textContent = 'Continuous Etch 3D unavailable';
+        console.error('Continuous Etch native 3D build failed:', error);
+      }
+      return;
+    }
     if (model.kernel === PHYSICAL_FACET_MODEL_KERNEL) {
       try {
         renderExperimentalPhysicalFacet(
