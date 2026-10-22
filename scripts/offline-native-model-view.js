@@ -50,9 +50,15 @@ async ({
       )
     : null;
   const collapse = zBreak ? { enabled: true, top: zBreak[0], bottom: zBreak[1] } : null;
-  const plan = buildRenderSurfacePlan(model, clip);
-  if (!plan.caps?.length && !plan.sidewalls?.length) throw Error('No visible material geometry.');
-  rememberRenderSurfacePlan(model, clip, plan);
+  // Dedicated continuous material has no flat 2.5D surface plan. Its native
+  // ThreeView renderer consumes the exact owner directly and must not call
+  // the generic physical surface planner (which intentionally fails closed).
+  const continuous = model.kernel === 'vector-continuous-etch-v1';
+  const plan = continuous ? { caps: [], sidewalls: [] } : buildRenderSurfacePlan(model, clip);
+  if (!continuous) {
+    if (!plan.caps?.length && !plan.sidewalls?.length) throw Error('No visible material geometry.');
+    rememberRenderSurfacePlan(model, clip, plan);
+  }
 
   const overlay = document.createElement('div');
   overlay.style.cssText =

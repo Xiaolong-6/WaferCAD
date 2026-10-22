@@ -19,6 +19,8 @@ const excludedFiles = new Set([
   'style.css',
   // Experimental science oracles belong to tests/preview, not the shipped v2 bundle.
   'isotropic-release-topology.js',
+  // Development-only ROI cap oracle, imported only by scientific unit tests.
+  'continuous-etch-roi-cap.js',
   'experimental/physical-facets/physical-facet-coating.js',
   'experimental/physical-facets/physical-facet-coating-section.js',
   // Retired browser-only modules retained in Git, not imported by the v2 product.

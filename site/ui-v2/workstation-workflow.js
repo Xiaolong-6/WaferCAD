@@ -240,8 +240,18 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
         choice('Profile', 'etchProfile', [
           ['directional', 'Directional'],
           ['isotropic', 'Isotropic release'],
+          ['continuous', 'Continuous release · experimental'],
         ]),
       ),
+      row(
+        'continuousShapeRow',
+        choice('Release front', 'continuousShape', [
+          ['circular', 'Circular arc · equal XY/Z'],
+          ['elliptical', 'Elliptical arc · separate XY/Z'],
+          ['vertical', 'Vertical wall · separate XY/Z'],
+        ]),
+      ),
+      row('continuousLateralRow', fields.input('Lateral reach · µm', 'continuousLateral', 0.07)),
       row(
         'etchSurfaceRow',
         choice('Surface', 'etchSurfaceMode', [
@@ -420,6 +430,8 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
     'electricalNameRow',
     'electricalRegionParams',
     'etchProfileRow',
+    'continuousShapeRow',
+    'continuousLateralRow',
     'etchSurfaceRow',
     'roughFeatureRow',
     'roughFeatureCvRow',
@@ -460,6 +472,12 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
   );
   function syncManualPresentation() {
     const type = hooks.get('operationType').value;
+    const thicknessText = hooks.get('operationThicknessRow').querySelector('.wc-label');
+    if (thicknessText)
+      thicknessText.textContent =
+        type === 'etch' && hooks.get('etchProfile').value === 'continuous'
+          ? 'Vertical depth · µm'
+          : 'Thickness / depth · µm';
     hooks.get('operationThickness').dataset.helpContext = type;
     // The Process controller toggles the labelled row, so its wrapper follows it.
     thicknessStepper.hidden = hooks.get('operationThicknessRow').classList.contains('hidden');
