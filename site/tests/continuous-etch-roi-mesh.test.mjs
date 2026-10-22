@@ -84,7 +84,8 @@ test('out-of-ROI triangle culling leaves the same clipped geometry as candidate-
   // Triangles on either side of the bounds must never allocate output faces.
   const outside = [-20, -10, 0, -19, -10, 0, -20, -9, 0];
   const right = [5, 0, 0, 6, 0, 0, 5, 1, 0];
-  const normalsFor = (n) => Float32Array.from(Array.from({ length: n }, () => [0, 0, 1]).flat());
+  const normalsFor = (n) =>
+    Float32Array.from(Array.from({ length: n }, () => [0, 0, 1]).flat());
   const part = (coordinates) => ({
     layerId: 'base',
     positions: Float32Array.from(coordinates),
