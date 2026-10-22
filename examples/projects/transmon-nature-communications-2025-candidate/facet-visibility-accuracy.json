@@ -1,0 +1,76 @@
+{
+  "baseline": "Transmon branch a4e84ac332753e65ee0c6839278ad6f4e051719d; tested geometry source files hash matched repository",
+  "scope": "Isolated axis-aligned finite-height rectangular sidewall, fixed beam, rectangular upper apertures; NOT full author Q2 physical junction",
+  "fixture": {
+    "facet": {
+      "a": [
+        2,
+        -1
+      ],
+      "b": [
+        2,
+        1
+      ],
+      "zUm": [
+        5,
+        6
+      ]
+    },
+    "beam": {
+      "thetaDeg": 45,
+      "azimuthDeg": 45
+    },
+    "aperture": {
+      "xUm": [
+        2.2,
+        3.6
+      ],
+      "yUm": [
+        -0.4,
+        0.4
+      ],
+      "zUm": [
+        6,
+        6.6
+      ]
+    }
+  },
+  "analysis": {
+    "exactVisibleFacetAreaUm2": 0.2613499294879458,
+    "exactMethod": "convex polygon clipping by incidence half-planes; independent of tangent grid",
+    "reference50nm": {
+      "storedAreaUm2": 0.22945964,
+      "missingPercent": 12.202141990406176,
+      "materialPatches": 15
+    },
+    "defaultBound2Percent": {
+      "storedAreaUm2": 0.25719803,
+      "missingPercent": 1.588636161517344,
+      "materialPatches": 121
+    },
+    "bound1Percent": {
+      "storedAreaUm2": 0.25933813,
+      "missingPercent": 0.7697723477052969,
+      "materialPatches": 255
+    }
+  },
+  "scienceSafety": [
+    "Every material patch is fully within the exact visible facet domain",
+    "All tangent bin edges are shared on the existing 0.1 nm integer XY grid",
+    "The missing physical rim counts toward the 2 percent upper bound",
+    "Failure to satisfy the user-defined area-loss budget rejects the operation",
+    "No new process mode, rotation or global tolerance relaxation"
+  ],
+  "localTests": {
+    "command": "node --test site/tests/direct-sidewall-facet-partition.test.mjs site/tests/direct-sidewall-facet-accuracy.test.mjs site/tests/direct-sidewall-plan-integration.test.mjs site/tests/project-geometry-storage.test.mjs",
+    "passed": 19,
+    "failed": 0,
+    "prettier39": "pass"
+  },
+  "releaseGate": {
+    "exactHeadWorkingTree": false,
+    "realBrowserNewGeometry": "not verified; previous native screenshot is a previous geometry revision",
+    "section3d": "not yet accepted",
+    "workerHistoryRecovery": "not tested on normal Origin"
+  }
+}

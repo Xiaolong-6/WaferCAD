@@ -353,3 +353,55 @@ errors. Even after a tighter ROI and Z break, the individual sloped-in-Z
 acceptance remains incomplete**. Managed null-origin mode does not
 establish Worker, History/Recovery, or synchronized Section/3D behavior.
 This is not yet the author's fully modeled Q2 Josephson junction.
+
+
+## Analytic fixed-angle visibility bound for oblique Direct sidewalls
+
+The finite rectangular upper-aperture visibility problem is now solved by
+intersecting linear half-planes in the native wall tangent/Z plane. This
+produces an **exact convex illuminated polygon and physical area** (within
+floating-point arithmetic), independent of the material-column partition.
+The 2.5D material representation still approximates this polygon with
+constant-Z XY strips; it is *not* an exact continuous oblique surface model.
+
+A scientific-correctness failure in the earlier implementation was
+identified: independently rounding each tangent slice inward to the 0.1 nm
+persistence grid repeatedly removed an XY quantum at every boundary.
+Very small slices could therefore produce **less**, rather than more,
+visible material. The repair partitions a single **shared integer XY grid**
+without seam gaps and counts all XY/Z rounding loss against the analytically
+known illuminated area.
+
+The solver now automatically refines the configured initial facet slice
+(default 0.05 µm) until the **actual physical under-deposition** is no
+more than \`facetMaxAreaLossFraction\` (default **2%**), subject to the
+existing \`maxFacetSlices\` budget (default 256). If it cannot satisfy this
+numerical science gate, the operation fails and existing Direct
+transactional rollback applies. Neither the 0.1 nm physical persistence
+quantum nor global geometrical tolerances are weakened.
+
+**Measured rectangular science fixture**, 45° polar / 45° azimuth,
+a 2 µm long, 1 µm tall wall through a single upper opening:
+
+| Method | Area (µm²) | Underestimate |
+| --- | ---: | ---: |
+| Analytic half-plane polygon | 0.26134993 | 0% (reference) |
+| 50 nm fixed slices, grid-aligned | 0.22945964 | 12.20% |
+| Default adaptive 2% bound (121 patches) | 0.25719803 | 1.59% |
+| Explicit 1% bound (255 patches) | 0.25933813 | 0.77% |
+
+Tests independently sample 360,000 rays to check the analytic polygon,
+check two successive aperture levels, XY seam ownership, rotation covariance,
+realistic translated wafer coordinates, and intentionally failing numerical
+budgets. The exact geometry source and tests have been byte-for-byte
+verified against the remote Git blobs. Related local Process/geometry
+storage regression: **19/19 passed** and pinned Prettier passed. See
+\`facet-visibility-accuracy.json\` for values, commands and scope.
+
+**Boundary:** This is still a restricted isolated rectangular wall with
+rectangular apertures above the wall. Competing occluders, resist walls
+touching the facet, arbitrary 3D facets, dynamic growth and original
+Q2 junction manufacturing remain out of scope. The target branch does
+not yet have a complete exact-HEAD local checkout/normal-origin Chromium
+release acceptance for this change. Do not reuse a previous screenshot
+as evidence that this new material geometry passed Section/3D review.

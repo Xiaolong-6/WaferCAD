@@ -45,9 +45,18 @@ test('conservative tangent-Z facet partition emits only fully visible rectangles
   }
 });
 test('half-step resolution converges monotonically without overdeposit', () => {
-  const a = partitionFixedSidewallFacet(facet, beam(), { maximumSliceUm: 0.1 });
-  const b = partitionFixedSidewallFacet(facet, beam(), { maximumSliceUm: 0.05 });
-  const c = partitionFixedSidewallFacet(facet, beam(), { maximumSliceUm: 0.025 });
+  const a = partitionFixedSidewallFacet(facet, beam(), {
+    maximumSliceUm: 0.1,
+    maxAreaLossFraction: 0.99,
+  });
+  const b = partitionFixedSidewallFacet(facet, beam(), {
+    maximumSliceUm: 0.05,
+    maxAreaLossFraction: 0.99,
+  });
+  const c = partitionFixedSidewallFacet(facet, beam(), {
+    maximumSliceUm: 0.025,
+    maxAreaLossFraction: 0.99,
+  });
   assert.ok(covered(a) < covered(b) && covered(b) < covered(c), [
     covered(a),
     covered(b),
