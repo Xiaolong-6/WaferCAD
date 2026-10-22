@@ -97,17 +97,13 @@ runs the complete existing `npm test` inventory. A full report satisfies Draft;
 a Draft report never satisfies Ready or release acceptance. Failure, Abort or
 source changes during a run cannot retain an old passing report.
 
-`Quality / quality` first checks the report and compressed transcript using
-Node built-ins and Git without installing dependencies. **If the proof is
-missing, incomplete, failed, stale, or incompatible with the exact proposed
-merge tree, Quality installs locked dependencies and actually runs the same
-required checks.** Draft fallback runs lint, format, generated docs and the
-focused Quality/CI/documentation Node contracts; Ready and manual full fallback
-run `npm run check`, including the entire `npm test` inventory. Any failing
-or interrupted check rejects the job; no stale report can authorize success.
-The locally supplied full proof is still preferred to avoid repeating tests.
-The strict full-proof step and the full-execution fallback have separate names
-so a tolerated failed evidence probe can never count as release attestation.
+`Quality / quality` verifies the locally generated source-bound report and
+compressed transcript against the proposed merge tree. **Missing, incomplete,
+failed, stale or incompatible PR proof fails closed without running application
+Quality in CI.** Developers regenerate the matching Draft or Full report locally
+and commit both receipt files. The scheduled nightly and explicitly dispatched
+Quality runs execute the actual `npm run check` suite using locked dependencies,
+regardless of existing proof. A tolerated failed evidence probe is never a pass.
 
 The default PR checkout checks the proposed merge tree. For full Main release
 validation and manual pre-main integration, the same proof-first/full-execution
