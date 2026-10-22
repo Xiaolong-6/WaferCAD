@@ -119,9 +119,25 @@ async function run() {
         const model = await page.evaluate(
           async ({ a, b }) => {
             const state = window.WaferCadV2Workstation.snapshot();
-            const { sectionSlices } = await import('/model-view-geometry.js');
-            const physical = sectionSlices(state.model, a, b);
+            // Continuous Etch uses an analytic physical material owner, not the
+            // protected pre-release 2.5D region stack. Query that same owner
+            // used by native Section; never sample a flat compatibility surrogate.
+            const { validateContinuousEtchModel } = await import('/continuous-etch-model.js');
+            const continuousOwner = validateContinuousEtchModel(state.model);
+            let physical, physicalSampler;
+            if (continuousOwner) {
+              const { sampleContinuousOwnerSection } =
+                await import('/continuous-material-owner.js');
+              const sites = sampleContinuousOwnerSection(continuousOwner, a, b, 32);
+              physical = sites.flatMap(({ column }) => column);
+              physicalSampler = 'continuous-analytic-column-samples';
+            } else {
+              const { sectionSlices } = await import('/model-view-geometry.js');
+              physical = sectionSlices(state.model, a, b);
+              physicalSampler = 'canonical-section-slices';
+            }
             return {
+              physicalSampler,
               layers: state.model.layers.length,
               regions: state.model.regions.length,
               arrayBacked: Boolean(state.model.array),
