@@ -77,27 +77,3 @@ test('ROI plane owns a coincident material sidewall exactly once', () => {
   assert.deepEqual(Array.from(wall.positions), original, 'Display cropping is read-only');
   assert.equal(clipContinuousSurfaceToRect(wall, null), wall);
 });
-
-test('out-of-ROI triangle culling leaves the same clipped geometry as candidate-only input', () => {
-  const inside = [0, 0, 0, 1, 0, 0, 0, 1, 0];
-  const crossing = [-3, 0, 0, 0, 0, 0, 0, 1, 0];
-  // Triangles on either side of the bounds must never allocate output faces.
-  const outside = [-20, -10, 0, -19, -10, 0, -20, -9, 0];
-  const right = [5, 0, 0, 6, 0, 0, 5, 1, 0];
-  const normalsFor = (n) =>
-    Float32Array.from(Array.from({ length: n }, () => [0, 0, 1]).flat());
-  const part = (coordinates) => ({
-    layerId: 'base',
-    positions: Float32Array.from(coordinates),
-    normals: normalsFor(coordinates.length / 3),
-  });
-  const bounds = { minX: -2, minY: -2, maxX: 2, maxY: 2 };
-  const complete = clipContinuousSurfaceToRect(
-    part([...outside, ...inside, ...right, ...crossing]),
-    bounds,
-  );
-  const candidates = clipContinuousSurfaceToRect(part([...inside, ...crossing]), bounds);
-  assert.deepEqual(Array.from(complete.positions), Array.from(candidates.positions));
-  assert.deepEqual(Array.from(complete.normals), Array.from(candidates.normals));
-  assert.equal(complete.triangles, candidates.triangles);
-});
