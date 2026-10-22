@@ -33,12 +33,14 @@ export function declaredEvents(yaml) {
 // Only explicitly labeled source transport is exempt from the PR test gate.
 // The two jobs must remain guarded by their specific opt-in labels.
 export function permittedSourceTransport(name, raw) {
-  return name === 'offline-source-bundle.yml' &&
+  return (
+    name === 'offline-source-bundle.yml' &&
     /^  pull_request:\s*\n    types: \[labeled\]\s*$/m.test(raw) &&
     raw.includes("github.event.label.name == 'source-only-bundle'") &&
     raw.includes("github.event.label.name == 'offline-playwright-deps'") &&
     raw.includes("github.event_name == 'pull_request'") &&
-    !/^  (?:push|schedule):/m.test(raw);
+    !/^  (?:push|schedule):/m.test(raw)
+  );
 }
 
 export function auditWorkflowEvents(files) {
@@ -57,7 +59,11 @@ export function auditWorkflowEvents(files) {
       continue;
     }
     for (const [event, allow] of expected) {
-      if (events.has(event) && !allow.includes(name) && !(event === 'pull_request' && permittedSourceTransport(name, raw))) {
+      if (
+        events.has(event) &&
+        !allow.includes(name) &&
+        !(event === 'pull_request' && permittedSourceTransport(name, raw))
+      ) {
         messages.push(
           `${name}: forbidden automatic ${event}; route through the shared CI controller`,
         );
