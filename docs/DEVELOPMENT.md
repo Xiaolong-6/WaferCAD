@@ -174,6 +174,125 @@ UI orchestration that does not own canonical geometry lives under `site/controll
 
 3D Fast Mode defaults on. Fast, Quality and temporary Interactive are render-mesh budgets over the same canonical surface ownership and morphology field; `display.threeFastMode` is a view preference and uses lightweight view autosave. Rough sampling, normals, sidewall subdivision, pixel ratio and transparency sort frequency may vary, while topology, annotation envelopes, Main/Section and physical GLB export remain unchanged. See [3D Fast acceptance](archive/THREE_FAST_MODE_2026-10-07.md) and run `node scripts/three-fast-mode-regression.mjs` (or `--inspection-only` for transparent/ROI checks).
 
+Rough display filtering estimates XY sample pitch from each cap's actual
+triangulated area and allocated LOD, independently of the ROI bounding box
+and repeated material layers. Caps with the same seeded appearance use the
+coarsest shared pitch to preserve conformal registration. Quality can surrender
+one CPU rough-mesh subdivision when every cap of the same seeded appearance,
+including conformal layers and implant overlays, is already at the minimum
+0.12 display-height blend, both locally and across the scene. GPU-displaced
+and instanced cohorts are ineligible. The renderer rechecks the exact blend
+after changing the candidate display triangle budgets and cancels the change
+if any cohort's blend would change. This is only a performance/presentation
+tradeoff: the mesh interpolation residual can change, and it is **not** a
+Section/3D scientific convergence fix. The read-only native cutline runner
+must quantify both interpolation and display attenuation before promotion.
+This display-only filter does not establish Section/3D interior height parity.
+
+**Rejected Aligned inspection must not be restored.** The v2 Section must
+render the production physical pixel-footprint profile. Do not replace it with
+an area-averaged or interpolated inspection lattice, and do not label a
+smoothed Section/3D preview as physical mesh convergence. The legacy
+`stochastic` field can vary faster than its nominal feature size far from its
+saved `sampleOrigin`; bounded CPU triangulation can therefore diverge from
+the physical Section at some ROIs. Preserve this difference explicitly in
+native-mesh cutline evidence rather than flattening the scientific Section.
+
+The 2026-10-21 local recovery snapshot retired the Aligned/Physical toggle and
+the nonlinear local Relief inspector. The intended v2 3D control is a
+continuous, _uniform scene-wide_, display-only Z factor (0.25–20, slider and
+numeric input), applied equally to caps, conformal layers, sidewalls and
+borders, not selectively to rough peaks. It must not mutate Process, History,
+physical GLB export or canonical layer heights. The low-level nonlinear
+Relief diagnostic is not an endorsed Workstation feature.
+
+**Integration status:** PR #353 has restored the native physical Section and
+removed the rejected Aligned preview control. The branch was synchronized
+with main without squashing on 2026-10-21. Scientific Section/3D mesh
+convergence remains unproven; the measured 60 µm Photodetector cutline
+differed by 125.720 nm RMS in Fast and 145.219 nm RMS in Quality.
+Normal-Origin synchronized Section/3D/Border acceptance remains mandatory;
+null-Origin native probes alone cannot validate Worker, History or Recovery.
+
+The legacy variable-feature stochastic field evaluates noise using a spatially
+varying feature size; at large world coordinates it can vary much faster than
+its nominal `featureSize`. `section-three-rough-profile.test.mjs` audits actual
+Three.js triangle/cutline intersections, reports interpolation and Float32 XY
+rounding errors separately, and enforces physical vertex and 50 nm film
+registration. Reported interpolation errors are diagnostics, not approved
+tolerances. Changing that physical heightfield requires an explicit scientific
+and project-compatibility contract, including physical GLB export.
+
+The explicit **Rough (stable scale)** option stores `morphology: stochastic-v2`.
+It keeps the seeded rotation, height distribution, polarity and depth envelope,
+but replaces the variable denominator with a fixed `featureSize` lattice.
+Each rotated coordinate is displaced by
+`featureSize * 0.25 * featureCv * clamp(coarseNoise, -1, 1)`; the two coarse
+noise channels use four times the nominal pitch. Feature CV controls bounded
+spacing variation here, not an exact measured correlation-length CV. This is
+a distinct deterministic morphology, not a measured SEM reconstruction or a
+band-limited signal. Section, CPU mesh, GLSL, sidewall/border sampling and
+physical GLB export consume that same explicit field.
+
+Existing `stochastic` profiles and unspecified Recipe rough modes retain their
+legacy algorithm without automatic conversion. Manual Process, Recipe editing,
+History replay, inherited films/annotations and file/Recovery storage must
+preserve the selected morphology. A legacy reader rejects the unfamiliar enum
+rather than silently displaying v2 as v1; unknown future values also reject.
+No bundled example or saved History state is implicitly upgraded.
+
+The Photodetector-coordinate 0.6 um cutline audit compares actual Three.js
+triangle intersections at 65 interior points. With 2, 32 and 512 triangles,
+v2 RMS interpolation errors are approximately 128, 27.9 and 3.53 nm, while
+the legacy 512-triangle case remains approximately 133 nm. At 8,192 triangles
+the production adaptive mesh gives 0.357 nm RMS
+(2.83 nm maximum). Resolved v2 profiles target up to sixteen samples per nominal
+feature; legacy profiles retain four. Screen-space limits, Fast/Interactive
+policy, maximum subdivision depth and scene-wide triangle budgets still bound
+this request, and conformal caps retain synchronized allocations. The 1 nm RMS
+convergence assertion belongs to that resolved diagnostic patch with sufficient
+budget, not all camera/ROI scales.
+Physical GLB retains its camera-independent allocation request and existing
+hard budget; finer interactive sampling does not enlarge that export request.
+Matched conformal meshes retain the existing `2e-5 um` height/film contract.
+Neither convergence nor the new morphology claims pixel-level equality between
+Section screen filtering and coarse 3D LOD, or hardware GPU acceptance.
+
+Hardware renderer names alone do not establish CPU/GPU height parity. Before
+using shader displacement, qualify the task with up to 64 Float32 XY samples
+across its prepared cap zones, executing the production profile in the vertex
+shader and reading a float target. A maximum error outside the existing
+`2e-5 µm` vertex-height contract, incomplete readback or unavailable float
+targets selects the existing CPU mesh. Cache up to 64 task results per
+renderer and dispose all temporary GPU resources; repeating an unchanged task
+must not draw or read back again. This bounded screen-independent probe does
+not prove unsampled or mesh-interior accuracy. Known software backends still
+select CPU directly. Physical morphology, Section and CPU GLB export are
+unchanged. The native offline diagnostic's `--check-rough-parity` compares the
+actual Photodetector coordinates with origin and constant-height controls.
+On Chromium 140/SwiftShader, the 58-point actual-coordinate probe measured a
+maximum `0.479321 µm` shader/CPU discrepancy; the origin control measured
+`0.0000214965 µm`, and the uniform-height control measured
+`0.0000000119209 µm`. These are reproducible diagnostic observations, not
+hardware guarantees or approved error tolerances. The independent physical
+cutline still reports approximately `0.133455 µm` RMS interpolation error at
+LOD 4; rejecting inaccurate shader displacement does not fix that legacy
+field/mesh-resolution mismatch.
+
+The opt-in stable-scale GPU shader currently evaluates the absolute seeded
+field in Float32 arithmetic. The qualification probe runs this shader at
+sampled Float32 cap coordinates and checks against the CPU field. Production
+does **not** yet implement a local reference point, CPU-derived seed rotation,
+or high/low lattice-coordinate splitting. Those techniques were explored in
+a diagnostic prototype only, not incorporated into the production renderer.
+A historical Chromium/SwiftShader experiment at Photodetector x=2495 µm
+reduced the stable-scale maximum height discrepancy from 56.744 nm to
+approximately 0.0275 nm in a 58-point sample, still above the 0.020 nm
+contract. This result is **not** GPU acceptance. The existing `2e-5 µm`
+gate must reject failing samples and select deterministic CPU fallback.
+Do not shift a saved `sampleOrigin`, change the seed, or weaken the
+physical-height tolerance to enable GPU displacement.
+
 Exposed rough caps can use the GPU-hybrid renderer: the worker still owns adaptive topology and transferable buffers, while shader code applies deterministic surface displacement and micro-normal detail. Keep CPU fallback for buried interfaces, Implant morphology and non-unit front/back Z scaling, and keep physical GLB export on the CPU morphology path. Presentation-only 3D changes (currently opacity and borders) must not be added to the physical-scene cache key: with model/ROI/Z-collapse/layer identity/Fast policy unchanged, update existing scene objects and materials in place. Any change to this split must preserve `sceneGeneration`, `surfacePlanBuildCount` and stable scene resource counts under repeated presentation toggles.
 
 The historical [2026-10-07 pre-main audit](archive/PRE_MAIN_AUDIT_2026-10-07.md) records the complete branch review, repaired shared-asset budget accounting and browser ownership, and local integration evidence at that revision.

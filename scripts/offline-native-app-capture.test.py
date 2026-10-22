@@ -2,6 +2,8 @@
 """Focused offline native-browser allowlist and Three.js pin regression."""
 import importlib.util
 import json
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -53,6 +55,25 @@ class CapturePreflightTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     capture.parse_native_camera(raw)
 
+    def test_rough_cutline_and_quality_preflight_is_fail_closed(self):
+        fixture = self.root / 'sample.wafercad'
+        fixture.write_text('{}')  # Parsing arguments must fail before reading model or Chromium.
+        for options, expected in (
+            (['--rough-cutline', '2494.7,2495.3,0.123'], 'require --inmemory-project'),
+            (['--quality'], 'require --inmemory-project'),
+            (['--inmemory-project', str(fixture), '--rough-cutline', '0,0,0'],
+             'xMax > xMin'),
+            (['--inmemory-project', str(fixture), '--rough-cutline', 'nan,1,0'],
+             'xMax > xMin'),
+        ):
+            with self.subTest(options=options):
+                result = subprocess.run(
+                    [sys.executable, str(MODULE), '--output', str(self.root / 'capture'),
+                     *options], capture_output=True, text=True, timeout=5,
+                )
+                self.assertEqual(result.returncode, 2)
+                self.assertIn(expected, result.stderr)
+
     def test_native_model_does_not_duplicate_initial_renderer_build(self):
         source = (MODULE.parent / 'offline-native-model-view.js').read_text()
         self.assertIn('await renderer.init()', source)
@@ -62,6 +83,26 @@ class CapturePreflightTests(unittest.TestCase):
     def test_explicit_camera_skips_redundant_software_webgl_underside_capture(self):
         source = MODULE.read_text()
         self.assertIn("if args.inmemory_camera is None and model_input['model']", source)
+
+    def test_native_section_uses_physical_compositor_only(self):
+        source = (MODULE.parent / 'offline-native-section-comparison.js').read_text()
+        self.assertIn('renderer.renderSection()', source)
+        self.assertIn("sampleMode: 'physical'", source)
+        self.assertNotIn('getRoughSectionDisplayMode', source)
+        self.assertNotIn("['aligned', 'physical']", source)
+
+    def test_continuous_3d_diagnostic_scale_is_bounded(self):
+        fixture = self.root / 'sample.wafercad'
+        fixture.write_text('{}')
+        for value in ('0.2', '20.01', 'nan', 'inf', '-1'):
+            with self.subTest(value=value):
+                result = subprocess.run(
+                    [sys.executable, str(MODULE), '--output', str(self.root / 'capture'),
+                     '--inmemory-project', str(fixture), '--inmemory-z-scale', value],
+                    capture_output=True, text=True, timeout=5,
+                )
+                self.assertEqual(result.returncode, 2)
+                self.assertIn('In-memory 3D Z scale must be finite', result.stderr)
 
     def test_pinned_version_and_files(self):
         self.assertEqual(capture.check_three(self.root), ('0.179.1', self.three))

@@ -187,6 +187,7 @@ export function adaptiveRoughMeshLod({
   triangleCount = 1,
   maxEdge = 0,
   featureSize = 1,
+  morphology = 'stochastic',
   distance = 1,
   viewportWidth = 1,
   viewportHeight = 1,
@@ -215,7 +216,10 @@ export function adaptiveRoughMeshLod({
     detail = roughLod(featurePixels),
     priority = Math.max(0.02, Math.min(1, Number(screenPriority) || 0)),
     renderingDetail = Math.max(0.01, Math.min(1, Number(roughnessDetail) || 0.01)),
-    samplesPerFeature = 1 + 3 * detail.detail * renderingDetail,
+    // The stable field can converge at resolved scales. Request finer samples
+    // there while retaining the same screen-space and scene-budget bounds.
+    resolvedSamples = morphology === 'stochastic-v2' ? 16 : 4,
+    samplesPerFeature = 1 + (resolvedSamples - 1) * detail.detail * renderingDetail,
     targetEdge = Math.max(
       feature / samplesPerFeature,
       1.75 / Math.max(1e-12, pxPerUnit * Math.sqrt(priority * renderingDetail)),
@@ -447,19 +451,70 @@ export function roughProfileOffsetAtPoint(x, y, appearance) {
     sin = Math.sin(angle),
     rx = Number(x) * cos + Number(y) * sin,
     ry = -Number(x) * sin + Number(y) * cos,
-    featureFactor = lognormalFactor(
-      featureCv,
-      gaussianNoise2D(rx, ry, meanFeature * 4, (seed ^ 0x51ed270b) >>> 0, 1),
-    ),
-    localFeature = Math.max(meanFeature * 0.2, meanFeature * featureFactor),
-    heightFactor = lognormalFactor(
-      heightCv,
-      gaussianNoise2D(rx, ry, localFeature, (seed ^ 0x9e3779b9) >>> 0, 2),
-    ),
+    stableScale = appearance?.morphology === 'stochastic-v2';
+  // The legacy field divides absolute coordinates by a varying local pitch.
+  // Its derivative grows with distance from the origin. The explicit v2 field
+  // instead warps a fixed-pitch lattice by at most 1/4 pitch per axis. Feature
+  // CV controls this bounded, coarse displacement; it is not an exact measured
+  // correlation-length distribution. Never substitute this field for saved v1.
+  let heightNoise;
+  if (stableScale) {
+    const warp = (channel) =>
+      meanFeature *
+      0.25 *
+      featureCv *
+      Math.max(
+        -1,
+        Math.min(1, gaussianNoise2D(rx, ry, meanFeature * 4, (seed ^ 0x51ed270b) >>> 0, channel)),
+      );
+    heightNoise = gaussianNoise2D(
+      rx + warp(1),
+      ry + warp(3),
+      meanFeature,
+      (seed ^ 0x9e3779b9) >>> 0,
+      2,
+    );
+  } else {
+    const featureFactor = lognormalFactor(
+        featureCv,
+        gaussianNoise2D(rx, ry, meanFeature * 4, (seed ^ 0x51ed270b) >>> 0, 1),
+      ),
+      localFeature = Math.max(meanFeature * 0.2, meanFeature * featureFactor);
+    heightNoise = gaussianNoise2D(rx, ry, localFeature, (seed ^ 0x9e3779b9) >>> 0, 2);
+  }
+  const heightFactor = lognormalFactor(heightCv, heightNoise),
     relief = Math.min(roughMaxRelief(appearance), meanHeight * heightFactor),
     polarity = appearance?.polarity === 'normal' ? 'normal' : 'inverted',
     offset = polarity === 'normal' ? roughMaxRelief(appearance) - relief : relief;
   return Object.is(offset, -0) ? 0 : offset;
+}
+
+// Sample the *physical* seeded heightfield on the Section screen lattice.
+// This is deliberately independent of the 3D mesh-LOD display attenuation:
+// a Section pixel and a 3D triangle do not generally resolve the same area.
+// Expose the common operator so cross-view audits can compare matched physical
+// points and measure the aliasing, instead of mistaking it for a Z-scale error.
+export function roughProfileOffsetAtPixelFootprint(
+  x,
+  y,
+  appearance,
+  { pixelsPerUm = 1, unitX = 1, unitY = 0 } = {},
+) {
+  const density = Number(pixelsPerUm),
+    feature = Number(appearance?.featureSize);
+  if (!(density > 0) || !Number.isFinite(density) || !(feature > 0) || feature * density >= 2) {
+    return roughProfileOffsetAtPoint(x, y, appearance);
+  }
+  const halfPixelPhysical = 0.5 / Math.max(density, 1e-12);
+  let sum = 0;
+  for (const offset of [-1, -0.5, 0, 0.5, 1]) {
+    sum += roughProfileOffsetAtPoint(
+      x + unitX * halfPixelPhysical * offset,
+      y + unitY * halfPixelPhysical * offset,
+      appearance,
+    );
+  }
+  return sum / 5;
 }
 
 // These overrides affect displayed geometry only, never the canonical profile.
@@ -468,6 +523,120 @@ export function roughDisplayHeightBlend(featureSize, samplePitch) {
     pitch = Number(samplePitch);
   if (!(feature > 0) || !(pitch > 0) || !Number.isFinite(feature + pitch)) return 1;
   return 0.12 + 0.88 * smoothstep(0.25, 1, feature / pitch);
+}
+
+// Estimate XY resolution per cap, not from the ROI area or a sum of triangles
+// across material layers. Repeated conformal caps do not add spatial samples.
+// A shared seeded field uses its coarsest cap pitch so thin interfaces and
+// their borders retain the same display displacement, including CPU fallback.
+export function roughTaskDisplaySampling(tasks) {
+  const fields = new Map();
+  const sampling = tasks.map((task) => {
+    const appearance = task.cap.appearance;
+    const key = JSON.stringify(
+      Object.fromEntries(
+        Object.entries(appearance || {})
+          .filter(([name]) => name !== 'displayRoughBlend')
+          .sort(([a], [b]) => a.localeCompare(b)),
+      ),
+    );
+    let area = 0;
+    let triangles = 0;
+    for (const zone of task.zones || []) {
+      for (const [a, b, c] of zone.baseTriangles || []) {
+        area += Math.abs((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])) / 2;
+      }
+      triangles += adaptiveRoughMeshLod({
+        triangleCount: zone.baseTriangles.length,
+        maxEdge: zone.maxEdge,
+        featureSize: appearance?.featureSize,
+        morphology: appearance?.morphology,
+        ...zone.lodContext,
+        triangleBudget: zone.triangleBudget,
+      }).estimatedTriangles;
+    }
+    const pitch = area > 0 && triangles > 0 ? Math.sqrt((2 * area) / triangles) : 0;
+    fields.set(key, Math.max(fields.get(key) || 0, pitch));
+    return key;
+  });
+  return sampling.map((key) => ({ pitch: fields.get(key) }));
+}
+
+// A whole seeded-field cohort may surrender one Quality subdivision level
+// only when all its CPU rough caps (including coating and implant overlays)
+// have reached the minimum display-height blend. Strictly presentation-only:
+// keep stored morphology, Section geometry, GPU and array paths unchanged.
+export function trimSaturatedRoughLodBudgets(tasks) {
+  if (!tasks?.length) return false;
+  const before = roughTaskDisplaySampling(tasks);
+  const localBefore = tasks.map((task) => roughTaskDisplaySampling([task])[0]);
+  const blend = (task, sample) => {
+    const profile = task.cap?.appearance;
+    return profile?.kind === 'rough' && ['stochastic', 'stochastic-v2'].includes(profile.morphology)
+      ? roughDisplayHeightBlend(profile.featureSize, sample.pitch)
+      : 1;
+  };
+  // Co-registered caps (including implant overlays and conformal coatings)
+  // must not be re-tessellated at different rates. Only optimize a *whole*
+  // seeded heightfield cohort if every cap is unresolved and CPU-based.
+  const cohorts = new Map();
+  tasks.forEach((task, i) => {
+    const appearance = task.cap?.appearance;
+    const key = JSON.stringify(
+      Object.fromEntries(
+        Object.entries(appearance || {})
+          .filter(([name]) => name !== 'displayRoughBlend')
+          .sort(([a], [b]) => a.localeCompare(b)),
+      ),
+    );
+    if (!cohorts.has(key)) cohorts.set(key, []);
+    cohorts.get(key).push(i);
+  });
+  const eligible = new Set();
+  for (const indices of cohorts.values()) {
+    if (
+      indices.every((i) => {
+        const task = tasks[i];
+        return (
+          !task.gpuDisplacement &&
+          !task.cap?.instanceTranslations?.length &&
+          !task.implant?.instanceTranslations?.length &&
+          Math.abs(blend(task, before[i]) - 0.12) <= 1e-12 &&
+          Math.abs(blend(task, localBefore[i]) - 0.12) <= 1e-12
+        );
+      })
+    )
+      indices.forEach((i) => eligible.add(i));
+  }
+  const old = tasks.map((task) => (task.zones || []).map((zone) => zone.triangleBudget));
+  let changed = false;
+  tasks.forEach((task, i) => {
+    if (!eligible.has(i)) return;
+    for (const zone of task.zones || []) {
+      const budget = Number(zone.triangleBudget);
+      if (!(budget > zone.baseTriangles.length)) continue;
+      zone.triangleBudget = Math.max(zone.baseTriangles.length, Math.floor(budget / 4));
+      changed ||= zone.triangleBudget !== budget;
+    }
+  });
+  if (!changed) return false;
+  const after = roughTaskDisplaySampling(tasks);
+  const localAfter = tasks.map((task) => roughTaskDisplaySampling([task])[0]);
+  if (
+    tasks.some(
+      (task, i) =>
+        Math.abs(blend(task, after[i]) - blend(task, before[i])) > 1e-12 ||
+        Math.abs(blend(task, localAfter[i]) - blend(task, localBefore[i])) > 1e-12,
+    )
+  ) {
+    tasks.forEach((task, i) =>
+      (task.zones || []).forEach((zone, j) => {
+        zone.triangleBudget = old[i][j];
+      }),
+    );
+    return false;
+  }
+  return true;
 }
 
 export function roughDisplayProfileOffsetAtPoint(x, y, appearance) {

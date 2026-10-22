@@ -66,7 +66,11 @@ function normalizedLegacySurface(node, operation) {
     featureCv: Number.isFinite(featureCv) ? featureCv : 0,
     heightCv: Number.isFinite(heightCv) ? heightCv : 0,
     morphology:
-      source.morphology === 'pyramid' || saved?.morphology === 'pyramid' ? 'pyramid' : 'stochastic',
+      source.morphology === 'stochastic-v2' || saved?.morphology === 'stochastic-v2'
+        ? 'stochastic-v2'
+        : source.morphology === 'pyramid' || saved?.morphology === 'pyramid'
+          ? 'pyramid'
+          : 'stochastic',
     polarity: source.polarity === 'normal' || saved?.polarity === 'normal' ? 'normal' : 'inverted',
     ...(Number.isInteger(seed) && seed >= 0 ? { seed } : {}),
     ...(typeof profileId === 'string' && profileId ? { profileId } : {}),
