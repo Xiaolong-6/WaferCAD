@@ -1,13 +1,13 @@
 {
-  "version": 1,
+  "version": 2,
   "provenance": "developer-reported",
   "scope": "full",
   "status": "pass",
   "source": {
-    "digest": "d098d390251cfd2b52cf0fb9fb5b8573d8bd831314b2854bd3487c6465f735bb",
-    "fileCount": 1123
+    "digest": "6a6a6f25052422ee059eca31e1bc65ed19ffd73ae3d134b0cf020d091e4d4c50",
+    "fileCount": 1161
   },
-  "sourceRevision": "764f3430a0ce746cd77279872159e40684d6339e",
+  "sourceRevision": "e9ee4ce76c7e332201ef4bc0a38bf4f30988a8d1",
   "planDigest": "9e40e14c41649069d23911dc155328f17e554f0307619aef8493378a2f26b4b3",
   "environment": {
     "node": "v24.11.1",
@@ -19,7 +19,7 @@
       "three": "0.179.1"
     }
   },
-  "startedAt": "2026-10-21T11:10:15.863Z",
+  "startedAt": "2026-10-22T06:56:43.560Z",
   "checks": [
     {
       "id": "lint",
@@ -31,7 +31,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 4919,
+      "durationMs": 6254,
       "logDigest": "7e083cff9d323606d09accd3389828279cc52091b6c62b45c8100c1ced589c7c"
     },
     {
@@ -44,7 +44,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 14632,
+      "durationMs": 15480,
       "logDigest": "1230617af071df8c1efeb12bcd6d41c3aa159e1cd0841cc546fbae4c8c56f867"
     },
     {
@@ -57,8 +57,8 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 406,
-      "logDigest": "3413d1015e1c9f5f6b9363616f39c7ad4c45709f18266518a60b0fcef04cab0e"
+      "durationMs": 641,
+      "logDigest": "1b4f7b8e056f396b1f9085da7197204c54b6d02623481a88589c47b0bd8392ed"
     },
     {
       "id": "node",
@@ -69,10 +69,10 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 189451,
-      "logDigest": "805b763e44b9b00676e2e45888fc1e280c9da70eb3b662eef11682c2fec70667"
+      "durationMs": 306034,
+      "logDigest": "574dba794c8d1ec35789ea846c3fbf9217dd7c7fa2fdca1eeb6a84f6e2a7b486"
     }
   ],
-  "finishedAt": "2026-10-21T11:13:45.273Z",
-  "transcriptDigest": "7b255c871c822d6e96eccc8a2dabaf4ad3fd9bec7cb28097aed9390dc565d5c0"
+  "finishedAt": "2026-10-22T07:02:11.973Z",
+  "transcriptDigest": "9fb48e67eb0071cdf7ba2d572f5c6d31bb3bff19131004a07283d3d0371ce4d3"
 }

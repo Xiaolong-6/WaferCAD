@@ -10,6 +10,10 @@ import {
 import { robustDifference, robustIntersection } from './polygon-boolean.js';
 import { normalizeProcessRecipe } from './process-recipe.js';
 import {
+  CONTINUOUS_ETCH_MODEL_KERNEL,
+  validateContinuousEtchModel,
+} from './continuous-etch-model.js';
+import {
   PHYSICAL_FACET_MODEL_KERNEL,
   validateExperimentalPhysicalFacetModel,
 } from './experimental/physical-facets/physical-facet-model.js';
@@ -714,7 +718,8 @@ function validateModel(model, budget, geometryCache) {
   if (
     model.kernel !== 'vector-2.5d-v1' &&
     model.kernel !== ARRAY_MODEL_KERNEL &&
-    model.kernel !== PHYSICAL_FACET_MODEL_KERNEL
+    model.kernel !== PHYSICAL_FACET_MODEL_KERNEL &&
+    model.kernel !== CONTINUOUS_ETCH_MODEL_KERNEL
   )
     fail('model.kernel', 'is not supported.');
   if (model.array != null && !isArrayModel(model))
@@ -750,6 +755,17 @@ function validateModel(model, budget, geometryCache) {
     validateStack(region.stack, `${path}.stack`, layerIds);
     if (region.stack.length === 0) fail(`${path}.stack`, 'must not be empty.');
   });
+
+  if (
+    model.kernel === CONTINUOUS_ETCH_MODEL_KERNEL ||
+    Object.hasOwn(model, 'continuousEtchOwner')
+  ) {
+    try {
+      validateContinuousEtchModel(model);
+    } catch (error) {
+      fail('model.continuousEtchOwner', error.message);
+    }
+  }
 
   if (
     model.kernel === PHYSICAL_FACET_MODEL_KERNEL ||

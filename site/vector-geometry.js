@@ -10,10 +10,8 @@ import {
   robustIntersection,
 } from './polygon-boolean.js';
 
-if (!globalThis.polygonClipping) {
-  throw new Error('polygon-clipping must load before vector-geometry.js');
-}
-
+// Polygon Boolean operations validate the vendor engine lazily in
+// polygon-boolean.js; schema modules may be imported before vendor bootstrap.
 export { BOOLEAN_RETRY_GRID_UM, EPS, canonicalizeBooleanGeometry, closeRing, normalizeMulti };
 
 export const cloneGeom = (geom) => structuredClone(geom || []);

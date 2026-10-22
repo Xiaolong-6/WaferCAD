@@ -14,6 +14,10 @@ const { BUNDLED_EXAMPLES } = await import('../bundled-examples.js');
 const { upgradeBundledExampleHistory } = await import('../bundled-example-history.js');
 const { expandProjectStorage } = await import('../project-io.js');
 const { validateProjectFile } = await import('../project-schema.js');
+const { validateContinuousEtchModel, continuousModelMaterialAt } =
+  await import('../continuous-etch-model.js');
+const { continuousSectionContours } = await import('../continuous-etch-section.js');
+const { createContinuousPlanSampler } = await import('../continuous-etch-plan.js');
 const {
   appearanceSurfaceGroups,
   electricalRegionSolids,
@@ -130,6 +134,26 @@ function assertRendererReadyState(state, label) {
 
   const hasMaterial = (model.regions || []).some((region) => region.stack?.length);
   if (!hasMaterial) return;
+
+  if (model.kernel === 'vector-continuous-etch-v1') {
+    // The legacy extrusion/slab renderer deliberately refuses analytic
+    // material. The published Microdisk must use the dedicated native path.
+    const owner = validateContinuousEtchModel(model);
+    assert.ok(owner.fronts.length > 0, `${label}: missing exact release front`);
+    const plan = createContinuousPlanSampler(model, 'front');
+    assert.equal(plan([0, 0])?.layerId, 'layer-1');
+    assert.equal(continuousModelMaterialAt(model, [0, 0, 39]), 'base');
+    assert.equal(continuousModelMaterialAt(model, [110, 0, 30]), null);
+    const section = state.section;
+    assert.ok(section?.a && section?.b, `${label}: Section A-B missing`);
+    const contours = continuousSectionContours(model, section.a, section.b);
+    assert.deepEqual(
+      contours.map((part) => part.layerId).sort(),
+      ['base', 'layer-1'],
+      `${label}: native Section cannot resolve both materials`,
+    );
+    return;
+  }
 
   const extrusions = extrusionGroups(model),
     solids = materialSolids(model);
@@ -488,43 +512,41 @@ test('PERC example exposes only curated reconstruction variants with a saved ins
   assert.deepEqual(project.section, active.headState.section);
 });
 
-test('microdisk example contains a canonical suspended air gap and central Si support', async () => {
-  const project = await loadBundledProject('suspended-silica-microdisk'),
-    model = project.model,
-    oxideId = model.layers.find((layer) => /Thermal SiO/i.test(layer.name))?.id;
-
+test('published continuous Microdisk provides exact air gap, central support and editable replay', async () => {
+  const project = await loadBundledProject('suspended-silica-microdisk');
+  const model = project.model;
+  assert.equal(model.kernel, 'vector-continuous-etch-v1');
   assert.equal(model.processRevision, 8);
-  assert.equal(model.regions.length, 74);
-  assert.equal(project.snapshotBranches.activeBranchId, 'microdisk-adaptive-72-band');
-  assert.equal(project.snapshotBranches.nodes.length, 10);
-  assert.equal(project.snapshots.length, 10);
-  assert.equal(project.snapshotBranches.branches.length, 2);
-  assert.ok(project.snapshotBranches.branches.some((branch) => branch.id === 'main'));
-  assert.ok(oxideId);
-
-  const releaseStep = project.snapshotBranches.nodes.find((node) =>
-    /XeF₂ isotropic Si release/.test(node.operation?.label || ''),
+  assert.equal(project.snapshotBranches.activeBranchId, 'main');
+  assert.equal(project.snapshotBranches.nodes.length, 9);
+  assert.equal(project.snapshots.length, 9);
+  assert.equal(project.snapshotBranches.branches.length, 1);
+  const owner = validateContinuousEtchModel(model);
+  assert.equal(owner.sourceModel.kernel, 'vector-2.5d-v1');
+  assert.deepEqual(owner.operation.targetLayerIds, ['base']);
+  assert.equal(owner.operation.clip.length, 5, 'Must retain original Invert Mask openings');
+  assert.equal(owner.fronts[0].shape, 'circular');
+  assert.equal(owner.fronts[0].lateralUm, 36);
+  assert.equal(owner.fronts[0].verticalUm, 36);
+  const step = project.snapshotBranches.nodes.find((node) => node.id === 'process-microdisk-08');
+  assert.ok(step);
+  assert.equal(step.operation.replay.areaMode, 'invert');
+  assert.equal(step.operation.replay.params.etchProfile, 'continuous');
+  assert.equal(step.operation.replay.params.continuousShape, 'circular');
+  assert.deepEqual(step.operation.replay.params.etchTargetLayerIds, ['base']);
+  assert.equal(step.operation.replay.maskContext.cell, 'MICRODISK_RELEASE_MASK');
+  assert.deepEqual(step.operation.replay.maskContext.layerKeys, ['1|0']);
+  assert.equal(continuousModelMaterialAt(model, [0, 0, 39]), 'base');
+  assert.equal(continuousModelMaterialAt(model, [110, 0, 30]), null);
+  assert.equal(continuousModelMaterialAt(model, [110, 0, 40.5]), 'layer-1');
+  assert.equal(continuousModelMaterialAt(model, [145, 0, 40.5]), 'layer-1');
+  const finalRecord = project.snapshotBranches.nodes.find(
+    (node) => node.id === 'process-microdisk-09',
   );
-  assert.equal(releaseStep?.operation?.replay?.areaMode, 'invert');
-  assert.equal(releaseStep?.operation?.replay?.params?.etchProfile, 'isotropic');
-  assert.deepEqual(releaseStep?.operation?.replay?.params?.etchTargetLayerIds, ['base']);
-
-  const oxideSegments = model.regions.flatMap((region) =>
-      region.stack.filter((segment) => segment.layerId === oxideId),
-    ),
-    suspended = model.regions.filter((region) => {
-      const oxide = region.stack.find((segment) => segment.layerId === oxideId),
-        silicon = region.stack.find((segment) => segment.layerId === 'base');
-      return oxide && silicon && oxide.z0 - silicon.z1 > 30;
-    }),
-    supported = model.regions.filter((region) => {
-      const oxide = region.stack.find((segment) => segment.layerId === oxideId),
-        silicon = region.stack.find((segment) => segment.layerId === 'base');
-      return oxide && silicon && Math.abs(oxide.z0 - silicon.z1) < 1e-9;
-    });
-
-  assert.ok(oxideSegments.length >= 2);
-  assert.ok(oxideSegments.every((segment) => Math.abs(segment.z1 - segment.z0 - 1.8) < 1e-9));
-  assert.ok(suspended.length > 0, 'released annulus must retain a real canonical air gap');
-  assert.ok(supported.length > 0, 'central silica support must remain in contact with Si');
+  assert.equal(finalRecord.operation.replay.kind, 'record');
+  assert.deepEqual(
+    finalRecord.state.model,
+    step.state.model,
+    'M09 Record-only must never modify the released physical geometry',
+  );
 });

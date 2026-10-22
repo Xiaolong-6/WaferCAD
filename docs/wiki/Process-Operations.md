@@ -165,6 +165,23 @@ A distance-based geometric removal front forms real cavities and supported overh
 
 **Example:** MEMS-style release beneath a protective mask.
 
+<a id="etch-continuous"></a>
+### Continuous release · experimental
+
+![Before and after schematic for Continuous release · experimental](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/etch-continuous.svg?sanitize=true)
+
+**Behavior:** Subtracts material with an analytic circular, elliptical or vertical release front.
+
+Uses one exact physical material owner derived from exposed selected material and the active mask. No Z band count or stepped surrogate is saved.
+
+**Inputs:** Exposed target · Vertical depth · Lateral reach · Front shape · Face · Area
+
+**Changes:** canonical material geometry
+
+**Modeling boundary:** One release per lineage; additional physical Process operations and non-rectangular 3D ROI shapes are not yet supported. Rectangular Main ROI inspection, Main material projection, and exact Recipe Run All replay are available in the experimental mode.
+
+**Example:** Suspended silica microdisk with an exact silicon undercut.
+
 <a id="etch-undercut"></a>
 ### Undercut release
 
