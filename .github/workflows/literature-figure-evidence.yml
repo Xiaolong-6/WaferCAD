@@ -1,23 +1,6 @@
 name: Literature Figure Cut Evidence
 
 on:
-  pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened, ready_for_review]
-    paths:
-      - 'scripts/example-literature-visual-evidence.mjs'
-      - 'scripts/v2/capture-literature-native-v2.mjs'
-      - 'site/tests/native-literature-cases.test.mjs'
-      - 'scripts/v2/check-m3d-second-power-via-section.mjs'
-      - 'site/tests/literature-provenance-matrix.test.mjs'
-      - 'site/isotropic-release-*.js'
-      - 'site/model.js'
-      - 'site/tests/isotropic-release-*.test.mjs'
-      - 'docs/science/ISOTROPIC_RELEASE_ORACLE_2026-10-16.md'
-      - 'docs/evidence/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md'
-      - 'docs/evidence/LITERATURE_FIGURE_MATRIX_2026-10-16.json'
-      - 'site/examples/photodetector-literature-examples.wafercad'
-      - '.github/workflows/literature-figure-evidence.yml'
   workflow_dispatch:
 
 permissions:

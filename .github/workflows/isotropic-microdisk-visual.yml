@@ -1,16 +1,6 @@
 name: Microdisk native adaptive Workstation evidence
 
 on:
-  pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened]
-    paths:
-      - 'scripts/v2/capture-isotropic-microdisk-workstation.mjs'
-      - 'site/isotropic-release-*.js'
-      - 'site/model.js'
-      - 'site/tests/isotropic-release-*.test.mjs'
-      - 'site/examples/suspended-silica-microdisks.wafercad'
-      - '.github/workflows/isotropic-microdisk-visual.yml'
   workflow_dispatch:
 
 permissions:

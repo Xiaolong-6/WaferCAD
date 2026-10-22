@@ -2,6 +2,65 @@
 
 WaferCAD keeps the full regression inventory, but pull requests do not run every browser suite unconditionally. The browser workflow first classifies the changed paths with `scripts/ci-test-plan.mjs`, then runs the narrowest regression scopes that own those changes.
 
+## Authoritative execution strategy (effective 2026-10-22)
+
+This section supersedes the historical per-workflow PR-routing notes farther
+below. Changes to this policy must update `scripts/ci-trigger-policy.mjs` and
+its owning unit tests; **do not** restore broad automatic `pull_request`,
+`push` or independent `schedule` triggers on heavy workflows.
+
+| Phase                | Automated remote execution                                                                                                                                             | Local owner                                                            | Merge eligibility                                                    |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Ordinary development | None                                                                                                                                                                   | Focused Node/scientific tests and real Chromium screenshots            | No waiting on GitHub                                                 |
+| Draft PR push        | Proof-only `Quality`; small release policy contract on relevant changes; Ready router skips                                                                            | `node scripts/local-verification.mjs run draft` or matching full proof | Not merge-ready                                                      |
+| Ready for Review     | Proof-only full Quality plus `ready-impact.yml` selected owner gates                                                                                                   | Full proof and actual app/browser inspection                           | All selected gates must pass on the candidate tree                   |
+| Daily at 02:30 UTC   | `daily-full.yml`: actual full lint/format/docs/Node + full Browser + Process/Recipe + scientific examples/facets + UI/Renderer + normal-Origin History/Recovery/Worker | None required to start the nightly run                                 | Informative for its exact SHA, never a substitute for a newer PR SHA |
+| Main release         | Unchanged fail-closed `pages.yml` exact release-tree checks and deploy verdict                                                                                         | Human approval and correct source-bound proof                          | Required prior to publication                                        |
+
+**Budget:** GitHub quota is approximately 3,000 Runner minutes/month. The
+daily controller records actual aggregate job minutes and flags runs exceeding
+**75 minutes**. This is an _accounting/alert threshold, not an advance hard
+billing cap_: with 31 daily runs the planning allowance is 2,325 minutes,
+leaving ~675 for targeted Ready/release tests. Investigate overruns and narrow
+unrelated jobs; never ignore/loosen physics, data integrity, Worker, History or
+Recovery contracts. The only daily cron is `30 2 * * *`: Finland local time
+04:30 winter (UTC+2), 05:30 summer (UTC+3). Legacy archived research and
+large paper-specific one-offs remain explicitly manual, not duplicated daily.
+
+**Source identity:** A midnight pass at commit `abc123` says nothing about a
+new Kernel commit `def456`. The Ready planner routes changed paths using the
+base/head diff; a fixed `Ready impact verdict` fails if a selected owner gate
+fails, cancels, or is missing. Missing local Quality proof fails quickly; it
+never falls back to the remote 1,197-test inventory. The nightly run deliberately
+executes full checks irrespective of committed proof; publication continues to
+be fail-closed at the exact release tree.
+
+**Developer commands:**
+
+```bash
+node scripts/ci-trigger-policy.mjs
+node --test site/tests/ci-trigger-policy.test.mjs
+node scripts/local-verification.mjs run draft
+# Before Ready/merge: node scripts/local-verification.mjs run full
+```
+
+Do not use an empty commit simply to force every workflow to run. The Ready
+entrypoint uses path ownership, while manual full acceptance remains available
+when a release risk genuinely requires it. Changes to branch protection/
+required checks need a repository administrator: require stable `Quality / quality`
+and `Ready risk-targeted acceptance / Ready impact verdict` for Ready merges,
+plus the existing required release/evidence protections. A skipped optional
+owner job does not imply it passed; the aggregator only permits skips when
+the corresponding impact output is false. GitHub required status checks are
+repository settings and **cannot be guaranteed by YAML alone**.
+
+---
+
+**Historical implementation notes below:** older paragraphs describing Draft
+Browser automation, automatic specialized PR replay, and weekly independent
+Browser schedules document the previous policy and are superseded by the
+2026-10-22 routing table above. Do not use them to infer current triggers.
+
 ## Local Quality evidence
 
 Run the existing checks locally and commit their source-bound report.
@@ -38,17 +97,13 @@ runs the complete existing `npm test` inventory. A full report satisfies Draft;
 a Draft report never satisfies Ready or release acceptance. Failure, Abort or
 source changes during a run cannot retain an old passing report.
 
-`Quality / quality` first checks the report and compressed transcript using
-Node built-ins and Git without installing dependencies. **If the proof is
-missing, incomplete, failed, stale, or incompatible with the exact proposed
-merge tree, Quality installs locked dependencies and actually runs the same
-required checks.** Draft fallback runs lint, format, generated docs and the
-focused Quality/CI/documentation Node contracts; Ready and manual full fallback
-run `npm run check`, including the entire `npm test` inventory. Any failing
-or interrupted check rejects the job; no stale report can authorize success.
-The locally supplied full proof is still preferred to avoid repeating tests.
-The strict full-proof step and the full-execution fallback have separate names
-so a tolerated failed evidence probe can never count as release attestation.
+`Quality / quality` verifies the locally generated source-bound report and
+compressed transcript against the proposed merge tree. **Missing, incomplete,
+failed, stale or incompatible PR proof fails closed without running application
+Quality in CI.** Developers regenerate the matching Draft or Full report locally
+and commit both receipt files. The scheduled nightly and explicitly dispatched
+Quality runs execute the actual `npm run check` suite using locked dependencies,
+regardless of existing proof. A tolerated failed evidence probe is never a pass.
 
 The default PR checkout checks the proposed merge tree. For full Main release
 validation and manual pre-main integration, the same proof-first/full-execution

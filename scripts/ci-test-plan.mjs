@@ -31,7 +31,7 @@ const V2_CROSS_UI_PATHS = [
 const WORKSTATION_PATHS = [
   /^site\/app\.(?:js|html)$/,
   /^site\/workstation\.css$/,
-  /^site\/controllers\/(?:startup|tool-tabs|workspace-view|workspace-actions)-controller\.js$/,
+  /^site\/controllers\/(?:startup|project|tool-tabs|workspace-view|workspace-actions)-controller\.js$/,
   /^site\/bundled-examples\.js$/,
   /^site\/welcome\.js$/,
   /^scripts\/workstation-regression\.mjs$/,
@@ -123,6 +123,7 @@ const PRODUCT_REVIEW_PATHS = [
 ];
 
 const EXAMPLE_PATHS = [
+  /^site\/example-asset\.js$/,
   /^site\/examples\//,
   /^examples\/(?!.*\/(?:README|PROVENANCE)\.md$)/,
   /^site\/bundled-examples\.js$/,

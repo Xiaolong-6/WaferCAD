@@ -1,13 +1,6 @@
 name: V2 full-array renderer isolation
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'scripts/v2/check-array-renderer-isolation.mjs'
-      - 'site/ui-v2/three-view.js'
-      - 'site/model.js'
-      - 'site/three-view.js'
-      - '.github/workflows/v2-array-renderer-isolation.yml'
+  workflow_call:
   workflow_dispatch:
 permissions:
   contents: read

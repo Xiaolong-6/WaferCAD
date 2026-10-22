@@ -1,13 +1,5 @@
 name: V2 scientific Mask deposition area
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'scripts/v2/check-mask-process-area.mjs'
-      - 'site/model.js'
-      - 'site/ui-v2/project-mask-panels.js'
-      - 'site/ui-v2/workstation-workflow.js'
-      - '.github/workflows/v2-mask-process-area.yml'
   workflow_dispatch:
 permissions:
   contents: read

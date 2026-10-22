@@ -1,13 +1,6 @@
 name: V2 Recovery Failure atomicity
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'scripts/v2/check-recovery-failure-atomicity.mjs'
-      - 'scripts/v2/check-recovery-corrupt-checkpoint.mjs'
-      - 'site/controllers/workspace-persistence-controller.js'
-      - '.github/workflows/v2-recovery-failure-atomicity.yml'
   workflow_dispatch:
 
 permissions:

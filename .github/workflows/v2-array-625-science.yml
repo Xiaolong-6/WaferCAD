@@ -1,16 +1,6 @@
 name: V2 Array 625-site science
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'scripts/v2/check-array-625-science.mjs'
-      - 'site/tests/array-instance-invariants.test.mjs'
-      - 'site/tests/array-6400-history.test.mjs'
-      - 'scripts/v2/check-array-6400-worker-replay.mjs'
-      - 'site/model-array.js'
-      - 'site/model-array-process.js'
-      - '.github/workflows/v2-array-625-science.yml'
   workflow_dispatch:
 
 permissions:

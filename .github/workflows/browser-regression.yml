@@ -3,50 +3,16 @@ name: Browser regression
 on:
   workflow_call:
     inputs:
+      force_full:
+        description: Run the complete nightly Browser matrix
+        required: false
+        type: boolean
+        default: false
       skip_node_gate:
         description: The release workflow owns the Node gate for this revision
         required: false
         type: boolean
         default: false
-  pull_request:
-    branches:
-      - main
-    types: [opened, synchronize, reopened, ready_for_review]
-    paths:
-      - "package.json"
-      - "package-lock.json"
-      - "site/**"
-      - "!site/tests/**"
-      - "examples/**"
-      - "!examples/**/README.md"
-      - "!examples/**/PROVENANCE.md"
-      - "scripts/ui-smoke.mjs"
-      - "scripts/workstation-regression.mjs"
-      - "scripts/history-regression.mjs"
-      - "scripts/persistence-regression.mjs"
-      - "scripts/process-geometry-regression.mjs"
-      - "scripts/project-io-runtime-regression.mjs"
-      - "scripts/array-runtime-regression.mjs"
-      - "scripts/array-renderer-regression.mjs"
-      - "scripts/renderer-pipeline-benchmark.mjs"
-      - "scripts/pr250-renderer-audit.mjs"
-      - "scripts/pr250-audit-fixtures.mjs"
-      - "scripts/pr250-audit-compare.mjs"
-      - "scripts/rough-boundary-audit.mjs"
-      - "scripts/interaction-regression.mjs"
-      - "scripts/resilience-regression.mjs"
-      - "scripts/test-helpers/**"
-      - "scripts/example-regression.mjs"
-      - "scripts/product-regression.mjs"
-      - "scripts/product-layout-cases.mjs"
-      - "scripts/renderer-product-cases.mjs"
-      - "scripts/product-layout-regression.mjs"
-      - "scripts/renderer-product-regression.mjs"
-      - "scripts/process-benchmarks.mjs"
-      - "scripts/ci-test-plan.mjs"
-      - ".github/workflows/browser-regression.yml"
-  schedule:
-    - cron: "17 2 * * 1"
   workflow_dispatch:
 
 concurrency:
@@ -85,12 +51,14 @@ jobs:
         id: plan
         shell: bash
         run: |
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          if [[ "${{ inputs.force_full }}" == "true" ]]; then
+            node scripts/ci-test-plan.mjs --full
+          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
             git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}" \
               | node scripts/ci-test-plan.mjs --stdin \
                   --base=${{ github.event.pull_request.base.sha }} \
                   --head=${{ github.event.pull_request.head.sha }}
-          elif [[ "${{ github.event_name }}" == "schedule" || "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             node scripts/ci-test-plan.mjs --full
           elif [[ "${{ github.event_name }}" == "push" ]]; then
             before="${{ github.event.before }}"
@@ -113,8 +81,8 @@ jobs:
     timeout-minutes: 15
     env:
       WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
-      WAFERCAD_CAPTURE_REVIEW: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '1' || '0' }}
-      WAFERCAD_EXTENDED_REVIEW: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '1' || '0' }}
+      WAFERCAD_CAPTURE_REVIEW: ${{ (inputs.force_full || github.event_name == 'workflow_dispatch') && '1' || '0' }}
+      WAFERCAD_EXTENDED_REVIEW: ${{ (inputs.force_full || github.event_name == 'workflow_dispatch') && '1' || '0' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -375,7 +343,7 @@ jobs:
     timeout-minutes: 90
     env:
       WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
-      WAFERCAD_PROCESS_EXTENDED: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '1' || '0' }}
+      WAFERCAD_PROCESS_EXTENDED: ${{ (inputs.force_full || github.event_name == 'workflow_dispatch') && '1' || '0' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6

@@ -1,17 +1,6 @@
 name: Native v2 KLayout full UI corpus
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'scripts/v2/check-klayout-corpus-ui.mjs'
-      - 'site/ui-v2/project-mask-panels.js'
-      - 'site/controllers/project-controller.js'
-      - 'site/controllers/mask-import-controller.js'
-      - 'site/gds.js'
-      - 'site/oasis.js'
-      - 'site/layout-worker.js'
-      - '.github/workflows/v2-klayout-corpus-ui.yml'
   workflow_dispatch:
 
 permissions:

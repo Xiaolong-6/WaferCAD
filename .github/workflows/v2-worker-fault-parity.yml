@@ -1,15 +1,7 @@
 name: V2 Process Worker fault parity
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'scripts/v2/check-worker-fault-parity.mjs'
-      - 'site/process-worker.js'
-      - 'site/controllers/process-task-controller.js'
-      - 'site/controllers/process-panel-controller.js'
-      - 'site/ui-v2/workstation-workflow.js'
-      - '.github/workflows/v2-worker-fault-parity.yml'
+  workflow_call:
   workflow_dispatch:
 
 permissions:

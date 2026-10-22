@@ -1,16 +1,6 @@
 name: PR290 Native Workstation and View UX
 
 on:
-  pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened]
-    paths:
-      - 'scripts/v2/check-source-sunset-workstation.mjs'
-      - 'scripts/v2/check-source-sunset-view-ux.mjs'
-      - 'scripts/workstation-regression.mjs'
-      - 'scripts/view-ux-v3-regression.mjs'
-      - 'package.json'
-      - '.github/workflows/legacy-workstation-native-acceptance.yml'
   workflow_dispatch:
 
 permissions:

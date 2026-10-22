@@ -1,14 +1,6 @@
 name: Foreground scene continuity P0
 
 on:
-  push:
-    branches:
-      - perf/foreground-responsive-rendering-20261012
-    paths:
-      - site/three-view.js
-      - site/tests/issue-11-3d-controls.test.mjs
-      - scripts/foreground-rendering-p0-browser.mjs
-      - .github/workflows/foreground-rendering-p0.yml
   workflow_dispatch:
 
 permissions:
