@@ -3352,7 +3352,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
   // Experimental native ThreeView path for exact continuous material. The
   // displayed triangles are derived: the persisted owner remains analytic.
-  async function renderContinuousEtch(model) {
+  async function renderContinuousEtch(model, isSuperseded) {
     const clip = getClipGeometry();
     const roiBounds = continuousRectRoiBounds(clip);
     const owner = validateContinuousEtchModel(model);
@@ -3466,8 +3466,15 @@ diffuseColor.a *= waferCadAlphaScale;`,
       return;
     }
 
-    disposeGroup();
     const { edgeTable, triTable } = await import('three/addons/objects/MarchingCubes.js');
+    // The module import can suspend rendering while History, Model or ROI
+    // changes. Never dispose or commit a scene for a superseded request.
+    if (isSuperseded()) {
+      const error = new Error('Continuous 3D scene superseded by a newer request');
+      error.name = 'SceneVariantSuperseded';
+      throw error;
+    }
+    disposeGroup();
     // Exact continuous Si topography replaces full-volume voxelization only
     // for a fully covered, non-through-etched rectangular substrate. Other
     // materials and unsupported morphologies retain the generic extractor.
@@ -3586,16 +3593,43 @@ diffuseColor.a *= waferCadAlphaScale;`,
     const model = getModel();
     if (!model) return;
     if (model.kernel === CONTINUOUS_ETCH_MODEL_KERNEL || model.continuousEtchOwner != null) {
+      // Share the ordinary 3D renderer's scene-request lock and generation.
+      // Repeated requests coalesce while the lazy module import is pending.
+      const renderGeneration = ++sceneGeneration;
+      pendingRender = false;
+      rendering = true;
+      host.dataset.sceneGeneration = String(renderGeneration);
+      host.dataset.modelRevision = String(model.revision ?? 0);
+      host.dataset.processRevision = String(model.processRevision ?? 0);
+      host.dataset.renderState = 'building';
       try {
-        await renderContinuousEtch(model);
+        await renderContinuousEtch(
+          model,
+          () => pendingRender || sceneGeneration !== renderGeneration,
+        );
       } catch (error) {
-        disposeGroup();
-        host.dataset.renderState = 'error';
-        host.dataset.renderPhase = 'build-failed';
-        host.dataset.rendererBuildFailure = error?.message || String(error);
-        stats.textContent = 'Continuous Etch 3D unavailable';
-        console.error('Continuous Etch native 3D build failed:', error);
+        if (error?.name === 'SceneVariantSuperseded') {
+          host.dataset.rendererSupersededBuilds = String(
+            Number(host.dataset.rendererSupersededBuilds || 0) + 1,
+          );
+          host.dataset.renderPhase = 'superseded';
+        } else {
+          disposeGroup();
+          host.dataset.renderState = 'error';
+          host.dataset.renderPhase = 'build-failed';
+          host.dataset.rendererBuildFailure = error?.message || String(error);
+          stats.textContent = 'Continuous Etch 3D unavailable';
+          console.error('Continuous Etch native 3D build failed:', error);
+        }
+      } finally {
+        rendering = false;
       }
+      if (pendingRender) {
+        queueMicrotask(() => {
+          if (!rendering && pendingRender) render();
+        });
+      }
+      scheduleFrame();
       return;
     }
     if (model.kernel === PHYSICAL_FACET_MODEL_KERNEL) {
