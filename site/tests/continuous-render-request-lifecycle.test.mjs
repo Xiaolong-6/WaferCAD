@@ -33,7 +33,9 @@ function makeHarness() {
     host: { dataset: {} },
     stats: { textContent: '' },
     CONTINUOUS_ETCH_MODEL_KERNEL: 'vector-continuous-etch-v1',
-    getModel() { return scope.current; },
+    getModel() {
+      return scope.current;
+    },
     async renderContinuousEtch(model, isSuperseded) {
       const roi = scope.roi;
       await new Promise((resolve) => waits.push(resolve));
@@ -45,11 +47,17 @@ function makeHarness() {
       commits.push({ model, roi });
       scope.host.dataset.renderState = 'ready';
     },
-    disposeGroup() { scope.disposals++; },
-    scheduleFrame() { scope.frames++; },
+    disposeGroup() {
+      scope.disposals++;
+    },
+    scheduleFrame() {
+      scope.frames++;
+    },
     disposals: 0,
     frames: 0,
-    console: { error() {} },
+    console: {
+      error() {},
+    },
     queueMicrotask,
   };
   // Only the real dispatch branch is evaluated. Heavy Three.js scene methods
@@ -75,7 +83,6 @@ function makeHarness() {
 
 test('stale History scene cannot commit after newer Model/ROI requests', async () => {
   const { scope, render, waits, commits } = makeHarness();
-  const oldModel = scope.current;
   const oldRequest = render();
   assert.equal(scope.rendering, true);
   assert.equal(waits.length, 1);
@@ -107,7 +114,9 @@ test('stale History scene cannot commit after newer Model/ROI requests', async (
 
 test('latest Continuous build failure reports error and releases render lock', async () => {
   const { scope, render } = makeHarness();
-  scope.renderContinuousEtch = async () => { throw new Error('actual build failure'); };
+  scope.renderContinuousEtch = async () => {
+    throw new Error('actual build failure');
+  };
   await render();
   assert.equal(scope.host.dataset.renderState, 'error');
   assert.equal(scope.host.dataset.rendererBuildFailure, 'actual build failure');
