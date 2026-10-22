@@ -82,9 +82,11 @@ function normalizeEtchSurface(value, etchDepthUm) {
     morphology =
       requested === 'pyramid'
         ? 'pyramid'
-        : ['rough', 'stochastic'].includes(requested)
-          ? 'stochastic'
-          : '';
+        : requested === 'stochastic-v2'
+          ? 'stochastic-v2'
+          : ['rough', 'stochastic'].includes(requested)
+            ? 'stochastic'
+            : '';
   if (!morphology) throw new Error(`Unsupported etch.surface morphology "${requested}".`);
   const polarity = cleanText(source.polarity, 'inverted').toLowerCase();
   if (!['normal', 'inverted'].includes(polarity)) {

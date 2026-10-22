@@ -257,6 +257,7 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
         choice('Surface', 'etchSurfaceMode', [
           ['smooth', 'Smooth'],
           ['rough', 'Rough'],
+          ['rough-stable', 'Rough (stable scale)'],
           ['pyramid', 'Pyramid'],
         ]),
       ),

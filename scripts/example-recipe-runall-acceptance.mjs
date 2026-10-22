@@ -202,11 +202,23 @@ try {
       const recipeRows = page.locator('.recipe-step-row');
       const count = await recipeRows.count();
       assert.ok(count > 0, `${example.id}: opening the example lost its Recipe`);
-      assert.doesNotMatch(
-        await page.locator('#recipeValidation').innerText(),
-        /✕|mask.*missing|material.*does not exist/i,
-        `${example.id}: Recipe preflight reported an invalid reconstruction`,
-      );
+      // A saved exact Continuous Etch result legitimately rejects follow-on
+      // Process from the current terminal state. Run All explicitly rebuilds
+      // from Base; verify the safety gate before selecting that supported path.
+      const currentPreflight = await page.locator('#recipeValidation').innerText();
+      if (opened.model.kernel === 'vector-continuous-etch-v1') {
+        assert.match(
+          currentPreflight,
+          /follow-on Process on exact continuous material is unsupported/i,
+          `${example.id}: terminal continuous material must reject follow-on Process`,
+        );
+      } else {
+        assert.doesNotMatch(
+          currentPreflight,
+          /✕|mask.*missing|material.*does not exist/i,
+          `${example.id}: Recipe preflight reported an invalid reconstruction`,
+        );
+      }
       await page.locator('#recipeRunStart').selectOption('new-base');
       assert.doesNotMatch(
         await page.locator('#recipeValidation').innerText(),

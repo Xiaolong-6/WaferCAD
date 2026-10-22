@@ -890,12 +890,15 @@ export function createProcessRecipeController({
             surfaceMode = appearance
               ? appearance.morphology === 'pyramid'
                 ? 'pyramid'
-                : 'rough'
+                : appearance.morphology === 'stochastic-v2'
+                  ? 'rough-stable'
+                  : 'rough'
               : 'smooth',
             surfaceSelect = selectInput(
               [
                 { value: 'smooth', label: 'Smooth' },
                 { value: 'rough', label: 'Rough' },
+                { value: 'rough-stable', label: 'Rough (stable scale)' },
                 { value: 'pyramid', label: 'Pyramid' },
               ],
               surfaceMode,
@@ -914,7 +917,12 @@ export function createProcessRecipeController({
                 depth = Number(target.params.thicknessUm) || 0.5;
               target.params.surface = {
                 kind: 'rough',
-                morphology: mode === 'pyramid' ? 'pyramid' : 'stochastic',
+                morphology:
+                  mode === 'pyramid'
+                    ? 'pyramid'
+                    : mode === 'rough-stable'
+                      ? 'stochastic-v2'
+                      : 'stochastic',
                 polarity: previous.polarity || 'inverted',
                 featureSize: Number(previous.featureSize) || 0.5,
                 meanHeight:
@@ -1430,7 +1438,11 @@ export function createProcessRecipeController({
         if (p.profile === 'directional' && surface && surface !== 'smooth') {
           const appearance = typeof surface === 'object' ? surface : {};
           $('etchSurfaceMode').value =
-            appearance.morphology === 'pyramid' || surface === 'pyramid' ? 'pyramid' : 'rough';
+            appearance.morphology === 'pyramid' || surface === 'pyramid'
+              ? 'pyramid'
+              : appearance.morphology === 'stochastic-v2' || surface === 'stochastic-v2'
+                ? 'rough-stable'
+                : 'rough';
           updateOperationUI();
           if (appearance.featureSize != null)
             $('roughFeatureSize').value = formatCanonicalLengthInput(

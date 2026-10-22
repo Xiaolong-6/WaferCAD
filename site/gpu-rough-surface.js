@@ -1,4 +1,42 @@
-const GPU_ROUGH_PROGRAM_VERSION = 'wafercad-gpu-rough-v8';
+import { roughDisplayProfileOffsetAtPoint } from './surface-rendering.js';
+
+const GPU_ROUGH_PROGRAM_VERSION = 'wafercad-gpu-rough-v9';
+const gpuHeightParityCache = new WeakMap();
+
+// The existing physical vertex-height contract, in micrometres. Renderer-name
+// detection alone cannot qualify a shader at arbitrary wafer coordinates.
+const GPU_HEIGHT_TOLERANCE_UM = 2e-5;
+
+export function gpuRoughParitySamples(zones) {
+  const groups = (zones || []).filter((zone) => zone.baseTriangles?.length);
+  const total = groups.reduce((sum, zone) => sum + zone.baseTriangles.length, 0);
+  if (!total) return [];
+  const points = new Map();
+  const count = Math.min(16, total);
+  let groupIndex = 0,
+    first = 0;
+  for (let index = 0; index < count; index++) {
+    const ordinal = Math.floor((index * (total - 1)) / Math.max(1, count - 1));
+    while (ordinal >= first + groups[groupIndex].baseTriangles.length) {
+      first += groups[groupIndex++].baseTriangles.length;
+    }
+    const triangle = groups[groupIndex].baseTriangles[ordinal - first];
+    // Include corners pinned by the CPU and nonvertex interior points. The
+    // shader receives Float32 XY, exactly as the production vertex buffer does.
+    for (const weights of [
+      [1, 0, 0],
+      [0, 1, 0],
+      [0, 0, 1],
+      [0.23, 0.31, 0.46],
+    ]) {
+      const point = [0, 1].map((axis) =>
+        Math.fround(triangle.reduce((sum, vertex, i) => sum + vertex[axis] * weights[i], 0)),
+      );
+      points.set(point.join(','), point);
+    }
+  }
+  return [...points.values()];
+}
 
 function finitePositive(value, fallback) {
   const number = Number(value);
@@ -38,6 +76,7 @@ export function gpuRoughAppearanceUniforms(
     waferCadRoughSampleOriginX: { value: Number(origin[0]) || 0 },
     waferCadRoughSampleOriginY: { value: Number(origin[1]) || 0 },
     waferCadRoughMorphology: { value: appearance?.morphology === 'pyramid' ? 1 : 0 },
+    waferCadRoughStableScale: { value: appearance?.morphology === 'stochastic-v2' ? 1 : 0 },
     waferCadRoughPolarityNormal: { value: appearance?.polarity === 'normal' ? 1 : 0 },
     waferCadRoughProfileNormal: { value: Number(profileNormal) < 0 ? -1 : 1 },
     waferCadRoughNormalStrength: {
@@ -84,6 +123,7 @@ export function canUseGpuRoughTask({
   const frontScale = Number(zDisplay?.frontScale),
     backScale = Number(zDisplay?.backScale),
     scaleCompatible =
+      !zDisplay?.reliefActive &&
       (!Number.isFinite(frontScale) || Math.abs(frontScale - 1) <= 1e-12) &&
       (!Number.isFinite(backScale) || Math.abs(backScale - 1) <= 1e-12);
   return Boolean(!implant && !buried && scaleCompatible && canUseGpuRoughPreview(appearance));
@@ -101,6 +141,7 @@ uniform float waferCadRoughSeedHigh;
 uniform float waferCadRoughSampleOriginX;
 uniform float waferCadRoughSampleOriginY;
 uniform float waferCadRoughMorphology;
+uniform float waferCadRoughStableScale;
 uniform float waferCadRoughPolarityNormal;
 uniform float waferCadRoughProfileNormal;
 uniform float waferCadRoughNormalStrength;
@@ -218,6 +259,18 @@ float waferCadStochasticOffset(vec2 point, uint seed) {
   float c = cos(angle);
   float s = sin(angle);
   vec2 rotated = vec2(point.x * c + point.y * s, -point.x * s + point.y * c);
+  if (waferCadRoughStableScale > 0.5) {
+    vec2 warp = meanFeature * 0.25 * waferCadRoughFeatureCv * clamp(vec2(
+      waferCadGaussianNoise2D(rotated, meanFeature * 4.0, seed ^ 0x51ed270bu, 1),
+      waferCadGaussianNoise2D(rotated, meanFeature * 4.0, seed ^ 0x51ed270bu, 3)
+    ), vec2(-1.0), vec2(1.0));
+    float heightFactor = waferCadLognormalFactor(
+      waferCadRoughHeightCv,
+      waferCadGaussianNoise2D(rotated + warp, meanFeature, seed ^ 0x9e3779b9u, 2)
+    );
+    float relief = min(waferCadRoughEtchDepth, meanHeight * heightFactor);
+    return waferCadRoughPolarityNormal > 0.5 ? waferCadRoughEtchDepth - relief : relief;
+  }
   float featureFactor = waferCadLognormalFactor(
     waferCadRoughFeatureCv,
     waferCadGaussianNoise2D(rotated, meanFeature * 4.0, seed ^ 0x51ed270bu, 1)
@@ -244,6 +297,112 @@ float waferCadRoughProfile(vec2 absolutePoint) {
   return mix(center, raw, waferCadRoughVisualBlend);
 }
 `;
+
+// Execute the production height shader at the task's own physical coordinates.
+// This is a bounded qualification probe, not a proof of unsampled mesh-interior
+// accuracy. A failed/unavailable probe selects the deterministic CPU mesh.
+export function checkGpuRoughHeightParity(THREE, renderer, appearance, points) {
+  if (!canUseGpuRoughPreview(appearance) || !points?.length) {
+    return { eligible: false, reason: 'missing-profile-samples', samples: 0 };
+  }
+  let cache = gpuHeightParityCache.get(renderer);
+  if (!cache) {
+    cache = new Map();
+    gpuHeightParityCache.set(renderer, cache);
+  }
+  const key = JSON.stringify([appearance, points]);
+  if (cache.has(key)) return cache.get(key);
+
+  let result = { eligible: false, reason: 'float-readback-unavailable', samples: points.length };
+  if (renderer.extensions.has('EXT_color_buffer_float')) {
+    const previousTarget = renderer.getRenderTarget();
+    const previousFace = renderer.getActiveCubeFace();
+    const previousLevel = renderer.getActiveMipmapLevel();
+    let target, geometry, material;
+    try {
+      target = new THREE.WebGLRenderTarget(points.length, 1, {
+        type: THREE.FloatType,
+        minFilter: THREE.NearestFilter,
+        magFilter: THREE.NearestFilter,
+        depthBuffer: false,
+      });
+      geometry = new THREE.BufferGeometry();
+      geometry.setAttribute(
+        'position',
+        new THREE.Float32BufferAttribute(
+          points.flatMap(([x, y]) => [x, y, 0]),
+          3,
+        ),
+      );
+      material = new THREE.RawShaderMaterial({
+        glslVersion: THREE.GLSL3,
+        uniforms: {
+          ...gpuRoughAppearanceUniforms(appearance),
+          sampleCount: { value: points.length },
+        },
+        vertexShader: `precision highp float;
+precision highp int;
+in vec3 position;
+uniform float sampleCount;
+flat out float sampleHeight;
+${ROUGH_PROFILE_GLSL}
+void main() {
+  sampleHeight = waferCadRoughProfile(position.xy);
+  gl_Position = vec4((float(gl_VertexID) + 0.5) * 2.0 / sampleCount - 1.0, 0.0, 0.0, 1.0);
+  gl_PointSize = 1.0;
+}`,
+        fragmentShader: `precision highp float;
+precision highp int;
+flat in float sampleHeight;
+out vec4 outColor;
+void main() { outColor = vec4(sampleHeight, 0.0, 0.0, 1.0); }`,
+      });
+      const mesh = new THREE.Points(geometry, material);
+      mesh.frustumCulled = false;
+      const scene = new THREE.Scene();
+      scene.add(mesh);
+      renderer.setRenderTarget(target);
+      renderer.render(scene, new THREE.Camera());
+      const pixels = new Float32Array(points.length * 4);
+      renderer.readRenderTargetPixels(target, 0, 0, points.length, 1, pixels);
+      let maximumErrorUm = 0;
+      let squared = 0;
+      let complete = true;
+      points.forEach(([x, y], index) => {
+        const actual = pixels[index * 4];
+        const expected = roughDisplayProfileOffsetAtPoint(
+          Math.fround(x),
+          Math.fround(y),
+          appearance,
+        );
+        complete &&= pixels[index * 4 + 3] === 1 && Number.isFinite(actual);
+        const error = Math.abs(actual - expected);
+        maximumErrorUm = Math.max(maximumErrorUm, error);
+        squared += error * error;
+      });
+      const eligible = complete && maximumErrorUm < GPU_HEIGHT_TOLERANCE_UM;
+      result = {
+        eligible,
+        reason: eligible ? 'sampled-height-parity' : 'height-parity-failed',
+        samples: points.length,
+        maximumErrorUm,
+        rmsErrorUm: Math.sqrt(squared / points.length),
+      };
+    } catch {
+      result = { eligible: false, reason: 'height-probe-failed', samples: points.length };
+    } finally {
+      renderer.setRenderTarget(previousTarget, previousFace, previousLevel);
+      target?.dispose();
+      geometry?.dispose();
+      material?.dispose();
+    }
+  }
+  // Camera/ROI changes may produce new keys. Bound retained diagnostics; no
+  // probe textures, programs or canonical model objects are retained here.
+  if (cache.size >= 64) cache.delete(cache.keys().next().value);
+  cache.set(key, result);
+  return result;
+}
 
 // The display texture is derived from spatially coherent noise at a scale
 // selected from the pixel footprint. It never displaces physical geometry.

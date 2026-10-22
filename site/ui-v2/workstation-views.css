@@ -144,6 +144,24 @@ body[data-workstation] #app-root {
   height: 100%;
   touch-action: none;
 }
+.v2-three-z-display-indicator {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  pointer-events: none;
+  max-width: calc(100% - 16px);
+  padding: 5px 8px;
+  border: 1px solid var(--wc-border);
+  border-radius: 6px;
+  background: var(--wc-surface);
+  color: var(--wc-text);
+  font-size: 11px;
+  font-weight: 600;
+}
+.v2-three-z-display-indicator[hidden] {
+  display: none;
+}
 .v2-three-task {
   position: fixed;
   z-index: 50;
