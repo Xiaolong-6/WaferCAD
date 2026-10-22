@@ -3455,10 +3455,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
       physicalSceneSignature === 'continuous-etch-v1' &&
       presentationObjects.size
     ) {
+      const roiStartAt = performance.now();
       applyPresentationState();
       cropMaterialMeshes();
       const roiChanged = updateRoiCaps();
       updateMaterialAppearance();
+      host.dataset.continuousEtchRoiUpdateMs = String(performance.now() - roiStartAt);
       // The default camera still targets the full wafer after an ROI change.
       // Reframe only when the actual rectangle changes; ordinary orbit/pan and
       // layer restyling must not reset the user's view.
@@ -3475,6 +3477,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       throw error;
     }
     disposeGroup();
+    const meshBuildAt = performance.now();
     // Exact continuous Si topography replaces full-volume voxelization only
     // for a fully covered, non-through-etched rectangular substrate. Other
     // materials and unsupported morphologies retain the generic extractor.
@@ -3513,6 +3516,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         data.triangles += part.triangles;
       }
     }
+    host.dataset.continuousEtchMeshBuildMs = String(performance.now() - meshBuildAt);
     if (data.triangles > 1500000)
       throw new RangeError('Continuous hybrid mesh exceeds triangle budget');
     const represented = new Set(data.layers.map((part) => part.layerId));
@@ -3574,9 +3578,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
     delete host.dataset.rendererBuildFailure;
     applyZDisplayState(model);
     applyPresentationState({ profile: false, settle: true });
+    const roiStartAt = performance.now();
     cropMaterialMeshes();
     updateRoiCaps();
     updateMaterialAppearance();
+    host.dataset.continuousEtchRoiUpdateMs = String(performance.now() - roiStartAt);
+    host.dataset.continuousEtchMainThreadBuildMs = String(performance.now() - meshBuildAt);
     host.dataset.renderState = 'ready';
     stats.textContent = 'Continuous Etch · analytic material, sampled display mesh';
     fit({ notify: false });
