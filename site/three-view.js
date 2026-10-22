@@ -19,6 +19,7 @@ import {
 } from './border-inspector.js';
 import { shouldYieldDuringSceneAssembly } from './renderer-cooperative-assembly.js';
 import { buildContinuousMaterialSurfaceMesh } from './continuous-etch-mesh.js';
+import { buildContinuousSiHeightfieldMeshAsync } from './continuous-heightfield-mesh-async.js';
 import {
   buildExactFilmComponents,
   exactUnetchedFilmCandidates,
@@ -3476,14 +3477,30 @@ diffuseColor.a *= waferCadAlphaScale;`,
       error.name = 'SceneVariantSuperseded';
       throw error;
     }
-    disposeGroup();
     const meshBuildAt = performance.now();
-    // Exact continuous Si topography replaces full-volume voxelization only
-    // for a fully covered, non-through-etched rectangular substrate. Other
-    // materials and unsupported morphologies retain the generic extractor.
-    const silicon = canBuildContinuousSiHeightfield(owner)
-      ? buildContinuousSiHeightfieldMesh(owner, { xyStepUm: 1 })
-      : null;
+    // Keep the old committed scene alive during display-only tessellation.
+    // A newer History/ROI request cancels the active Worker.
+    const controller = new AbortController();
+    activeSurfaceAbort = controller;
+    let siliconResult;
+    try {
+      siliconResult = canBuildContinuousSiHeightfield(owner)
+        ? await buildContinuousSiHeightfieldMeshAsync(owner, {
+            xyStepUm: 1,
+            signal: controller.signal,
+          })
+        : null;
+    } finally {
+      if (activeSurfaceAbort === controller) activeSurfaceAbort = null;
+    }
+    if (isSuperseded()) {
+      const error = new Error('Continuous Si mesh superseded by newer model/ROI');
+      error.name = 'SceneVariantSuperseded';
+      throw error;
+    }
+    const silicon = siliconResult?.mesh || null;
+    host.dataset.continuousEtchMeshBackend = siliconResult?.backend || 'generic';
+    const sceneAssemblyAt = performance.now();
     // Only the validated shallow-release fast path substitutes exact unetched
     // film shells. Generic non-rectangular and multilayer stacks keep the
     // standard implicit extractor and preserve their existing behavior.
@@ -3524,6 +3541,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
       if (!represented.has(layerId))
         throw new RangeError('Continuous display omitted physical material ' + layerId);
     if (!data.layers.length) throw new RangeError('Continuous Etch has no visible solid');
+    // Commit only a validated latest-request mesh.
+    disposeGroup();
     const exterior = { kind: 'material-exterior' };
     const materialState = presentationState(exterior, getInspection() || {}).materialState;
     for (const part of data.layers) {
@@ -3583,7 +3602,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     updateRoiCaps();
     updateMaterialAppearance();
     host.dataset.continuousEtchRoiUpdateMs = String(performance.now() - roiStartAt);
-    host.dataset.continuousEtchMainThreadBuildMs = String(performance.now() - meshBuildAt);
+    host.dataset.continuousEtchMainThreadBuildMs = String(performance.now() - sceneAssemblyAt);
     host.dataset.renderState = 'ready';
     stats.textContent = 'Continuous Etch · analytic material, sampled display mesh';
     fit({ notify: false });
@@ -3615,7 +3634,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           () => pendingRender || sceneGeneration !== renderGeneration,
         );
       } catch (error) {
-        if (error?.name === 'SceneVariantSuperseded') {
+        if (error?.name === 'SceneVariantSuperseded' || error?.name === 'AbortError') {
           host.dataset.rendererSupersededBuilds = String(
             Number(host.dataset.rendererSupersededBuilds || 0) + 1,
           );
