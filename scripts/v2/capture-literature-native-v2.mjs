@@ -194,9 +194,17 @@ async function run() {
         if (threeSamples.has(item.id)) {
           await selectScientificView(page, 'three', 1560);
           await page.waitForFunction(
-            () =>
-              document.querySelector('#threeHost canvas')?.width > 100 &&
-              document.querySelector('#threeHost')?.dataset.renderState === 'ready',
+            () => {
+              const host = document.querySelector('#threeHost');
+              const panel = document.querySelector('#threePanel');
+              return (
+                host?.querySelector('canvas')?.width > 100 &&
+                host.dataset.renderState === 'ready' &&
+                host.dataset.renderFidelity?.startsWith('exact-') &&
+                Number(host.dataset.rendererExactFirstFrameMs || 0) > 0 &&
+                ['coarse', 'ready'].includes(panel?.dataset.viewLoad)
+              );
+            },
             null,
             { timeout: 180000 },
           );

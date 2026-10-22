@@ -992,7 +992,8 @@ export function createThreeView({
           );
         } else if (
           (host.dataset.renderFidelity === 'exact-surface-plan' ||
-            host.dataset.renderFidelity === 'exact-physical-facet') &&
+            host.dataset.renderFidelity === 'exact-physical-facet' ||
+            host.dataset.renderFidelity === 'exact-continuous-etch') &&
           !host.dataset.rendererExactFirstFrameMs
         ) {
           host.dataset.rendererExactFirstFrameMs = String(
@@ -3627,6 +3628,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
       return;
     }
 
+    // Native continuous geometry is exact, but the Workstation must wait for
+    // its first painted WebGL frame before releasing the startup overlay.
+    progressiveProfileStart = performance.now();
+    delete host.dataset.rendererExactFirstFrameMs;
+    host.dataset.renderFidelity = 'pending-continuous-etch';
+    host.dataset.renderState = 'building';
     disposeGroup();
     const { edgeTable, triTable } = await import('three/addons/objects/MarchingCubes.js');
     // Exact continuous Si topography replaces full-volume voxelization only
@@ -3731,6 +3738,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
     cropMaterialMeshes();
     updateRoiCaps();
     updateMaterialAppearance();
+    host.dataset.renderFidelity = 'exact-continuous-etch';
+    host.dataset.rendererExactSceneMs = String(performance.now() - progressiveProfileStart);
     host.dataset.renderState = 'ready';
     stats.textContent = 'Continuous Etch · analytic material, sampled display mesh';
     fit({ notify: false });

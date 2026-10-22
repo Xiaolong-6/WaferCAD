@@ -180,16 +180,20 @@ export function createWorkstationThreeView({ store, workstation }) {
       }
       return;
     }
-    const physicalFacet = host.dataset.renderFidelity === 'exact-physical-facet';
+    // These native exact geometry owners do not use the Surface Plan
+    // Fast/Quality refinement tier; a painted frame is already final.
+    const exactNativeMaterial =
+      host.dataset.renderFidelity === 'exact-physical-facet' ||
+      host.dataset.renderFidelity === 'exact-continuous-etch';
     if (
-      (host.dataset.renderFidelity !== 'exact-surface-plan' && !physicalFacet) ||
+      (host.dataset.renderFidelity !== 'exact-surface-plan' && !exactNativeMaterial) ||
       !host.dataset.rendererExactFirstFrameMs
     )
       return;
     if (!firstExactSceneFrame) {
       firstSceneFrame = true;
       firstExactSceneFrame = true;
-      if (state.threeFastMode === false && !physicalFacet) {
+      if (state.threeFastMode === false && !exactNativeMaterial) {
         progressive.viewFrame('three', 'coarse');
         scheduleQualityRefinement();
       } else {
