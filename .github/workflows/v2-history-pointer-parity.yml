@@ -1,13 +1,6 @@
 name: V2 History Pointer parity
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'scripts/v2/check-history-pointer-parity.mjs'
-      - 'site/controllers/history-mutation-controller.js'
-      - 'site/ui-v2/workstation-workflow.js'
-      - '.github/workflows/v2-history-pointer-parity.yml'
   workflow_dispatch:
 
 permissions:

@@ -1,17 +1,8 @@
 name: Continuous Etch native Worker targeted
 
-# One focused normal-Origin browser gate for Draft PR #365. Not full Quality
-# or a release/browser-regression suite; remove the branch trigger after review.
+# One focused normal-Origin browser gate retained for explicitly authorized
+# manual rechecks only. Normal PR pushes use the shared CI routing policy.
 on:
-  push:
-    branches:
-      - fix/continuous-3d-render-race-roi-performance-20261022
-    paths:
-      - '.github/workflows/continuous-native-worker-targeted.yml'
-      - 'scripts/v2/check-continuous-native-worker.mjs'
-      - 'site/three-view.js'
-      - 'site/continuous-heightfield-mesh-async.js'
-      - 'site/continuous-heightfield-mesh-worker.js'
   workflow_dispatch:
 
 permissions:

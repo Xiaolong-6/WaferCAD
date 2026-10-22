@@ -1,17 +1,7 @@
 name: Desktop Shell targeted browser acceptance
 
 on:
-  pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened]
-    paths:
-      - 'site/ui-v2/desktop-shell.css'
-      - 'site/ui-v2/workstation-v2.js'
-      - 'site/ui-v2/mobile-workstation.css'
-      - 'site/app.html'
-      - 'scripts/v2/check-desktop-docking.mjs'
-      - '.github/workflows/desktop-shell-targeted.yml'
-
+  workflow_dispatch:
 permissions:
   contents: read
 

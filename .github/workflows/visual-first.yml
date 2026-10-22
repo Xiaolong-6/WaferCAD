@@ -1,21 +1,6 @@
 name: Visual-first candidate screenshots
 
 on:
-  pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened]
-    paths:
-      - 'site/ui-v2/**'
-      - 'site/app.html'
-      - 'site/three-view.js'
-      - 'site/section-view.js'
-      - 'site/rough-mesh-geometry.js'
-      - 'site/rough-mesh-worker.js'
-      - 'site/examples/**'
-      - 'site/bundled-examples.js'
-      - 'site/workstation.css'
-      - 'scripts/v2/capture-visual-first.mjs'
-      - '.github/workflows/visual-first.yml'
   workflow_dispatch:
 
 permissions:

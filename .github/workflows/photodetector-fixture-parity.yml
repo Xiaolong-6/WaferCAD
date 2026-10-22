@@ -1,14 +1,6 @@
 name: Photodetector fixture reproducibility
 
 on:
-  pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened, ready_for_review]
-    paths:
-      - 'site/model.js'
-      - 'site/examples/photodetector-literature-examples.wafercad'
-      - 'scripts/maintenance/rebuild-photodetectors.mjs'
-      - '.github/workflows/photodetector-fixture-parity.yml'
   workflow_dispatch:
 
 permissions:

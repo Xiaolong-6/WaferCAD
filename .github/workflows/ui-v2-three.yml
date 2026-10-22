@@ -1,19 +1,7 @@
 name: UI v2 Phase B 3D acceptance
 
 on:
-  pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened, ready_for_review]
-    paths:
-      - 'site/three-view.js'
-      - 'site/app.html'
-      - 'site/ui-v2/**'
-      - 'scripts/v2/**'
-      - '!scripts/v2/capture-visual-first.mjs'
-      - 'scripts/test-helpers/ui.mjs'
-      - 'package-lock.json'
-      - '.github/workflows/ui-v2-three.yml'
-
+  workflow_dispatch:
 permissions:
   contents: read
 

@@ -1,15 +1,7 @@
 name: Example Recipe Reconstruction
 
 on:
-  pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened, ready_for_review]
-    paths:
-      - 'site/**'
-      - '!site/tests/**'
-      - 'scripts/maintenance/**'
-      - 'scripts/example-recipe-runall-acceptance.mjs'
-      - '.github/workflows/example-recipe-reconstruction.yml'
+  workflow_call:
   workflow_dispatch:
 
 permissions:

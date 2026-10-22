@@ -1,16 +1,6 @@
 name: Native Fig3 full replay acceptance
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-    paths:
-      - "scripts/fig3-full-replay-acceptance.mjs"
-      - "scripts/test-helpers/**"
-      - "site/**"
-      - "!site/tests/**"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/native-fig3-full-replay.yml"
   workflow_dispatch:
 
 permissions:

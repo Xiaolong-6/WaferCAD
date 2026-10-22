@@ -1,41 +1,6 @@
 name: Both-face examples integration
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - .github/workflows/examples-both-face.yml
-      - scripts/maintenance/rebuild-photodetectors.mjs
-      - scripts/maintenance/consolidate-perc-both-face.mjs
-      - scripts/maintenance/consolidate-tandem-texture-both.mjs
-      - scripts/maintenance/backfill-example-recipes.mjs
-      - site/process-face-execution.js
-      - site/process-recipe.js
-      - site/controllers/process-panel-controller.js
-      - site/controllers/process-recipe-controller.js
-      - site/tests/examples-both-face-migration.test.mjs
-      - site/tests/example-regression.test.mjs
-      - site/tests/welcome-example.test.mjs
-      - site/examples/photodetector-literature-examples.wafercad
-      - site/examples/perc-solar-cells-point-contacts.wafercad
-      - site/examples/fully-textured-perovskite-silicon-tandem.wafercad
-  pull_request:
-    branches:
-      - main
-    paths:
-      - .github/workflows/examples-both-face.yml
-      - scripts/maintenance/**
-      - site/process-face-execution.js
-      - site/process-recipe.js
-      - site/controllers/process-panel-controller.js
-      - site/controllers/process-recipe-controller.js
-      - site/tests/examples-both-face-migration.test.mjs
-      - site/tests/example-regression.test.mjs
-      - site/tests/welcome-example.test.mjs
-      - site/examples/photodetector-literature-examples.wafercad
-      - site/examples/perc-solar-cells-point-contacts.wafercad
-      - site/examples/fully-textured-perovskite-silicon-tandem.wafercad
   workflow_dispatch:
 
 permissions:

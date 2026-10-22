@@ -174,7 +174,8 @@ test('manual reconstruction runs cannot mutate main', () => {
   assert.ok(m3d.includes("github.ref_name == 'fix/m3d-conformal-microcracks-20261008'"));
   assert.ok(m3d.includes("github.ref_name == 'integrate/reviewed-branches-20261008'"));
   const magic = workflow('magic1000-candidate');
-  assert.match(magic, /  pull_request:\n    branches: \[main\]/);
+  assert.match(magic, /  workflow_dispatch:/);
+  assert.doesNotMatch(magic, /^  pull_request:/m);
   assert.match(magic, /permissions:\n  contents: read/);
   assert.doesNotMatch(magic, /contents: write|git push|feat\/magic-1000-mos2-beol-reconstruction/);
   assert.match(magic, /node scripts\/magic1000-visual-acceptance\.mjs/);
