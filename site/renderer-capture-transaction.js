@@ -1,5 +1,17 @@
 // Isolate the temporary WebGL renderer and high-resolution rough-mesh
 // preparation from the interactive 3D view. No canonical model mutations.
+// A display-only progressive cap sketch is never a publishable PNG. This
+// gate is checked before starting export and again after async preparation,
+// because a newer render may replace the scene while capture is in progress.
+export function assertExactThreePngReady({ fidelity, renderState, exactFirstFrameMs } = {}) {
+  const exact = ['exact-surface-plan', 'exact-physical-facet', 'exact-continuous-etch'];
+  if (!exact.includes(fidelity) || renderState !== 'ready' || !(Number(exactFirstFrameMs) > 0)) {
+    throw new Error(
+      '3D PNG export requires a painted exact 3D frame. Wait for rendering to finish.',
+    );
+  }
+}
+
 export async function runTemporaryRendererCapture({
   mainRenderer,
   camera,

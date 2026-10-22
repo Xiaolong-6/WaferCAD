@@ -10,7 +10,10 @@ import {
 } from './transparent-array-lod.js';
 import { canRenderPlanarCapInSinglePass } from './transparent-pass-policy.js';
 import { disposeRendererSceneResources } from './renderer-v4-resource-lifetime.js';
-import { runTemporaryRendererCapture } from './renderer-capture-transaction.js';
+import {
+  assertExactThreePngReady,
+  runTemporaryRendererCapture,
+} from './renderer-capture-transaction.js';
 import { renderDepthAwareOutlines } from './three-outline-pass.js';
 import {
   borderNeedsInternalGeometry,
@@ -5281,6 +5284,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
   async function capturePng(scale = 3) {
     if (!ready || !renderer || !scene || !camera) throw new Error('3D view is unavailable.');
+    const requireExactCapture = () =>
+      assertExactThreePngReady({
+        fidelity: host.dataset.renderFidelity,
+        renderState: host.dataset.renderState,
+        exactFirstFrameMs: host.dataset.rendererExactFirstFrameMs,
+      });
+    requireExactCapture();
     const rect = host.getBoundingClientRect(),
       multiplier = Math.max(1, Math.min(4, Number(scale) || 3)),
       width = Math.max(2, rect.width),
@@ -5309,6 +5319,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       },
       prepareScene: () => requestRoughGeometry('detailed', { force: true }),
       capture: (captureRenderer) => {
+        requireExactCapture();
         renderInspectionFrame(captureRenderer);
         return new Promise((resolve, reject) =>
           captureRenderer.domElement.toBlob(
