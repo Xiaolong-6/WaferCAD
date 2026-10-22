@@ -374,6 +374,139 @@ try {
     animations: 'disabled',
   });
   await context.close();
+
+  // Fault-inject the REAL Surface Plan Worker after a real preview arrives.
+  // Recovery must not promote approximate geometry into the exact cache.
+  const faultContext = await newUiContext(browser, {
+    viewport: { width: 1440, height: 960 },
+  });
+  try {
+    const faultPage = await faultContext.newPage();
+    faultPage.setDefaultTimeout(120000);
+    await faultPage.addInitScript(() => {
+      const NativeWorker = window.Worker;
+      const state = (window.__m3dFault = {
+        workers: 0,
+        previews: 0,
+        errors: 0,
+        terminated: 0,
+      });
+      window.Worker = class {
+        constructor(url, options) {
+          if (!String(url).includes('renderer-surface-plan-worker.js'))
+            return new NativeWorker(url, options);
+          state.workers++;
+          this.native = new NativeWorker(url, options);
+          this.onmessage = null;
+          this.onerror = null;
+          this.onmessageerror = null;
+          this.native.onmessage = (event) => {
+            if (event.data?.type === 'preview') {
+              state.previews++;
+              this.onmessage?.(event);
+              if (state.errors === 0) {
+                state.errors++;
+                this.native.terminate();
+                globalThis.queueMicrotask(() =>
+                  this.onmessage?.({
+                    data: { id: 1, type: 'error', message: 'Injected exact Surface Plan failure' },
+                  }),
+                );
+                return;
+              }
+            } else this.onmessage?.(event);
+          };
+          this.native.onerror = (event) => this.onerror?.(event);
+          this.native.onmessageerror = (event) => this.onmessageerror?.(event);
+        }
+        postMessage(...args) {
+          this.native.postMessage(...args);
+        }
+        terminate() {
+          state.terminated++;
+          this.native.terminate();
+        }
+      };
+    });
+    await gotoWelcome(faultPage);
+    await faultPage
+      .locator(
+        '.welcome-example-card[data-example-id="m3d-selfpowered-heterogeneous-ic"] .welcome-example-title-link',
+      )
+      .click();
+    await faultPage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 120000 });
+    await faultPage.waitForFunction(() => document.body.dataset.ready === 'true');
+    const initialModel = await faultPage.evaluate(
+      () => window.WaferCadV2Workstation.snapshot().model,
+    );
+    await selectScientificView(faultPage, 'three', 1440);
+    await faultPage.waitForFunction(() => {
+      const d = document.getElementById('threeHost')?.dataset;
+      return (
+        window.__m3dFault?.errors === 1 &&
+        d?.rendererBuildFailure === 'Injected exact Surface Plan failure' &&
+        d.renderFidelity === 'approximate' &&
+        Number(d.rendererProgressiveFirstFrameMs || 0) > 0
+      );
+    });
+    const failed = await faultPage.evaluate(() => {
+      const d = document.getElementById('threeHost').dataset;
+      return {
+        fidelity: d.renderFidelity,
+        state: d.renderState,
+        failure: d.rendererBuildFailure,
+        fault: { ...window.__m3dFault },
+      };
+    });
+    assert.ok(failed.fault.previews >= 1);
+    assert.notEqual(failed.fidelity, 'exact-surface-plan');
+    await faultPage.screenshot({
+      path: 'test-results/m3d/welcome/m3d-exact-worker-failed.png',
+      animations: 'disabled',
+    });
+    // Retry using the actual 3D Quality control; only the first Worker fails.
+    await faultPage.locator('#threePanel [data-action="quality:three"]').click();
+    await faultPage.waitForFunction(
+      () => {
+        const d = document.getElementById('threeHost')?.dataset;
+        return (
+          d?.renderState === 'ready' &&
+          d.renderFidelity === 'exact-surface-plan' &&
+          Number(d.rendererExactFirstFrameMs || 0) > 0
+        );
+      },
+      null,
+      { timeout: 120000 },
+    );
+    const recovered = await faultPage.evaluate(() => {
+      const d = document.getElementById('threeHost').dataset;
+      return {
+        fidelity: d.renderFidelity,
+        error: d.rendererBuildFailure || null,
+        disposalFailures: Number(d.rendererDisposalFailures || 0),
+        topology: JSON.parse(d.surfaceTopology || '{}'),
+        fault: { ...window.__m3dFault },
+      };
+    });
+    assert.equal(recovered.error, null);
+    assert.equal(recovered.disposalFailures, 0);
+    assert.ok(recovered.topology.caps > 0 && recovered.topology.sidewalls > 0);
+    assert.deepEqual(
+      await faultPage.evaluate(() => window.WaferCadV2Workstation.snapshot().model),
+      initialModel,
+    );
+    await faultPage.screenshot({
+      path: 'test-results/m3d/welcome/m3d-exact-worker-recovered.png',
+      animations: 'disabled',
+    });
+    await writeFile(
+      'test-results/m3d/welcome/m3d-worker-failure-evidence.json',
+      JSON.stringify({ failed, recovered }, null, 2) + '\n',
+    );
+    console.log('M3D_EXACT_WORKER_RECOVERY', JSON.stringify({ failed, recovered }));
+  } finally {
+    await faultContext.close();
+  }
 } finally {
   await browser.close();
 }
