@@ -125,15 +125,11 @@ try {
           flipped = await page.evaluate(() => {
             const d = document.getElementById('threeHost')?.dataset;
             return (
-              d?.renderFidelity === 'approximate' &&
-              d.rendererProgressiveFacingNormal === '-1'
+              d?.renderFidelity === 'approximate' && d.rendererProgressiveFacingNormal === '-1'
             );
           });
         }
-        assert.ok(
-          flipped,
-          'Worker preview must remain visible from the opposite cap normal',
-        );
+        assert.ok(flipped, 'Worker preview must remain visible from the opposite cap normal');
         await page.waitForFunction(
           (serial) => {
             const d = document.getElementById('threeHost')?.dataset;
@@ -275,8 +271,25 @@ try {
       frameSerial: Number(data.rendererFrameSerial) || 0,
     };
   });
+  // The exact scene must replace the disposable preview with one committed
+  // presentation variant, without retaining a second visible group or failing
+  // to retire GPU-backed resources.
+  const sceneHandoff = await page.evaluate(() => {
+    const d = document.getElementById('threeHost').dataset;
+    return {
+      swaps: Number(d.rendererCommittedVariantSwaps || 0),
+      disposalFailures: Number(d.rendererDisposalFailures || 0),
+      retainedVisible: d.rendererRetainedCompleteVisible,
+      finalFidelity: d.renderFidelity,
+    };
+  });
+  assert.ok(sceneHandoff.swaps >= 1, 'Preview must be replaced by an exact scene variant');
+  assert.equal(sceneHandoff.disposalFailures, 0, 'Preview resources must dispose cleanly');
+  assert.equal(sceneHandoff.retainedVisible, 'false', 'Only the exact scene may remain visible');
+  assert.equal(sceneHandoff.finalFidelity, 'exact-surface-plan');
   const firstFrameEvidence = {
     ...firstFrame,
+    sceneHandoff,
     capturedPreview: previewCapture,
     previewInteraction,
     previewBackside,
