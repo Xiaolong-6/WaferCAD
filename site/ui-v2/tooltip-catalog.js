@@ -247,7 +247,7 @@
     ],
     'process.surface': [
       'Surface morphology',
-      'Select smooth, stochastic rough or pyramid-like etch surfaces.',
+      'Select Smooth, Rough, Rough (stable scale) or Pyramid. Stable scale creates a different seeded shape with bounded spacing variation; existing Rough profiles keep their original shape.',
     ],
     'process.implant.tilt': [
       'Implant tilt',

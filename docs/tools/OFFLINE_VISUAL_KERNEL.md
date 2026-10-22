@@ -45,6 +45,33 @@ Outputs: `main.svg`/`section.svg`/`mask.svg`, matching PNG (unless `--svg-only`)
 
 The metadata records the exact input SHA-256, checkout commit, view, physical bounds, XY/Z pixel calibration and rendering limitations. `--scale auto` uses independent X/Z scaling, and `--scale physical` fixes a true 1:1 physical X:Z ratio. No Z break is applied. The exported SVG shows visible materials but is **not** a native renderer screenshot. This P0 does **not** reproduce rough surface tessellation, annotations, Mask, native WebGL transparency/borders or full UI interactions. Do not use it to close native renderer or real-browser visual acceptance requirements.
 
+### Native Section canvas vs native 3D, single validated project
+
+The `--native-section-compare` mode of the **existing**
+`offline-native-app-capture.py` runner executes the production
+`createPlanRenderers().renderSection()` compositor on the same strictly
+loaded model that supplies the native Three.js mesh. It writes only
+`native-section-physical.png` (unmodified physical Section),
+including a source hash and `modelUnchanged: true`. The rejected Aligned
+smoothing prototype is not an inspection mode. Add
+`--native-section-borders` to include the compositor border pass.
+
+```sh
+python3 scripts/offline-native-app-capture.py --root . \
+  --inmemory-project site/examples/photodetector-literature-examples.wafercad \
+  --inmemory-roi 2465,-30,2525,30 \
+  --rough-cutline 2494.7,2495.3,0.123 \
+  --native-section-compare --quality \
+  --output test-results/rough-physical-section-60
+```
+
+This is a real Section canvas, **not an SVG/mock**; however null-Origin
+cannot prove the app's synchronous Section controls, Worker, process history
+or recovery transactions. Compare the unmodified physical Section to the
+actual 3D mesh cutline using `physicalRoughCutline`. Display attenuation,
+mesh interpolation and floating-point positioning may differ; no display
+smoothing may be counted as a scientific convergence improvement.
+
 ## Validation
 
 Focused pure presentation checks: `node --test site/tests/offline-visual-svg.test.mjs`. Full integration should run `--fixture step` plus an actual bundled `.wafercad` against the exact branch checkout and inspect the PNG, exported evidence, and scientific geometry. A simulated fixture cannot prove the real file reader or production topology path. Keep CI and release gates separate; local images are developer inspection artifacts until reviewed and approved.
@@ -220,6 +247,16 @@ On Linux the default is **headful Chromium** with an existing X display
 or ephemeral **Xvfb**; ANGLE/SwiftShader software WebGL is enabled.
 Use `WAFERCAD_CHROMIUM` or `--browser` to pick the exact executable.
 `--headless` is optional but may be unable to initialize WebGL.
+If the execution host rejects Unix-domain sockets, headed Xvfb and the
+full Chromium executable may fail before navigation. The existing runner
+also accepts Playwright's installed `chromium_headless_shell` executable
+with `--headless`; try that normal launch before declaring rendering
+blocked. In the 2026-10-20 Work environment, Playwright 1.55.1's Chromium
+140 headless shell rendered the native app and validated Photodetector at
+the normal HTTPS origin with SwiftShader and no page errors. This is an
+environment-specific result, not a guarantee for every managed host.
+Check the evidence's actual origin and WebGL state; neither mode changes
+administrator policy or establishes hardware/History/Recovery acceptance.
 The tool captures `four-view.png`, a real pointer-drag
 `three-orbit.png`, `three-maximized.png`, and
 `native-app.evidence.json` containing Chromium path/version, WebGL
@@ -249,16 +286,37 @@ Open-file UI attempt and records a screenshot/Worker errors, but it
 complete**. Independent review and the original targeted science gates
 are still required.
 
-For native UI shell diagnosis, add `--inspect-history` to the existing capture command.
-It records `history-step0.png`, `step0-base-editor.png`, and `process-undo.png`,
-and asserts that Step 0 opens the real Base editor and Process exposes model-level
-Undo/Redo controls. In null-origin mode these screenshots prove **only** native
-presentation and navigation; Step replay, Workers, autosave, and Recovery remain
-unverified.
-
 Focused checks: `python3 scripts/offline-native-app-capture.test.py`.
 The real Chromium screenshot run is manual and intentionally not part of
 the ordinary unit-test/CI loop.
+
+Add `--check-rough-parity` together with the full Photodetector
+`--inmemory-project` to execute the production vertex-height qualification
+at the actual rough-region coordinates, plus origin and uniform-height
+controls. The evidence records maximum/RMS physical height error, initial
+probe time, cache reuse, render-target restoration and resource disposal.
+It deliberately measures the shader even on SwiftShader, where production
+already selects CPU; software results cannot establish hardware acceptance.
+This diagnostic does not change the physical heightfield or accept the
+remaining triangle-interior interpolation error.
+
+The probe also compares explicit `stochastic-v2` with the legacy stochastic
+field at the same coordinates; it never upgrades the supplied project.
+For reproducible normal-Origin stable-scale Process/Worker, 50 nm Conformal,
+Undo/Redo, file export/Open and local Save/reload checks, run:
+
+```sh
+python3 scripts/offline-native-app-capture.py --root . --require-origin \
+  --project tests/fixtures/project-io/stable-rough-base.wafercad \
+  --check-stable-rough-ui --output test-results/stable-rough-ui
+```
+
+The output includes a real exported `stable-rough-roundtrip.wafercad`. Pass
+that file with `--inmemory-project` and `--check-glb` to check production GLB
+physical vertex heights and matched 50 nm film samples, independently of
+display Z scaling. This focused check expects explicit stable-scale front
+profiles; it does not replace the general GLB, History or Recovery suites.
+Reuse the installed Chromium path/headless options as appropriate above.
 
 ### Source-backed in-memory native 3D: demo or validated project
 

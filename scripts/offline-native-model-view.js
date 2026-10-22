@@ -1,6 +1,14 @@
 // Playwright page.evaluate expression. Independent production Three.js instance.
 // It does not assign live Workstation state, bypass Recovery or replace Worker.
-async ({ model: providedModel, demo = false, roiBounds = null, zBreak = null }) => {
+async ({
+  model: providedModel,
+  demo = false,
+  roiBounds = null,
+  zBreak = null,
+  zDisplayFactor = 1,
+  roughReliefFactor = 1,
+  quality = false,
+}) => {
   const [{ createThreeView }, { buildRenderSurfacePlan, rememberRenderSurfacePlan }] =
     await Promise.all([
       import('https://wafercad.local/three-view.js'),
@@ -59,7 +67,7 @@ async ({ model: providedModel, demo = false, roiBounds = null, zBreak = null }) 
   const title = document.createElement('div');
   title.textContent = demo
     ? 'WaferCAD production Three.js — in-memory three-material demo'
-    : 'WaferCAD production Three.js — validated project model (isolated viewport)';
+    : `WaferCAD production Three.js — validated model, Z ×${zDisplayFactor}, relief ×${roughReliefFactor}`;
   title.style.cssText = 'padding:10px 18px;color:#2a3035;font:600 18px sans-serif;';
   const host = document.createElement('div');
   host.style.cssText = 'position:relative;width:100%;height:calc(100% - 70px);';
@@ -74,7 +82,9 @@ async ({ model: providedModel, demo = false, roiBounds = null, zBreak = null }) 
     getModel: () => model,
     getClipGeometry: () => clip,
     getZCollapse: () => collapse,
-    getInspection: () => ({ opacity: 1, borders: true, fast: true }),
+    getZDisplayFactor: () => zDisplayFactor,
+    getRoughReliefFactor: () => roughReliefFactor,
+    getInspection: () => ({ opacity: 1, borders: true, fast: !quality }),
   });
   const initialized = await renderer.init();
   // init() already schedules a full native scene build; another render()
@@ -84,6 +94,9 @@ async ({ model: providedModel, demo = false, roiBounds = null, zBreak = null }) 
     initialized,
     roiBounds,
     zBreak,
+    zDisplayFactor,
+    roughReliefFactor,
+    renderQuality: quality ? 'Quality' : 'Fast',
     roughCaps: plan.caps.filter((cap) => cap.appearance?.kind === 'rough').length,
     exposedRoughCaps: plan.caps.filter((cap) => !cap.buried && cap.appearance?.kind === 'rough')
       .length,

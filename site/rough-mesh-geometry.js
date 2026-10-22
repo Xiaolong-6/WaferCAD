@@ -278,6 +278,7 @@ export function roughMeshDataFromPreparedCap({
         triangleCount: baseTriangles.length,
         maxEdge,
         featureSize: appearance?.featureSize,
+        morphology: appearance?.morphology,
         ...(zone.lodContext || lodContext),
         triangleBudget: zone.triangleBudget ?? null,
       }),

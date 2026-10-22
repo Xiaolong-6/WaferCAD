@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  adaptiveRoughMeshLod,
   roughDisplayHeightBlend,
   roughFarFieldContrast,
   roughDisplayProfileOffsetAtPoint,
   roughProfileOffsetAtPoint,
+  roughTaskDisplaySampling,
+  trimSaturatedRoughLodBudgets,
 } from '../surface-rendering.js';
 
 const appearance = {
@@ -18,6 +21,77 @@ const appearance = {
   heightCv: 0.3,
   seed: 20261015,
 };
+
+test('Stable-scale resolved LOD requests finer samples within unchanged pixel and triangle limits', () => {
+  const context = {
+    triangleCount: 2,
+    maxEdge: Math.hypot(0.6, 0.6),
+    featureSize: 0.3,
+    distance: 0.1,
+    viewportWidth: 1100,
+    viewportHeight: 800,
+    triangleBudget: 10000,
+  };
+  assert.equal(adaptiveRoughMeshLod(context).estimatedTriangles, 512);
+  const stable = { ...context, morphology: 'stochastic-v2' };
+  assert.equal(adaptiveRoughMeshLod(stable).estimatedTriangles, 8192);
+  assert.equal(adaptiveRoughMeshLod({ ...stable, triangleBudget: 32 }).estimatedTriangles, 32);
+  assert.equal(
+    adaptiveRoughMeshLod({ ...stable, distance: 100000 }).estimatedTriangles,
+    adaptiveRoughMeshLod({ ...context, distance: 100000 }).estimatedTriangles,
+  );
+});
+
+test('3D profile filtering uses cap XY density independently of ROI and repeated films', () => {
+  const task = (size, budget, profile = appearance) => ({
+    cap: { appearance: profile },
+    zones: [
+      {
+        baseTriangles: [
+          [
+            [0, 0],
+            [size, 0],
+            [size, size],
+          ],
+          [
+            [0, 0],
+            [size, size],
+            [0, size],
+          ],
+        ],
+        maxEdge: size * Math.SQRT2,
+        triangleBudget: budget,
+        lodContext: { distance: 1, viewportWidth: 1100, viewportHeight: 800, maxDepth: 8 },
+      },
+    ],
+  });
+  const substrate = task(4, 128);
+  const film = structuredClone(substrate);
+  const before = JSON.stringify([substrate, film]);
+  const one = roughTaskDisplaySampling([substrate])[0];
+  const pair = roughTaskDisplaySampling([substrate, film]);
+  assert.equal(one.pitch, 0.5);
+  assert.deepEqual(pair, [one, one], 'A coating cannot improve substrate XY resolution');
+  const originalBlend = roughDisplayHeightBlend(appearance.featureSize, one.pitch);
+  assert.ok(originalBlend > 0.12 && originalBlend < 1, 'Exercise the filter transition');
+  for (const sample of pair) {
+    assert.equal(roughDisplayHeightBlend(appearance.featureSize, sample.pitch), originalBlend);
+  }
+  const other = task(100, 128, { ...appearance, seed: appearance.seed + 1 });
+  assert.deepEqual(
+    roughTaskDisplaySampling([substrate, other])[0],
+    one,
+    'An unrelated distant rough field cannot change this profile',
+  );
+  const coarseFilm = task(4, 8);
+  const coarse = roughTaskDisplaySampling([substrate, coarseFilm]);
+  assert.deepEqual(
+    coarse.map((entry) => entry.pitch),
+    [2, 2],
+    'A shared seeded field must remain equally filtered on both sides of a film',
+  );
+  assert.equal(JSON.stringify([substrate, film]), before);
+});
 
 test('coarse macro features are display-filtered but resolved microfeatures are exact', () => {
   assert.equal(roughDisplayHeightBlend(0.3, 2), 0.12);
@@ -96,4 +170,97 @@ test('Photodetector stochastic morphology is visible at overview without changin
     assert.equal(roughProfileOffsetAtPoint(0.125, -0.65, profile), z);
     assert.equal(JSON.stringify(profile), original[i]);
   }
+});
+
+// This optimization is a rendering *budget* concession, never a physical
+// change to Section heights, saved profiles, or thin-film interface ownership.
+test('Quality can trim one subdivision only for a globally saturated rough scene', () => {
+  const task = (size, budget, morphology = 'stochastic') => ({
+    cap: { appearance: { ...appearance, morphology } },
+    zones: [
+      {
+        baseTriangles: [
+          [
+            [0, 0],
+            [size, 0],
+            [size, size],
+          ],
+          [
+            [0, 0],
+            [size, size],
+            [0, size],
+          ],
+        ],
+        maxEdge: size * Math.SQRT2,
+        triangleBudget: budget,
+        lodContext: { distance: 1, viewportWidth: 1100, viewportHeight: 800, maxDepth: 8 },
+      },
+    ],
+  });
+  const substrate = task(240, 2048);
+  const conformalFilm = structuredClone(substrate);
+  const tasks = [substrate, conformalFilm];
+  const modelBefore = JSON.stringify(tasks.map((x) => x.cap.appearance));
+  const originalBlend = roughTaskDisplaySampling(tasks).map((sample, i) =>
+    roughDisplayHeightBlend(tasks[i].cap.appearance.featureSize, sample.pitch),
+  );
+  assert.deepEqual(originalBlend, [0.12, 0.12]);
+  assert.equal(trimSaturatedRoughLodBudgets(tasks), true);
+  assert.deepEqual(
+    tasks.map((x) => x.zones[0].triangleBudget),
+    [512, 512],
+    'Shared conformal caps must retain identical tessellation budgets',
+  );
+  assert.deepEqual(
+    roughTaskDisplaySampling(tasks).map((sample, i) =>
+      roughDisplayHeightBlend(tasks[i].cap.appearance.featureSize, sample.pitch),
+    ),
+    originalBlend,
+  );
+  assert.equal(JSON.stringify(tasks.map((x) => x.cap.appearance)), modelBefore);
+  // Budget reduction never changes the seeded field or its physical z.
+  assert.equal(
+    roughProfileOffsetAtPoint(2495, 0.12, appearance),
+    roughProfileOffsetAtPoint(2495, 0.12, substrate.cap.appearance),
+  );
+
+  const fine = [task(0.3, 2048)];
+  const snapshot = JSON.stringify(fine);
+  assert.equal(trimSaturatedRoughLodBudgets(fine), false);
+  assert.equal(JSON.stringify(fine), snapshot, 'Resolved Quality detail must not be reduced');
+  const mixed = [task(240, 2048), task(0.3, 2048)];
+  const mixedSnapshot = JSON.stringify(mixed);
+  assert.equal(trimSaturatedRoughLodBudgets(mixed), false);
+  assert.equal(
+    JSON.stringify(mixed),
+    mixedSnapshot,
+    'A locally resolved cap blocks co-registered seeded field coarsening',
+  );
+  const other = [task(240, 2048, 'pyramid')];
+  const otherSnapshot = JSON.stringify(other);
+  assert.equal(trimSaturatedRoughLodBudgets(other), false);
+  assert.equal(JSON.stringify(other), otherSnapshot, 'Pyramid geometry must not be budget-trimmed');
+  const translated = [task(240, 2048)];
+  translated[0].cap.instanceTranslations = [[1000, 1000]];
+  const translatedBefore = JSON.stringify(translated);
+  assert.equal(trimSaturatedRoughLodBudgets(translated), false);
+  assert.equal(JSON.stringify(translated), translatedBefore);
+  const gpu = [task(240, 2048)];
+  gpu[0].gpuDisplacement = true;
+  assert.equal(trimSaturatedRoughLodBudgets(gpu), false);
+  const implant = [task(240, 2048)];
+  implant[0].implant = { depth: 1 };
+  const physicalSurface = [task(240, 2048), implant[0]];
+  assert.equal(trimSaturatedRoughLodBudgets(physicalSurface), true);
+  assert.deepEqual(
+    physicalSurface.map((x) => x.zones[0].triangleBudget),
+    [512, 512],
+    'Seed-matched implanted overlays share the same mesh budget reduction',
+  );
+  const instancedCohort = [task(240, 2048), task(240, 2048)];
+  instancedCohort[1].cap.instanceTranslations = [[1000, 0]];
+  const instancedSnapshot = JSON.stringify(instancedCohort);
+  assert.equal(trimSaturatedRoughLodBudgets(instancedCohort), false);
+  assert.equal(JSON.stringify(instancedCohort), instancedSnapshot);
+  assert.equal(trimSaturatedRoughLodBudgets([]), false);
 });

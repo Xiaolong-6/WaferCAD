@@ -13,6 +13,21 @@ const streamModule = import(streamUrl.href);
 self.onmessage = async ({ data }) => {
   if (data?.id !== 1 || data.action !== 'surface-plan') return;
   try {
+    if (data.preview === true) {
+      // A display-only sketch must never be a prerequisite for scientific
+      // ownership. If preview generation, import or transfer fails, continue exact.
+      try {
+        const previewUrl = new URL('./renderer-progressive-preview.js', self.location.href);
+        previewUrl.search = versionQuery;
+        const { buildProgressiveSurfacePreview } = await import(previewUrl.href);
+        const preview = buildProgressiveSurfacePreview(data.model, data.clip ?? null);
+        if (preview) {
+          self.postMessage({ id: 1, type: 'preview', preview }, [preview.borderPositions.buffer]);
+        }
+      } catch (error) {
+        console.warn('Progressive 3D preview unavailable; computing exact solids:', error);
+      }
+    }
     const [{ buildRenderSurfacePlan }, { shouldStreamSurfacePlan, surfacePlanStreamPackets }] =
       await Promise.all([geometryModule, streamModule]);
     const plan = buildRenderSurfacePlan(data.model, data.clip ?? null);
