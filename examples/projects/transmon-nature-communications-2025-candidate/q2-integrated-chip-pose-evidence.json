@@ -1,0 +1,109 @@
+{
+  "source": {
+    "gds": "Zenodo_files/sample.gds",
+    "sha256": "6e9db7d506e17f82fd22250db9a380a420b2a1088bac4a33b8c747930e9d5c02",
+    "cell": "chip2/jj_width0p18",
+    "srefAtUm": [
+      1400,
+      2513
+    ],
+    "srefRotationDeg": 90,
+    "authorResistLayerAssignment": "provisional: 8/1 PMMA opening, union(8/1,8/0) MMA undercut"
+  },
+  "diagnostic": {
+    "physicalRoiUm": [
+      40,
+      30
+    ],
+    "nbOpenMask": "GDS 2/0",
+    "nbOpeningAreaUm2": 760,
+    "initialSiThicknessUm": 675,
+    "nbThicknessUm": 0.2,
+    "etchDepthUm": 0.25,
+    "recessedSiTopUm": 337.45,
+    "mmaThicknessUm": 0.5,
+    "pmmaThicknessUm": 0.4,
+    "assumedBeamAnglesDeg": [
+      {
+        "polar": 45,
+        "azimuth": -45,
+        "nominalAlThicknessNm": 40
+      },
+      {
+        "polar": 45,
+        "azimuth": 45,
+        "nominalAlThicknessNm": 30
+      },
+      {
+        "polar": 45,
+        "azimuth": -135,
+        "nominalAlThicknessNm": 30
+      }
+    ],
+    "labToWaferFrame": "unverified",
+    "maskFrame": "actual chip2 SREF rotated 90 degrees",
+    "shadowType": "static sampled resist shadow only, restricted to recessed Si mask",
+    "doseAreasUm2": [
+      1.9903277474280197,
+      2.556218153908134,
+      2.5640426263774927
+    ],
+    "firstTwoOverlapUm2": 0.032262490302015494,
+    "crossSectionCenterUm": [
+      -5.011650303975799,
+      -1.6099365646917906e-7
+    ],
+    "materialStackAtCrossSection": [
+      {
+        "material": "Si",
+        "zEndUm": 337.45
+      },
+      {
+        "material": "Al1",
+        "thicknessNm": 40,
+        "zEndUm": 337.49
+      },
+      {
+        "material": "AlOx hypothetical",
+        "thicknessNm": 2,
+        "zEndUm": 337.492
+      },
+      {
+        "material": "Al2",
+        "thicknessNm": 30,
+        "zEndUm": 337.522
+      },
+      {
+        "material": "Al3",
+        "thicknessNm": 30,
+        "zEndUm": 337.552
+      }
+    ],
+    "layerCountWithOptionalOxide": 6,
+    "regionCountWithOptionalOxide": 9,
+    "operationCountWithOptionalOxide": 6,
+    "projectSchemaAndCompressedRoundtrip": "pass"
+  },
+  "validation": {
+    "localRunner": "Node 22, locally recovered 9d8b7a98 source-only artifact, native vector Boolean/model",
+    "gdsHashChecked": true,
+    "normalOriginWorkstation": false,
+    "browser": {
+      "nativeThree": true,
+      "origin": "about-blank-null-origin",
+      "pageErrors": 0,
+      "section3dVisualAccepted": false
+    },
+    "exactMergedBranchFullQuality": false,
+    "scientificallyCompleteJosephsonJunction": false
+  },
+  "assumptionsAndMissing": [
+    "Wafer-angle azimuth axes have not been independently matched to paper evaporator geometry",
+    "MMA/PMMA exposure-layer map is provisional",
+    "Static footprints omit dynamic material self-shadowing",
+    "Resist is a Z-resolved aperture assumption, not a solid material",
+    "AlOx 2 nm is optional and hypothetical; real oxidation kinetics are absent",
+    "Sidewall coverage and lift-off are not physically modeled",
+    "The numerical overlap does not validate Josephson tunnel area or paper geometry"
+  ]
+}

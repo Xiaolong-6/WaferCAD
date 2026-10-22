@@ -434,3 +434,75 @@ Individual 40 nm facets could not be visually resolved in that view;
 **visual acceptance is not signed**. A full, exact-HEAD current-branch
 Workstation / synchronized Section-3D / Worker / History / Recovery
 evaluation remains required before any merge.
+
+
+## Integrated Q2 chip-pose geometry diagnostic (Nb/Si + three Al beams)
+
+The original \`chip2\` GDS places \`jj_width0p18\` at
+**(1400, 2513) µm with a +90° SREF**, not at the primitive cell's
+unrotated local orientation. Earlier isolated shadow previews used the
+unrotated primitive. Moreover, the local Nb/Si etch lowers the exposed
+Si surface by **50 nm** (Z=337.45 µm instead of 337.5 µm);
+physical MMA/PMMA openings must be anchored at that recessed face,
+not at the original wafer top. Both are material differences at the
+scale of a 180 nm nominal junction.
+
+Run the source-backed integrated *static geometry diagnostic*:
+
+\`\`\`sh
+WAFERCAD_TRANSMON_GDS=/path/to/author/sample.gds \
+  node --test site/tests/transmon-q2-integrated-diagnostic.test.mjs
+node scripts/transmon-q2-integrated-diagnostic.mjs \
+  --gds /path/to/author/sample.gds \
+  --output /tmp/Transmon-Q2-integrated-diagnostic.wafercad \
+  --report /tmp/Transmon-Q2-integrated-evidence.json
+\`\`\`
+
+The script uses one native material model for Si (675 µm), blanket
+Nb (200 nm), author layer 2/0 directional etch (250 nm total), and
+three idealized Al footprints (40/30/30 nm at θ=45°,
+φ=−45°/+45°/−135°). A **2 nm AlOx spacer** can be explicitly
+requested as \`--oxide-thickness-um 0.002 --oxide-source "Illustrative
+hypothesis only"\`, but is not present by default. This creates a
+strictly valid WaferCAD model with an actual rotated GDS layout,
+one coherent material stack, a cross-section through the first-two
+Al overlap, and recovery-safe compact serialization.
+
+**Locally validated research diagnostic (with optional oxide):**
+
+| Observable | Result |
+| --- | ---: |
+| Source GDS SHA-256 | \`6e9db7d506e17f82fd22250db9a380a420b2a1088bac4a33b8c747930e9d5c02\` |
+| Nb etched opening in 40 × 30 µm ROI | 760 µm² |
+| Exposed Si height | Z=337.45 µm |
+| Al dose 1 footprint | 1.990328 µm² |
+| Al dose 2 footprint | 2.556218 µm² |
+| Al dose 3 footprint | 2.564043 µm² |
+| First two dose overlap | 0.03226249 µm² |
+| Material layers / regions / process operations | 6 / 9 / 6 |
+| First-two overlap cross-section | x≈−5.01165 µm, y≈0 |
+| Strict project file validation and compact round-trip | passed |
+
+At the overlap cross-section the simplified stack runs Si
+(Z=337.45) → Al 40 nm → hypothetical AlOx 2 nm → Al 30 nm →
+Al 30 nm. All dimensions are physical µm, never display scaling.
+
+**Critical scientific qualification:** this script is **not** the final
+native dynamic-obstruction solver. The Al masks are static horizontal
+footprints restricted to the etched Si opening, with resist-layer
+assignments and beam wafer-frame azimuths that remain provisional.
+There is no physical resist volume, contact-milling, lateral
+sidewall deposition, dynamic Al self-shadowing, real oxidation
+physics or actual lift-off. The near-180 nm overlap is not an
+independent proof of junction fidelity because the symmetric beam
+azimuths can preserve overlap area after 90° rotation while
+redistributing the individual dose areas.
+
+Actual native Chromium/Three.js rendered the locally recovered,
+schema-validated project with zero page errors, including a tight
+cross-overlap ROI. The AlOx nanofilm and quantitative Section/3D
+boundaries were not visually resolved; null-origin Workstation
+interaction does not validate Worker/History/Recovery. **Visual and
+exact merged-HEAD acceptance are still open.** See
+\`q2-integrated-chip-pose-evidence.json\` for the machine-readable
+diagnostic and the explicit release limits.
