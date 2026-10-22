@@ -264,7 +264,7 @@ GitHub Actions caches both npm downloads and the Playwright Chromium browser dir
 
 ### CI cost controls
 
-- Quality runs on every PR, including documentation-only changes. Draft runs the focused lint/format/documentation/configuration gates; Ready-for-Review runs the complete Node suite.
+- Quality runs on every PR, including documentation-only changes, and verifies source-bound local proof without installing npm or repeating checks. `node scripts/local-verification.mjs run draft` records lint/format/docs and focused CI/documentation contracts; `node scripts/local-verification.mjs run full` records the complete Node suite for Ready/release. Missing, failed or stale reports return to local execution. See [local Quality evidence](CI.md#local-quality-evidence).
 - Browser regression is path-filtered to application, examples, browser-test, dependency, and workflow changes; `site/tests/**` changes alone do not trigger it.
 - Every browser PR runs UI smoke. Workstation and resilience are ownership-selected rather than unconditional; `scripts/ci-test-plan.mjs` then selects History, Persistence, Interaction, Examples, Product Layout, Renderer, and Process Geometry from changed paths.
 - Browser PR jobs do not repeat `npm test`; non-PR runs execute the Node gate because a separate Quality run may not exist for direct pushes.

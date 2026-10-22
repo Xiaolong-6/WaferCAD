@@ -98,6 +98,36 @@ n08.operation = {
   lateralUm: 36,
   verticalUm: 36,
   note,
+  // History must not synthesize a directional legacy replay. Keep the
+  // real Invert Mask selection and exact continuous worker parameters.
+  maskContext: {
+    sourceMode: 'file',
+    cell: oldStep.params.mask.cell,
+    layerKeys: [...oldStep.params.mask.layerKeys],
+    transform: structuredClone(oldStep.params.mask.transform),
+    roi: oldStep.params.mask.roi,
+  },
+  replay: {
+    version: 1,
+    params: {
+      type: 'etch',
+      thickness: 36,
+      face: 'front',
+      surface: null,
+      etchProfile: 'continuous',
+      etchTargetLayerIds: ['base'],
+      continuousShape: 'circular',
+      continuousLateralUm: 36,
+    },
+    areaMode: 'invert',
+    maskContext: {
+      sourceMode: 'file',
+      cell: oldStep.params.mask.cell,
+      layerKeys: [...oldStep.params.mask.layerKeys],
+      transform: structuredClone(oldStep.params.mask.transform),
+      roi: oldStep.params.mask.roi,
+    },
+  },
 };
 n08.state.model = structuredClone(continuous);
 updateRecipe(n08.state.processRecipe);
@@ -105,6 +135,11 @@ const m09 = snapshot('09');
 m09.state.model = structuredClone(continuous);
 updateRecipe(m09.state.processRecipe);
 const n09 = node('09');
+// Record-only M09 preserves the analytic physical revision reached by M08.
+// Stale legacy M09 revision 9 would make History HEAD synchronization reject
+// all navigation even when the canonical saved geometry is valid.
+n09.processRevision = continuous.processRevision;
+n09.operation.replay = { version: 1, kind: 'record' };
 n09.state.model = structuredClone(continuous);
 updateRecipe(n09.state.processRecipe);
 const mainBranch = project.snapshotBranches.branches.find((b) => b.id === 'main');
@@ -140,6 +175,8 @@ assert.equal(opened.processRecipe.steps[6].params.area, 'invert');
 assert.equal(opened.processRecipe.steps[6].params.profile, 'continuous');
 assert.equal(opened.snapshots.length, 9);
 assert.equal(opened.snapshotBranches.nodes.length, 9);
+assert.equal(node('09').processRevision, continuous.processRevision);
+assert.equal(node('08').processRevision, continuous.processRevision);
 const report = {
   project: output,
   bytes: Buffer.byteLength(serialized),

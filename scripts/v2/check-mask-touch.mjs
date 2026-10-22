@@ -27,7 +27,12 @@ export async function checkMaskTouch(browser, base, output) {
     const snapshot = () => page.evaluate(() => window.WaferCadV2Mask.snapshot());
     const enabled = async (key, value) => {
       const node = page.locator(`[data-action="tool:${key}:mask"]`);
-      if (((await node.getAttribute('aria-pressed')) === 'true') !== value) await node.click();
+      if (((await node.getAttribute('aria-pressed')) === 'true') !== value) {
+        if (!(await node.isVisible()))
+          await page.getByRole('button', { name: 'Mask more tools', exact: true }).click();
+        await node.click();
+        await waitForPaint(page);
+      }
     };
     const singleDrag = async (dx = 24, dy = 16) => {
       await dispatch('touchStart', [[1, x, y]]);

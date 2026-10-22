@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { auditDocumentation, headingAnchors } from '../../../scripts/check-documentation.mjs';
+import { qualityPlan } from '../../../scripts/local-verification.mjs';
 
 async function fixture(t, entries) {
   const rootDir = await mkdtemp(join(tmpdir(), 'wafercad-docs-'));
@@ -18,23 +19,61 @@ async function fixture(t, entries) {
   return auditDocumentation({ rootDir, files: Object.keys(entries) });
 }
 
-test('documentation PR path ownership covers source documentation entrypoints', async () => {
-  const workflow = await readFile(
+test('source-only documentation audit uses the full source manifest when Git is unavailable', async (t) => {
+  const rootDir = await mkdtemp(join(tmpdir(), 'wafercad-docs-portable-'));
+  t.after(() => rm(rootDir, { recursive: true, force: true }));
+  await mkdir(join(rootDir, 'docs'), { recursive: true });
+  await writeFile(join(rootDir, 'README.md'), '# Root\n[Manual](docs/Manual.md)\n');
+  await writeFile(join(rootDir, 'docs/README.md'), '# Docs\n[Manual](Manual.md)\n');
+  await writeFile(join(rootDir, 'docs/Manual.md'), '# Manual\n');
+  await writeFile(
+    join(rootDir, 'wafercad-source-manifest.json'),
+    JSON.stringify({
+      schema: 'wafercad-source-only-v1',
+      files: {
+        'README.md': '0'.repeat(64),
+        'docs/README.md': '2'.repeat(64),
+        'docs/Manual.md': '1'.repeat(64),
+      },
+    }),
+  );
+  const result = await auditDocumentation({ rootDir });
+  assert.deepEqual(result.errors, []);
+  await rm(join(rootDir, 'wafercad-source-manifest.json'));
+  await assert.rejects(
+    () => auditDocumentation({ rootDir }),
+    /Documentation audit needs Git or wafercad-source-manifest.json/,
+  );
+});
+
+test('all documentation PRs retain automatic local Quality ownership and manual diagnostics', async () => {
+  const quality = await readFile(
+    new URL('../../../.github/workflows/quality.yml', import.meta.url),
+    'utf8',
+  );
+  const docsDiagnostic = await readFile(
     new URL('../../../.github/workflows/documentation-wiki-targeted.yml', import.meta.url),
     'utf8',
   );
-  const paths = new Set([...workflow.matchAll(/^\s+- '([^']+)'$/gm)].map((match) => match[1]));
-  for (const path of [
-    'README.md',
-    'AGENTS.md',
-    'THIRD_PARTY_NOTICES.md',
-    'examples/projects/README.md',
-    'docs/**',
-    'site/bundled-examples.js',
-    '.github/workflows/product-manual-wiki.yml',
-  ]) {
-    assert.ok(paths.has(path), `documentation PR checks must include ${path}`);
-  }
+  assert.match(quality, /pull_request:\n    branches: \[main\]/);
+  assert.doesNotMatch(
+    quality,
+    /^\s+paths(?:-ignore)?:/m,
+    'Quality must include every PR source path',
+  );
+  assert.match(quality, /QUALITY_SCOPE: .*'draft'.*'full'/);
+  assert.ok(quality.includes('run: node scripts/local-verification.mjs verify "$QUALITY_SCOPE"'));
+  assert.match(quality, /name: Execute Draft Quality fallback/);
+  assert.match(quality, /site\/tests\/documentation-suite\.test\.mjs/);
+  assert.match(quality, /node scripts\/local-verification\.mjs verify full/);
+  assert.ok(
+    qualityPlan('draft').at(-1).args.includes('site/tests/documentation-suite.test.mjs'),
+    'Draft Quality must retain documentation tests',
+  );
+  assert.deepEqual(qualityPlan('full').at(-1).args, ['test']);
+  assert.match(docsDiagnostic, /on:\n  workflow_dispatch:/);
+  assert.doesNotMatch(docsDiagnostic, /^\s+pull_request:/m);
+  assert.match(docsDiagnostic, /node scripts\/local-verification\.mjs verify full/);
 });
 
 test('current documentation does not advertise retired Legacy editor sources', async () => {

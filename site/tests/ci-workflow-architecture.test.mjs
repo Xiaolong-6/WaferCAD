@@ -20,7 +20,7 @@ test('production Pages requires quality, browser and UI acceptance before publis
   assert.ok(pages.includes('run: node --test site/tests/release-evidence.test.mjs'));
   assert.match(pages, /if: .*needs.release-evidence.outputs.fast != 'true'/);
   assert.match(pages, /needs: \[stage-pages\]/);
-  assert.match(pages, /run: npm run check/);
+  assert.match(pages, /run: node scripts\/local-verification\.mjs verify full/);
   assert.match(pages, /uses: \.\/\.github\/workflows\/browser-regression\.yml/);
   assert.match(pages, /uses: \.\/\.github\/workflows\/ui-v2-stage-c-m4\.yml/);
   assert.match(
@@ -157,11 +157,15 @@ test('retired preview cannot publish from the obsolete branch', () => {
   );
 });
 
-test('Quality covers docs-only PRs and enforces pinned formatter', () => {
+test('Quality covers docs-only PRs and fails closed through real fallback execution', () => {
   const quality = workflow('quality');
   assert.match(quality, /branches: \[main\]/);
   assert.doesNotMatch(quality, /paths-ignore:/);
-  assert.match(quality, /run: npm run check\n/);
+  assert.match(quality, /run: node scripts\/local-verification\.mjs verify/);
+  assert.match(quality, /continue-on-error: true/);
+  assert.match(quality, /steps\.evidence\.outcome != 'success'/);
+  assert.match(quality, /run: npm ci --ignore-scripts --no-audit --no-fund/);
+  assert.match(quality, /run: npm run check/);
 });
 
 test('manual reconstruction runs cannot mutate main', () => {
@@ -179,4 +183,30 @@ test('manual reconstruction runs cannot mutate main', () => {
       "if: ${{ github.ref_name == 'fix/photodetector-reconstruction-v2' }}",
     ),
   );
+});
+
+test('M3D baseline retains scientific and visual owners without duplicate generic Quality', () => {
+  const m3d = workflow('m3d-conformal-baseline');
+  assert.match(m3d, /^  scientific-baseline:/m);
+  assert.match(m3d, /^  approved-windows-visual-baseline:/m);
+  assert.doesNotMatch(m3d, /^  quality:/m);
+  assert.doesNotMatch(m3d, /npm run lint|npm run format:check|npm run docs:check/);
+  assert.doesNotMatch(m3d, /m3d-conformal-baseline\.yml/);
+});
+
+test('manual pre-main validates full proof or runs full Quality before real browser acceptance', () => {
+  const preMain = workflow('pre-main-integration-validation');
+  assert.match(preMain, /node scripts\/local-verification\.mjs verify full/);
+  assert.ok(
+    preMain.indexOf('run: node scripts/local-verification.mjs verify full') <
+      preMain.indexOf('run: npm ci --ignore-scripts --no-audit --no-fund'),
+    'the proof probe must precede npm install',
+  );
+  assert.match(preMain, /continue-on-error: true/);
+  assert.match(preMain, /steps\.evidence\.outcome != 'success'/);
+  assert.match(
+    preMain,
+    /name: Final lint, formatting, generated documentation and Node tests[\s\S]*?run: npm run check/,
+  );
+  assert.match(preMain, /npm run test:ui:all/);
 });

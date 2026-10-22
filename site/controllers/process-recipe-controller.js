@@ -1479,6 +1479,7 @@ export function createProcessRecipeController({
     }
 
     const before = Number(getModel()?.processRevision || 0);
+    const priorHistoryPosition = snapshotManager?.currentPosition?.();
     await processPanelController.applyOperation({
       canonicalLengthUm: p.thicknessUm ?? p.depthUm ?? null,
       canonicalImplantStartDepthUm: step.command === 'implant' ? (p.startDepthUm ?? 0) : null,
@@ -1502,7 +1503,24 @@ export function createProcessRecipeController({
         step.command === 'etch' && p.face === 'both' && p.target ? bothMaterialId(p.target) : null,
     });
     const after = Number(getModel()?.processRevision || 0);
-    if (after <= before) throw new Error('The Process step did not commit a model revision.');
+    if (step.command === 'record' && getModel()?.kernel === 'vector-continuous-etch-v1') {
+      // A metadata-only record after an exact Continuous Etch must commit a
+      // History node WITHOUT changing its immutable physical source revision.
+      // Verify an actual History transaction, not just the unchanged model.
+      const position = snapshotManager?.currentPosition?.();
+      const node = snapshotManager?.listHistory?.().find((item) => item.id === position?.nodeId);
+      if (
+        after !== before ||
+        !position?.atHead ||
+        position.nodeId === priorHistoryPosition?.nodeId ||
+        node?.operation?.kind !== 'record' ||
+        node.processRevision !== after
+      ) {
+        throw new Error('The Record step did not commit a consistent History node.');
+      }
+    } else if (after <= before) {
+      throw new Error('The Process step did not commit a model revision.');
+    }
     return true;
   }
 

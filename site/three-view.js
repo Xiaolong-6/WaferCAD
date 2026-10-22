@@ -34,6 +34,11 @@ import {
 } from './continuous-etch-model.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
+  LAYER_INSPECTION_NEUTRAL,
+  LAYER_INSPECTION_DIM,
+  layerInspectionTone,
+} from './layer-inspection-presentation.js';
+import {
   annotationInspectionCutSegments,
   electricalRegionSolids,
   implantSolids,
@@ -184,6 +189,11 @@ export function createThreeView({
   let lastTransparencySort = -Infinity;
   let transparencyOrderDirty = true;
   let presentationObjects = new Set();
+  // Focus is view-only: neutralize other materials without touching visibility,
+  // opacity, depth ownership, geometry or persistent layer colors.
+  let highlightedLayerId = null;
+  const originalInspectionAppearance = new WeakMap();
+  let inspectionNeutralColor = null;
   let surfaceMaterialPool = new Map();
   let presentationUpdateCount = 0;
   let physicalSceneModel = null;
@@ -1050,6 +1060,7 @@ export function createThreeView({
     transparentMeshes = entry.transparentMeshes;
     presentationObjects = entry.presentationObjects;
     surfaceMaterialPool = entry.surfaceMaterialPool;
+    updateLayerInspection();
     currentRoughMode = entry.currentRoughMode;
     lastLodSignature = entry.lastLodSignature;
     physicalSceneModel = entry.model;
@@ -1252,6 +1263,52 @@ export function createThreeView({
     if (transparentChanged || depthWriteChanged || depthTestChanged) material.needsUpdate = true;
   }
 
+  function applyLayerInspectionMaterial(material, tone) {
+    if (!material?.color) return;
+    if (!originalInspectionAppearance.has(material)) {
+      originalInspectionAppearance.set(material, {
+        color: material.color.clone(),
+        emissive: material.emissive?.clone(),
+        intensity: material.emissiveIntensity,
+      });
+    }
+    const original = originalInspectionAppearance.get(material);
+    material.color.copy(original.color);
+    if (original.emissive && material.emissive) {
+      material.emissive.copy(original.emissive);
+      material.emissiveIntensity = original.intensity;
+    }
+    if (tone === 'deemphasized') {
+      inspectionNeutralColor ||= new THREE.Color(LAYER_INSPECTION_NEUTRAL);
+      material.color.lerp(inspectionNeutralColor, LAYER_INSPECTION_DIM);
+    }
+  }
+
+  function isLayerInspectionMaterial(descriptor) {
+    return descriptor?.kind === 'material-exterior' || descriptor?.kind === 'material-interface';
+  }
+
+  function updateLayerInspection() {
+    const visited = new Set();
+    for (const object of presentationObjects) {
+      const descriptor = object.userData?.waferCadPresentation;
+      if (!isLayerInspectionMaterial(descriptor)) continue;
+      const tone = layerInspectionTone(descriptor.layerId, highlightedLayerId);
+      for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+        if (!material || visited.has(material)) continue;
+        visited.add(material);
+        applyLayerInspectionMaterial(material, tone);
+      }
+    }
+    host.dataset.highlightLayerId = highlightedLayerId ?? '';
+  }
+
+  function highlightLayer(id) {
+    highlightedLayerId = id == null ? null : String(id);
+    updateLayerInspection();
+    scheduleFrame();
+  }
+
   function registerPresentationObject(object, descriptor = null) {
     if (!object || !descriptor) return object;
     object.userData ||= {};
@@ -1261,6 +1318,10 @@ export function createThreeView({
       materials = Array.isArray(object.material) ? object.material : [object.material];
     object.visible = Boolean(state.visible);
     for (const material of materials) applyMaterialPresentation(material, state.materialState);
+    if (isLayerInspectionMaterial(descriptor)) {
+      const tone = layerInspectionTone(descriptor.layerId, highlightedLayerId);
+      for (const material of materials) applyLayerInspectionMaterial(material, tone);
+    }
     if (
       object.isLineSegments &&
       ['border', 'internal-border', 'hidden-border'].includes(descriptor.kind)
@@ -3193,7 +3254,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     // Group disposal also drops any stale surface variants and GPU resources.
     disposeGroup();
     const data = buildPhysicalFacetPresentation(model);
-    const exterior = { kind: 'material-exterior' };
+    const exterior = { kind: 'material-exterior', layerId: owner.layerId };
     const materialState = presentationState(exterior, inspection).materialState;
     let built = 0;
     for (const face of ['top', 'bottom', 'side']) {
@@ -3233,6 +3294,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         name: 'Experimental physical SiO2',
         color: '#d88b37',
       };
+      const oxideExterior = { kind: 'material-exterior', layerId: data.oxideLayerId };
       let builtOxideFaces = 0;
       for (const face of ['top', 'bottom', 'side']) {
         const positions = data.oxidePositions[face];
@@ -3240,7 +3302,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
         geometry.computeVertexNormals();
-        const material = createSurfaceMaterial(physicalOxideLayer, materialState, null, exterior);
+        const material = createSurfaceMaterial(
+          physicalOxideLayer,
+          materialState,
+          null,
+          oxideExterior,
+        );
         material.flatShading = true;
         const mesh = addSurfaceMesh(
           geometry,
@@ -3250,7 +3317,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           0,
           false,
           null,
-          exterior,
+          oxideExterior,
         );
         if (mesh) {
           mesh.name = `physical-${face}-${data.oxideLayerId}`;
@@ -3732,6 +3799,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       const stateFor = (part) => (part.buried ? interfaceState : materialState),
         presentationFor = (part, sortBias = 0) => ({
           kind: part.buried ? 'material-interface' : 'material-exterior',
+          layerId: part.layerId,
           sortBias,
         }),
         bucketKey = (part, state) => {
@@ -4916,6 +4984,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     init,
     render,
     fit,
+    highlightLayer,
     getViewState,
     setViewState,
     setGestureMode,

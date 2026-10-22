@@ -13,7 +13,11 @@ The fast path requires:
   an ancestor of that PR head.
 - The deterministic merge tree equal to the actual Main tree.
 - A completed **full Ready-for-Review Quality** job for the exact PR SHA.
-  Draft-only Quality never authorizes publication.
+  Draft-only Quality never authorizes publication. The Quality job first
+  validates full local evidence; if that is missing or stale, it executes the
+  entire full Quality plan on the exact PR integration tree. Release selection revalidates source-bound local proof before the fast
+  route, or recognizes a successful, independently executed full Quality step.
+  The tolerated proof probe alone is never a release attestation.
 - Every discovered GitHub Actions check completed successfully or an allowed
   optional skip. Failed, cancelled, timed-out or in-progress checks never
   authorize deployment.
@@ -72,7 +76,7 @@ a deployment of the latest version.
 - `node --test site/tests/release-evidence.test.mjs`
 - `node --test site/tests/ci-workflow-architecture.test.mjs site/tests/ci-development-gates.test.mjs`
 - Existing `site/tests/ci-test-plan.test.mjs` science and owner-route contracts.
-- `npm run check` on the final reviewed branch.
+- `node scripts/local-verification.mjs run full` on staged final source and commit both evidence files, **or** require a successful exact-tree full CI fallback when the local environment cannot provide them. Neither route may skip or weaken checks.
 - Before approval, audit a normal UI change, a Renderer change and an
   integrity-sensitive Project IO/History change against the same planner.
   Missing/failed/stale checks, unreviewed Draft Quality and incorrect

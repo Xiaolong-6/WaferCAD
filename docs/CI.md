@@ -2,6 +2,80 @@
 
 WaferCAD keeps the full regression inventory, but pull requests do not run every browser suite unconditionally. The browser workflow first classifies the changed paths with `scripts/ci-test-plan.mjs`, then runs the narrowest regression scopes that own those changes.
 
+## Local Quality evidence
+
+Run the existing checks locally and commit their source-bound report.
+Neither **Node 24 exclusively** nor a complete Git checkout/staged index is
+mandatory. Both Node **22 and 24 LTS** are accepted for local proof; the exact
+pinned package versions must still match. In an ordinary Git workspace the
+verifier enumerates tracked source paths but hashes the **actual working bytes**
+(no staging needed). For a source-only package, it requires the standard
+`wafercad-source-manifest.json`, rejects missing and unlisted source files, and
+hashes every listed source file independently. This is a source inventory,
+**not** blind trust in the manifest's old per-file hashes. A complete clean
+package is required; an outdated/incomplete recovery bundle cannot certify a
+new merged source tree.
+
+```sh
+# Prefer local tests where the tools exist (Node 22 or 24):
+node scripts/local-verification.mjs run draft
+node scripts/local-verification.mjs run full
+# In a Git checkout, if evidence was generated, commit only these two files:
+git add .verification/quality/report.json .verification/quality/transcript.json.gz
+```
+
+The v2 source fingerprint covers sorted path names and SHA-256 of the actual
+file contents, excluding only the two generated proof files. The CI checkout
+computes the same digest from its authoritative tracked inventory. Old v1
+Git-index evidence remains readable and valid when its original source tree
+matches. Reports record the actual Node version; both supported LTS majors are
+accepted. Logs, exact command plan, pinned tools and fingerprints remain
+mandatory. An evidence-only commit leaves the content digest unchanged.
+
+Both scopes retain ESLint, Prettier and generated-document checks. Draft runs
+the focused planner/workflow/evidence and documentation Node contracts; full
+runs the complete existing `npm test` inventory. A full report satisfies Draft;
+a Draft report never satisfies Ready or release acceptance. Failure, Abort or
+source changes during a run cannot retain an old passing report.
+
+`Quality / quality` first checks the report and compressed transcript using
+Node built-ins and Git without installing dependencies. **If the proof is
+missing, incomplete, failed, stale, or incompatible with the exact proposed
+merge tree, Quality installs locked dependencies and actually runs the same
+required checks.** Draft fallback runs lint, format, generated docs and the
+focused Quality/CI/documentation Node contracts; Ready and manual full fallback
+run `npm run check`, including the entire `npm test` inventory. Any failing
+or interrupted check rejects the job; no stale report can authorize success.
+The locally supplied full proof is still preferred to avoid repeating tests.
+The strict full-proof step and the full-execution fallback have separate names
+so a tolerated failed evidence probe can never count as release attestation.
+
+The default PR checkout checks the proposed merge tree. For full Main release
+validation and manual pre-main integration, the same proof-first/full-execution
+fallback applies to the exact checked-out source. Neither path skips the
+existing browser, scientific, staged-artifact or publishing gates.
+
+A source or test change invalidates blanket Quality proof for the previous
+snapshot; previous results remain useful as historical diagnostics, but must not
+be presented as an acceptance of different bytes. Draft and Full checks remain
+unchanged. Complete source inventory coverage is required in either mode.
+
+Reports include exact commands, exit codes, signals, durations, Node/tool
+versions, timestamps, source revision, plan digest and transcript hashes.
+`node scripts/local-verification.mjs verify draft` (or `full`) performs the same read-only
+check locally. The report is explicitly **developer-reported** evidence;
+hashes detect stale or inconsistent data, not a developer fabricating an
+entire report. It is not a signed or independent execution attestation.
+Review, source protection, scientific acceptance and explicit merge approval
+remain necessary.
+
+The path-filtered Release evidence contract retains fast dependency-free
+tests of this safety-critical verifier and release routing. That independent
+safety check does not rerun application Quality. The old documentation PR
+workflow is manual-only; the local Draft/full plan owns its Node contracts.
+Other browser/scientific workflows are not yet migrated to local reports.
+Do not describe this Quality migration as removing all local-capable CI.
+
 ## Visual-first Draft development
 
 Visual changes use an inexpensive, explicit evidence loop before full acceptance.
@@ -81,9 +155,8 @@ must not be reported as a substitute. See
 
 `visual-first.yml` automatically captures applicable **Draft** PRs, and
 can also be dispatched manually. It never publishes and cannot approve
-the PR. A Draft `Quality` run keeps ESLint, Prettier, and docs consistency
-checks; its complete Node test suite runs after the PR becomes
-Ready for Review. The general Browser regression keeps smoke in Draft,
+the PR. Draft `Quality` accepts matching Draft/full evidence or executes Draft checks;
+Ready for Review requires matching full evidence or executes full checks. The general Browser regression keeps smoke in Draft,
 and retains impact-selected Process Geometry, History and Persistence gates
 when needed to protect scientific invariants and stored project data.
 Heavy shared UI v2 Stage C/M4, Main/Mask/Mobile, D1, 3D Phase B and non-science Browser
@@ -124,7 +197,7 @@ tests explicitly guard these assumptions.
 
 ## Pull-request gates
 
-`Quality` is an unconditional gate for every pull request into `main`, including documentation-only changes, and retains a stable check name. Draft runs pinned ESLint, Prettier, documentation consistency and focused CI configuration tests. **Ready for Review and manual execution run the complete Node suite** (`npm run check`). A Draft Quality pass does not certify the Node suite. Repository ruleset configuration is a separate GitHub administration action.
+`Quality` is an unconditional gate for every pull request into `main`, including documentation-only changes, and retains its stable check name. Draft prefers current local Draft/full proof and Ready prefers full proof. If the matching proof is absent or stale, CI performs the identical required checks itself on the exact integration tree. A Draft report does not certify the complete Node suite. Repository ruleset configuration is a separate GitHub administration action.
 
 `Browser regression` always runs the small UI smoke when application/browser-test changes trigger the workflow. Workstation integration and degraded-mode resilience are selected only when their owned startup/shell or Three/WebGL paths change.
 
@@ -163,11 +236,11 @@ A skipped/deferred check is unverified, not passed. Marking a PR ready triggers 
 
 ## Documentation and publication workflows
 
-[Documentation and Wiki targeted checks](../.github/workflows/documentation-wiki-targeted.yml) runs on changes to `docs/**`, root documentation (`README.md`, `AGENTS.md`, `THIRD_PARTY_NOTICES.md`), example-authoring provenance (`examples/projects/README.md`), the Welcome catalog (`site/bundled-examples.js`), Process Guide sources, and documentation/publishing workflow definitions. It runs the three Process Guide/Wiki/Documentation Node suites with read-only repository permissions and does **not** publish Wiki content. Draft Quality independently verifies lint, formatting and generated documentation; neither Draft gate substitutes for final release checks.
+[Documentation evidence diagnostic](../.github/workflows/documentation-wiki-targeted.yml) is manual-only and checks full local proof without installing npm or rerunning documentation tests. The local Draft and full Quality plans own the documentation suite; `Quality` is the single automatic PR gate for it.
 
 [Product manual/Wiki sync](../.github/workflows/product-manual-wiki.yml) runs on every main push, including documentation-only pushes, and supports manual dispatch. It installs pinned npm dependencies before checking generation, links/navigation, tutorial/catalog contracts and possible public-behavior drift, then compares managed Wiki pages.
 
-[Pages deployment](../.github/workflows/pages.yml) runs on relevant `main` changes and manual dispatch. Before deployment, it requires same-SHA Release Quality (`npm run check`), impact-selected Browser regression, real UI v2 Stage C/M4, and a fail-closed scientific release aggregate. The scientific impact planner selects real Main/Mask/Section, KLayout format compatibility, and Recipe safety acceptances when their source owners change; manual releases select all three. Required failed, cancelled, skipped or missing scientific jobs block the aggregate. Only explicitly unselected scientific jobs may skip. The read-only `stage-pages` job waits for all four release gates, builds and stamps the exact `build/pages/` artifact, then runs the Chromium staged-artifact smoke at `/WaferCAD/`, exercising Welcome, startup, Project/Layout Workers and the real Process Worker. The `deploy` job consumes that previously tested artifact without rebuilding it, and alone holds `pages: write` and `id-token: write`. Both staging and deployment require `refs/heads/main`; ordinary PRs cannot publish.
+[Pages deployment](../.github/workflows/pages.yml) runs on relevant `main` changes and manual dispatch. Before deployment, it requires verified full Quality (matching source-bound proof or successful full execution), impact-selected Browser regression, real UI v2 Stage C/M4, and a fail-closed scientific release aggregate. The scientific impact planner selects real Main/Mask/Section, KLayout format compatibility, and Recipe safety acceptances when their source owners change; manual releases select all three. Required failed, cancelled, skipped or missing scientific jobs block the aggregate. Only explicitly unselected scientific jobs may skip. The read-only `stage-pages` job waits for all four release gates, builds and stamps the exact `build/pages/` artifact, then runs the Chromium staged-artifact smoke at `/WaferCAD/`, exercising Welcome, startup, Project/Layout Workers and the real Process Worker. The `deploy` job consumes that previously tested artifact without rebuilding it, and alone holds `pages: write` and `id-token: write`. Both staging and deployment require `refs/heads/main`; ordinary PRs cannot publish.
 
 ## Retired public Legacy editor
 
@@ -233,7 +306,8 @@ This keeps PR and main validation change-aware while leaving the expensive uncon
 
 ## Cost controls
 
-- Browser PR jobs do not repeat the Node test gate already owned by `Quality`.
+- Quality and release Quality validate local evidence without installing npm or repeating the local Node/lint/format/docs gate.
+- Browser PR jobs do not repeat the locally executed Node gate certified by `Quality`.
 - Node tests run inside independent weekly/manual Browser regression, but are skipped in the Pages release call where the release Quality job already owns them.
 - Chromium and npm downloads remain cached.
 - Normal targeted suites share one Chromium job to avoid repeated setup cost.

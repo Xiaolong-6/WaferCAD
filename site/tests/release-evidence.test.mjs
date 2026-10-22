@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   classifyRelease,
   evaluateRelease,
+  fullQualityVerification,
   latestCheckRuns,
   targetedProductionGates,
 } from '../../scripts/release/verified-pr-release.mjs';
@@ -242,4 +243,47 @@ test('unselected optional suites may skip, but mandatory suites cannot skip', ()
   assert.equal(evaluateRelease(snapshot).fast, true);
   snapshot.checks = [check('quality', 'skipped'), check('Release evidence contract')];
   assert.equal(evaluateRelease(snapshot).fast, false);
+});
+
+test('release requires successful full Quality proof', () => {
+  const local = { name: 'Require full local Quality evidence', conclusion: 'success' };
+  const executed = {
+    name: 'Final lint, formatting, generated documentation and Node tests',
+    conclusion: 'success',
+  };
+  const localSkipped = { ...local, conclusion: 'skipped' };
+  const executedSkipped = { ...executed, conclusion: 'skipped' };
+  assert.equal(fullQualityVerification([local]), 'local-evidence');
+  assert.equal(fullQualityVerification([executed]), 'executed');
+  assert.equal(fullQualityVerification([local, executedSkipped]), 'local-evidence');
+  assert.equal(fullQualityVerification([localSkipped, executed]), 'executed');
+  for (const steps of [
+    null,
+    [],
+    [{ name: 'Require Draft local Quality evidence', conclusion: 'success' }],
+    [localSkipped],
+    [{ ...local, conclusion: 'failure' }],
+    [local, local],
+    [local, executed],
+    [localSkipped, executedSkipped],
+    [local, { ...executed, conclusion: 'failure' }],
+    [{ ...local, conclusion: 'failure' }, executed],
+    [{ ...local, conclusion: 'cancelled' }, executed],
+    [local, executedSkipped, executedSkipped],
+  ]) {
+    assert.equal(fullQualityVerification(steps), null);
+  }
+});
+
+test('local evidence files do not turn an audited source change into full browser release', () => {
+  const paths = [
+    'site/three-rough-geometry.js',
+    '.verification/quality/report.json',
+    '.verification/quality/transcript.json.gz',
+  ];
+  assert.equal(classifyRelease(paths), 'production');
+  assert.deepEqual(targetedProductionGates(paths), targetedProductionGates([paths[0]]));
+  assert.equal(classifyRelease(['.verification/quality/report.json']), 'full');
+  assert.equal(classifyRelease([paths[0], '.verification/hidden-source.js']), 'production');
+  assert.equal(targetedProductionGates([paths[0], '.verification/hidden-source.js']), null);
 });

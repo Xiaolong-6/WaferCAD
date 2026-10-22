@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { readFile as readFileAsync } from 'node:fs/promises';
 import test from 'node:test';
 import { createHash } from 'node:crypto';
+import { createSnapshotManager } from '../workspace-snapshots.js';
 
 const vendor = { exports: {} };
 new Function(
@@ -59,6 +60,19 @@ test('published M08 uses the original inverted seven-shape GDS mask, not Full Fa
   assert.equal(recipe[6].params.profile, 'continuous');
   assert.equal(recipe[6].params.continuousShape, 'circular');
   assert.equal(recipe[7].command, 'record');
+  const historyM08 = released.snapshotBranches.nodes.find(
+    (node) => node.id === 'process-microdisk-08',
+  );
+  assert.equal(historyM08.operation.replay.version, 1);
+  assert.equal(historyM08.operation.replay.params.etchProfile, 'continuous');
+  assert.equal(historyM08.operation.replay.params.continuousShape, 'circular');
+  assert.equal(historyM08.operation.replay.areaMode, 'invert');
+  assert.deepEqual(historyM08.operation.replay.maskContext.layerKeys, ['1|0']);
+  assert.equal(
+    released.snapshotBranches.nodes.find((node) => node.id === 'process-microdisk-09').operation
+      .replay.kind,
+    'record',
+  );
   assert.match(
     released.snapshotBranches.nodes.find((n) => n.id === 'process-microdisk-08').operation.note,
     /not a measured value/,
@@ -114,6 +128,21 @@ test('published M08/M09 Bookmarks, process nodes, branch head, Recipe and Export
     assert.deepEqual(snapshot.state.processRecipe, node.state.processRecipe);
   }
   assert.deepEqual(released.snapshotBranches.branches[0].headState.model, released.model);
+  // A trailing record-only Step must not retain the legacy 9th physical
+  // revision: History HEAD sync rejects it, preventing any Step navigation.
+  const releaseNode = nodes.get('process-microdisk-08');
+  const recordNode = nodes.get('process-microdisk-09');
+  assert.equal(releaseNode.processRevision, released.model.processRevision);
+  assert.equal(recordNode.processRevision, released.model.processRevision);
+  assert.equal(recordNode.processRevision, recordNode.state.model.processRevision);
+
+  const headState = released.snapshotBranches.branches[0].headState;
+  const manager = createSnapshotManager({
+    capture: () => structuredClone(headState),
+    restore: () => {},
+  });
+  assert.equal(manager.importRecords(released.snapshots, released.snapshotBranches), 9);
+  assert.equal(manager.syncActiveHeadState(), true, 'Published HEAD must allow safe navigation');
   assert.deepEqual(
     released.snapshotBranches.branches[0].headState.processRecipe,
     released.processRecipe,
