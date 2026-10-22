@@ -28,6 +28,9 @@ function makeHarness() {
     pendingRender: false,
     sceneGeneration: 0,
     activeSurfaceAbort: null,
+    physicalSceneModel: null,
+    physicalSceneSignature: null,
+    presentationObjects: new Set(),
     current: { kernel: 'vector-continuous-etch-v1', revision: 1, processRevision: 1 },
     roi: 1,
     host: { dataset: {} },
@@ -122,4 +125,28 @@ test('latest Continuous build failure reports error and releases render lock', a
   assert.equal(scope.host.dataset.rendererBuildFailure, 'actual build failure');
   assert.equal(scope.rendering, false);
   assert.equal(scope.disposals, 1);
+});
+
+test('failed Worker replacement retains the last complete Continuous scene', async () => {
+  const { scope, render } = makeHarness();
+  scope.physicalSceneModel = { revision: 8 };
+  scope.physicalSceneSignature = 'continuous-etch-v1';
+  scope.presentationObjects.add({});
+  scope.host.dataset.modelRevision = '8';
+  scope.host.dataset.processRevision = '8';
+  scope.host.dataset.renderFidelity = 'exact-continuous-etch';
+  scope.renderContinuousEtch = async () => {
+    throw new Error('Worker module load failed');
+  };
+
+  await render();
+  assert.equal(scope.disposals, 0, 'failed replacement cannot dispose the prior scene');
+  assert.equal(scope.host.dataset.renderState, 'ready');
+  assert.equal(scope.host.dataset.renderPhase, 'build-failed-retained');
+  assert.equal(scope.host.dataset.rendererBuildFailure, 'Worker module load failed');
+  assert.equal(scope.host.dataset.modelRevision, '8', 'retained scene keeps its model revision');
+  assert.equal(scope.host.dataset.processRevision, '8');
+  assert.equal(scope.host.dataset.renderFidelity, 'exact-continuous-etch');
+  assert.equal(scope.stats.textContent, '3D update failed; previous view retained');
+  assert.equal(scope.rendering, false);
 });
