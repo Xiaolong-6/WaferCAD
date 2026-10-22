@@ -150,10 +150,19 @@ export function createWorkstationThreeView({ store, workstation }) {
   function inspectCommittedFrame() {
     if (!progressive || progressive.snapshot().project !== 'ready') return;
     const serial = Number(host.dataset.rendererFrameSerial || 0);
-    if (!serial || !['ready', 'refining'].includes(host.dataset.renderState)) return;
+    const approximate = host.dataset.renderFidelity === 'approximate';
+    // The exact Worker can fail between the preview mesh commit and the
+    // first painted preview frame. Keep the painted approximate scene visible
+    // and interactive; it is never promoted to exact Ready.
+    if (
+      !serial ||
+      (!['ready', 'refining'].includes(host.dataset.renderState) &&
+        !(approximate && host.dataset.renderState === 'error'))
+    )
+      return;
     // A caps-only frame is interactive but must never start a second Quality
     // build while Material Solids Boolean is still running in the first Worker.
-    if (host.dataset.renderFidelity === 'approximate') {
+    if (approximate) {
       if (!host.dataset.rendererProgressiveFirstFrameMs) return;
       if (!firstSceneFrame) {
         firstSceneFrame = true;

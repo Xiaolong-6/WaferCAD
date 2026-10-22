@@ -460,6 +460,13 @@ try {
     });
     assert.ok(failed.fault.previews >= 1);
     assert.notEqual(failed.fidelity, 'exact-surface-plan');
+    // Renderer fidelity alone is not visual acceptance: the Workstation's
+    // pending-stage overlay must actually release the usable WebGL canvas.
+    await faultPage.waitForFunction(
+      () => document.getElementById('threePanel')?.dataset.viewLoad === 'coarse',
+      null,
+      { timeout: 5000 },
+    );
     await faultPage.screenshot({
       path: 'test-results/m3d/welcome/m3d-exact-worker-failed.png',
       animations: 'disabled',
