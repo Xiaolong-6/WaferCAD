@@ -3889,6 +3889,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
     if (!model) return;
     if (model.kernel === CONTINUOUS_ETCH_MODEL_KERNEL || model.continuousEtchOwner != null) {
       const renderGeneration = ++sceneGeneration;
+      const previousSceneMetadata = {
+        modelRevision: host.dataset.modelRevision,
+        processRevision: host.dataset.processRevision,
+        renderFidelity: host.dataset.renderFidelity,
+      };
       pendingRender = false;
       rendering = true;
       host.dataset.sceneGeneration = String(renderGeneration);
@@ -3907,11 +3912,23 @@ diffuseColor.a *= waferCadAlphaScale;`,
           );
           host.dataset.renderPhase = 'superseded';
         } else {
-          disposeGroup();
-          host.dataset.renderState = 'error';
-          host.dataset.renderPhase = 'build-failed';
+          const retained =
+            physicalSceneSignature === 'continuous-etch-v1' &&
+            physicalSceneModel != null &&
+            presentationObjects.size > 0;
+          if (!retained) disposeGroup();
+          host.dataset.renderState = retained ? 'ready' : 'error';
+          host.dataset.renderPhase = retained ? 'build-failed-retained' : 'build-failed';
           host.dataset.rendererBuildFailure = error?.message || String(error);
-          stats.textContent = 'Continuous Etch 3D unavailable';
+          if (retained) {
+            for (const [key, value] of Object.entries(previousSceneMetadata)) {
+              if (value === undefined) delete host.dataset[key];
+              else host.dataset[key] = value;
+            }
+          }
+          stats.textContent = retained
+            ? '3D update failed; previous view retained'
+            : 'Continuous Etch 3D unavailable';
           console.error('Continuous Etch native 3D build failed:', error);
         }
       } finally {
