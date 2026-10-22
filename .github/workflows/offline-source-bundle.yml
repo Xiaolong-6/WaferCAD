@@ -2,19 +2,26 @@ name: Offline WaferCAD source bundle
 
 on:
   workflow_dispatch:
+  pull_request:
+    types: [labeled]
 
 permissions:
   contents: read
 
 jobs:
   bundle:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && github.event.label.name == 'source-only-bundle')
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - name: Build source-only ZIP without npm or Three.js
+        id: bundle
         shell: bash
         run: |
           python3 - <<'PY'
@@ -48,10 +55,11 @@ jobs:
           print(json.dumps({"revision": sha, "tracked": len(tracked),
                             "packaged": len(files), "zipBytes": output.stat().st_size}, indent=2))
           PY
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v6
         with:
-          name: wafercad-source-${{ github.sha }}
-          path: wafercad-source-${{ github.sha }}.zip
+          name: wafercad-source-${{ steps.bundle.outputs.sha }}
+          path: wafercad-source-${{ steps.bundle.outputs.sha }}.zip
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
