@@ -100,3 +100,34 @@ jobs:
           if-no-files-found: error
           retention-days: 3
           compression-level: 0
+
+  pinned-acorn:
+    # One-time offline bootstrap only; no normal PR or nightly execution.
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.label.name == 'offline-acorn-deps'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Pack exact locked Acorn without running tests
+        shell: bash
+        run: |
+          npm pack acorn@8.18.0 --ignore-scripts --pack-destination .
+          node - <<'JS'
+          const fs = require('node:fs');
+          const crypto = require('node:crypto');
+          const lock = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
+          const actual = 'sha512-' + crypto.createHash('sha512').update(fs.readFileSync('acorn-8.18.0.tgz')).digest('base64');
+          if (actual !== lock.packages['node_modules/acorn'].integrity) throw Error('Acorn package integrity mismatch');
+          JS
+      - uses: actions/upload-artifact@v6
+        with:
+          name: offline-acorn-8.18.0
+          path: acorn-8.18.0.tgz
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 0
