@@ -63,3 +63,40 @@ jobs:
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
+
+  pinned-browser-deps:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.label.name == 'offline-playwright-deps'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Transfer exact locked Playwright packages (no tests)
+        shell: bash
+        run: |
+          npm pack playwright@1.55.1 --ignore-scripts --pack-destination .
+          npm pack playwright-core@1.55.1 --ignore-scripts --pack-destination .
+          node - <<'JS'
+          const fs = require('node:fs');
+          const crypto = require('node:crypto');
+          const lock = JSON.parse(fs.readFileSync('package-lock.json'));
+          for (const name of ['playwright', 'playwright-core']) {
+            const file = `${name}-1.55.1.tgz`;
+            const actual = 'sha512-' + crypto.createHash('sha512').update(fs.readFileSync(file)).digest('base64');
+            const expected = lock.packages[`node_modules/${name}`].integrity;
+            if (actual !== expected) throw Error(`Pinned archive mismatch: ${name}`);
+          }
+          JS
+      - uses: actions/upload-artifact@v6
+        with:
+          name: offline-playwright-1.55.1
+          path: |
+            playwright-1.55.1.tgz
+            playwright-core-1.55.1.tgz
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 0
