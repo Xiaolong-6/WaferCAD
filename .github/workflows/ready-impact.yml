@@ -36,10 +36,10 @@ jobs:
             | node scripts/ci-test-plan.mjs --stdin \
               --base=${{ github.event.pull_request.base.sha }} \
               --head=${{ github.event.pull_request.head.sha }}
-          # Browser is reserved for changed Renderer/Section, Process, app
-          # interaction and compatibility owners (not every source edit).
+          # Browser is reserved for changed Renderer/Section, Process, app,
+          # Example and compatibility owners (not every source edit).
           # Classify the planner outputs without adding another Runner Job.
-          if grep -Eq '^(renderer|process|interaction|workstation|resilience|product_layout)=true$' "$GITHUB_OUTPUT"; then
+          if grep -Eq '^(renderer|process|interaction|workstation|resilience|product_layout|examples)=true$' "$GITHUB_OUTPUT"; then
             echo 'browser=true' >> "$GITHUB_OUTPUT"
           else
             echo 'browser=false' >> "$GITHUB_OUTPUT"

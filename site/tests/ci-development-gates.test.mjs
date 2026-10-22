@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
+import { buildCiTestPlan } from '../../scripts/ci-test-plan.mjs';
 import { runInNewContext } from 'node:vm';
 
 function workflow(name) {
@@ -256,4 +257,31 @@ test('documentation contracts have one automatic local Quality owner', () => {
   );
   assert.ok(local.includes("'site/tests/documentation-suite.test.mjs'"));
   assert.ok(local.includes("{ id: 'node', command: 'npm', args: ['test'] }"));
+});
+
+test('Ready Browser routes Example and project-open owners without running on docs-only changes', () => {
+  const ready = workflow('ready-impact.yml');
+  const selector = ready.match(
+    /if grep -Eq '([^']+)' "\$GITHUB_OUTPUT"; then\n\s+echo 'browser=true'/,
+  )?.[1];
+  assert.ok(selector, 'Ready Browser selection must remain explicit and inspectable');
+  const selected = new RegExp(selector, 'm');
+  const requiresBrowser = (path) => {
+    const suites = buildCiTestPlan([path]).suites;
+    return selected.test(
+      Object.entries(suites)
+        .map(([key, value]) => `${key}=${value}`)
+        .join('\n'),
+    );
+  };
+  for (const path of [
+    'site/examples/suspended-silica-microdisks.wafercad',
+    'site/bundled-example-history.js',
+    'site/example-asset.js',
+    'site/controllers/project-controller.js',
+    'site/three-view.js',
+  ]) {
+    assert.equal(requiresBrowser(path), true, path);
+  }
+  assert.equal(requiresBrowser('docs/CI.md'), false, 'Documentation alone must stay local-first');
 });
