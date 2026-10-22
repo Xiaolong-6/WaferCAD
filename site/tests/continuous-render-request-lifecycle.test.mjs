@@ -49,7 +49,7 @@ function makeHarness() {
     scheduleFrame() { scope.frames++; },
     disposals: 0,
     frames: 0,
-    console,
+    console: { error() {} },
     queueMicrotask,
   };
   // Only the real dispatch branch is evaluated. Heavy Three.js scene methods
@@ -108,9 +108,7 @@ test('stale History scene cannot commit after newer Model/ROI requests', async (
 test('latest Continuous build failure reports error and releases render lock', async () => {
   const { scope, render } = makeHarness();
   scope.renderContinuousEtch = async () => { throw new Error('actual build failure'); };
-  const originalError = console.error;
-  console.error = () => {};
-  try { await render(); } finally { console.error = originalError; }
+  await render();
   assert.equal(scope.host.dataset.renderState, 'error');
   assert.equal(scope.host.dataset.rendererBuildFailure, 'actual build failure');
   assert.equal(scope.rendering, false);
