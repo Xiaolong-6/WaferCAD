@@ -1,6 +1,7 @@
 import { difference, intersection, isEmpty, pointInMulti, rectMulti } from './vector-geometry.js';
 import { sidewallVisibleHeightIntervals } from './direct-sidewall-aperture.js';
 import { clipFixedSidewallLength } from './direct-sidewall-xy-clip.js';
+import { partitionFixedSidewallFacet } from './direct-sidewall-facet-partition.js';
 
 const TOL = 1e-8;
 
@@ -61,12 +62,20 @@ export function isolatedDirectSidewallPlan(model, area, incidence, thicknessUm) 
     }
     const flux = nx * incidentX + ny * incidentY;
     if (flux <= TOL) continue;
-    const patches = clipFixedSidewallLength({ a, b, lowZ, highZ }, incidence);
+    // A tangent component makes the visible wall diagonal in (length, Z).
+    // Conservative physical facets are needed instead of a full-height strip.
+    const tangentFlux = Math.abs(dx) < TOL ? Math.abs(incidentY) : Math.abs(incidentX);
+    const obliqueMaskedWall =
+      (incidence.apertureStack?.length ?? 0) > 0 && tangentFlux > 1e-10;
+    const patches = obliqueMaskedWall
+      ? partitionFixedSidewallFacet({ a, b, lowZ, highZ }, incidence)
+      : clipFixedSidewallLength({ a, b, lowZ, highZ }, incidence);
     const width = travelWidth * flux;
     if (width < 1e-4)
       throw new RangeError('Projected sidewall thickness is below the 0.1 nm XY grid.');
     for (const patch of patches) {
-      const visibleHeightIntervals = sidewallVisibleHeightIntervals(patch, incidence);
+      const visibleHeightIntervals =
+        patch.visibleHeightIntervals ?? sidewallVisibleHeightIntervals(patch, incidence);
       if (!visibleHeightIntervals.length) continue;
       const pa = patch.a,
         pb = patch.b,

@@ -4,7 +4,7 @@ import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 
 await loadGeometryKernel();
 const { createModel, applyOperation, geometryArea } = await import('../model.js');
-const { rectMulti, pointInMulti } = await import('../vector-geometry.js');
+const { rectMulti, pointInMulti, intersection } = await import('../vector-geometry.js');
 const { clipFixedSidewallLength } = await import('../direct-sidewall-xy-clip.js');
 const { isolatedDirectSidewallPlan } = await import('../direct-sidewall-geometry.js');
 const { validateProcessModel, validateProjectFile } = await import('../project-schema.js');
@@ -93,16 +93,68 @@ test('native Direct allows wall-only deposition when no horizontal surface recei
   validateProcessModel(model);
 });
 
-test('partial angled exposure fails closed without modifying source material', () => {
-  const model = makeStep(), original = structuredClone(model);
+test('angled partial exposure conservatively partitions wall length and Z', () => {
+  const model = makeStep();
+  const incidence = { ...beam(45), facetSliceUm: 0.05 };
+  const plan = isolatedDirectSidewallPlan(model, model.boundary, incidence, 0.04);
+  const plannedVolume = plan.reduce(
+    (sum, patch) =>
+      sum +
+      geometryArea(patch.area) *
+        patch.visibleHeightIntervals.reduce((v, [z0, z1]) => v + z1 - z0, 0),
+    0,
+  );
   const result = applyOperation(model, {
     type: 'add',
     thickness: 0.04,
     area: model.boundary,
-    incidence: beam(45),
+    incidence,
+  });
+  assert.equal(result.changed, true, result.error);
+  const walls = wallRegions(model, result.layerId);
+  assert.ok(walls.length > 2);
+  let volumeUm3 = 0;
+  for (const region of walls) {
+    const wall = region.stack.find(
+      (segment) => segment.layerId === result.layerId && segment.role === 'direct-sidewall',
+    );
+    assert.ok(wall && wall.z1 > wall.z0);
+    volumeUm3 += geometryArea(region.geom) * (wall.z1 - wall.z0);
+  }
+  assert.ok(volumeUm3 > 0 && volumeUm3 < 0.04);
+  // A direct-sidewall role alone undercounts where the same Al layer's
+  // horizontal and vertical films join. Check actual union material volume.
+  let actualCoverageVolume = 0;
+  for (const patch of plan) {
+    for (const region of model.regions) {
+      const overlapXY = geometryArea(intersection(region.geom, patch.area));
+      if (overlapXY <= 1e-15) continue;
+      for (const segment of region.stack) {
+        if (segment.layerId !== result.layerId) continue;
+        for (const [z0, z1] of patch.visibleHeightIntervals)
+          actualCoverageVolume +=
+            overlapXY * Math.max(0, Math.min(segment.z1, z1) - Math.max(segment.z0, z0));
+      }
+    }
+  }
+  assert.ok(Math.abs(actualCoverageVolume - plannedVolume) < 1e-8);
+  validateProcessModel(model);
+});
+
+test('nonrectangular oblique partial-facet request fails and rolls back', () => {
+  const model = makeStep();
+  const before = structuredClone(model);
+  const triangle = [[[[2.2, -0.4], [3.4, -0.4], [3.0, 0.4]]]];
+  const result = applyOperation(model, {
+    type: 'add',
+    thickness: 0.04,
+    area: model.boundary,
+    incidence: { ...beam(45), apertureStack: [
+      { bottomZUm: 6, topZUm: 6.6, opening: triangle },
+    ] },
   });
   assert.equal(result.changed, false);
-  assert.deepEqual(model, original);
+  assert.deepEqual(model, before);
 });
 
 test('strict project schema and compact storage preserve XY/Z sidewall segmentation', () => {

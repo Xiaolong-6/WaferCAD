@@ -286,3 +286,70 @@ fail-closed. The real native Chromium diagnostic rendered the validated
 model without page errors, but the 40 nm band was not distinctly
 recognizable under inspected views. **Visual acceptance and exact branch
 HEAD final Quality remain open.**
+
+
+## Oblique fixed-direction Direct: conservative tangent–Z facet partition
+
+The experimental \`Direct\` sidewall solver has a new **geometry-only**
+extension for a fixed incident direction with a nonzero component along
+the wall's tangent, such as \`θ=45° / φ=45°\`. No additional process type,
+rotating source model, empirical wall-coverage fraction, or global numerical
+tolerance is introduced.
+
+A beam through upper rectangular, Z-resolved apertures imposes a series
+of **linear constraints** on wall-tangent coordinate \`s\` and height \`z\`:
+\`opening_min <= p(s) + (apertureZ - z) * incidentXY <= opening_max\`.
+The exact illuminated facet is usually diagonal in \`(s,z)\`, whereas the
+native 2.5D material Kernel stores constant-Z intervals over XY regions.
+\`site/direct-sidewall-facet-partition.js\` splits the tangent direction
+into bounded slices and analytically intersects the worst-case aperture
+constraints at both tangent endpoints and both aperture heights. Every
+emitted XY/Z rectangle is **strictly inside** the ray-visible domain;
+missing corner triangles are a deliberate *under-approximation*, not
+silently deposited material.
+
+The unit contract is physical µm; material XY/Z vertices snap *inward* to
+the established 0.1 nm persistence grid. \`facetSliceUm\` (default
+0.05 µm) and \`maxFacetSlices\` (default 256) are explicit optional
+research controls. Coarser step sizes may visibly undercount coverage:
+they require convergence checks before scientific acceptance. Unsupported
+nonrectangular upper apertures, wall-intersecting resist, sloped surfaces,
+competing obstructing structures, out-of-budget regions or unexpected
+polar angles fail closed with the existing Direct transaction rollback.
+The earlier exact XY-only / Z-only solutions are retained when the incident
+direction has no wall-tangent component.
+
+**Local evidence (source-backed but not exact branch HEAD):**
+a 2 µm tangent-length test wall with a single rectangular upper aperture
+and θ=45°, φ=45° produced **15** conservative XY/Z patches at
+0.05 µm resolution. Their positive-area pairwise overlap was zero.
+The analytic illuminated facet areas (µm²) increased monotonically when
+the tangent sampling step was halved:
+
+| Maximum tangent step (µm) | Conservative facet area (µm²) |
+| --- | ---: |
+| 0.20000 | 0.129660 |
+| 0.10000 | 0.196920 |
+| 0.05000 | 0.229245 |
+| 0.02500 | 0.245175 |
+| 0.01250 | 0.253245 |
+| 0.00625 | 0.255252 |
+
+These are intentionally **lower bounds** for this simplified science
+fixture, not the Q2 junction area or a calibrated Al deposition volume.
+In a local reproduction of the PR #352 native vector Model with the
+relevant Direct sidewall material hooks ported, an actual \`applyOperation\`
+materialization generated 17 nonoverlapping material regions and strict
+\`validateProcessModel\` passed. Project export and storage expansion
+passed strict \`validateProjectFile\`; 76/76 focused Project/History/
+geometry-storage regressions and five targeted mathematical/material-plan
+tests passed. These checks **must be repeated against exact branch HEAD**
+before merge.
+
+The real Chromium 144 + SwiftShader native Three.js offline diagnostic
+rendered the locally schema-validated science project with zero page
+errors. Even after a tighter ROI and Z break, the individual sloped-in-Z
+40 nm facet patches were not visually separable; **native visual
+acceptance remains incomplete**. Managed null-origin mode does not
+establish Worker, History/Recovery, or synchronized Section/3D behavior.
+This is not yet the author's fully modeled Q2 Josephson junction.
