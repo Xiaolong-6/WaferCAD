@@ -69,8 +69,27 @@
   },
   "releaseGate": {
     "exactHeadWorkingTree": false,
-    "realBrowserNewGeometry": "not verified; previous native screenshot is a previous geometry revision",
+    "realBrowserNewGeometry": "null-origin native Three.js rendered 0 page errors, but fine wall facets indistinguishable; visual acceptance NOT passed",
     "section3d": "not yet accepted",
     "workerHistoryRecovery": "not tested on normal Origin"
+  },
+  "localNativeProcess": {
+    "environment": "PR352-era source-only local Process/Renderer with exact facet solver Git blob; not complete target-branch HEAD",
+    "actualModelRegions": 123,
+    "plannedFacetPatches": 121,
+    "plannedFacetMaterialVolumeUm3": 0.007274658844832911,
+    "realizedFacetMaterialVolumeUm3": 0.007274658844832911,
+    "volumeAbsoluteErrorUm3": 0,
+    "processDurationMs": 475.790147,
+    "strictProcessModelValidation": "passed",
+    "strictProjectSchemaAndCompactRoundTrip": "passed",
+    "nativeChromium": {
+      "nativeThreeRendered": true,
+      "bootstrapMode": "about-blank-null-origin",
+      "pageErrors": 0,
+      "visualAcceptance": "not passed; 40 nm wall facets are not visually resolved",
+      "testProject": "Direct-oblique-analytic-2pct.wafercad"
+    },
+    "targetedNativeTests": "2/2: independent physical-union volume and failed-operation rollback"
   }
 }

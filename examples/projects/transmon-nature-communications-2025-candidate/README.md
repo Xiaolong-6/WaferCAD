@@ -405,3 +405,32 @@ Q2 junction manufacturing remain out of scope. The target branch does
 not yet have a complete exact-HEAD local checkout/normal-origin Chromium
 release acceptance for this change. Do not reuse a previous screenshot
 as evidence that this new material geometry passed Section/3D review.
+
+
+### Native material ownership follow-up
+
+The analytic area gate was also exercised with the existing real
+\`applyOperation\` Process kernel on an isolated rectangular test step.
+It produced 121 conservative Al wall patches, **123 model regions** and a
+strictly valid process/project model. Compact serialization, expansion and
+project-schema revalidation passed. Computing the material-volume integral
+over **all Al owner segments** (rather than counting only the
+\`direct-sidewall\` role) reproduced the planned facet-volume integral
+exactly within floating point:
+
+- Planned wall-metal volume: **0.007274658844832911 µm³**
+- Realized Al wall-metal volume: **0.007274658844832911 µm³**
+- Absolute difference: **0 µm³** in this fixture
+
+An explicit \`facetMaxAreaLossFraction=0.005, maxFacetSlices=20\`
+counterexample rejects the Direct operation and leaves the input model
+structurally unchanged. These two native science tests are tracked in
+\`site/tests/direct-sidewall-facet-material-invariant.test.mjs\` and
+are deliberately limited to the isolated rectangular step.
+
+The local, native \`offline-native-app-capture.py\` utility rendered the
+validated new project with Chromium/SwiftShader and **zero page errors**.
+Individual 40 nm facets could not be visually resolved in that view;
+**visual acceptance is not signed**. A full, exact-HEAD current-branch
+Workstation / synchronized Section-3D / Worker / History / Recovery
+evaluation remains required before any merge.
