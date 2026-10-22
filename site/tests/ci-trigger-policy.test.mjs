@@ -3,7 +3,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { auditWorkflowEvents, declaredEvents } from '../../scripts/ci-trigger-policy.mjs';
+import { auditWorkflowEvents, declaredEvents, permittedSourceTransport } from '../../scripts/ci-trigger-policy.mjs';
 
 const directory = resolve(fileURLToPath(new URL('../../.github/workflows/', import.meta.url)));
 function sources() {
@@ -66,4 +66,14 @@ test('quality cannot revert to remote test fallback on Draft PRs', () => {
     auditWorkflowEvents(files).join(' '),
     /Draft\/Ready must reject missing source-bound evidence/,
   );
+});
+
+test('opt-in source transport is allowed only for labeled events', () => {
+  const files = sources();
+  assert.equal(permittedSourceTransport('offline-source-bundle.yml', files['offline-source-bundle.yml']), true);
+  assert.deepEqual(auditWorkflowEvents(files), []);
+  files['offline-source-bundle.yml'] = files['offline-source-bundle.yml'].replace(
+    'types: [labeled]', 'types: [opened, synchronize, labeled]',
+  );
+  assert.match(auditWorkflowEvents(files).join(' '), /forbidden automatic pull_request/);
 });
