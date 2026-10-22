@@ -641,10 +641,21 @@ try {
       ...(expected.model.electricalRegions || []),
     ].filter((item) => !item.name.includes(selectedName));
     for (const annotation of hiddenAnnotations) {
+      // Section annotations now use eye buttons rather than checkboxes.
+      // Keep this operation idempotent: some imported markers may be hidden.
       const toggle = page.locator(
-        '#sectionPanel [data-annotation-id="' + annotation.id + '"] input[type="checkbox"]',
+        '#sectionPanel [data-annotation-id="' + annotation.id + '"] > .v2-visibility-button',
       );
-      await toggle.uncheck();
+      assert.equal(await toggle.count(), 1, `Missing Section visibility eye for ${annotation.id}`);
+      if ((await toggle.getAttribute('aria-pressed')) === 'true') await toggle.click();
+      await page.waitForFunction(
+        (id) =>
+          document
+            .querySelector(`#sectionPanel [data-annotation-id="${id}"] > .v2-visibility-button`)
+            ?.getAttribute('aria-pressed') === 'false',
+        annotation.id,
+        { timeout: 10000 },
+      );
     }
     const isolatedModel = (await snap()).model;
     assert.deepEqual(isolatedModel.regions, opened.model.regions);
