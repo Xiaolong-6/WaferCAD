@@ -10,6 +10,7 @@ export function createWorkstationThreeView({ store, workstation }) {
   const local = store.local.three;
   local.borderSettings = normalizeBorderSettings(local.borderSettings);
   local.zDisplayFactor = normalizeThreeZDisplayFactor(local.zDisplayFactor);
+  local.showOrigin = local.showOrigin === true;
   // Retire the nonlinear multi-band Relief setting, including previously saved UI values.
   local.roughReliefFactor = 1;
   const icon = (label, action, glyph) =>
@@ -22,9 +23,8 @@ export function createWorkstationThreeView({ store, workstation }) {
         'tool:pan:three': 'three.pan',
         'tool:zoom:three': 'three.zoom',
         'quality:three': 'three.quality',
-        'opacity:three': 'three.opacity',
+        'display:three': 'three.display',
         'borders:three': 'three.borders',
-        'z-display:three': 'three.z-display',
         'maximize:three': 'shell.maximize',
       }[action],
     });
@@ -51,9 +51,8 @@ export function createWorkstationThreeView({ store, workstation }) {
       ],
       [
         icon('Render mode', 'quality:three', 'quality'),
-        icon('Opacity', 'opacity:three', 'eye'),
+        icon('Display settings', 'display:three', 'sliders'),
         icon('Borders', 'borders:three', 'rectangle'),
-        icon('Display Z scale', 'z-display:three', 'section'),
       ],
     ],
     [button('Export', 'three-export-menu', 'export', { 'data-help': 'view.export' })],
@@ -97,6 +96,7 @@ export function createWorkstationThreeView({ store, workstation }) {
     }),
     getZCollapse: () => state.sectionCollapse,
     getZDisplayFactor: () => local.zDisplayFactor,
+    getShowOrigin: () => local.showOrigin,
     getRoughReliefFactor: () => 1,
     onViewChanged: (camera) => {
       state.threeCamera = camera;
@@ -248,9 +248,8 @@ export function createWorkstationThreeView({ store, workstation }) {
     value: state.threeOpacity,
   });
   const opacityValue = el('output', {}, `${Math.round(state.threeOpacity * 100)}%`);
-  const form = el(
-    'div',
-    { class: 'p-form' },
+  const displayMenu = el('div', { class: 'p-form', 'data-three-display-settings': '' });
+  displayMenu.append(
     el(
       'label',
       { class: 'wc-field' },
@@ -265,7 +264,7 @@ export function createWorkstationThreeView({ store, workstation }) {
   };
   // The complete 3D scene shares this presentation transform: physical
   // Process geometry, export and thin-film Z ownership remain unchanged.
-  const zDisplayMenu = el('div', { class: 'p-form', 'data-three-z-display': '' });
+  const zDisplayMenu = displayMenu;
   const scaleSlider = el('input', {
     type: 'range',
     class: 'wc-input',
@@ -300,6 +299,41 @@ export function createWorkstationThreeView({ store, workstation }) {
     ),
     scaleReset,
   );
+  const originChoices = el('div', {
+    class: 'wc-segmented',
+    role: 'group',
+    'aria-label': 'Show world origin',
+  });
+  const originButtons = ['Off', 'On'].map((label, index) => {
+    const choice = el(
+      'button',
+      {
+        type: 'button',
+        class: 'wc-segment',
+        'aria-label': `Show origin ${label.toLowerCase()}`,
+      },
+      label,
+    );
+    choice.onclick = () => {
+      local.showOrigin = Boolean(index);
+      updateOriginControls();
+      renderer.refreshOrigin();
+    };
+    originChoices.append(choice);
+    return choice;
+  });
+  displayMenu.append(
+    el(
+      'label',
+      { class: 'wc-field', 'data-help': 'three.origin' },
+      el('span', { class: 'wc-label' }, 'Show Origin'),
+      originChoices,
+    ),
+  );
+  function updateOriginControls() {
+    for (const [index, choice] of originButtons.entries())
+      choice.setAttribute('aria-pressed', String(local.showOrigin === Boolean(index)));
+  }
   let zScaleFramePending = false;
   function commitZDisplayFactor(value) {
     local.zDisplayFactor = normalizeThreeZDisplayFactor(value);
@@ -509,6 +543,7 @@ export function createWorkstationThreeView({ store, workstation }) {
     host.dataset.v2Gesture = local.mode;
     host.dataset.wheelZoom = String(local.zoomEnabled);
     updateZDisplayControls();
+    updateOriginControls();
     panel
       .querySelector('[data-action="borders:three"]')
       .setAttribute('aria-pressed', String(state.threeShowBorders));
@@ -529,19 +564,12 @@ export function createWorkstationThreeView({ store, workstation }) {
       startupPreview = false;
       sync();
       requestRender();
-    } else if (action === 'opacity:three') {
+    } else if (action === 'display:three') {
       opacity.value = state.threeOpacity;
       opacityValue.textContent = `${Math.round(state.threeOpacity * 100)}%`;
       mountToolPopover(workstation.overlays, {
-        label: '3D opacity',
-        content: form,
-        trigger,
-      });
-    } else if (action === 'z-display:three') {
-      updateZDisplayControls();
-      mountToolPopover(workstation.overlays, {
-        label: '3D display-only vertical scale',
-        content: zDisplayMenu,
+        label: '3D display settings',
+        content: displayMenu,
         trigger,
       });
     } else if (action === 'borders:three') {

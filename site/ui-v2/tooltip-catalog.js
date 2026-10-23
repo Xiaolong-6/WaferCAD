@@ -104,9 +104,13 @@
         ? 'Fast is active for responsive interaction. Switch to Quality for higher visual detail.'
         : 'Quality is active for higher visual detail. Switch to Fast for responsive interaction.',
     ],
-    'three.opacity': [
-      '3D opacity',
-      'Change visualization transparency without altering physical layers.',
+    'three.display': [
+      '3D display settings',
+      'Adjust opacity, display-only vertical scale and world-origin axes. Physical geometry is unchanged.',
+    ],
+    'three.origin': [
+      'Show world origin',
+      'Display the X/Y/Z axes at physical coordinates (0, 0, 0), also in PNG captures.',
     ],
     'three.borders': [
       '3D Border Inspector',

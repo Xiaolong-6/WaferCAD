@@ -559,10 +559,23 @@ def run(args):
                              'sha256': snapshot_sha(maximized)}
                         report['afterMaximize'] = runtime_probe(page)
             if args.check_z_ui and three_ok:
-                trigger = page.locator('#threePanel [data-action="z-display:three"]')
+                trigger = page.locator('#threePanel [data-action="display:three"]')
                 if trigger.count() != 1:
-                    raise RuntimeError('Display-only Z toolbar trigger is missing')
+                    raise RuntimeError('3D Display Settings toolbar trigger is missing')
                 trigger.click()
+                opacity_slider = page.locator('#threeOpacityRange')
+                origin_on = page.get_by_role('button', name='Show origin on')
+                origin_off = page.get_by_role('button', name='Show origin off')
+                if opacity_slider.count() != 1 or origin_on.count() != 1 or origin_off.count() != 1:
+                    raise RuntimeError('3D Display Settings must contain both sliders and origin selector')
+                origin_on.click()
+                page.wait_for_timeout(250)
+                origin_on_state = page.locator('#threeHost').get_attribute('data-origin-visible')
+                origin_off.click()
+                page.wait_for_timeout(250)
+                origin_off_state = page.locator('#threeHost').get_attribute('data-origin-visible')
+                if origin_on_state != 'true' or origin_off_state != 'false':
+                    raise RuntimeError('Native 3D world-origin visibility toggle failed')
                 slider = page.get_by_role('slider', name='3D vertical display scale')
                 number = page.get_by_role('spinbutton', name='3D vertical display scale exact factor')
                 if slider.count() != 1 or number.count() != 1:
@@ -722,6 +735,43 @@ def run(args):
                 ready = bool(details['initialized'] and state['ready'] and rough_ready and clipped_ready
                              and state['renderState'] == 'ready'
                              and state['width'] > 100 and state['height'] > 100)
+                if args.check_png_wysiwyg and ready:
+                    import base64
+                    from PIL import Image
+                    from io import BytesIO
+                    export = page.evaluate('''async () => {
+                      const item = window.__wafercadOfflineModel;
+                      const beforeModel = JSON.stringify(item.model);
+                      item.originState.visible = true;
+                      item.renderer.refreshOrigin();
+                      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+                      const originVisible = item.host.dataset.originVisible;
+                      const renderMode = item.host.querySelector('canvas')?.dataset?.roughMeshMode;
+                      const source = item.host.querySelector('canvas');
+                      const beforeWidth = source?.width;
+                      const blob = await item.renderer.capturePng(3);
+                      const data = await new Promise(resolve => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result);
+                        reader.readAsDataURL(blob);
+                      });
+                      return {originVisible, modelUnchanged: JSON.stringify(item.model) === beforeModel,
+                        renderMode, renderModeAfter: source?.dataset?.roughMeshMode,
+                        beforeWidth, data};
+                    }''')
+                    if export['originVisible'] != 'true' or not export['modelUnchanged'] or \
+                            export['renderMode'] != export['renderModeAfter']:
+                        raise RuntimeError('PNG diverged from current visible scene or changed model')
+                    image_bytes = base64.b64decode(export.pop('data').split(',', 1)[1])
+                    png_path = out / 'native-png-3x-wysiwyg.png'
+                    png_path.write_bytes(image_bytes)
+                    with Image.open(BytesIO(image_bytes)) as png:
+                        export['pngSize'] = list(png.size)
+                    if export['pngSize'][0] < export['beforeWidth']:
+                        raise RuntimeError('Native PNG did not capture expected scene resolution')
+                    report['pngWysiwyg'] = export
+                    report['images']['nativePng'] = {'file': png_path.name,
+                                                     'sha256': snapshot_sha(png_path)}
                 if args.inspect_ui_controls and ready:
                     base_img = out / 'isolated-before-highlight.png'
                     page.screenshot(path=str(base_img), animations='disabled')
@@ -975,6 +1025,8 @@ def main():
     parser.add_argument('--check-rough-parity', action='store_true', help='Probe production GLSL at Photodetector physical coordinates')
     parser.add_argument('--check-stable-rough-ui', action='store_true', help='Apply stable rough Etch/ALD and verify native Undo, Save, file Open and reload on a 2 um base')
     parser.add_argument('--check-glb', action='store_true', help='Check production physical GLB stable-profile heights and 50 nm film')
+    parser.add_argument('--check-png-wysiwyg', action='store_true',
+                        help='Capture exact native 3D PNG with origin on and compare scene state')
     parser.add_argument('--quality', action='store_true', help='Use Quality instead of Fast 3D mesh budget')
     parser.add_argument('--rough-cutline', help='Physical xMin,xMax,y versus actual 3D rough mesh')
     parser.add_argument('--native-section-compare', action='store_true',

@@ -1075,7 +1075,9 @@ export function createPlanRenderers({
         ctx.lineTo(...innerPoints[index]);
       }
       ctx.closePath();
-      ctx.fillStyle = rgbaColor(electrical.color, 0.22);
+      // An electrical region is a scientific annotation, not a faint shadow.
+      // Preserve its true 0.5 um height while keeping it legible without Section Borders.
+      ctx.fillStyle = rgbaColor(electrical.color, 0.52);
       ctx.fill();
       if (sectionShowBorders) {
         ctx.setLineDash([2, 3]);

@@ -77,6 +77,7 @@ async ({
   overlay.append(title, host);
   host.append(stats);
   document.body.append(overlay);
+  const originState = { visible: false };
   const renderer = createThreeView({
     host,
     stats,
@@ -84,13 +85,14 @@ async ({
     getClipGeometry: () => clip,
     getZCollapse: () => collapse,
     getZDisplayFactor: () => zDisplayFactor,
+    getShowOrigin: () => originState.visible,
     getRoughReliefFactor: () => roughReliefFactor,
     getInspection: () => ({ opacity: inspectionOpacity, borders: true, fast: !quality }),
   });
   const initialized = await renderer.init();
   // init() already schedules a full native scene build; another render()
   // during that build supersedes the rough-mesh refinement.
-  window.__wafercadOfflineModel = { model, host, renderer };
+  window.__wafercadOfflineModel = { model, host, renderer, originState };
   return {
     initialized,
     roiBounds,
