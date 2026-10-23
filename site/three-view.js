@@ -9,6 +9,11 @@ import {
   transparentArrayPresentationLod,
 } from './transparent-array-lod.js';
 import { canRenderPlanarCapInSinglePass } from './transparent-pass-policy.js';
+import {
+  annotationSurfaceOpacity,
+  buriedInterfaceOpacity,
+  internalRevealFraction,
+} from './three-internal-visibility.js';
 import { disposeRendererSceneResources } from './renderer-v4-resource-lifetime.js';
 import {
   assertExactThreePngReady,
@@ -1259,7 +1264,7 @@ export function createThreeView({
 
   function interfaceMaterialState(opacity) {
     return {
-      opacity: Math.max(0.035, Math.min(0.34, opacity * 0.42)),
+      opacity: buriedInterfaceOpacity(opacity),
       transparent: true,
       depthTest: true,
       depthWrite: false,
@@ -1270,6 +1275,7 @@ export function createThreeView({
     const materialState = inspectionMaterialState(inspection.opacity),
       opacity = materialState.opacity,
       transparent = materialState.transparent,
+      internalReveal = internalRevealFraction(opacity),
       alwaysTransparent = (value) => ({
         opacity: Math.max(0, Math.min(1, value)),
         transparent: true,
@@ -1303,37 +1309,41 @@ export function createThreeView({
       case 'implant-internal':
         return {
           visible: transparent,
-          materialState: alwaysTransparent(opacity * 0.18),
+          materialState: alwaysTransparent(internalReveal * 0.18),
           transparentSort: true,
         };
       case 'implant-depth':
         return {
           visible: transparent,
-          materialState: alwaysTransparent(opacity * 0.24),
+          materialState: alwaysTransparent(internalReveal * 0.24),
           transparentSort: true,
         };
       case 'implant-surface':
         return {
           visible: transparent || Boolean(descriptor?.exposed),
-          materialState: alwaysTransparent(opacity * 0.3),
+          materialState: alwaysTransparent(
+            annotationSurfaceOpacity(opacity, 0.3, Boolean(descriptor?.exposed)),
+          ),
           transparentSort: true,
         };
       case 'electrical-internal':
         return {
           visible: transparent,
-          materialState: alwaysTransparent(opacity * 0.14),
+          materialState: alwaysTransparent(internalReveal * 0.14),
           transparentSort: true,
         };
       case 'electrical-depth':
         return {
           visible: transparent,
-          materialState: alwaysTransparent(opacity * 0.2),
+          materialState: alwaysTransparent(internalReveal * 0.2),
           transparentSort: true,
         };
       case 'electrical-surface':
         return {
           visible: transparent || Boolean(descriptor?.exposed),
-          materialState: alwaysTransparent(opacity * 0.24),
+          materialState: alwaysTransparent(
+            annotationSurfaceOpacity(opacity, 0.24, Boolean(descriptor?.exposed)),
+          ),
           transparentSort: true,
         };
       case 'material-exterior':
@@ -3344,7 +3354,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
           group = new THREE.Group();
           scene.add(group);
           axesHelper = new THREE.AxesHelper(12);
-          scene.add(axesHelper);
+          // A world-origin axis crosses material and looks like a fabricated edge.
+          // Retain its scale reference for camera layout, without painting it in 3D.
+          axesHelper.visible = false;
 
           host.classList.remove('three-loading', 'three-unavailable');
           delete host.dataset.threeUnavailableReason;
@@ -3959,7 +3971,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       }
       return;
     }
-    if (axesHelper) axesHelper.visible = true;
+    if (axesHelper) axesHelper.visible = false;
     delete host.dataset.physicalFacetAxesHidden;
     delete host.dataset.physicalFacetOwner;
     delete host.dataset.physicalFacetTriangles;

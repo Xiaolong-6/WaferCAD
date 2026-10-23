@@ -303,3 +303,38 @@ test('Border Inspector stays functional without retired Cutaway behavior', async
   assert.doesNotMatch(schema, /threeCutaway/);
   assert.doesNotMatch(entry, /threeCutaway/);
 });
+
+// Near-opaque Workstation projects should not reveal dark buried rectangles
+// in the default automatic outline preset. An explicit X-ray choice is deliberate.
+test('automatic buried border alpha follows material transmittance, explicit X-ray stays visible', () => {
+  for (const category of ['interface', 'buried']) {
+    const descriptor = {
+      kind: 'internal-border',
+      category,
+      lineStyle: category === 'interface' ? 'solid' : 'dashed',
+    };
+    const automatic = [1, 0.96, 0.5, 0.15].map((opacity) =>
+      borderPresentationState(descriptor, { preset: 'structure' }, opacity, true),
+    );
+    assert.equal(automatic[0].visible, false);
+    assert.ok(automatic[1].visible);
+    assert.ok(automatic[1].materialState.opacity < 0.025);
+    assert.ok(automatic[2].materialState.opacity > automatic[1].materialState.opacity);
+    assert.ok(automatic[3].materialState.opacity > automatic[2].materialState.opacity);
+    const explicit = borderPresentationState(
+      { ...descriptor, lineStyle: 'solid' },
+      { preset: 'xray' },
+      0.96,
+      true,
+    );
+    assert.ok(explicit.visible);
+    assert.ok(explicit.materialState.opacity > automatic[1].materialState.opacity * 20);
+  }
+  const exterior = borderPresentationState(
+    { kind: 'border', category: 'exterior', lineStyle: 'solid' },
+    { preset: 'structure' },
+    0.96,
+    true,
+  );
+  assert.equal(exterior.materialState.opacity, 0.65);
+});

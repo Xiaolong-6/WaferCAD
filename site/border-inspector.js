@@ -74,14 +74,18 @@ export function borderPresentationState(descriptor, settings, opacity, enabled) 
   const category = hidden ? 'occluded' : descriptor.category || 'exterior';
   const style = resolvedBorderStyle(settings, category, opacity);
   const lineStyle = descriptor.lineStyle || (hidden ? 'dashed' : 'solid');
-  const strength = normalizeBorderSettings(settings).strength;
+  const normalized = normalizeBorderSettings(settings),
+    strength = normalized.strength,
+    // Automatic buried contours should not become X-ray lines merely because
+    // material opacity moved from 1 to 0.96. Explicit X-ray styles remain full strength.
+    autoBuriedReveal = normalized.styles[category] === 'auto' ? Math.max(0, 1 - opacity) : 1;
   return {
     visible: Boolean(enabled) && (!hidden || opacity < 0.999) && style === lineStyle,
     materialState: {
       opacity: hidden
         ? Math.min(0.36, (0.13 + (1 - opacity) * 0.22) * strength)
         : internal
-          ? Math.min(0.7, 0.15 + strength * 0.55)
+          ? Math.min(0.7, 0.15 + strength * 0.55) * autoBuriedReveal
           : strength,
       transparent: true,
       // Buried inspection contours are intentionally X-ray overlays.

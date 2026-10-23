@@ -623,7 +623,7 @@ def run(args):
                                'roiBounds': args.inmemory_roi, 'zBreak': args.inmemory_z_break,
                                'zDisplayFactor': args.inmemory_z_scale,
                                'roughReliefFactor': args.inmemory_relief_scale,
-                               'quality': args.quality}
+                               'quality': args.quality, 'inspectionOpacity': args.inmemory_opacity}
                 input_evidence = None
                 if args.inmemory_project:
                     project_path = args.inmemory_project.resolve()
@@ -964,6 +964,8 @@ def main():
                         help='Capture and inspect the real experimental Continuous Etch Process form')
     parser.add_argument('--inmemory-relief-scale', type=int, choices=(1, 10, 30), default=1,
                         help='Opt-in local monotone roughness relief display magnification')
+    parser.add_argument('--inmemory-opacity', type=float, default=1,
+                        help='Local in-memory renderer inspection opacity for transparency diagnosis')
     parser.add_argument('--inmemory-z-scale', type=float, default=1,
                         help='Diagnostic-only continuous 3D Z multiplier (0.25 to 20)')
     parser.add_argument('--wait-ms', type=int, default=5500)
@@ -989,6 +991,8 @@ def main():
         parser.error('Invalid dimensions or wait interval')
     if not math.isfinite(args.inmemory_z_scale) or not 0.25 <= args.inmemory_z_scale <= 20:
         parser.error('In-memory 3D Z scale must be finite and between 0.25 and 20')
+    if not math.isfinite(args.inmemory_opacity) or not 0.1 <= args.inmemory_opacity <= 1:
+        parser.error('In-memory inspection opacity must be between 0.1 and 1')
     if args.capture_continuous_appearance and not args.inmemory_project:
         parser.error('Continuous appearance capture requires an in-memory project')
     if (args.inmemory_roi or args.inmemory_z_break or args.inmemory_camera) and not args.inmemory_project:
