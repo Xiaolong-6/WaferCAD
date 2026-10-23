@@ -680,7 +680,8 @@ def run(args):
                         raise ValueError('Continuous Main native projection failed')
                     section_expression = (root / 'scripts/offline-native-section-view.js').read_text(
                         encoding='utf-8')
-                    section_a_b = {'a': [-170, 0], 'b': [170, 0]}
+                    half_width = float(model_input['model'].get('width') or 340) / 2
+                    section_a_b = {'a': [-half_width, 0], 'b': [half_width, 0]}
                     section_result = page.evaluate(section_expression, {
                         'model': model_input['model'], 'section': section_a_b})
                     section_image = out / 'continuous-section-native.png'
@@ -689,7 +690,27 @@ def run(args):
                     report['images']['continuousSectionNative'] = {
                         'file': section_image.name, 'sha256': snapshot_sha(section_image)}
                     report['continuousSectionNative'] = section_result
-                    page.locator('#wc-offline-section-capture').evaluate('(el) => el.remove()')
+                    if model_input['model'].get('electricalRegions') or model_input['model'].get('implants'):
+                        # Two independent real-Canvas acceptance modes: annotation visibility
+                        # cannot depend on structure borders or a Z Break toggle.
+                        for mode, settings in (
+                            ('no-borders', {'borders': False}),
+                            ('explicit-zbreak', {'borders': False, 'collapse': {
+                                'enabled': True, 'continuousEtchExplicit': True,
+                                'top': 1, 'bottom': -1}}),
+                        ):
+                            result = page.evaluate(section_expression, {
+                                'model': model_input['model'], 'section': section_a_b,
+                                **settings})
+                            image = out / ('continuous-annotation-' + mode + '.png')
+                            page.locator('#wc-offline-section-capture').screenshot(
+                                path=str(image), animations='disabled')
+                            report['images']['continuousAnnotation_' + mode] = {
+                                'file': image.name, 'sha256': snapshot_sha(image)}
+                            report['continuousAnnotation_' + mode] = result
+                            page.locator('#wc-offline-section-capture').evaluate('(el) => el.remove()')
+                    else:
+                        page.locator('#wc-offline-section-capture').evaluate('(el) => el.remove()')
                 expression = (root / 'scripts/offline-native-model-view.js').read_text(
                     encoding='utf-8')
                 details = page.evaluate(expression, model_input)
