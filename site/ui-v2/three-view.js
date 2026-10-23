@@ -264,7 +264,6 @@ export function createWorkstationThreeView({ store, workstation }) {
   };
   // The complete 3D scene shares this presentation transform: physical
   // Process geometry, export and thin-film Z ownership remain unchanged.
-  const zDisplayMenu = displayMenu;
   const scaleSlider = el('input', {
     type: 'range',
     class: 'wc-input',
@@ -273,66 +272,29 @@ export function createWorkstationThreeView({ store, workstation }) {
     step: THREE_Z_DISPLAY_RANGE.step,
     'aria-label': '3D vertical display scale',
   });
-  const scaleNumber = el('input', {
-    type: 'number',
-    class: 'wc-input',
-    min: THREE_Z_DISPLAY_RANGE.min,
-    max: THREE_Z_DISPLAY_RANGE.max,
-    step: 'any',
-    'aria-label': '3D vertical display scale exact factor',
-  });
-  const scaleReset = button('Reset ×1', null, null, {
-    'aria-label': 'Reset 3D vertical display scale to one',
-  });
-  zDisplayMenu.append(
-    el(
-      'label',
-      { class: 'wc-field' },
-      el('span', { class: 'wc-label' }, 'Vertical scale · display only'),
-      scaleSlider,
-    ),
-    el(
-      'label',
-      { class: 'wc-field' },
-      el('span', { class: 'wc-label' }, 'Multiplier ×'),
-      scaleNumber,
-    ),
-    scaleReset,
-  );
-  const originChoices = el('div', {
-    class: 'wc-segmented',
-    role: 'group',
-    'aria-label': 'Show world origin',
-  });
-  const originButtons = ['Off', 'On'].map((label, index) => {
-    const choice = el(
-      'button',
-      {
-        type: 'button',
-        class: 'wc-segment',
-        'aria-label': `Show origin ${label.toLowerCase()}`,
-      },
-      label,
-    );
-    choice.onclick = () => {
-      local.showOrigin = Boolean(index);
-      updateOriginControls();
-      renderer.refreshOrigin();
-    };
-    originChoices.append(choice);
-    return choice;
-  });
+  const scaleValue = el('output', {}, `×${local.zDisplayFactor}`);
   displayMenu.append(
     el(
       'label',
-      { class: 'wc-field', 'data-help': 'three.origin' },
-      el('span', { class: 'wc-label' }, 'Show Origin'),
-      originChoices,
+      { class: 'wc-field' },
+      el('span', { class: 'wc-label' }, 'Vertical scale · display only ', scaleValue),
+      scaleSlider,
     ),
   );
+  const originButton = button('Show Origin', null, null, {
+    'aria-label': 'Show Origin',
+    'aria-pressed': 'false',
+    'data-help': 'three.origin',
+  });
+  originButton.onclick = () => {
+    local.showOrigin = !local.showOrigin;
+    updateOriginControls();
+    renderer.refreshOrigin();
+  };
+  displayMenu.append(originButton);
   function updateOriginControls() {
-    for (const [index, choice] of originButtons.entries())
-      choice.setAttribute('aria-pressed', String(local.showOrigin === Boolean(index)));
+    originButton.setAttribute('aria-pressed', String(local.showOrigin));
+    originButton.dataset.variant = local.showOrigin ? 'primary' : 'secondary';
   }
   let zScaleFramePending = false;
   function commitZDisplayFactor(value) {
@@ -348,12 +310,10 @@ export function createWorkstationThreeView({ store, workstation }) {
     });
   }
   scaleSlider.oninput = () => commitZDisplayFactor(scaleSlider.value);
-  scaleNumber.onchange = () => commitZDisplayFactor(scaleNumber.value);
-  scaleReset.onclick = () => commitZDisplayFactor(1);
   function updateZDisplayControls() {
     local.zDisplayFactor = normalizeThreeZDisplayFactor(local.zDisplayFactor);
     scaleSlider.value = String(local.zDisplayFactor);
-    if (document.activeElement !== scaleNumber) scaleNumber.value = String(local.zDisplayFactor);
+    scaleValue.textContent = `×${local.zDisplayFactor}`;
     host.dataset.zDisplayFactorSelected = String(local.zDisplayFactor);
     zDisplayIndicator.hidden = local.zDisplayFactor === 1;
     zDisplayIndicator.textContent = `Display Z ×${local.zDisplayFactor} · not physical`;

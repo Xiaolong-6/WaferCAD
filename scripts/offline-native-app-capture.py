@@ -564,45 +564,54 @@ def run(args):
                     raise RuntimeError('3D Display Settings toolbar trigger is missing')
                 trigger.click()
                 opacity_slider = page.locator('#threeOpacityRange')
-                origin_on = page.get_by_role('button', name='Show origin on')
-                origin_off = page.get_by_role('button', name='Show origin off')
-                if opacity_slider.count() != 1 or origin_on.count() != 1 or origin_off.count() != 1:
-                    raise RuntimeError('3D Display Settings must contain both sliders and origin selector')
-                origin_on.click()
+                origin_button = page.get_by_role('button', name='Show Origin')
+                if opacity_slider.count() != 1 or origin_button.count() != 1:
+                    raise RuntimeError('3D Display Settings must contain opacity and origin controls')
+                if origin_button.get_attribute('aria-pressed') != 'false':
+                    raise RuntimeError('World origin must default to hidden')
+                origin_button.click()
                 page.wait_for_timeout(250)
                 origin_on_state = page.locator('#threeHost').get_attribute('data-origin-visible')
-                origin_off.click()
+                pressed_on = origin_button.get_attribute('aria-pressed')
+                style_on = origin_button.get_attribute('data-variant')
+                page.mouse.move(650, 550)
+                page.wait_for_timeout(200)
+                origin_image = out / 'three-origin-on-ui.png'
+                page.screenshot(path=str(origin_image), animations='disabled')
+                report['images']['originOnUi'] = {'file': origin_image.name,
+                                                  'sha256': snapshot_sha(origin_image)}
+                origin_button.click()
                 page.wait_for_timeout(250)
                 origin_off_state = page.locator('#threeHost').get_attribute('data-origin-visible')
-                if origin_on_state != 'true' or origin_off_state != 'false':
-                    raise RuntimeError('Native 3D world-origin visibility toggle failed')
+                pressed_off = origin_button.get_attribute('aria-pressed')
+                style_off = origin_button.get_attribute('data-variant')
+                if (origin_on_state, pressed_on, style_on, origin_off_state, pressed_off, style_off) != \
+                        ('true', 'true', 'primary', 'false', 'false', 'secondary'):
+                    raise RuntimeError('Native 3D world-origin toggle did not match pressed state')
                 slider = page.get_by_role('slider', name='3D vertical display scale')
-                number = page.get_by_role('spinbutton', name='3D vertical display scale exact factor')
-                if slider.count() != 1 or number.count() != 1:
-                    raise RuntimeError('Continuous 3D Z scale controls are missing')
+                if slider.count() != 1 or page.get_by_role('spinbutton', name='3D vertical display scale exact factor').count():
+                    raise RuntimeError('3D Display Settings must have one Z slider, without a multiplier input')
+                if page.get_by_role('button', name='Reset 3D vertical display scale to one').count():
+                    raise RuntimeError('Retired vertical scale reset control is still present')
                 slider.fill('1.75')
                 page.wait_for_timeout(350)
                 selected = page.locator('#threeHost').get_attribute('data-z-display-factor')
                 indicator = page.locator('#threeHost .v2-three-z-display-indicator')
                 indicator_text = indicator.inner_text() if indicator.is_visible() else ''
+                page.mouse.move(650, 550)
+                page.wait_for_timeout(200)
                 image = out / 'three-z-display-ui.png'
                 page.screenshot(path=str(image), animations='disabled')
                 report['images']['zDisplayUi'] = {'file': image.name, 'sha256': snapshot_sha(image)}
-                number.fill('2.35')
-                number.press('Tab')
-                page.wait_for_timeout(350)
-                typed = page.locator('#threeHost').get_attribute('data-z-display-factor')
-                page.get_by_role('button', name='Reset 3D vertical display scale to one').click()
-                page.wait_for_timeout(350)
-                reverted = page.locator('#threeHost').get_attribute('data-z-display-factor')
+                factor_label = page.locator('[data-three-display-settings] output').last.inner_text()
                 relief_buttons = page.locator('[data-three-relief-factor]').count()
                 section_physical_button = page.locator('#sectionRoughPhysicalBtn').count()
-                report['zDisplayUi'] = {'factor1Point75': selected, 'typed2Point35': typed,
-                                        'indicator': indicator_text, 'factor1Reverted': reverted,
+                report['zDisplayUi'] = {'factor1Point75': selected, 'factorLabel': factor_label,
+                                        'indicator': indicator_text, 'originPressedOn': pressed_on,
                                         'reliefButtons': relief_buttons,
                                         'extraSectionPhysicalButton': section_physical_button,
                                         'nullOrigin': mode != 'https-origin'}
-                if selected != '1.75' or typed != '2.35' or reverted != '1' or \
+                if selected != '1.75' or factor_label != '×1.75' or \
                         relief_buttons != 0 or section_physical_button != 0 or \
                         'not physical' not in indicator_text:
                     raise RuntimeError('Continuous Z control or retired Relief/Section UI failed')
