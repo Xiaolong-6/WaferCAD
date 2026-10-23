@@ -4,10 +4,10 @@
   "scope": "full",
   "status": "pass",
   "source": {
-    "digest": "abf93696f441ac4fb39175f1470c68f84ca5418e75a43be43afe075e4a67eb4b",
-    "fileCount": 1179
+    "digest": "842dccc5eda0e64b6f1df399fe98b6c29be25dcf6e09791314d8d08168e160e5",
+    "fileCount": 1187
   },
-  "sourceRevision": "8805e1d99baae360064a48f987854219553ab208",
+  "sourceRevision": "a306ec8685e8160bc780aedfe867c9680c4125fb",
   "planDigest": "9e40e14c41649069d23911dc155328f17e554f0307619aef8493378a2f26b4b3",
   "environment": {
     "node": "v22.16.0",
@@ -19,7 +19,7 @@
       "three": "0.179.1"
     }
   },
-  "startedAt": "2026-10-22T15:56:22.058Z",
+  "startedAt": "2026-10-22T16:57:17.426Z",
   "checks": [
     {
       "id": "lint",
@@ -31,7 +31,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 5380,
+      "durationMs": 7423,
       "logDigest": "7e083cff9d323606d09accd3389828279cc52091b6c62b45c8100c1ced589c7c"
     },
     {
@@ -44,7 +44,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 14542,
+      "durationMs": 24828,
       "logDigest": "1230617af071df8c1efeb12bcd6d41c3aa159e1cd0841cc546fbae4c8c56f867"
     },
     {
@@ -57,7 +57,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 354,
+      "durationMs": 688,
       "logDigest": "1b4f7b8e056f396b1f9085da7197204c54b6d02623481a88589c47b0bd8392ed"
     },
     {
@@ -69,10 +69,10 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 237416,
-      "logDigest": "903b8c6f58a671bdbd171d5b463b44422a46e1035da505428bac3208770da82c"
+      "durationMs": 505647,
+      "logDigest": "dbe2503a3ce4bf4a625e3025d7213ce228a6097d60e339709f8a661ee65dfd9c"
     }
   ],
-  "finishedAt": "2026-10-22T16:00:39.753Z",
-  "transcriptDigest": "a8264059843a062f68790a0a4be12c80970770a2bd1385f576e33d1762c14d10"
+  "finishedAt": "2026-10-22T17:06:16.019Z",
+  "transcriptDigest": "962fa4875825f0e3d3a0ae1d0fef174628720d3b6d940c818d63c54624f3e655"
 }
