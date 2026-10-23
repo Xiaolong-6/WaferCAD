@@ -50,7 +50,7 @@ try {
         { timeout: 180000 },
       );
     }
-    await page.locator('#threePanel [data-action="opacity:three"]').click();
+    await page.locator('#threePanel [data-action="display:three"]').click();
     const beforeFar = Number((await sample()).rendererFrameSerial || 0);
     await page.locator('#threeOpacityRange').fill('0.5');
     // Scene ownership can advance before WebGL presents the new tier. Use
