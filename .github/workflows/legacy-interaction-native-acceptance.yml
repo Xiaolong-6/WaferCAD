@@ -1,14 +1,7 @@
 name: PR290 Native Draw Process interaction
 
 on:
-  pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened]
-    paths:
-      - 'scripts/v2/check-source-sunset-draw-process.mjs'
-      - 'site/tests/source-sunset-draw-process-owner.test.mjs'
-      - '.github/workflows/legacy-interaction-native-acceptance.yml'
-
+  workflow_dispatch:
 permissions:
   contents: read
 

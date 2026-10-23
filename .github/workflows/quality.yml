@@ -1,6 +1,7 @@
 name: Quality
 
 on:
+  workflow_call:
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened, ready_for_review]
@@ -27,35 +28,39 @@ jobs:
         with:
           node-version: '24'
 
-      # Use committed local evidence when source-bound, valid and complete.
-      # A rejected probe is NOT proof of success; the fallback must execute.
+      # On PR, missing/stale proof FAILS CLOSED (no expensive automatic fallback).
+      # Nightly intentionally runs the real full checks, regardless of proof.
       - name: Probe source-bound local Quality evidence
         id: evidence
         continue-on-error: true
         env:
           QUALITY_SCOPE: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft && 'draft' || 'full' }}
-        run: node scripts/local-verification.mjs verify "$QUALITY_SCOPE"
+        run: |
+          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            echo "Nightly executes full tests, not just existing proof"
+            exit 0
+          fi
+          node scripts/local-verification.mjs verify "$QUALITY_SCOPE"
+
+      - name: Reject missing or stale PR proof before remote tests
+        if: ${{ github.event_name == 'pull_request' && steps.evidence.outcome != 'success' }}
+        shell: bash
+        run: |
+          echo '::error::Missing or stale source-bound local verification. Run locally and commit its receipt; CI will not repeat your tests.'
+          exit 1
 
       # Strict second verification is named for the fast-release provenance gate.
       # Never give a tolerated probe the 'Require full' step name.
       - name: Require full local Quality evidence
-        if: ${{ steps.evidence.outcome == 'success' && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
+        if: ${{ steps.evidence.outcome == 'success' && github.event_name == 'pull_request' && !github.event.pull_request.draft }}
         run: node scripts/local-verification.mjs verify full
 
       - name: Install locked dependencies only for missing or stale evidence
-        if: ${{ !cancelled() && steps.evidence.outcome != 'success' }}
+        if: ${{ !cancelled() && github.event_name != 'pull_request' }}
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Execute Draft Quality fallback
-        if: ${{ !cancelled() && steps.evidence.outcome != 'success' && github.event_name == 'pull_request' && github.event.pull_request.draft }}
-        run: |
-          npm run lint
-          npm run format:check
-          npm run docs:check
-          node --test site/tests/ci-test-plan.test.mjs site/tests/ci-development-gates.test.mjs site/tests/ci-workflow-architecture.test.mjs site/tests/local-verification.test.mjs site/tests/documentation-suite.test.mjs
-
-      # Full CI execution counts as full proof only when every command passes.
+      # Nightly always executes full lint, formatting, docs and Node tests.
       # This exact name is recognized by the fast-release provenance gate.
       - name: Final lint, formatting, generated documentation and Node tests
-        if: ${{ !cancelled() && steps.evidence.outcome != 'success' && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
+        if: ${{ !cancelled() && github.event_name != 'pull_request' }}
         run: npm run check

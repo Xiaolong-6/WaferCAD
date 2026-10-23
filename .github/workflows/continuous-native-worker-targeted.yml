@@ -1,0 +1,52 @@
+name: Continuous Etch native Worker targeted
+
+# One focused normal-Origin browser gate retained for explicitly authorized
+# manual rechecks only. Normal PR pushes use the shared CI routing policy.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: continuous-worker-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-worker:
+    name: M08 actual Worker, ROI and History
+    runs-on: ubuntu-latest
+    timeout-minutes: 17
+    env:
+      WAFERCAD_V2_BASE: http://127.0.0.1:4173
+      WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Start actual application at normal Origin
+        shell: bash
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory site >/tmp/wafercad-native-worker.log 2>&1 &
+          for attempt in {1..30}; do
+            curl --fail --silent http://127.0.0.1:4173/ >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/wafercad-native-worker.log
+          exit 1
+      - name: Measure real Chromium Worker, ROI and History
+        run: xvfb-run -a node scripts/v2/check-continuous-native-worker.mjs
+      - name: Save exact browser measurements and screenshots
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: pr365-normal-origin-continuous-worker
+          path: test-results/continuous-native-worker/
+          if-no-files-found: warn
+          retention-days: 7

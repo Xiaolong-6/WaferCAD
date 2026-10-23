@@ -1,12 +1,6 @@
 name: V2 Recovery Lease Loss
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'scripts/v2/check-recovery-lease-loss.mjs'
-      - 'site/controllers/workspace-persistence-controller.js'
-      - '.github/workflows/v2-recovery-lease-loss.yml'
   workflow_dispatch:
 
 permissions:

@@ -1,8 +1,7 @@
 name: Archived Legacy science (nightly)
 
 on:
-  schedule:
-    - cron: '15 2 * * *'
+  workflow_call:
   workflow_dispatch:
 
 permissions:

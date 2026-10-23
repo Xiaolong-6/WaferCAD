@@ -1,13 +1,6 @@
 name: V2 Recovery Two-tab Takeover
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'scripts/v2/check-recovery-two-tab-takeover.mjs'
-      - 'site/controllers/workspace-persistence-controller.js'
-      - 'site/controllers/workspace-session-controller.js'
-      - '.github/workflows/v2-recovery-two-tab-takeover.yml'
   workflow_dispatch:
 
 permissions:

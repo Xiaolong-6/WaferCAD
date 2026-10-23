@@ -1,14 +1,6 @@
 name: V2 TiO2 Metalens nine-Step science
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'scripts/v2/check-metalens-recipe-science.mjs'
-      - 'site/process-recipe.js'
-      - 'site/process-recipe-preflight.js'
-      - 'site/model-array-process.js'
-      - '.github/workflows/v2-metalens-science.yml'
   workflow_dispatch:
 
 permissions:

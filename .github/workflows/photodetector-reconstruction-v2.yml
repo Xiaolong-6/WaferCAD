@@ -1,15 +1,6 @@
 name: Photodetector reconstruction v2
 
 on:
-  push:
-    branches:
-      - fix/photodetector-reconstruction-v2
-    paths:
-      - "scripts/maintenance/rebuild-photodetectors.mjs"
-      - "scripts/example-regression.mjs"
-      - "site/tests/example-regression.test.mjs"
-      - "site/tests/welcome-example.test.mjs"
-      - ".github/workflows/photodetector-reconstruction-v2.yml"
   workflow_dispatch:
 
 concurrency:

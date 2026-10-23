@@ -1,22 +1,6 @@
 name: V2 History and Recovery transactions
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'scripts/v2/check-history-recovery-lease.mjs'
-      - 'scripts/v2/check-history-base-replay-acceptance.mjs'
-      - 'scripts/v2/check-history-view-persistence.mjs'
-      - 'site/controllers/workspace-persistence-controller.js'
-      - 'site/controllers/workspace-session-controller.js'
-      - 'site/ui-v2/workstation-workflow.js'
-      - 'site/continuous-etch*.js'
-      - 'site/continuous-material-owner.js'
-      - 'site/plan-renderers.js'
-      - 'site/three-view.js'
-      - 'site/controllers/process-panel-controller.js'
-      - 'site/process-worker.js'
-      - 'scripts/v2/check-continuous-etch-workstation.mjs'
-      - '.github/workflows/v2-history-recovery-lease.yml'
+  workflow_call:
   workflow_dispatch:
 permissions:
   contents: read

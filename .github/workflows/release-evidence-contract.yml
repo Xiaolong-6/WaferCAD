@@ -1,15 +1,16 @@
 name: Release evidence contract
 
 on:
+  workflow_dispatch:
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
-      - '.github/workflows/pages.yml'
-      - '.github/workflows/release-evidence-contract.yml'
+      - '.github/workflows/**'
       - 'scripts/release/verified-pr-release.mjs'
-      - '.github/workflows/quality.yml'
       - 'scripts/local-verification.mjs'
+      - 'scripts/ci-trigger-policy.mjs'
+      - 'site/tests/ci-trigger-policy.test.mjs'
       - 'site/tests/local-verification.test.mjs'
       - 'site/tests/release-evidence.test.mjs'
       - 'site/tests/ci-development-gates.test.mjs'
@@ -28,5 +29,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
+      - name: Reject broad PR or duplicate nightly triggers
+        run: node scripts/ci-trigger-policy.mjs
       - name: Verify routing, evidence and failure contracts
         run: node --test site/tests/release-evidence.test.mjs site/tests/local-verification.test.mjs site/tests/ci-development-gates.test.mjs site/tests/ci-workflow-architecture.test.mjs

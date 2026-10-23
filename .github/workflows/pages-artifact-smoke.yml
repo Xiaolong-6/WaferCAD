@@ -1,14 +1,6 @@
 name: Pages staged-artifact PR smoke
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - '.github/workflows/pages.yml'
-      - '.github/workflows/pages-artifact-smoke.yml'
-      - 'scripts/build-pages-artifact.mjs'
-      - 'scripts/stamp-pages-assets.mjs'
-      - 'scripts/smoke-pages-artifact.mjs'
   workflow_dispatch:
 
 permissions:

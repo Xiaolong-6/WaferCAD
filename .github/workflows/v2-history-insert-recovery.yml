@@ -1,13 +1,6 @@
 name: V2 History Insert Recovery
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'scripts/v2/check-history-insert-recovery.mjs'
-      - 'site/controllers/history-mutation-controller.js'
-      - 'site/controllers/process-panel-controller.js'
-      - '.github/workflows/v2-history-insert-recovery.yml'
   workflow_dispatch:
 
 permissions:

@@ -28,14 +28,12 @@ import {
 import { shouldYieldDuringSceneAssembly } from './renderer-cooperative-assembly.js';
 import { progressivePreviewFacingNormal } from './renderer-progressive-preview.js';
 import { buildContinuousMaterialSurfaceMesh } from './continuous-etch-mesh.js';
+import { buildContinuousSiHeightfieldMeshAsync } from './continuous-heightfield-mesh-async.js';
 import {
   buildExactFilmComponents,
   exactUnetchedFilmCandidates,
 } from './continuous-exact-film-mesh.js';
-import {
-  buildContinuousSiHeightfieldMesh,
-  canBuildContinuousSiHeightfield,
-} from './continuous-heightfield-mesh.js';
+import { canBuildContinuousSiHeightfield } from './continuous-heightfield-mesh.js';
 import {
   CONTINUOUS_ETCH_MODEL_KERNEL,
   validateContinuousEtchModel,
@@ -3529,7 +3527,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
   // Experimental native ThreeView path for exact continuous material. The
   // displayed triangles are derived: the persisted owner remains analytic.
-  async function renderContinuousEtch(model) {
+  async function renderContinuousEtch(model, isSuperseded) {
     const clip = getClipGeometry();
     const roiBounds = continuousRectRoiBounds(clip);
     const owner = validateContinuousEtchModel(model);
@@ -3632,10 +3630,16 @@ diffuseColor.a *= waferCadAlphaScale;`,
       physicalSceneSignature === 'continuous-etch-v1' &&
       presentationObjects.size
     ) {
+      const roiStartAt = performance.now();
       applyPresentationState();
       cropMaterialMeshes();
       const roiChanged = updateRoiCaps();
       updateMaterialAppearance();
+      host.dataset.continuousEtchRoiUpdateMs = String(performance.now() - roiStartAt);
+      // A presentation-only ROI/style update is a completed render, not a
+      // pending exact mesh build. Restore the Workstation's ready state.
+      host.dataset.renderPhase = 'complete';
+      host.dataset.renderState = 'ready';
       // The default camera still targets the full wafer after an ROI change.
       // Reframe only when the actual rectangle changes; ordinary orbit/pan and
       // layer restyling must not reset the user's view.
@@ -3649,14 +3653,36 @@ diffuseColor.a *= waferCadAlphaScale;`,
     delete host.dataset.rendererExactFirstFrameMs;
     host.dataset.renderFidelity = 'pending-continuous-etch';
     host.dataset.renderState = 'building';
-    disposeGroup();
     const { edgeTable, triTable } = await import('three/addons/objects/MarchingCubes.js');
-    // Exact continuous Si topography replaces full-volume voxelization only
-    // for a fully covered, non-through-etched rectangular substrate. Other
-    // materials and unsupported morphologies retain the generic extractor.
-    const silicon = canBuildContinuousSiHeightfield(owner)
-      ? buildContinuousSiHeightfieldMesh(owner, { xyStepUm: 1 })
-      : null;
+    if (isSuperseded()) {
+      const error = new Error('Continuous 3D scene superseded by newer model/ROI');
+      error.name = 'SceneVariantSuperseded';
+      throw error;
+    }
+    const meshBuildAt = performance.now();
+    // Retain the previous painted scene while the display-only Si tessellation
+    // executes in an abortable Worker. Canonical material stays immutable.
+    const controller = new AbortController();
+    activeSurfaceAbort = controller;
+    let siliconResult;
+    try {
+      siliconResult = canBuildContinuousSiHeightfield(owner)
+        ? await buildContinuousSiHeightfieldMeshAsync(owner, {
+            xyStepUm: 1,
+            signal: controller.signal,
+          })
+        : null;
+    } finally {
+      if (activeSurfaceAbort === controller) activeSurfaceAbort = null;
+    }
+    if (isSuperseded()) {
+      const error = new Error('Continuous Si mesh superseded by newer model/ROI');
+      error.name = 'SceneVariantSuperseded';
+      throw error;
+    }
+    const silicon = siliconResult?.mesh || null;
+    host.dataset.continuousEtchMeshBackend = siliconResult?.backend || 'generic';
+    const sceneAssemblyAt = performance.now();
     // Only the validated shallow-release fast path substitutes exact unetched
     // film shells. Generic non-rectangular and multilayer stacks keep the
     // standard implicit extractor and preserve their existing behavior.
@@ -3689,6 +3715,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         data.triangles += part.triangles;
       }
     }
+    host.dataset.continuousEtchMeshBuildMs = String(performance.now() - meshBuildAt);
     if (data.triangles > 1500000)
       throw new RangeError('Continuous hybrid mesh exceeds triangle budget');
     const represented = new Set(data.layers.map((part) => part.layerId));
@@ -3696,6 +3723,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
       if (!represented.has(layerId))
         throw new RangeError('Continuous display omitted physical material ' + layerId);
     if (!data.layers.length) throw new RangeError('Continuous Etch has no visible solid');
+    // The candidate is complete; do not retire the old group for stale work.
+    disposeGroup();
     const exterior = { kind: 'material-exterior' };
     const materialState = presentationState(exterior, getInspection() || {}).materialState;
     for (const part of data.layers) {
@@ -3750,9 +3779,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
     delete host.dataset.rendererBuildFailure;
     applyZDisplayState(model);
     applyPresentationState({ profile: false, settle: true });
+    const roiStartAt = performance.now();
     cropMaterialMeshes();
     updateRoiCaps();
     updateMaterialAppearance();
+    host.dataset.continuousEtchRoiUpdateMs = String(performance.now() - roiStartAt);
+    host.dataset.continuousEtchMainThreadBuildMs = String(performance.now() - sceneAssemblyAt);
     host.dataset.renderFidelity = 'exact-continuous-etch';
     host.dataset.rendererExactSceneMs = String(performance.now() - progressiveProfileStart);
     host.dataset.renderState = 'ready';
@@ -3868,16 +3900,58 @@ diffuseColor.a *= waferCadAlphaScale;`,
     const model = getModel();
     if (!model) return;
     if (model.kernel === CONTINUOUS_ETCH_MODEL_KERNEL || model.continuousEtchOwner != null) {
+      const renderGeneration = ++sceneGeneration;
+      const previousSceneMetadata = {
+        modelRevision: host.dataset.modelRevision,
+        processRevision: host.dataset.processRevision,
+        renderFidelity: host.dataset.renderFidelity,
+      };
+      pendingRender = false;
+      rendering = true;
+      host.dataset.sceneGeneration = String(renderGeneration);
+      host.dataset.modelRevision = String(model.revision ?? 0);
+      host.dataset.processRevision = String(model.processRevision ?? 0);
+      host.dataset.renderState = 'building';
       try {
-        await renderContinuousEtch(model);
+        await renderContinuousEtch(
+          model,
+          () => pendingRender || sceneGeneration !== renderGeneration,
+        );
       } catch (error) {
-        disposeGroup();
-        host.dataset.renderState = 'error';
-        host.dataset.renderPhase = 'build-failed';
-        host.dataset.rendererBuildFailure = error?.message || String(error);
-        stats.textContent = 'Continuous Etch 3D unavailable';
-        console.error('Continuous Etch native 3D build failed:', error);
+        if (error?.name === 'SceneVariantSuperseded' || error?.name === 'AbortError') {
+          host.dataset.rendererSupersededBuilds = String(
+            Number(host.dataset.rendererSupersededBuilds || 0) + 1,
+          );
+          host.dataset.renderPhase = 'superseded';
+        } else {
+          const retained =
+            physicalSceneSignature === 'continuous-etch-v1' &&
+            physicalSceneModel != null &&
+            presentationObjects.size > 0;
+          if (!retained) disposeGroup();
+          host.dataset.renderState = retained ? 'ready' : 'error';
+          host.dataset.renderPhase = retained ? 'build-failed-retained' : 'build-failed';
+          host.dataset.rendererBuildFailure = error?.message || String(error);
+          if (retained) {
+            for (const [key, value] of Object.entries(previousSceneMetadata)) {
+              if (value === undefined) delete host.dataset[key];
+              else host.dataset[key] = value;
+            }
+          }
+          stats.textContent = retained
+            ? '3D update failed; previous view retained'
+            : 'Continuous Etch 3D unavailable';
+          console.error('Continuous Etch native 3D build failed:', error);
+        }
+      } finally {
+        rendering = false;
       }
+      if (pendingRender) {
+        queueMicrotask(() => {
+          if (!rendering && pendingRender) render();
+        });
+      }
+      scheduleFrame();
       return;
     }
     if (model.kernel === PHYSICAL_FACET_MODEL_KERNEL) {

@@ -1,19 +1,13 @@
 name: M3D welcome integration
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'site/bundled-examples.js'
-      - 'site/examples/m3d-selfpowered-full-replay.wafercad'
-      - 'site/examples/previews/m3d-selfpowered-heterogeneous-ic.wafercad'
-      - 'site/three-view.js'
-      - 'site/ui-v2/three-view.js'
-      - 'site/ui-v2/workstation-workflow.js'
-      - 'scripts/m3d-welcome-regression.mjs'
-      - 'scripts/m3d-progressive-ab-benchmark.mjs'
-      - '.github/workflows/m3d-example-integration.yml'
   workflow_dispatch:
+    inputs:
+      run_first_frame_benchmark:
+        description: 'Opt in to repeated cold M3D first-frame A/B validation'
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -51,7 +45,7 @@ jobs:
       - name: Welcome-card open and preview regression
         run: node scripts/m3d-welcome-regression.mjs
       - name: Repeated cold M3D first-frame A/B (opt-in review gate)
-        if: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'renderer-first-frame-benchmark') }}
+        if: ${{ inputs.run_first_frame_benchmark }}
         run: node scripts/m3d-progressive-ab-benchmark.mjs
       - name: M3D scientific and History Node contracts
         run: |
