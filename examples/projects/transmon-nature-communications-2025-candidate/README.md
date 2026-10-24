@@ -589,3 +589,28 @@ polygon-Boolean regression (oblique allowed, exposed high rejected, normal
 incidence allowed). All three passed locally against the transplanted
 fixed-angle geometry module on Node 22.16.0; these are kernel-level checks,
 not original-GDS or full-branch Process/Chromium acceptance.
+
+### Independent Nb-recess shadow oracle
+
+`site/tests/direct-nb-recess-shadow-analytic.test.mjs` uses the native model
+Process kernel to deposit 200 nm Nb and etch 250 nm into a planar Nb/Si wafer
+(50 nm Si recess). It then calls the **same exact-blob fixed-angle visibility
+module** as the branch at 45° through two absolute-Z resist openings.
+
+For a rectangular analytical fixture, the retained Nb top is 250 nm above
+etched Si. A +X beam must therefore shade 250 nm of the near-edge Si:
+the persisted process stack and independent projected-rectangle calculation
+both give `xmax = -0.25 µm` and `area = 1.70 µm²`. Reverse azimuth
+eliminates that Nb shadow (`x ∈ [-0.2,0] µm`, `area = 0.40 µm²`).
+Halving or doubling height step remains consistent with the independent
+convex analytical geometry, rather than merely comparing two numeric
+approximations to one another.
+
+Local execution: `node --test site/tests/direct-nb-recess-shadow-analytic.test.mjs
+site/tests/process-recipe.test.mjs` on Node 22.16.0, **18 passed,
+0 failed**. The isolated visibility module Git blob matched
+`e2ad535e83f0bd079eac489ef11dbf8152c481ff`; the restored 1,192-file
+source-only baseline was manifest-verified. The current full branch `model.js`
+and original-GDS replay are **not claimed to be exact-HEAD locally validated**.
+This independent Nb/process fixture is *not* a reproduction of the GDS Q2
+junction or measured device physics.
