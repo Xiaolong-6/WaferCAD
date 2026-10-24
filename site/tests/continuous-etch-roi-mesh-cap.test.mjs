@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import test from 'node:test';
 import * as THREE from 'three';
 
@@ -22,7 +23,9 @@ const { buildExactFilmComponents, exactUnetchedFilmCandidates } =
   await import('../continuous-exact-film-mesh.js');
 const { clipContinuousSurfaceToRect } = await import('../continuous-etch-roi-mesh.js');
 const { buildContinuousRectMeshCaps } = await import('../continuous-etch-roi-mesh-cap.js');
-const { expandProjectStorage } = await import('../project-io.js');
+const { expandProjectStorage, readProjectFile } = await import('../project-io.js');
+const { buildContinuousMaterialSurfaceMesh } = await import('../continuous-etch-mesh.js');
+const { edgeTable, triTable } = await import('three/addons/objects/MarchingCubes.js');
 
 // Structural closure must use exactly the same display vertex precision as
 // Float32 Three.js positions. A positive cap-triangle count proves nothing.
@@ -215,5 +218,130 @@ test('Microdisk ROI display covers only real oxide and follows the silicon relea
     JSON.stringify(model),
     sourceBytes,
     'No visualization may mutate canonical material',
+  );
+});
+
+// The author HBAR's multi-height SiO2 and native Si front both contribute
+// detailed cut faces. These are SHA-256 witnesses from the previous exhaustive
+// 3-edge-per-triangle implementation (Three 0.179.1). Counts alone cannot
+// detect missing contour holes, altered winding or wrongly paired corner ends.
+test('Author HBAR ROI cut faces reproduce original full vertex and normal hashes', async () => {
+  const bytes = readFileSync(
+    new URL(
+      '../../examples/projects/hbar-blesin-2024-candidate/hbar-blesin-2024-author-roi.wafercad',
+      import.meta.url,
+    ),
+  );
+  const project = await readProjectFile({
+    size: bytes.length,
+    text: async () => bytes.toString('utf8'),
+  });
+  const owner = project.model.continuousEtchOwner;
+  const exactFilms = exactUnetchedFilmCandidates(owner);
+  const parts = [buildContinuousSiHeightfieldMesh(owner, { xyStepUm: 0.5 })];
+  const generic = buildContinuousMaterialSurfaceMesh(owner, {
+    cubeTables: { edgeTable, triTable },
+    xyStepUm: 1.75,
+    excludeLayerIds: ['base', ...exactFilms.keys()],
+  });
+  parts.push(...generic.layers);
+  for (const [layerId, { geom, z0, z1 }] of exactFilms)
+    for (const part of buildExactFilmComponents(THREE, geom, z0, z1).parts)
+      parts.push({ ...part, layerId });
+  const witnesses = [
+    [
+      { minX: -42, minY: -30, maxX: 42, maxY: 30 },
+      10,
+      4072,
+      '8f2b4d3ee9d3115e938f2ca81d72ac6850431b2be5e0e10061374e4802c37042',
+    ],
+    [
+      { minX: -17, minY: -14, maxX: 15, maxY: 12 },
+      8,
+      2557,
+      '8b1b367cd4f9bcd7c5b47021d5a59cf10e8795986952480731fe9bfa70d141e8',
+    ],
+    [
+      { minX: -64, minY: -41, maxX: 40, maxY: 45 },
+      7,
+      3943,
+      'bbd2b483647229d7cce3334865d300454826c034a8ffb0472bfb20bcf14a2d23',
+    ],
+    [
+      { minX: -22, minY: -12, maxX: 26, maxY: 18 },
+      11,
+      2607,
+      'b4a991f479ec4468e4b13ea70b1c2c7d898485097a25dbdcee50913617a03994',
+    ],
+    [
+      { minX: -28.52, minY: -0.22, maxX: 40.32, maxY: 28.83 },
+      11,
+      3444,
+      '44a843575d411e06d5c1d75ad624a4bd08ea744f542bbf64c766d6a618fc8af8',
+    ],
+  ];
+  for (const [bounds, groups, triangles, expectedSha] of witnesses) {
+    const cropped = parts.map((part) => clipContinuousSurfaceToRect(part, bounds));
+    const result = buildContinuousRectMeshCaps(THREE, cropped, bounds);
+    assert.equal(result.length, groups);
+    assert.equal(
+      result.reduce((sum, part) => sum + part.triangles, 0),
+      triangles,
+    );
+    const digest = createHash('sha256');
+    for (const part of result) {
+      digest.update(part.layerId);
+      for (const values of [part.positions, part.normals])
+        digest.update(new Uint8Array(values.buffer, values.byteOffset, values.byteLength));
+    }
+    assert.equal(
+      digest.digest('hex'),
+      expectedSha,
+      `HBAR ROI geometric parity at ${JSON.stringify(bounds)}`,
+    );
+  }
+});
+
+// The original all-edge scan both closes legitimate boundary contours and
+// rejects numerically ambiguous open branches. Moving ROI planes by less than
+// one quantized vertex-key unit must not silently change either outcome.
+test('ROI cap candidate scan retains near-plane closure and fail-closed contract', () => {
+  const cube = new THREE.BoxGeometry(2, 2, 2).toNonIndexed();
+  const positions = new Float32Array(cube.getAttribute('position').array);
+  const normals = new Float32Array(positions.length);
+  for (let i = 2; i < normals.length; i += 3) normals[i] = 1;
+  const original = { positions, normals, layerId: 'base' };
+  const digest = createHash('sha256');
+  let successful = 0,
+    rejected = 0;
+  for (let k = 0; k < 500; k++) {
+    const bounds = {
+      minX: -1 + ((k % 31) - 15) * 0.000012,
+      maxX: 1.73,
+      minY: -1 + ((Math.floor(k / 31) % 17) - 8) * 0.000013,
+      maxY: 1.49,
+    };
+    const cropped = clipContinuousSurfaceToRect(original, bounds);
+    try {
+      const result = buildContinuousRectMeshCaps(THREE, [cropped], bounds);
+      successful++;
+      for (const part of result) {
+        digest.update(part.layerId);
+        for (const values of [part.positions, part.normals])
+          digest.update(new Uint8Array(values.buffer, values.byteOffset, values.byteLength));
+      }
+    } catch (error) {
+      rejected++;
+      assert.ok(error instanceof RangeError);
+      digest.update('E' + error.message);
+    }
+  }
+  cube.dispose();
+  assert.equal(successful, 382);
+  assert.equal(rejected, 118);
+  assert.equal(
+    digest.digest('hex'),
+    'f83cdef6bbe78f496bcb53406e572d28c583b3f9734e41f345e46f005488d45e',
+    'Quantized ROI-plane material boundaries must match the previous all-edge scan',
   );
 });
