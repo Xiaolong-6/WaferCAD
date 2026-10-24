@@ -426,3 +426,40 @@ test('coplanar interface parity cancels subdivided common edges but preserves he
   const different = buriedInterfaceContours([left, { ...right, layerId: 'nitride' }]);
   assert.ok(different.some(shared), 'different material boundaries are not cancelled');
 });
+
+test('same-layer cap with different appearance or facing retains the physical interface edge', () => {
+  const left = {
+    z: 1,
+    normal: 1,
+    layerId: 'oxide',
+    interfaceLayerId: 'base',
+    buried: true,
+    polys: [[[[0, 0], [2, 0], [2, 2], [0, 2], [0, 0]]]],
+  };
+  const right = {
+    ...left,
+    polys: [[[[2, 0], [4, 0], [4, 2], [2, 2], [2, 0]]]],
+  };
+  const seam = ([a, b]) =>
+    Math.abs(a[0] - 2) < 1e-9 &&
+    Math.abs(b[0] - 2) < 1e-9 &&
+    Math.abs(a[1] - b[1]) > 1e-9;
+  assert.equal(
+    buriedInterfaceContours([left, right]).some(seam),
+    false,
+    'identical, coplanar interfaces share no visible seam',
+  );
+  assert.equal(
+    buriedInterfaceContours([left, { ...right, normal: -1 }]).some(seam),
+    true,
+    'oppositely facing interfaces retain their geometric boundaries',
+  );
+  assert.equal(
+    buriedInterfaceContours([
+      { ...left, appearance: { kind: 'custom', opacity: 0.4 } },
+      { ...right, appearance: { kind: 'custom', opacity: 0.8 } },
+    ]).some(seam),
+    true,
+    'a material presentation discontinuity must not be deleted as an instance seam',
+  );
+});
