@@ -12,6 +12,7 @@ const {
   conformalWallTargets,
   deriveProcessTopology,
   exposedLayerIdsFromTopology,
+  exteriorVerticalBordersFromSidewalls,
   exposedSurfaceGroups,
   materialInterfaceGroups,
   materialSolidsFromTopology,
@@ -487,5 +488,48 @@ test('3D Border outlines omit internal computational seams and retain exposed ti
   assert.ok(
     stepped.caps.some((cap) => cap.buried),
     'Buried horizontal interfaces remain as geometry',
+  );
+});
+
+test('array exterior crease classifier ignores duplicate straight rays while keeping real 3D steps', () => {
+  const incoming = { p: [-2, 0], q: [0, 0], z0: 0, z1: 2 };
+  const outgoing = { p: [0, 0], q: [2, 0], z0: 0, z1: 2 };
+  const atPoint = (walls, x = 0) =>
+    exteriorVerticalBordersFromSidewalls(walls)
+      .filter(([a, b]) => a[0] === x && b[0] === x && a[1] === 0 && b[1] === 0)
+      .map(([a, b]) => [a[2], b[2]]);
+
+  assert.deepEqual(atPoint([incoming, outgoing]), [], 'straight wall has no vertical crease');
+  assert.deepEqual(
+    atPoint([incoming, outgoing, { ...outgoing }]),
+    [],
+    'coincident outgoing fragments must not turn straight wall into a corner',
+  );
+  const short = { ...outgoing, z1: 1 };
+  assert.deepEqual(
+    atPoint([incoming, short, { ...short }]),
+    [[1, 2]],
+    'only the actual height discontinuity has a vertical outline',
+  );
+  const corner = { ...outgoing, q: [0, 2] };
+  assert.deepEqual(
+    atPoint([incoming, corner, { ...corner }]),
+    [[0, 2]],
+    'the true horizontal-to-vertical exterior corner remains',
+  );
+  const grouped = [
+    {
+      parts: [incoming, short, { ...short }],
+      instanceTranslations: [
+        [0, 0],
+        [10, 0],
+      ],
+    },
+  ];
+  assert.deepEqual(atPoint(grouped, 0), [[1, 2]]);
+  assert.deepEqual(
+    atPoint(grouped, 10),
+    [[1, 2]],
+    'instance translations preserve height ownership',
   );
 });

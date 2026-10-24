@@ -310,6 +310,94 @@ export function materialSolidsFromTopology(model, clip = null) {
   });
 }
 
+// A physical corner is a change of wall direction, not a polygon sampling
+// vertex. Both solid borders and array-instance junctions use this one rule.
+function isPhysicalWallTurn(first, second, thresholdCosine) {
+  const denominator = Math.hypot(first[0], first[1]) * Math.hypot(second[0], second[1]);
+  return (
+    denominator > 0 &&
+    (first[0] * second[0] + first[1] * second[1]) / denominator >= -thresholdCosine
+  );
+}
+
+// Construct exterior creases from already-owned sidewalls. A change of
+// template, region, or material layer must not by itself become a black edge.
+// A genuine three-dimensional junction does remain even when the meeting
+// exposed sidewalls belong to different layers or have different Z coverage.
+export function exteriorVerticalBordersFromSidewalls(sidewalls = [], thresholdDegrees = 20) {
+  const points = new Map(),
+    threshold = Math.cos((thresholdDegrees * Math.PI) / 180);
+  for (const wall of sidewalls) {
+    for (const part of wall.parts || [wall]) {
+      if (part.buried || !(part.z1 > part.z0 + TOPOLOGY_EPSILON_UM)) continue;
+      const offsets = wall.instanceTranslations?.length ? wall.instanceTranslations : [[0, 0]];
+      for (const [x, y] of offsets) {
+        const p = [part.p[0] + x, part.p[1] + y],
+          q = [part.q[0] + x, part.q[1] + y],
+          dx = q[0] - p[0],
+          dy = q[1] - p[1],
+          length = Math.hypot(dx, dy);
+        if (!(length > TOPOLOGY_EPSILON_UM)) continue;
+        for (const [point, sign] of [
+          [p, 1],
+          [q, -1],
+        ]) {
+          const key = topologyVerticalPointKey(point);
+          if (!points.has(key)) points.set(key, { point, rays: [] });
+          points.get(key).rays.push({
+            z0: part.z0,
+            z1: part.z1,
+            direction: [(sign * dx) / length, (sign * dy) / length],
+          });
+        }
+      }
+    }
+  }
+  const lines = [];
+  for (const { point, rays } of points.values()) {
+    const levels = [...new Set(rays.flatMap(({ z0, z1 }) => [z0, z1]).map(topologyZKey))]
+      .map(Number)
+      .sort((a, b) => a - b);
+    for (let index = 1; index < levels.length; index++) {
+      const z0 = levels[index - 1],
+        z1 = levels[index],
+        midpoint = (z0 + z1) / 2;
+      if (!(z1 > z0 + TOPOLOGY_EPSILON_UM)) continue;
+      const active = rays.filter(
+        (ray) =>
+          ray.z0 <= midpoint + TOPOLOGY_EPSILON_UM && ray.z1 >= midpoint - TOPOLOGY_EPSILON_UM,
+      );
+      // Coincident wall ownership fragments can contribute identical outgoing
+      // rays at a straight partition. Deduplicate geometric directions before
+      // classifying the corner; do not erase real Z-coverage discontinuities.
+      const unique = [];
+      for (const ray of active) {
+        if (
+          !unique.some(
+            (other) =>
+              Math.abs(other.direction[0] - ray.direction[0]) <= 1e-10 &&
+              Math.abs(other.direction[1] - ray.direction[1]) <= 1e-10,
+          )
+        )
+          unique.push(ray);
+      }
+      const crease =
+        unique.length === 1 ||
+        unique.some((first, i) =>
+          unique
+            .slice(i + 1)
+            .some((second) => isPhysicalWallTurn(first.direction, second.direction, threshold)),
+        );
+      if (crease)
+        lines.push([
+          [point[0], point[1], z0],
+          [point[0], point[1], z1],
+        ]);
+    }
+  }
+  return lines;
+}
+
 export function solidBordersFromTopology(
   { slabs, caps },
   thresholdDegrees = 20,
@@ -335,14 +423,9 @@ export function solidBordersFromTopology(
           const p = closed[index],
             before = closed[(index + count - 1) % count],
             after = closed[(index + 1) % count],
-            ux = p[0] - before[0],
-            uy = p[1] - before[1],
             vx = after[0] - p[0],
-            vy = after[1] - p[1],
-            denominator = Math.hypot(ux, uy) * Math.hypot(vx, vy);
-          if (!(denominator > 0)) continue;
-          const cosine = (ux * vx + uy * vy) / denominator;
-          if (cosine <= threshold)
+            vy = after[1] - p[1];
+          if (isPhysicalWallTurn([before[0] - p[0], before[1] - p[1]], [vx, vy], threshold))
             lines.push([
               [...p, z0],
               [...p, z1],

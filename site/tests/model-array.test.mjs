@@ -197,6 +197,169 @@ test('array rendering removes instance seams and preserves actual exterior walls
   );
   assert.equal(area, 120);
 });
+test('array exterior borders inherit topology creases, not collinear polygon sampling vertices', () => {
+  const model = twoSites();
+  const leaf = model.array.templates[0].model;
+  const original = leaf.boundary[0][0];
+  const subdivided = [];
+  for (let index = 0; index < original.length - 1; index++) {
+    const a = original[index],
+      b = original[index + 1];
+    subdivided.push(a, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]);
+  }
+  subdivided.push(subdivided[0]);
+  leaf.boundary = [[subdivided]];
+  leaf.regions[0].geom = leaf.boundary;
+  const plan = buildRenderSurfacePlan(model);
+  const vertical = plan.borderLines.filter(
+    ([a, b]) =>
+      Math.abs(a[0] - b[0]) < 1e-9 && Math.abs(a[1] - b[1]) < 1e-9 && Math.abs(a[2] - b[2]) > 1e-9,
+  );
+  for (const x of [-10, 0, 10])
+    assert.equal(vertical.filter(([a]) => a[0] === x && a[1] === 0).length, 0);
+  for (const x of [-10, 10])
+    for (const y of [-5, 5])
+      assert.ok(
+        vertical.some(([a]) => a[0] === x && a[1] === y),
+        `real wafer corner ${x},${y} must remain`,
+      );
+  assert.equal(
+    vertical.some(([a]) => a[0] === 0 && Math.abs(a[1]) < 5),
+    false,
+    'internal array instance seam cannot produce a vertical outline',
+  );
+});
+test('array border matches resolved physical vertical edges across a partial-height step', () => {
+  const array = twoSites();
+  applyOperation(array, { type: 'etch', thickness: 0.5, area: rectMulti(10, 10, 5, 0) });
+  const vertical = (plan) => {
+    const byPoint = new Map();
+    for (const [a, b] of plan.borderLines) {
+      if (Math.hypot(a[0] - b[0], a[1] - b[1]) > 1e-9 || Math.abs(a[2] - b[2]) < 1e-9) continue;
+      const key = [a[0], a[1]].join(',');
+      if (!byPoint.has(key)) byPoint.set(key, []);
+      byPoint.get(key).push([Math.min(a[2], b[2]), Math.max(a[2], b[2])]);
+    }
+    return [...byPoint]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([point, intervals]) => {
+        intervals.sort(([a], [b]) => a - b);
+        const merged = [];
+        for (const [lo, hi] of intervals) {
+          if (merged.length && lo <= merged.at(-1)[1] + 1e-9)
+            merged.at(-1)[1] = Math.max(hi, merged.at(-1)[1]);
+          else merged.push([lo, hi]);
+        }
+        return [point, merged];
+      });
+  };
+  assert.deepEqual(
+    vertical(buildRenderSurfacePlan(array)),
+    vertical(buildRenderSurfacePlan(resolveArrayModel(array))),
+    'array seams cannot introduce vertical edges absent from physical topology',
+  );
+});
+test('array external Border matches resolved Process Topology at heterogeneous junctions', () => {
+  const normalizedVertical = (model, clip = null) => {
+    const locations = new Map();
+    for (const [a, b] of buildRenderSurfacePlan(model, clip).borderLines) {
+      if (Math.hypot(a[0] - b[0], a[1] - b[1]) > 1e-7 || Math.abs(a[2] - b[2]) <= 1e-7) continue;
+      const key = [a[0], a[1]].map((value) => value.toFixed(6)).join(',');
+      if (!locations.has(key)) locations.set(key, []);
+      locations.get(key).push([Math.min(a[2], b[2]), Math.max(a[2], b[2])]);
+    }
+    return [...locations]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([point, spans]) => {
+        spans.sort(([a], [b]) => a - b);
+        const merged = [];
+        for (const [low, high] of spans) {
+          if (merged.length && low <= merged.at(-1)[1] + 1e-7)
+            merged.at(-1)[1] = Math.max(merged.at(-1)[1], high);
+          else merged.push([low, high]);
+        }
+        return [
+          point,
+          merged.map(([low, high]) => [Number(low.toFixed(6)), Number(high.toFixed(6))]),
+        ];
+      });
+  };
+  const scenarios = [
+    [
+      'partial overlap after etch',
+      [
+        { type: 'add', name: 'Film', thickness: 0.5, area: rectMulti(14, 9) },
+        { type: 'etch', thickness: 0.2, area: rectMulti(8, 10, -4, 0) },
+      ],
+    ],
+    [
+      'multilevel junction',
+      [
+        { type: 'add', name: 'Film', thickness: 0.5, area: rectMulti(12, 10) },
+        { type: 'etch', thickness: 0.3, area: rectMulti(10, 10, 5, 0) },
+        { type: 'add', name: 'Pad', thickness: 0.4, area: rectMulti(3, 3) },
+      ],
+    ],
+    [
+      'different materials at boundary',
+      [
+        { type: 'add', name: 'A', thickness: 0.3, area: rectMulti(10, 10, -5, 0) },
+        { type: 'add', name: 'B', thickness: 0.2, area: rectMulti(10, 10, 5, 0) },
+      ],
+    ],
+    [
+      'interlocking material junctions',
+      [
+        { type: 'add', name: 'A', thickness: 0.4, area: rectMulti(3, 3, -1.5, 1) },
+        { type: 'add', name: 'B', thickness: 0.4, area: rectMulti(3, 3, 1.5, -1) },
+      ],
+    ],
+  ];
+  for (const [name, operations] of scenarios) {
+    const model = twoSites();
+    for (const operation of operations)
+      assert.equal(applyOperation(model, operation).changed, true, name);
+    validateProcessModel(model);
+    const expanded = resolveArrayModel(model);
+    assert.deepEqual(normalizedVertical(model), normalizedVertical(expanded), name);
+    const clip = rectMulti(4, 8);
+    assert.deepEqual(
+      normalizedVertical(model, clip),
+      normalizedVertical(expanded, clip),
+      `${name}: ROI`,
+    );
+  }
+});
+test('10x8 mask-driven array keeps 324 physical corner spans without tile seams', () => {
+  const cell = createModel({ shape: 'rect', width: 10, height: 10, thickness: 2 });
+  const model = createRectangularGridArrayModel(cell, {
+    kind: 'rect-grid',
+    rows: 10,
+    columns: 8,
+    pitchX: 10,
+    pitchY: 10,
+    activeSites: 80,
+  });
+  const islands = model.array.instances.flatMap((part) => rectMulti(6, 6, part.x, part.y));
+  assert.equal(
+    applyOperation(model, { type: 'add', name: 'Islands', thickness: 1, area: islands }).changed,
+    true,
+  );
+  const plan = buildRenderSurfacePlan(model);
+  const vertical = plan.borderLines.filter(
+    ([a, b]) => Math.hypot(a[0] - b[0], a[1] - b[1]) < 1e-9 && Math.abs(a[2] - b[2]) > 1e-9,
+  );
+  const signature = ([a, b]) => [a[0], a[1], Math.min(a[2], b[2]), Math.max(a[2], b[2])].join(',');
+  const actual = new Set(vertical.map(signature));
+  const expected = new Set();
+  for (const part of model.array.instances)
+    for (const dx of [-3, 3])
+      for (const dy of [-3, 3]) expected.add([part.x + dx, part.y + dy, 1, 2].join(','));
+  for (const x of [-40, 40]) for (const y of [-50, 50]) expected.add([x, y, -1, 1].join(','));
+  assert.equal(plan.arrayInstances, 80);
+  assert.equal(vertical.length, 324, 'duplicated or segmented walls cannot add vertical lines');
+  assert.deepEqual(actual, expected, 'only the 80 island corners and 4 wafer corners are physical');
+});
 test('array transfer uses one global plane across different site heights', () => {
   const m = twoSites();
   applyOperation(m, {
