@@ -28,6 +28,7 @@ test('Continuous cached ROI/style updates release building state and preserve fi
     applyPresentationState: () => called.push('appearance'),
     cropMaterialMeshes: () => called.push('crop'),
     updateRoiCaps: () => true,
+    updateZBreakCaps: () => called.push('z-caps'),
     updateMaterialAppearance: () => called.push('restyle'),
     fit: (options) => called.push(['fit', options]),
   };
@@ -43,6 +44,7 @@ test('Continuous cached ROI/style updates release building state and preserve fi
   assert.deepEqual(called, [
     'appearance',
     'crop',
+    'z-caps',
     'restyle',
     ['fit', { notify: false, preserveOrientation: true }],
   ]);
