@@ -82,7 +82,7 @@ try {
         { timeout: 180000 },
       );
     }
-    await page.locator('#threePanel [data-action="opacity:three"]').click();
+    await page.locator('#threePanel [data-action="display:three"]').click();
     const opacity = page.locator('#threeOpacityRange');
     await opacity.waitFor({ state: 'visible' });
     for (const value of ['0.5', '1', '0.5']) {
@@ -144,7 +144,7 @@ try {
     }
     // The Border popover may have dismissed Opacity; reopen its real editor.
     if (!(await opacity.isVisible())) {
-      await page.locator('#threePanel [data-action="opacity:three"]').click();
+      await page.locator('#threePanel [data-action="display:three"]').click();
       await opacity.waitFor({ state: 'visible' });
     }
     // Ten alternating transparent/opaque updates, never a no-op SetValue.

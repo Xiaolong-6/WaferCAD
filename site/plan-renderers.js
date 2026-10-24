@@ -5,6 +5,7 @@ import {
   boundsOverlap,
 } from './model-array.js';
 import { IMPLANT_DEPTH_GRADIENT } from './annotation-rendering.js';
+import { continuousSectionAnnotationPolygons } from './continuous-etch-annotations.js';
 import { createContinuousPlanSampler } from './continuous-etch-plan.js';
 import {
   continuousEtchDisplayCollapse,
@@ -844,7 +845,8 @@ export function createPlanRenderers({
 
     ctx.fillStyle = '#fbfcfd';
     ctx.fillRect(0, 0, w, h);
-    for (const contour of sectionContours(model, section.a, section.b)) {
+    const materialContours = sectionContours(model, section.a, section.b);
+    for (const contour of materialContours) {
       const layer = layerById(model, contour.layerId);
       const experimentalOxide =
         physicalOwner && contour.layerId === model.experimentalPhysicalFacetShell?.layerId;
@@ -884,6 +886,14 @@ export function createPlanRenderers({
     }
 
     const continuous = model?.kernel === 'vector-continuous-etch-v1',
+      hasContinuousAnnotations =
+        continuous &&
+        [...(model.electricalRegions || []), ...(model.implants || [])].some(
+          (item) => item.visible !== false,
+        ),
+      continuousAnnotations = hasContinuousAnnotations
+        ? continuousSectionAnnotationPolygons(model, section.a, section.b, materialContours)
+        : { electrical: [], implants: [] },
       roughColumns = physicalOwner || continuous ? [] : sectionColumns(model, section.a, section.b),
       sidewallProfiles = new Map(),
       sectionDx = section.b[0] - section.a[0],
@@ -1037,9 +1047,39 @@ export function createPlanRenderers({
       });
     }
 
-    for (const electrical of physicalOwner || continuous
+    // Paint annotation footprints derived from the continuous material owner,
+    // never from the predecessor's pre-release planar material silhouette.
+    const traceAnnotationPolygons = (polys) => {
+      ctx.beginPath();
+      for (const poly of polys)
+        for (const ring of poly) {
+          ring.forEach(([t, z], index) => {
+            if (index === 0) ctx.moveTo(mapT(t), mapZ(z));
+            else ctx.lineTo(mapT(t), mapZ(z));
+          });
+          ctx.closePath();
+        }
+    };
+
+    for (const electrical of physicalOwner
       ? []
-      : electricalRegionSectionBands(model, section.a, section.b)) {
+      : continuous
+        ? continuousAnnotations.electrical
+        : electricalRegionSectionBands(model, section.a, section.b)) {
+      if (continuous) {
+        ctx.save();
+        traceAnnotationPolygons(electrical.polys);
+        ctx.fillStyle = rgbaColor(electrical.color, 0.52);
+        ctx.fill('evenodd');
+        if (sectionShowBorders) {
+          ctx.setLineDash([2, 3]);
+          ctx.strokeStyle = rgbaColor(electrical.color, 0.95);
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+        ctx.restore();
+        continue;
+      }
       const appearance = electrical.surfaceAppearance,
         faceDirection = electrical.face === 'back' ? -1 : 1,
         times =
@@ -1075,7 +1115,9 @@ export function createPlanRenderers({
         ctx.lineTo(...innerPoints[index]);
       }
       ctx.closePath();
-      ctx.fillStyle = rgbaColor(electrical.color, 0.22);
+      // An electrical region is a scientific annotation, not a faint shadow.
+      // Preserve its true 0.5 um height while keeping it legible without Section Borders.
+      ctx.fillStyle = rgbaColor(electrical.color, 0.52);
       ctx.fill();
       if (sectionShowBorders) {
         ctx.setLineDash([2, 3]);
@@ -1087,9 +1129,49 @@ export function createPlanRenderers({
     }
 
     const implantBorderPolygons = new Map();
-    for (const implant of physicalOwner || continuous
+    for (const implant of physicalOwner
       ? []
-      : implantSectionBands(model, section.a, section.b)) {
+      : continuous
+        ? continuousAnnotations.implants
+        : implantSectionBands(model, section.a, section.b)) {
+      if (continuous) {
+        const faceDirection = implant.face === 'back' ? -1 : 1;
+        const gradient = ctx.createLinearGradient(
+          0,
+          mapZ(implant.sourceZ),
+          0,
+          mapZ(implant.sourceZ - faceDirection * implant.thickness),
+        );
+        gradient.addColorStop(
+          IMPLANT_DEPTH_GRADIENT.outerDepth,
+          rgbaColor(implant.color, IMPLANT_DEPTH_GRADIENT.outerAlpha),
+        );
+        gradient.addColorStop(
+          IMPLANT_DEPTH_GRADIENT.midDepth,
+          rgbaColor(implant.color, IMPLANT_DEPTH_GRADIENT.midAlpha),
+        );
+        gradient.addColorStop(
+          IMPLANT_DEPTH_GRADIENT.innerDepth,
+          rgbaColor(implant.color, IMPLANT_DEPTH_GRADIENT.innerAlpha),
+        );
+        ctx.save();
+        traceAnnotationPolygons(implant.polys);
+        ctx.fillStyle = gradient;
+        ctx.fill('evenodd');
+        ctx.restore();
+        if (sectionShowBorders) {
+          const key = implant.implantId;
+          if (!implantBorderPolygons.has(key)) implantBorderPolygons.set(key, []);
+          implantBorderPolygons
+            .get(key)
+            .push(
+              implant.polys.map((poly) =>
+                poly.map((ring) => ring.map(([t, z]) => [mapT(t), mapZ(z)])),
+              ),
+            );
+        }
+        continue;
+      }
       const appearance = implant.surfaceAppearance,
         faceDirection = implant.face === 'back' ? -1 : 1,
         times =

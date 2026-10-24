@@ -158,6 +158,7 @@ export function createThreeView({
   getInspection = () => ({ opacity: 1, borders: false }),
   getZCollapse = () => null,
   getZDisplayFactor = () => 1,
+  getShowOrigin = () => false,
   getRoughReliefFactor = () => 1,
   onViewChanged = () => {},
 } = {}) {
@@ -940,6 +941,7 @@ export function createThreeView({
   }
 
   function renderInspectionFrame(targetRenderer = renderer) {
+    updateOriginVisibility();
     updateBorderDashScale();
     const occluders = [],
       outlines = [];
@@ -954,6 +956,16 @@ export function createThreeView({
     });
     host.dataset.outlineVisibility = classified ? 'structural-depth' : 'off';
     host.dataset.outlineDepthMeshCount = String(classified ? occluders.length : 0);
+  }
+
+  function updateOriginVisibility() {
+    if (axesHelper) axesHelper.visible = getShowOrigin() === true;
+    host.dataset.originVisible = String(Boolean(axesHelper?.visible));
+  }
+
+  function refreshOrigin() {
+    updateOriginVisibility();
+    scheduleFrame();
   }
 
   function scheduleFrame() {
@@ -3357,6 +3369,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           // A world-origin axis crosses material and looks like a fabricated edge.
           // Retain its scale reference for camera layout, without painting it in 3D.
           axesHelper.visible = false;
+          scene.add(axesHelper);
 
           host.classList.remove('three-loading', 'three-unavailable');
           delete host.dataset.threeUnavailableReason;
@@ -3971,7 +3984,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       }
       return;
     }
-    if (axesHelper) axesHelper.visible = false;
+    updateOriginVisibility();
     delete host.dataset.physicalFacetAxesHidden;
     delete host.dataset.physicalFacetOwner;
     delete host.dataset.physicalFacetTriangles;
@@ -5403,18 +5416,55 @@ diffuseColor.a *= waferCadAlphaScale;`,
         captureRenderer.toneMapping = renderer.toneMapping;
         captureRenderer.toneMappingExposure = renderer.toneMappingExposure;
       },
-      prepareScene: () => requestRoughGeometry('detailed', { force: true }),
+      // Capture the same painted physical scene and its current rough LOD.
+      // A forced detailed rebuild changes the image instead of just its resolution.
+      prepareScene: async () => {},
       capture: (captureRenderer) => {
         requireExactCapture();
         renderInspectionFrame(captureRenderer);
+        const source = captureRenderer.domElement;
+        const indicator = host.querySelector('.v2-three-z-display-indicator');
+        let output = source;
+        // The on-screen display-scale warning is HTML, not a Three.js mesh.
+        // Include it in the raster export when the same indicator is visible.
+        if (indicator && !indicator.hidden && indicator.textContent) {
+          const overlay = document.createElement('canvas');
+          overlay.width = source.width;
+          overlay.height = source.height;
+          const ctx = overlay.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(source, 0, 0);
+            const style = getComputedStyle(indicator);
+            const ratio = overlay.width / width;
+            const fontSize = 11 * ratio;
+            const inset = 8 * ratio;
+            const paddingX = 8 * ratio;
+            const paddingY = 5 * ratio;
+            ctx.font = `600 ${fontSize}px sans-serif`;
+            const label = indicator.textContent;
+            const labelWidth = ctx.measureText(label).width;
+            const labelHeight = fontSize + paddingY * 2;
+            const boxWidth = labelWidth + paddingX * 2;
+            const x = Math.max(inset, overlay.width - inset - boxWidth);
+            ctx.fillStyle = style.backgroundColor;
+            ctx.fillRect(x, inset, boxWidth, labelHeight);
+            ctx.strokeStyle = style.borderTopColor;
+            ctx.lineWidth = ratio;
+            ctx.strokeRect(x, inset, boxWidth, labelHeight);
+            ctx.fillStyle = style.color;
+            ctx.textBaseline = 'middle';
+            ctx.fillText(label, x + paddingX, inset + labelHeight / 2);
+            output = overlay;
+          }
+        }
         return new Promise((resolve, reject) =>
-          captureRenderer.domElement.toBlob(
+          output.toBlob(
             (value) => (value ? resolve(value) : reject(new Error('PNG capture failed.'))),
             'image/png',
           ),
         );
       },
-      restoreScene: () => requestRoughGeometry('detailed', { force: true }),
+      restoreScene: async () => {},
       scheduleFrame,
     });
   }
@@ -5610,6 +5660,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     updateZCollapse,
     exportGlb,
     capturePng,
+    refreshOrigin,
     get ready() {
       return ready;
     },

@@ -1,6 +1,6 @@
 // Real WaferCAD Section renderer on a validated in-memory continuous Model.
 // No mock geometry, Worker writes, or synthetic screenshot canvas drawing.
-async ({ model, section }) => {
+async ({ model, section, borders = true, collapse = null }) => {
   const { createPlanRenderers } = await import('https://wafercad.local/plan-renderers.js');
   if (model?.kernel !== 'vector-continuous-etch-v1') throw Error('Continuous model required');
   const previous = document.getElementById('wc-offline-section-capture');
@@ -32,10 +32,10 @@ async ({ model, section }) => {
       model,
       section,
       sectionScaleMode: 'auto',
-      sectionShowBorders: true,
+      sectionShowBorders: Boolean(borders),
       // Deliberately request the legacy wafer break. Continuous Etch must
       // refuse the default collapse and display the entire curved release.
-      sectionCollapse: { enabled: true, top: 37, bottom: -37 },
+      sectionCollapse: collapse ?? { enabled: true, top: 37, bottom: -37 },
       sectionViewport: { zoom: 1, panX: 0, panY: 0 },
     }),
     setupCanvas: (c) => ({ ctx: c.getContext('2d'), w: c.width, h: c.height }),
@@ -48,6 +48,8 @@ async ({ model, section }) => {
   const result = {
     collapseEnabled: canvas.dataset.sectionCollapseEnabled,
     xPxPerUm: Number(canvas.dataset.xPxPerUm),
+    borders: Boolean(borders),
+    explicitZBreak: collapse?.continuousEtchExplicit === true,
     zPxPerUm: Number(canvas.dataset.zPxPerUm),
     scale: widgets.sectionMeta.textContent,
     rasterNonEmpty: false,
@@ -59,7 +61,10 @@ async ({ model, section }) => {
       break;
     }
   }
-  if (result.collapseEnabled !== 'false' || !result.rasterNonEmpty)
+  if (
+    result.collapseEnabled !== (collapse?.continuousEtchExplicit === true ? 'true' : 'false') ||
+    !result.rasterNonEmpty
+  )
     throw Error('Native continuous Section did not expose full physical Z geometry');
   return result;
 };

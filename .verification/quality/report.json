@@ -4,10 +4,10 @@
   "scope": "full",
   "status": "pass",
   "source": {
-    "digest": "3ff37fd5f1a333cfa4ef3e82adcc24d51323156998373d498572c3b1e6e7f41b",
-    "fileCount": 1189
+    "digest": "439ba49540955595ffc68c8f56dbfdc47108850cc171a4531f12290354139f91",
+    "fileCount": 1191
   },
-  "sourceRevision": "582aa83104ab0e815c93a09fea41f0391cb677a7",
+  "sourceRevision": "4f91751723e4bb132b10a5f8bbeabd3d5f2a0e5b",
   "planDigest": "9e40e14c41649069d23911dc155328f17e554f0307619aef8493378a2f26b4b3",
   "environment": {
     "node": "v22.16.0",
@@ -19,7 +19,7 @@
       "three": "0.179.1"
     }
   },
-  "startedAt": "2026-10-23T09:46:12.652Z",
+  "startedAt": "2026-10-23T16:57:12.485Z",
   "checks": [
     {
       "id": "lint",
@@ -31,7 +31,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 5426,
+      "durationMs": 5577,
       "logDigest": "7e083cff9d323606d09accd3389828279cc52091b6c62b45c8100c1ced589c7c"
     },
     {
@@ -44,7 +44,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 14377,
+      "durationMs": 17610,
       "logDigest": "1230617af071df8c1efeb12bcd6d41c3aa159e1cd0841cc546fbae4c8c56f867"
     },
     {
@@ -57,7 +57,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 381,
+      "durationMs": 413,
       "logDigest": "1b4f7b8e056f396b1f9085da7197204c54b6d02623481a88589c47b0bd8392ed"
     },
     {
@@ -69,10 +69,10 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 221924,
-      "logDigest": "0769e040be0b7dc26d8da63dbb9c6919b445a7b039dc3367c738f589d9feb13a"
+      "durationMs": 236646,
+      "logDigest": "fe53e1236a96726d0330eb83c497fb1dfa99e1ecc18d97b42bb9f567354ecd54"
     }
   ],
-  "finishedAt": "2026-10-23T09:50:14.762Z",
-  "transcriptDigest": "c61eed7d8da88c54387a4d11da8639ce14638f46aeff353a4a9900fb2507aef5"
+  "finishedAt": "2026-10-23T17:01:32.733Z",
+  "transcriptDigest": "575bd7bb3f17cfb952b120cc5d69fb68e17a2202b1e18a791904dc45ff1ce175"
 }
