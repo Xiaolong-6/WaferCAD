@@ -168,7 +168,14 @@ export function buriedSidewallContours(sidewalls = [], exposed = []) {
         for (const point of [p, q]) {
           const key = `${pointKey(point)}|${part.layerId}`;
           if (!corners.has(key)) corners.set(key, []);
-          corners.get(key).push({ point, z0: part.z0, z1: part.z1, ux, uy });
+          corners.get(key).push({
+            point,
+            z0: part.z0,
+            z1: part.z1,
+            ux,
+            uy,
+            interfaceKey: JSON.stringify([...(part.interfaceLayerIds || [])].sort()),
+          });
         }
         const pKey = pointKey(p),
           qKey = pointKey(q);
@@ -192,7 +199,14 @@ export function buriedSidewallContours(sidewalls = [], exposed = []) {
       const corner =
         active.length === 1 ||
         active.some((w, j) =>
-          active.slice(j + 1).some((other) => Math.abs(w.ux * other.uy - w.uy * other.ux) > 1e-8),
+          active
+            .slice(j + 1)
+            .some(
+              (other) =>
+                w.interfaceKey !== other.interfaceKey ||
+                w.ux * other.ux + w.uy * other.uy < -1 + 1e-8 ||
+                Math.abs(w.ux * other.uy - w.uy * other.ux) > 1e-8,
+            ),
         );
       if (corner)
         lines.push([
