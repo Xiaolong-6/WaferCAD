@@ -72,6 +72,26 @@ test('buried wall corners retained but collinear computation partitions suppress
   assert.deepEqual(buriedSidewallContours([{ ...walls[0], buried: false }]), []);
 });
 
+test('buried wall preserves interface partner and facing changes but not split vertices', () => {
+  const wall = (p, q, interfaceLayerIds) => ({
+    layerId: 'film',
+    interfaceLayerIds,
+    buried: true,
+    p,
+    q,
+    z0: 0,
+    z1: 1,
+  });
+  const first = wall([-1, 0], [0, 0], ['oxide']);
+  const verticalAtJoin = (walls) =>
+    buriedSidewallContours(walls).filter(
+      ([a, b]) => a[0] === 0 && b[0] === 0 && a[1] === 0 && b[1] === 0 && a[2] !== b[2],
+    ).length;
+  assert.equal(verticalAtJoin([first, wall([0, 0], [1, 0], ['oxide'])]), 0);
+  assert.equal(verticalAtJoin([first, wall([0, 0], [1, 0], ['nitride'])]), 1);
+  assert.equal(verticalAtJoin([first, wall([1, 0], [0, 0], ['oxide'])]), 1);
+});
+
 test('buried interfaces and walls use real geometry and array translations', () => {
   const square = [
     [
