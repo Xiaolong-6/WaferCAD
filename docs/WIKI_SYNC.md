@@ -4,7 +4,7 @@
 
 - `docs/wiki/*.md`: complete product user manual (Welcome/Getting Started, views, mask, Process, the English Recipe Code Tutorial and AI-assisted workflows guide, History, Variants, Recovery, I/O, examples, limits and troubleshooting).
 - `site/bundled-examples.js`: canonical Welcome project catalog. Keep `docs/wiki/Examples-and-Modeling-Limits.md` aligned with every promoted example ID/title; do not count unpromoted development fixtures as Welcome examples.
-- `site/process-guide.js`: canonical metadata for the 19 Process operation variants.
+- `site/process-guide.js`: canonical metadata for the 20 Process operation variants.
 - `site/process-guide-svg.js`: the paired Before → After diagrams.
 - `docs/wiki/assets/process/*.svg`: generated, version-controlled Before → After diagrams embedded directly in the Process wiki chapter.
 - `site/guide/index.html`: compatibility redirect only; old fragment bookmarks resolve into Wiki headings.
@@ -21,7 +21,7 @@ See [Wiki content and visual audit](archive/WIKI_CONTENT_VISUAL_AUDIT_2026-10-12
 
 ## Pre-publication PR verification
 
-[Documentation and Wiki targeted checks](../.github/workflows/documentation-wiki-targeted.yml) runs on relevant pull-request changes, exercises the Process Guide, Wiki Manual and Documentation test suites, and has repository read-only permissions. It cannot push to the Wiki or deploy Pages. Draft Quality separately runs lint, formatting and `docs:check` before the Main publication step.
+Documentation changes are checked locally through `node scripts/local-verification.mjs run draft` (or a current `full` receipt), including the focused documentation contracts. The [Documentation and Wiki targeted checks](../.github/workflows/documentation-wiki-targeted.yml) workflow is **manual-dispatch only** under the 2026-10-22 CI policy; it has read-only repository permissions and cannot publish Wiki or Pages. Automatic Draft `Quality` verifies exact-source-bound local evidence **without rerunning lint, formatting, or `docs:check` remotely**. Ready and Main release use their separately governed gates; see [CI routing](CI.md).
 
 ## Deploy workflow
 

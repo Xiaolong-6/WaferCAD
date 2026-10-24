@@ -66,11 +66,31 @@ This project illustrates two-sided silicon pyramid texture and a multilayer tand
 
 ![Actual WaferCAD 3D preview of suspended silica microdisk and support pedestal](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/suspended-silica-microdisk-three.webp)
 
-_The real Chromium 3D thumbnail depicts the saved adaptive 72-band release. The interactive card preview intentionally retains the original lightweight disk geometry._
+_The saved static 3D thumbnail represents the current **Continuous circular
+XeF₂ release** geometry; the interactive Welcome card intentionally keeps
+the older lightweight 2.5D preview. These are different models, not
+interchangeable acceptance screenshots._
 
-Opening this Example now loads the fully saved **72-band adaptive XeF₂ undercut** with 74 model regions and 10 History nodes, including the original baseline branch. Use Main, Section and 3D to inspect the annular void and central pedestal, and History to compare the baseline with the adaptive release.
+Opening this example loads the complete Continuous-release project:
+`suspended-silica-microdisks-continuous.wafercad`. Its M08 Step uses a
+continuous circular undercut from the original inverted Mask; M09 is a
+record-only Step. Inspect Main, Section and 3D for the true released void
+and central pedestal. The older **eight-band** and **72-band adaptive**
+reconstructions remain historical or separate experimental fixtures;
+their original region/History counts and image evidence do **not** describe
+the current published project.
 
-**Scientific boundary:** Basiri-Esfahani et al. report a spoked microdisk with 148 µm outer radius, 82 µm inner radius and a ~1.8 µm thermally grown silica film. The 72-band radial decomposition and **36 µm undercut depth are WaferCAD illustrative modeling assumptions** rather than a measurement or the authors’ exact XeF₂ etch profile. The example does not simulate release kinetics, microdisk dynamics, optical modes or acoustic sensitivity. Paper-image matching remains open.
+**Scientific boundary:** Basiri-Esfahani et al. report a spoked disk with
+148 µm outer radius, 82 µm inner radius and approximately 1.8 µm thermally
+grown silica. The **36 µm lateral and vertical release reach** is an
+illustrative WaferCAD assumption, not a measured XeF₂ front. The cited
+Fig. 2a SEM depicts a similar disk, not an independently calibrated
+same-device comparison. Continuous geometry is not predictive of release
+kinetics, mechanical dynamics, optical modes or acoustic sensitivity.
+The previous 72-band Chromium evidence does not certify the new Continuous
+M08 project; original-paper overlay and full normal-origin acceptance
+remain open as recorded in the
+[scientific evidence register](https://github.com/Xiaolong-6/WaferCAD/blob/main/docs/evidence/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md).
 
 ## 5. Self-powered heterogeneous M3D circuits
 

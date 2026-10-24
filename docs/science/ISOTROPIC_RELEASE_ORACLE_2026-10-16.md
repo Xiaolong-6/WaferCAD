@@ -1,8 +1,8 @@
 # Microdisk isotropic release — pure mathematical oracle (#298)
 
-> **Current status (October 2026):** The bounded Process oracle is opt-in. Draft [PR #332](https://github.com/Xiaolong-6/WaferCAD/pull/332) keeps the separately saved adaptive project, generator, science tests and Chromium evidence in [site/experimental/microdisk](../../site/experimental/README.md). Default Microdisk, snapshots and legacy 8-band replay do not change. The original Fig. 2a SEM depicts a similar sample and the assumed 36 µm radius remains unverified.
+> **Publication note (main, 2026-10-24):** The bundled Microdisk now uses the canonical **Continuous circular XeF₂ release** model at M08; its 36 µm lateral/vertical reach remains an assumption. The original eight-band and separate 72-band adaptive variants, plus Draft PR #332 status and integration gates discussed below, describe **historical experimental checkpoints** rather than the current bundled project's saved geometry. The 72-band Chromium captures do not establish normal-origin acceptance or paper-figure fidelity of the Continuous project. See [bundled catalog](../../site/bundled-examples.js), [Wiki example](../wiki/Examples-and-Modeling-Limits.md) and the [figure evidence matrix](../evidence/LITERATURE_FIGURE_MATRIX_2026-10-16.json).
 
-The final #242 Microdisk remains an eight-slice selective Si release from a
+At the original #242 checkpoint, the Microdisk used an eight-slice selective Si release from a
 paper-derived 148/82 µm SiO₂ mask. Source-independent calculations already
 verify the 1.8 µm oxide and ~230 ng oxide mass; the **36 µm release radius is an
 engineering assumption**. The published Fig. 2a SEM is of a _similar_ disk.
@@ -19,7 +19,7 @@ convergence bound are **not** chemical XeF₂ calibration, a live-vs-saved
 Replay gate, or automatic proof that real samples have smooth spherical
 etch fronts.
 
-The shipped Kernel currently uses eight **uniform Z-depth bands** and chooses
+The historical banded Kernel path used eight **uniform Z-depth bands** and chooses
 a lateral footprint at each band's midpoint. This differs from a uniform
 radial-distance staircase. The separate
 `uniformDepthMidpointLateralErrorBound` gives the maximum local lateral
@@ -29,7 +29,7 @@ radial partitioning must not be attributed to the production algorithm.
 Neither value measures actual XeF₂ release accuracy or interface topology
 near multiple etch seeds.
 
-## Kernel integration gates (not yet done)
+## Original banded-oracle integration gates (historical checkpoint)
 
 1. Derive real exposed seed geometry from topology and material selectivity,
    respecting air voids, non-target masks and multiple exposed seed islands.
@@ -46,7 +46,7 @@ near multiple etch seeds.
 
 Targeted test: `node --test site/tests/isotropic-release-oracle.test.mjs`.
 
-## Adaptive reference geometry (not production Kernel)
+## Adaptive banded reference geometry (historical, not the Continuous-release path)
 
 A new opt-in _pure_ depth-band generator partitions **lateral footprint
 radii** evenly and maps those endpoints through the continuous

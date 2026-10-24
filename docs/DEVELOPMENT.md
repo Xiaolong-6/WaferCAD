@@ -154,12 +154,18 @@ continues to use the original Worker/History path. The
 `scripts/example-open-benchmark.mjs` baseline defaults to strict; use
 `--fast` to measure the attested production path separately.
 
-The suspended-silica microdisk cover is a cropped Chromium 3D screenshot
-of the exact saved adaptive 72-band Variant, derived from the native Workstation
-acceptance evidence. Its source hash tracks the full adaptive project, while
-the on-demand interactive four-view preview intentionally keeps the validated
-original lightweight model; the card explicitly distinguishes them. Regenerate
-the cover and manifest together if the adaptive source geometry changes.
+The suspended-silica microdisk's shipped full project is
+`site/examples/suspended-silica-microdisks-continuous.wafercad`.
+Its static 3D cover is captured from the **Continuous circular XeF₂ release**
+model, not the historical 72-band adaptive release. The saved M08 operation
+uses the original inverted mask with an assumed 36 µm lateral/vertical reach;
+M09 is record-only. The on-demand four-view interactive preview intentionally
+uses older, lightweight 2.5D geometry, and must not be presented as the same
+material geometry as the full project. Historical eight-band/72-band captures
+remain evidence only for their matching project bytes and source revisions.
+Regenerate the current continuous cover, full project and integrity manifest
+together after changing its geometry; do not re-label older captures as new
+normal-origin Chromium acceptance.
 
 The TiO₂ metalens Welcome cover is a Chromium 3D render of the complete
 4,725-site illustrative array, and is content-addressed to the full bundled
