@@ -97,3 +97,49 @@ test('continuous Border rejects shallow facets but keeps major physical corners'
   assert.equal(segmentsAtAngle(35), 4, 'shallow facet seam is not structural');
   assert.equal(segmentsAtAngle(85), 5, 'a major physical corner remains visible');
 });
+
+test('Z Break fast-path preserves wholly upper/lower faces and omits concealed faces', () => {
+  const raw = [
+    0,
+    0,
+    2,
+    1,
+    0,
+    2,
+    0,
+    1,
+    2, // upper exterior
+    0,
+    0,
+    -2,
+    1,
+    0,
+    -2,
+    0,
+    1,
+    -2, // lower exterior
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    1,
+    0, // wholly hidden
+  ];
+  const mesh = {
+    layerId: 'base',
+    positions: Float32Array.from(raw),
+    normals: Float32Array.from(Array.from({ length: 9 }, () => [0, 0, 3]).flat()),
+  };
+  const before = mesh.positions.slice();
+  const shown = clipContinuousDisplayZBreak(mesh, { enabled: true, top: 1, bottom: -1 });
+  assert.equal(shown.triangles, 2);
+  assert.deepEqual(shown.positions, before.slice(0, 18));
+  assert.deepEqual(
+    shown.normals,
+    Float32Array.from(Array.from({ length: 6 }, () => [0, 0, 1]).flat()),
+  );
+  assert.deepEqual(mesh.positions, before, 'Z Break must be display-only');
+});

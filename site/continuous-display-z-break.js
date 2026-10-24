@@ -29,6 +29,34 @@ export function clipContinuousDisplayZBreak(part, state) {
   const output = [];
   const outputNormals = [];
   for (let offset = 0; offset < positions.length; offset += 9) {
+    const z0 = positions[offset + 2],
+      z1 = positions[offset + 5],
+      z2 = positions[offset + 8],
+      minZ = Math.min(z0, z1, z2),
+      maxZ = Math.max(z0, z1, z2);
+    // Most triangles never cross either break plane. Preserve their exact
+    // vertex order and normal normalization without constructing clip polygons.
+    // Entirely concealed triangles can be discarded before allocation.
+    if (minZ > state.bottom && maxZ < state.top) continue;
+    if (minZ >= state.top || maxZ <= state.bottom) {
+      const ux = positions[offset + 3] - positions[offset],
+        uy = positions[offset + 4] - positions[offset + 1],
+        uz = z1 - z0,
+        vx = positions[offset + 6] - positions[offset],
+        vy = positions[offset + 7] - positions[offset + 1],
+        vz = z2 - z0;
+      if (Math.hypot(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx) < 1e-11) continue;
+      for (let i = offset; i < offset + 9; i += 3) {
+        output.push(positions[i], positions[i + 1], positions[i + 2]);
+        const magnitude = Math.hypot(normals[i], normals[i + 1], normals[i + 2]) || 1;
+        outputNormals.push(
+          normals[i] / magnitude,
+          normals[i + 1] / magnitude,
+          normals[i + 2] / magnitude,
+        );
+      }
+      continue;
+    }
     const face = Array.from({ length: 3 }, (_, i) => {
       const j = offset + 3 * i;
       return [
