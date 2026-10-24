@@ -16,6 +16,24 @@
 
 When moving documentation, keep exactly one canonical file in the owning directory and update every tracked Markdown link, source reference and workflow path to that location. **Do not add forwarding Markdown stubs or compatibility ledgers for moved repository documents.** Exception: a pre-existing public **GitHub Wiki** URL may retain a minimal English compatibility pointer (for example `docs/wiki/Recipe-Code-Tutorial-zh-CN.md`) so external bookmarks continue to resolve. The old GitHub *repository file* URL may cease to work; current links must point to the canonical file. Run the documentation link graph check and keep scientific provenance intact.
 
+## Contract lifecycle
+
+Every domain README distinguishes **current implementation contracts**,
+**open experimental/forward plans**, and **historical evidence tied to a
+revision**. Technical descriptions of a shipped feature live in one
+current owner file, not scattered across merged-PR acceptance records.
+Revision-specific test results, older DOM inventories, authoring
+checkpoints and completed Draft/merge instructions belong in the
+archive. Archive a file only after updating all inbound Markdown and
+script references, preserving its original SHA and measured results;
+do not create repository Markdown forwarding stubs.
+
+Current domain owners are
+[Workstation](ui-v2/WORKSTATION_CONTRACT.md),
+[Renderer/Section](renderer/RENDERER_CONTRACT.md) and
+[Continuous release](science/CONTINUOUS_RELEASE_CONTRACT.md).
+Generated Process operations and SVGs must never be edited by hand.
+
 ## Authority and readers
 
 **Documentation language:** English is required for new and actively maintained WaferCAD documentation, release notes, code comments, UI text, prompts and development handoffs. Existing historical audits, plans and archived handoffs may remain in their original language; do not translate them solely to standardize language. When retiring localized Wiki content, update tracked navigation to the English page; retain only already-published Wiki aliases needed for external bookmark compatibility as short English pointer pages.

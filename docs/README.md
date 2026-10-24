@@ -41,6 +41,12 @@ The [CI architecture audit](archive/CI_ARCHITECTURE_AUDIT_2026-10-12.md) tracks 
 - [Research evidence](evidence/README.md) — source-figure register and reproducibility metadata.
 - [Legacy source retirement](operations/LEGACY_SOURCE_SUNSET.md) — frozen source tag, v2 redirect/reader guarantees and archived nightly contracts.
 
+## Current specialist contracts
+
+- [Production Workstation shell and state](ui-v2/WORKSTATION_CONTRACT.md) — stable view slots, desktop/mobile, History and Recovery ownership.
+- [Renderer and Section physical/presentation boundary](renderer/RENDERER_CONTRACT.md) — exact-versus-preview, progressive Worker, scene cache, ROI, PNG and GLB.
+- [Continuous selective release](science/CONTINUOUS_RELEASE_CONTRACT.md) — bounded experimental material model and 3D/Section/History restrictions.
+
 ## Scientific and interchange contracts
 
 - [Process benchmarks](science/PROCESS_BENCHMARKS.md) — analytic geometry acceptance and approximation limits.

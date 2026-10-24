@@ -1,14 +1,33 @@
 # Renderer engineering
 
-Canonical location for renderer ownership, performance plans, and revision-scoped diagnostics. Dated audits are evidence tied to their recorded commits, not approval of the current Main.
+The canonical **current implementation contract** is
+[Renderer, Section and capture](RENDERER_CONTRACT.md). It documents
+material ownership, progressive preview/exact handoff,
+Section consistency, rough LOD, transparency/Border, ROI and
+physical GLB versus WYSIWYG PNG. [Architecture](../ARCHITECTURE.md)
+is the cross-module map.
 
-- [3D Border Inspector architecture and acceptance](BORDER_INSPECTOR.md)
-- [Renderer transparency and LOD roadmap](RENDERER_TRANSPARENCY_ROADMAP.md)
-- [Renderer resource lifetime and capture correctness](RENDERER_LIFECYCLE_CORRECTNESS_2026-10-12.md)
-- [Foreground-first scene continuity](FOREGROUND_RENDERING_P0_2026-10-12.md)
-- [PR250 renderer audit](PR250_RENDERER_AUDIT_2026-10-15.md)
-- [PR250 renderer acceptance evidence](PR250_RENDERER_ACCEPTANCE_2026-10-15.md)
-- [Rough boundary geometry audit](THREE_ROUGH_BOUNDARY_AUDIT_2026-10-15.md)
-- [Outline ownership and depth audit](THREE_OUTLINE_DEPTH_AUDIT_2026-10-15.md)
+## Current contracts and open work
 
-Scientific correctness is independently owned by [scientific contracts](../science/README.md); browser and GPU gates remain governed by [testing](../testing.md).
+- [Renderer, Section and capture](RENDERER_CONTRACT.md) — present behavior and safety boundaries.
+- [3D Border Inspector](BORDER_INSPECTOR.md) — shared visible contour ownership.
+- [Resource lifetime and capture correctness](RENDERER_LIFECYCLE_CORRECTNESS_2026-10-12.md) — renderer lifecycle rules; dates scope measurements.
+- [Transparency and LOD roadmap](RENDERER_TRANSPARENCY_ROADMAP.md) — **open performance debt**, not current latency certification.
+
+## Historical evidence at its recorded revision
+
+- [PR #250 renderer audit](../archive/renderer/PR250_RENDERER_AUDIT_2026-10-15.md).
+- [PR #250 acceptance and GPU diagnostics](../archive/renderer/PR250_RENDERER_ACCEPTANCE_2026-10-15.md).
+- [Foreground-first scene investigation](FOREGROUND_RENDERING_P0_2026-10-12.md).
+- [Rough boundary investigation](THREE_ROUGH_BOUNDARY_AUDIT_2026-10-15.md).
+- [Outline/depth investigation](THREE_OUTLINE_DEPTH_AUDIT_2026-10-15.md).
+
+Scientific correctness is independently owned by
+[scientific contracts](../science/README.md); browser and GPU gates remain
+governed by [testing](../testing.md). Merged PRs
+[#353](https://github.com/Xiaolong-6/WaferCAD/pull/353),
+[#359](https://github.com/Xiaolong-6/WaferCAD/pull/359),
+[#365](https://github.com/Xiaolong-6/WaferCAD/pull/365),
+[#367](https://github.com/Xiaolong-6/WaferCAD/pull/367)
+and [#368](https://github.com/Xiaolong-6/WaferCAD/pull/368)
+are source history, not independent approval of current screenshots.

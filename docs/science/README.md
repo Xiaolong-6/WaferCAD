@@ -4,7 +4,8 @@ Canonical descriptions of idealized process geometry and numerical/visual interp
 
 - [PROCESS GEOMETRY KERNEL V2](PROCESS_GEOMETRY_KERNEL_V2.md)
 - [PROCESS BENCHMARKS](PROCESS_BENCHMARKS.md)
-- [EXPERIMENTAL ISOTROPIC RELEASE ORACLE 2026-10-16](ISOTROPIC_RELEASE_ORACLE_2026-10-16.md) — geometric oracle only; not production etch.
+- [Continuous release material contract](CONTINUOUS_RELEASE_CONTRACT.md) — current opt-in Process semantics, material owner and limits.
+- [Isotropic release oracle and dated banded experiments](ISOTROPIC_RELEASE_ORACLE_2026-10-16.md) — historical eight-/72-band convergence and integration evidence; distinct from the current Continuous M08.
 - [PROCESS NUMERICAL CONTRACT 2026-10-14](PROCESS_NUMERICAL_CONTRACT_2026-10-14.md)
 - [PROCESS BOTH FACE 2026-10-11](PROCESS_BOTH_FACE_2026-10-11.md)
 - [IMPLANT](IMPLANT.md)

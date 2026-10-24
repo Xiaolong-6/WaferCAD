@@ -1,5 +1,18 @@
 # Development
 
+## Documentation authority
+
+The [Workstation contract](ui-v2/WORKSTATION_CONTRACT.md) defines
+current shell, view and transaction ownership; the
+[Renderer + Section contract](renderer/RENDERER_CONTRACT.md)
+defines progressive preview versus exact material and capture boundaries;
+the [Continuous release contract](science/CONTINUOUS_RELEASE_CONTRACT.md)
+defines the experimental, single-release material envelope. Dated
+PR acceptance measurements in the archive are not a new product baseline.
+See [testing](testing.md) for test ownership and [CI](CI.md) for
+trigger/receipt rules. Keep this page focused on bootstrap and
+developer commands.
+
 ## Active application
 
 The active product is entirely under `site/`.

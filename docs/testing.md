@@ -100,8 +100,8 @@ read-only Example preview and verifies Section raster content and initialized
 and a JSON report to `test-results/magic1000/`, leaving committed thumbnails
 unchanged. Regenerate the repository thumbnail only with the explicit
 `--write-thumbnail` flag and visual review. The formerly obsolete
-`magic1000-candidate.yml` is now a read-only PR/manual browser gate rather
-than a branch-specific workflow with permission to push generated files.
+`magic1000-candidate.yml` is a read-only, **manual-dispatch-only** browser diagnostic
+rather than a branch-specific or automatically triggered PR gate. It never pushes thumbnails.
 Scientific geometry and Recipe replay remain governed by separate tests.
 
 ### KLayout v2 Mask-to-Process bridge
