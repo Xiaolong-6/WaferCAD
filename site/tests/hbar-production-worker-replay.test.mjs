@@ -72,6 +72,22 @@ test('production Process Worker thread replays every physical HBAR Recipe Step',
     text: async () => bytes.toString('utf8'),
   });
   const { processRecipe: recipe } = project;
+  // Saved History has user-chosen display colors whereas Process assigns
+  // default palette colors. Presentation is not part of Process geometry.
+  const withoutPresentationColors = (candidate) => {
+    const copy = structuredClone(candidate);
+    for (const layer of copy.layers) delete layer.color;
+    if (copy.continuousEtchOwner)
+      for (const layer of copy.continuousEtchOwner.sourceModel.layers) delete layer.color;
+    return copy;
+  };
+  const assertStageParity = (candidate, index) => {
+    assert.deepEqual(
+      withoutPresentationColors(candidate),
+      withoutPresentationColors(project.snapshotBranches.nodes[index + 1].state.model),
+      `Worker/Record Step ${index + 1} must preserve the entire saved physical History state`,
+    );
+  };
   const worker = new Worker(adapter, {
     eval: true,
     workerData: { source: workerSource, vendor: polygonVendor },
@@ -88,6 +104,7 @@ test('production Process Worker thread replays every physical HBAR Recipe Step',
         // geometry operation. Its actual browser commit is checked separately.
         model.revision++;
         model.processRevision++;
+        assertStageParity(model, index);
         continue;
       }
       const areaRequest = p.mask
@@ -136,11 +153,7 @@ test('production Process Worker thread replays every physical HBAR Recipe Step',
       assert.equal(response.validated, true, `Worker validation failed at Step ${id}`);
       assert.equal(response.result?.changed, true, `No physical operation at Step ${id}`);
       model = response.model;
-      assert.equal(
-        model.regions.length,
-        project.snapshotBranches.nodes[index + 1].state.model.regions.length,
-        `Worker Step ${id} disagrees with stored History region count`,
-      );
+      assertStageParity(model, index);
       workerSteps++;
     }
     assert.equal(recipe.steps.length, 11);
