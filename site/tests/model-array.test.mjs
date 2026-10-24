@@ -224,6 +224,36 @@ test('array exterior borders inherit topology creases, not collinear polygon sam
   assert.equal(vertical.some(([a]) => a[0] === 0 && Math.abs(a[1]) < 5), false,
     'internal array instance seam cannot produce a vertical outline');
 });
+test('array border matches resolved physical vertical edges across a partial-height step', () => {
+  const array = twoSites();
+  applyOperation(array, { type: 'etch', thickness: 0.5, area: rectMulti(10, 10, 5, 0) });
+  const vertical = (plan) => {
+    const byPoint = new Map();
+    for (const [a, b] of plan.borderLines) {
+      if (Math.hypot(a[0] - b[0], a[1] - b[1]) > 1e-9 || Math.abs(a[2] - b[2]) < 1e-9) continue;
+      const key = [a[0], a[1]].join(',');
+      if (!byPoint.has(key)) byPoint.set(key, []);
+      byPoint.get(key).push([Math.min(a[2], b[2]), Math.max(a[2], b[2])]);
+    }
+    return [...byPoint]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([point, intervals]) => {
+        intervals.sort(([a], [b]) => a - b);
+        const merged = [];
+        for (const [lo, hi] of intervals) {
+          if (merged.length && lo <= merged.at(-1)[1] + 1e-9)
+            merged.at(-1)[1] = Math.max(hi, merged.at(-1)[1]);
+          else merged.push([lo, hi]);
+        }
+        return [point, merged];
+      });
+  };
+  assert.deepEqual(
+    vertical(buildRenderSurfacePlan(array)),
+    vertical(buildRenderSurfacePlan(resolveArrayModel(array))),
+    'array seams cannot introduce vertical edges absent from physical topology',
+  );
+});
 test('array transfer uses one global plane across different site heights', () => {
   const m = twoSites();
   applyOperation(m, {
