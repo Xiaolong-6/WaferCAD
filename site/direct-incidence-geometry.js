@@ -81,14 +81,6 @@ export function directIncidenceArea(
   };
   const pieces = [];
   for (const { z: targetZ, targets } of byHeight.values()) {
-    // Resist is represented only by open ray windows, not by physical solids.
-    // Once a material surface reaches or overtops the assumed resist ceiling,
-    // silently skipping all Z apertures would deposit over the whole surface.
-    // Also reject an exposure whose *new* film would grow through that ceiling.
-    if (apertures.length && targetZ + depositedThicknessUm >= apertures.at(-1).topZUm - EPS)
-      throw new RangeError(
-        'Fixed-angle Direct would grow material through the assumed resist top.',
-      );
     let visible = unionGeometries(targets.map((geom) => intersection(geom, area)));
     for (const aperture of apertures) {
       if (isEmpty(visible)) break;
@@ -116,6 +108,18 @@ export function directIncidenceArea(
         if (isEmpty(visible)) break;
       }
     }
+    // Only a ray-visible surface can receive this dose. An occluded tall
+    // column must not reject valid deposition on a lower exposed target.
+    // We still fail closed if a genuinely illuminated surface would grow
+    // through the modeled resist ceiling.
+    if (
+      apertures.length &&
+      !isEmpty(visible) &&
+      targetZ + depositedThicknessUm >= apertures.at(-1).topZUm - EPS
+    )
+      throw new RangeError(
+        'Fixed-angle Direct would grow material through the assumed resist top.',
+      );
     if (!isEmpty(visible)) pieces.push(visible);
   }
   return {
