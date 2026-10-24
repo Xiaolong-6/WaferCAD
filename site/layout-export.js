@@ -432,9 +432,10 @@ function gdsStringRecord(type, value) {
   return gdsRecord(type, 0x06, asciiBytes(value));
 }
 
-function timestampWords() {
-  const now = new Date(),
-    year = now.getUTCFullYear(),
+function timestampWords(now = new Date()) {
+  if (!(now instanceof Date) || !Number.isFinite(now.getTime()))
+    throw new RangeError('GDS export timestamp must be a valid Date');
+  const year = now.getUTCFullYear(),
     month = now.getUTCMonth() + 1,
     day = now.getUTCDate(),
     hour = now.getUTCHours(),
@@ -443,15 +444,19 @@ function timestampWords() {
   return [year, month, day, hour, minute, second, year, month, day, hour, minute, second];
 }
 
-export function serializeGDS(elements, { cellName = 'WAFERCAD_EXPORT' } = {}) {
+export function serializeGDS(
+  elements,
+  { cellName = 'WAFERCAD_EXPORT', timestamp = new Date() } = {},
+) {
+  const dates = timestampWords(timestamp);
   const dbuMicron = chooseDbuMicron(elements),
     quantized = quantizeElements(elements, dbuMicron),
     records = [
       gdsRecord(0x00, 0x02, gdsInt16([600])),
-      gdsRecord(0x01, 0x02, gdsInt16(timestampWords())),
+      gdsRecord(0x01, 0x02, gdsInt16(dates)),
       gdsStringRecord(0x02, 'WAFERCAD'),
       gdsRecord(0x03, 0x05, concatBytes([gdsReal8(dbuMicron), gdsReal8(dbuMicron * 1e-6)])),
-      gdsRecord(0x05, 0x02, gdsInt16(timestampWords())),
+      gdsRecord(0x05, 0x02, gdsInt16(dates)),
       gdsStringRecord(0x06, cellName.slice(0, 32)),
     ];
 

@@ -67,6 +67,11 @@ import {
 import { buildRenderSurfacePlanAsync } from './renderer-surface-plan-async.js';
 import { appendSidewallTriangle } from './renderer-sidewall-triangle.js';
 import { clipBorderPositions } from './renderer-border-position-clip.js';
+import { clipContinuousDisplayZBreak } from './continuous-display-z-break.js';
+import {
+  buildContinuousZBreakCaps,
+  buildContinuousPlanarZBreakCaps,
+} from './continuous-z-break-caps.js';
 import { createDerivedDataCache } from './renderer-derived-cache.js';
 import {
   mergeCollinearSidewallParts,
@@ -226,6 +231,8 @@ export function createThreeView({
   let physicalSceneModel = null;
   let continuousRoiCapObjects = [];
   let continuousRoiCapSignature = null;
+  let continuousZCapObjects = [];
+  let continuousZCapSignature = null;
   let physicalSceneSignature = null;
   let physicalSurfacePlan = null;
   let activeSceneVariant = null;
@@ -395,16 +402,16 @@ export function createThreeView({
   function zDisplayState(model) {
     const [idealLo, idealHi] = modelBoundsZ(model),
       [lo, hi] = roughVisualBoundsZ(model, [idealLo, idealHi]),
-      collapse = resolveSectionCollapse(
-        continuousEtchDisplayCollapse(model, getZCollapse()),
-        model,
-        [lo, hi],
-      ),
+      requestedCollapse = continuousEtchDisplayCollapse(model, getZCollapse()),
+      collapse = resolveSectionCollapse(requestedCollapse, model, [lo, hi]),
       transform = createCollapsedZDisplayTransform({
         zMin: lo,
         zMax: hi,
         collapse,
-        breakFraction: 0,
+        breakFraction:
+          model.kernel === CONTINUOUS_ETCH_MODEL_KERNEL && requestedCollapse?.enabled !== false
+            ? 0.04
+            : 0,
       }),
       reliefFactor = normalizeThreeRoughReliefFactor(getRoughReliefFactor()),
       clip = reliefFactor > 1 ? getClipGeometry() : null,
@@ -583,7 +590,11 @@ export function createThreeView({
 
   function updateZCollapse() {
     if (!ready || !group) return false;
-    return Boolean(applyZDisplayState());
+    const updated = Boolean(applyZDisplayState());
+    // An explicit Continuous Z Break must reclip derived display triangles;
+    // simply squeezing all vertices into a flat plane would leave false faces.
+    if (getModel()?.kernel === CONTINUOUS_ETCH_MODEL_KERNEL) void render();
+    return updated;
   }
 
   function zIsVisible(z, state = currentZDisplay) {
@@ -1075,6 +1086,8 @@ export function createThreeView({
     physicalSceneModel = null;
     continuousRoiCapObjects = [];
     continuousRoiCapSignature = null;
+    continuousZCapObjects = [];
+    continuousZCapSignature = null;
     physicalSceneSignature = null;
     physicalSurfacePlan = null;
   }
@@ -3545,10 +3558,53 @@ diffuseColor.a *= waferCadAlphaScale;`,
     const roiBounds = continuousRectRoiBounds(clip);
     const owner = validateContinuousEtchModel(model);
     if (!owner) throw new RangeError('Missing or invalid continuous material owner');
+    // This analytic path bypasses buildRenderSurfacePlan(), so it must build
+    // its own structural outlines from the very same clipped display meshes.
+    // THREE.EdgesGeometry removes coplanar triangulation diagonals; the
+    // existing border presentation policy still owns opacity, style and toggle.
+    const discardContinuousBorder = (mesh) => {
+      const outline = mesh?.userData?.continuousBorder;
+      if (!outline) return;
+      group.remove(outline);
+      presentationObjects.delete(outline);
+      zDisplayObjects.delete(outline);
+      outline.geometry?.dispose?.();
+      outline.material?.dispose?.();
+      mesh.userData.continuousBorder = null;
+    };
+    const ensureContinuousBorder = (mesh) => {
+      if (!getInspection()?.borders || !mesh.visible || mesh.userData.continuousBorder) return;
+      const part = mesh.userData.continuousCroppedPart || mesh.userData.continuousFullPart;
+      if (!part?.positions?.length || part.positions.length / 9 > 500000) return;
+      // Always derive from canonical coordinates: mesh.geometry may already
+      // contain an applied Z display transform.
+      const canonical = new THREE.BufferGeometry();
+      canonical.setAttribute('position', new THREE.BufferAttribute(part.positions, 3));
+      const sharp = new THREE.EdgesGeometry(canonical, 25);
+      const vertices = sharp.getAttribute('position');
+      if (vertices?.count) {
+        const border = addBorderPositions(Array.from(vertices.array), {
+          order: 100000,
+          includeHidden: false,
+          presentation: { kind: 'border', category: 'exterior' },
+        });
+        if (border) {
+          border.userData.continuousBorderParent = mesh;
+          mesh.userData.continuousBorder = border;
+        }
+      }
+      sharp.dispose();
+      canonical.dispose();
+    };
+    const zBreakSignature = () =>
+      currentZDisplay?.enabled === true
+        ? [currentZDisplay.top, currentZDisplay.bottom]
+        : null;
     const updateRoiCaps = () => {
-      const signature = JSON.stringify(roiBounds);
+      const signature = JSON.stringify([roiBounds, zBreakSignature()]);
       if (continuousRoiCapSignature === signature) return false;
       for (const mesh of continuousRoiCapObjects) {
+        discardContinuousBorder(mesh);
         group.remove(mesh);
         presentationObjects.delete(mesh);
         zDisplayObjects.delete(mesh);
@@ -3563,13 +3619,18 @@ diffuseColor.a *= waferCadAlphaScale;`,
       }
       const exterior = { kind: 'material-exterior' };
       const state = presentationState(exterior, getInspection() || {}).materialState;
+      // Build XY cut faces from the physically ROI-clipped source, before
+      // applying display Z Break. Otherwise an omitted middle Z interval
+      // creates spurious open ROI intersection loops.
       const clippedParts = [...presentationObjects]
-        .map((mesh) => mesh.userData?.continuousCroppedPart)
+        .map((mesh) => mesh.userData?.continuousRoiSourcePart)
         .filter(Boolean);
       for (const part of buildContinuousRectMeshCaps(THREE, clippedParts, roiBounds)) {
+        const displayed = clipContinuousDisplayZBreak(part, currentZDisplay);
+        if (!displayed.triangles) continue;
         const geometry = new THREE.BufferGeometry();
-        geometry.setAttribute('position', new THREE.BufferAttribute(part.positions, 3));
-        geometry.setAttribute('normal', new THREE.BufferAttribute(part.normals, 3));
+        geometry.setAttribute('position', new THREE.BufferAttribute(displayed.positions, 3));
+        geometry.setAttribute('normal', new THREE.BufferAttribute(displayed.normals, 3));
         let material = createSurfaceMaterial(layerById(model, part.layerId), state, null, exterior);
         if (material.userData?.waferCadPooledPresentationMaterial) {
           material = material.clone();
@@ -3580,6 +3641,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
         if (mesh) {
           mesh.userData.continuousLayerId = part.layerId;
           mesh.userData.continuousRoiCap = true;
+          mesh.userData.continuousRoiCapSourcePart = part;
+          mesh.userData.continuousCroppedPart = displayed;
           continuousRoiCapObjects.push(mesh);
         }
       }
@@ -3597,12 +3660,15 @@ diffuseColor.a *= waferCadAlphaScale;`,
     // meshes are retained as immutable typed arrays, so zoom, color changes
     // and Undo/Redo never mutate or resample the analytical material owner.
     const cropMaterialMeshes = () => {
-      const signature = JSON.stringify(roiBounds);
+      const signature = JSON.stringify([roiBounds, zBreakSignature()]);
       let changed = false;
       for (const mesh of presentationObjects) {
         const source = mesh.userData?.continuousFullPart;
         if (!source || mesh.userData.continuousMeshCropSignature === signature) continue;
-        const cropped = clipContinuousSurfaceToRect(source, roiBounds);
+        const roiCropped = clipContinuousSurfaceToRect(source, roiBounds);
+        const cropped = clipContinuousDisplayZBreak(roiCropped, currentZDisplay);
+        discardContinuousBorder(mesh);
+        mesh.userData.continuousRoiSourcePart = roiCropped;
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute('position', new THREE.BufferAttribute(cropped.positions, 3));
         geometry.setAttribute('normal', new THREE.BufferAttribute(cropped.normals, 3));
@@ -3626,13 +3692,101 @@ diffuseColor.a *= waferCadAlphaScale;`,
       );
       return changed;
     };
+    // Build the two horizontal Z Break cut faces from physically cropped,
+    // canonical mesh triangles. The separate ROI caps close any open contour
+    // on a rectangular inspection boundary. This never touches model/History.
+    const updateZBreakCaps = () => {
+      const signature = JSON.stringify([roiBounds, zBreakSignature()]);
+      if (continuousZCapSignature === signature) return false;
+      for (const mesh of continuousZCapObjects) {
+        discardContinuousBorder(mesh);
+        group.remove(mesh);
+        presentationObjects.delete(mesh);
+        zDisplayObjects.delete(mesh);
+        mesh.geometry?.dispose?.();
+        mesh.material?.dispose?.();
+      }
+      continuousZCapObjects = [];
+      continuousZCapSignature = signature;
+      if (!currentZDisplay?.enabled) {
+        host.dataset.continuousZBreakCapTriangles = '0';
+        return true;
+      }
+      const byLayer = new Map();
+      for (const mesh of presentationObjects) {
+        const layerId = mesh.userData?.continuousLayerId;
+        if (!layerId || mesh.userData.continuousZBreakCap) continue;
+        const source =
+          mesh.userData.continuousRoiSourcePart ||
+          mesh.userData.continuousRoiCapSourcePart ||
+          mesh.userData.continuousFullPart;
+        if (!source) continue;
+        if (!byLayer.has(layerId)) byLayer.set(layerId, []);
+        byLayer.get(layerId).push(source);
+      }
+      const exterior = { kind: 'material-exterior' };
+      const state = presentationState(exterior, getInspection() || {}).materialState;
+      for (const [layerId, parts] of byLayer) {
+        // Unreleased layers retain exact 2.5D ownership. Their sampled display
+        // meshes can omit buried interfaces and cannot reliably form planar
+        // cut loops. Only released fronts need native surface intersections.
+        const released = owner.fronts.some((front) => front.layerId === layerId);
+        const capParts = released
+          ? buildContinuousZBreakCaps(THREE, parts, currentZDisplay)
+          : buildContinuousPlanarZBreakCaps(
+              THREE,
+              owner,
+              layerId,
+              currentZDisplay,
+              roiBounds,
+            );
+        for (const part of capParts) {
+          const geometry = new THREE.BufferGeometry();
+          geometry.setAttribute('position', new THREE.BufferAttribute(part.positions, 3));
+          geometry.setAttribute('normal', new THREE.BufferAttribute(part.normals, 3));
+          geometry.userData.analyticSurfaceNormals = true;
+          let material = createSurfaceMaterial(
+            layerById(model, layerId),
+            state,
+            null,
+            exterior,
+          );
+          if (material.userData?.waferCadPooledPresentationMaterial) {
+            material = material.clone();
+            material.userData.waferCadPooledPresentationMaterial = false;
+          }
+          material.side = THREE.DoubleSide;
+          const mesh = addSurfaceMesh(geometry, material, state, null, 0, false, null, exterior);
+          if (!mesh) continue;
+          mesh.userData.continuousLayerId = layerId;
+          mesh.userData.continuousZBreakCap = true;
+          mesh.userData.continuousCroppedPart = { ...part, layerId };
+          continuousZCapObjects.push(mesh);
+        }
+      }
+      applyZDisplayState(model);
+      host.dataset.continuousZBreakCapTriangles = String(
+        continuousZCapObjects.reduce(
+          (sum, mesh) => sum + (mesh.geometry.getAttribute('position')?.count || 0) / 3,
+          0,
+        ),
+      );
+      return true;
+    };
     const updateMaterialAppearance = () => {
+      const inspection = getInspection() || {};
       for (const mesh of presentationObjects) {
         const layerId = mesh.userData?.continuousLayerId;
         if (!layerId) continue;
         const layer = layerById(model, layerId);
         mesh.visible = layer?.visible !== false && !mesh.userData.continuousRoiEmpty;
         mesh.material?.color?.set(layer?.color || '#999');
+        if (mesh.visible && inspection.borders) ensureContinuousBorder(mesh);
+        const outline = mesh.userData.continuousBorder;
+        if (outline)
+          outline.visible =
+            mesh.visible &&
+            presentationState({ kind: 'border', category: 'exterior' }, inspection).visible;
       }
       if (renderer) renderer.localClippingEnabled = false;
       host.dataset.continuousEtchRoi = roiBounds ? 'rect-clipped' : 'full-model';
@@ -3647,6 +3801,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       applyPresentationState();
       cropMaterialMeshes();
       const roiChanged = updateRoiCaps();
+      updateZBreakCaps();
       updateMaterialAppearance();
       host.dataset.continuousEtchRoiUpdateMs = String(performance.now() - roiStartAt);
       // A presentation-only ROI/style update is a completed render, not a
@@ -3795,6 +3950,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     const roiStartAt = performance.now();
     cropMaterialMeshes();
     updateRoiCaps();
+    updateZBreakCaps();
     updateMaterialAppearance();
     host.dataset.continuousEtchRoiUpdateMs = String(performance.now() - roiStartAt);
     host.dataset.continuousEtchMainThreadBuildMs = String(performance.now() - sceneAssemblyAt);
