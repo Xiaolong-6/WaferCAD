@@ -330,6 +330,36 @@ test('array external Border matches resolved Process Topology at heterogeneous j
     );
   }
 });
+test('10x8 mask-driven array keeps 324 physical corner spans without tile seams', () => {
+  const cell = createModel({ shape: 'rect', width: 10, height: 10, thickness: 2 });
+  const model = createRectangularGridArrayModel(cell, {
+    kind: 'rect-grid',
+    rows: 10,
+    columns: 8,
+    pitchX: 10,
+    pitchY: 10,
+    activeSites: 80,
+  });
+  const islands = model.array.instances.flatMap((part) => rectMulti(6, 6, part.x, part.y));
+  assert.equal(
+    applyOperation(model, { type: 'add', name: 'Islands', thickness: 1, area: islands }).changed,
+    true,
+  );
+  const plan = buildRenderSurfacePlan(model);
+  const vertical = plan.borderLines.filter(
+    ([a, b]) => Math.hypot(a[0] - b[0], a[1] - b[1]) < 1e-9 && Math.abs(a[2] - b[2]) > 1e-9,
+  );
+  const signature = ([a, b]) => [a[0], a[1], Math.min(a[2], b[2]), Math.max(a[2], b[2])].join(',');
+  const actual = new Set(vertical.map(signature));
+  const expected = new Set();
+  for (const part of model.array.instances)
+    for (const dx of [-3, 3])
+      for (const dy of [-3, 3]) expected.add([part.x + dx, part.y + dy, 1, 2].join(','));
+  for (const x of [-40, 40]) for (const y of [-50, 50]) expected.add([x, y, -1, 1].join(','));
+  assert.equal(plan.arrayInstances, 80);
+  assert.equal(vertical.length, 324, 'duplicated or segmented walls cannot add vertical lines');
+  assert.deepEqual(actual, expected, 'only the 80 island corners and 4 wafer corners are physical');
+});
 test('array transfer uses one global plane across different site heights', () => {
   const m = twoSites();
   applyOperation(m, {
