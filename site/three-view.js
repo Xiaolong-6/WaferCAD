@@ -70,6 +70,7 @@ import {
 import { buildRenderSurfacePlanAsync } from './renderer-surface-plan-async.js';
 import { appendSidewallTriangle } from './renderer-sidewall-triangle.js';
 import { clipBorderPositions } from './renderer-border-position-clip.js';
+import { continuousStructuralBorderPositions } from './continuous-structural-borders.js';
 import { clipContinuousDisplayZBreak } from './continuous-display-z-break.js';
 import {
   buildContinuousZBreakCaps,
@@ -2210,7 +2211,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
   ) {
     if (!positions?.length) return null;
     const edgeGeometry = new THREE.BufferGeometry();
-    edgeGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    edgeGeometry.setAttribute(
+      'position',
+      positions instanceof Float32Array
+        ? new THREE.BufferAttribute(positions, 3)
+        : new THREE.Float32BufferAttribute(positions, 3),
+    );
     const materialOptions = {
       color: dashed ? 0x263d57 : 0x111820,
       transparent: dashed || opacity < 0.999,
@@ -3579,15 +3585,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
       if (!getInspection()?.borders || !mesh.visible || mesh.userData.continuousBorder) return;
       const part = mesh.userData.continuousCroppedPart || mesh.userData.continuousFullPart;
       if (!part?.positions?.length || part.positions.length / 9 > 500000) return;
-      // Always derive from canonical coordinates: mesh.geometry may already
-      // contain an applied Z display transform.
-      const canonical = new THREE.BufferGeometry();
-      canonical.setAttribute('position', new THREE.BufferAttribute(part.positions, 3));
-      // Filter shallow tessellation facets; retain major structural corners.
-      const sharp = new THREE.EdgesGeometry(canonical, 60);
-      const vertices = sharp.getAttribute('position');
-      if (vertices?.count) {
-        const border = addBorderPositions(Array.from(vertices.array), {
+      // Canonical physical coordinates must be used because the display mesh
+      // may already have a presentation-only Z mapping. This fast extractor
+      // preserves Three.js's 60-degree edge contract without converting the
+      // entire non-indexed material mesh into temporary Three.js objects.
+      const positions = continuousStructuralBorderPositions(part.positions, 60);
+      if (positions.length) {
+        const border = addBorderPositions(positions, {
           order: 100000,
           includeHidden: false,
           presentation: { kind: 'border', category: 'exterior' },
@@ -3597,8 +3601,6 @@ diffuseColor.a *= waferCadAlphaScale;`,
           mesh.userData.continuousBorder = border;
         }
       }
-      sharp.dispose();
-      canonical.dispose();
     };
     const zBreakSignature = () =>
       currentZDisplay?.enabled === true ? [currentZDisplay.top, currentZDisplay.bottom] : null;
