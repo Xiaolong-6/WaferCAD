@@ -197,6 +197,33 @@ test('array rendering removes instance seams and preserves actual exterior walls
   );
   assert.equal(area, 120);
 });
+test('array exterior borders inherit topology creases, not collinear polygon sampling vertices', () => {
+  const model = twoSites();
+  const leaf = model.array.templates[0].model;
+  const original = leaf.boundary[0][0];
+  const subdivided = [];
+  for (let index = 0; index < original.length - 1; index++) {
+    const a = original[index], b = original[index + 1];
+    subdivided.push(a, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]);
+  }
+  subdivided.push(subdivided[0]);
+  leaf.boundary = [[subdivided]];
+  leaf.regions[0].geom = leaf.boundary;
+  const plan = buildRenderSurfacePlan(model);
+  const vertical = plan.borderLines.filter(([a, b]) =>
+    Math.abs(a[0] - b[0]) < 1e-9 &&
+    Math.abs(a[1] - b[1]) < 1e-9 &&
+    Math.abs(a[2] - b[2]) > 1e-9
+  );
+  for (const x of [-10, 0, 10])
+    assert.equal(vertical.filter(([a]) => a[0] === x && a[1] === 0).length, 0);
+  for (const x of [-10, 10])
+    for (const y of [-5, 5])
+      assert.ok(vertical.some(([a]) => a[0] === x && a[1] === y),
+        `real wafer corner ${x},${y} must remain`);
+  assert.equal(vertical.some(([a]) => a[0] === 0 && Math.abs(a[1]) < 5), false,
+    'internal array instance seam cannot produce a vertical outline');
+});
 test('array transfer uses one global plane across different site heights', () => {
   const m = twoSites();
   applyOperation(m, {
