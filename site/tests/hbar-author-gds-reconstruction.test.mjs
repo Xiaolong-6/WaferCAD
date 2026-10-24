@@ -14,7 +14,11 @@ const { continuousOwnerColumnAtXY, restoreContinuousMaterialOwner } =
   await import('../continuous-material-owner.js');
 const { continuousSectionContours } = await import('../continuous-etch-section.js');
 const { pointInMulti } = await import('../vector-geometry.js');
-const { canBuildContinuousSiHeightfield } = await import('../continuous-heightfield-mesh.js');
+const {
+  canBuildContinuousSiHeightfield,
+  buildContinuousSiHeightfieldMesh,
+  continuousSiDisplayStepUm,
+} = await import('../continuous-heightfield-mesh.js');
 const { exactUnetchedFilmCandidates, buildExactFilmComponents } =
   await import('../continuous-exact-film-mesh.js');
 const { buildContinuousMaterialSurfaceMesh } = await import('../continuous-etch-mesh.js');
@@ -156,6 +160,59 @@ test('coincident-height GDS film fragments form finite exact meshes without samp
     before,
     'render mesh generation may not modify the analytic owner',
   );
+});
+
+test('HBAR curved Si display agrees with analytic Section within the bounded fine-grid budget', () => {
+  const owner = validateContinuousEtchModel(project.model);
+  const step = continuousSiDisplayStepUm(owner);
+  assert.equal(step, 0.5, 'steep but compact HBAR front needs the fine display mesh');
+  assert.equal(continuousSiDisplayStepUm(owner, { fineTriangleBudget: 100000 }), 1);
+  const mesh = buildContinuousSiHeightfieldMesh(owner, { xyStepUm: step });
+  assert.ok(mesh.triangles > 40000 && mesh.triangles <= 200000);
+  const { nx, ny } = mesh.grid;
+  const dx = owner.sourceModel.width / nx,
+    dy = owner.sourceModel.height / ny;
+  const positions = mesh.positions;
+  const sample = (x, y) => {
+    const gx = (x + owner.sourceModel.width / 2) / dx,
+      gy = (y + owner.sourceModel.height / 2) / dy,
+      i = Math.min(nx - 1, Math.max(0, Math.floor(gx))),
+      j = Math.min(ny - 1, Math.max(0, Math.floor(gy))),
+      index = (2 * (j * nx + i) + (gy - j <= gx - i ? 0 : 1)) * 9;
+    const xa = positions[index],
+      ya = positions[index + 1],
+      xb = positions[index + 3],
+      yb = positions[index + 4],
+      xc = positions[index + 6],
+      yc = positions[index + 7];
+    const det = (yb - yc) * (xa - xc) + (xc - xb) * (ya - yc);
+    const wa = ((yb - yc) * (x - xc) + (xc - xb) * (y - yc)) / det;
+    const wb = ((yc - ya) * (x - xc) + (xa - xc) * (y - yc)) / det;
+    return (
+      wa * positions[index + 2] + wb * positions[index + 5] + (1 - wa - wb) * positions[index + 8]
+    );
+  };
+  let squared = 0,
+    count = 0,
+    maxError = 0;
+  for (const y of [-31, -10, 0, 11, 31])
+    for (let k = 0; k < 500; k++) {
+      const x = -64 + (128 * (k + 0.29)) / 500;
+      const silicon = continuousOwnerColumnAtXY(owner, [x, y]).find(
+        (part) => part.layerId === 'base',
+      );
+      assert.ok(silicon, 'physical Si material cannot be missing');
+      const error = Math.abs(silicon.z1 - sample(x, y));
+      squared += error * error;
+      maxError = Math.max(maxError, error);
+      count++;
+    }
+  assert.equal(count, 2500);
+  const rms = Math.sqrt(squared / count);
+  assert.ok(rms < 0.07, `HBAR 3D/analytic Section RMS ${rms} um exceeds 70 nm`);
+  // The square-root release shoulder is extremely steep at its lateral limit.
+  // Sampling cannot claim sub-micrometre convergence at every off-grid point.
+  assert.ok(maxError < 1.2, `HBAR worst off-grid height discrepancy: ${maxError} um`);
 });
 
 test('HBAR Recipe oxide opening does not etch 20 nm of Si relative to saved History', async () => {

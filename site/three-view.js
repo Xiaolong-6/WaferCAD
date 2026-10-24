@@ -33,7 +33,10 @@ import {
   buildExactFilmComponents,
   exactUnetchedFilmCandidates,
 } from './continuous-exact-film-mesh.js';
-import { canBuildContinuousSiHeightfield } from './continuous-heightfield-mesh.js';
+import {
+  canBuildContinuousSiHeightfield,
+  continuousSiDisplayStepUm,
+} from './continuous-heightfield-mesh.js';
 import {
   CONTINUOUS_ETCH_MODEL_KERNEL,
   validateContinuousEtchModel,
@@ -3824,7 +3827,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     try {
       siliconResult = canBuildContinuousSiHeightfield(owner)
         ? await buildContinuousSiHeightfieldMeshAsync(owner, {
-            xyStepUm: 1,
+            xyStepUm: continuousSiDisplayStepUm(owner),
             signal: controller.signal,
           })
         : null;
