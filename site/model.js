@@ -1507,7 +1507,10 @@ function applyOperationImpl(
     : [];
   let active = intersection(area, model.boundary);
   if (incidence != null) {
-    const exposure = directIncidenceArea(model, active, incidence, { face });
+    const exposure = directIncidenceArea(model, active, incidence, {
+      face,
+      depositedThicknessUm: amount,
+    });
     // Align only opt-in oblique/height-resolved visibility to the existing
     // 0.1 nm process grid before material partitioning, preserving old Direct.
     const requiresShadowPartition =

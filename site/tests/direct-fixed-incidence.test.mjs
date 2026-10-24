@@ -159,3 +159,54 @@ test('original Q2 author GDS produces the same fixed-direction substrate exposur
   assert.ok(Math.abs(polygonAreaUm2(film) - polygonAreaUm2(quantized)) < 1e-9);
   assert.ok(Math.abs(polygonAreaUm2(film) - polygonAreaUm2(ref.footprint)) < 2e-4);
 });
+
+test('fixed-angle Direct rejects material already above modeled resist ceiling with rollback', () => {
+  const m = base();
+  const step = applyOperation(m, {
+    type: 'add',
+    thickness: 0.7,
+    name: 'Raised existing surface',
+    area: m.boundary,
+  });
+  assert.equal(step.changed, true);
+  const before = structuredClone(m);
+  const result = applyOperation(m, {
+    type: 'add',
+    name: 'Al through exhausted resist',
+    thickness: 0.04,
+    area: m.boundary,
+    incidence: incidence(45, 0, {
+      apertureStack: [{ bottomZUm: 5, topZUm: 5.5, opening: rectMulti(2, 2) }],
+    }),
+  });
+  assert.equal(result.changed, false);
+  assert.match(result.error, /resist top/);
+  assert.deepEqual(m, before);
+});
+
+test('fixed-angle Direct checks the incoming dose height, not only the old material height', () => {
+  const beam = incidence(45, 0, {
+    apertureStack: [{ bottomZUm: 5, topZUm: 5.05, opening: rectMulti(3, 3) }],
+  });
+  const m = base();
+  const before = structuredClone(m);
+  const rejected = applyOperation(m, {
+    type: 'add',
+    thickness: 0.06,
+    name: 'Dose crossing resist ceiling',
+    area: m.boundary,
+    incidence: beam,
+  });
+  assert.equal(rejected.changed, false);
+  assert.match(rejected.error, /resist top/);
+  assert.deepEqual(m, before);
+
+  const accepted = applyOperation(m, {
+    type: 'add',
+    thickness: 0.04,
+    name: 'Dose below resist ceiling',
+    area: m.boundary,
+    incidence: beam,
+  });
+  assert.equal(accepted.changed, true);
+});

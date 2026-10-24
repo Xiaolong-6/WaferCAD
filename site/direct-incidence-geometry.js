@@ -21,11 +21,18 @@ function shift(geometry, dx, dy) {
  * A height discretization approximates continuous swept-volume silhouettes.
  * Caller must record the step and check convergence on its target feature size.
  */
-export function directIncidenceArea(model, area, incidence, { face = 'front' } = {}) {
+export function directIncidenceArea(
+  model,
+  area,
+  incidence,
+  { face = 'front', depositedThicknessUm = 0 } = {},
+) {
   const tiltDeg = incidence?.tiltDeg;
   const azimuthDeg = incidence?.azimuthDeg ?? 0;
   const heightStepUm = incidence?.heightStepUm ?? 0.02;
   const maxSamples = incidence?.maxSamples ?? 3000;
+  if (!Number.isFinite(depositedThicknessUm) || depositedThicknessUm < 0)
+    throw new RangeError('Direct nominal deposition thickness must be nonnegative and finite.');
   if (face !== 'front') throw new RangeError('Angled Direct currently supports front face only.');
   if (!Number.isFinite(tiltDeg) || tiltDeg < 0 || tiltDeg >= 89)
     throw new RangeError('Direct tilt must be in [0, 89) degrees.');
@@ -74,6 +81,14 @@ export function directIncidenceArea(model, area, incidence, { face = 'front' } =
   };
   const pieces = [];
   for (const { z: targetZ, targets } of byHeight.values()) {
+    // Resist is represented only by open ray windows, not by physical solids.
+    // Once a material surface reaches or overtops the assumed resist ceiling,
+    // silently skipping all Z apertures would deposit over the whole surface.
+    // Also reject an exposure whose *new* film would grow through that ceiling.
+    if (apertures.length && targetZ + depositedThicknessUm >= apertures.at(-1).topZUm - EPS)
+      throw new RangeError(
+        'Fixed-angle Direct would grow material through the assumed resist top.',
+      );
     let visible = unionGeometries(targets.map((geom) => intersection(geom, area)));
     for (const aperture of apertures) {
       if (isEmpty(visible)) break;

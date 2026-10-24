@@ -563,3 +563,20 @@ Boolean Al cross, disconnected islands, sub-grid rejection) **5/5 passed**
 using Node 22 and the manifest-verified base source with the same
 `site/vector-geometry.js` Git blob as this branch. The full native Q2 replay
 and integrated Section/3D Chromium screenshots are **not yet accepted**.
+
+### Aperture-stack growth ceiling (2026-10-24)
+
+For opt-in fixed-angle Direct with a physical-Z aperture stack, a new
+fail-closed gate rejects any target surface already at or above the top
+of the assumed resist, or a dose whose nominal wafer-normal growth would
+reach that height. Previously such a target could skip every aperture
+constraint and acquire physically spurious full-face metal. The existing
+transactional Direct rollback preserves model/History state on rejection.
+Legacy Direct without a physical aperture stack is not affected.
+
+The author Q2 MMA/PMMA hypothesis leaves over 0.4 µm height margin for
+the nominal 40/30/30 nm Al sequence, so this gate should not change its
+intended geometry. This is **not** a claim that the real resist relief is
+calibrated. Local isolated native Boolean visibility tests reproduced
+the pre-fix leak and passed after the guard; exact-HEAD Process and
+original-GDS acceptance remain outstanding.
