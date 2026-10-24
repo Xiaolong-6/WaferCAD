@@ -96,6 +96,8 @@ function tiledCapPerimeterSegments(items) {
     const identity = [
       cap.layerId,
       cap.interfaceLayerId,
+      Number(cap.profileNormal ?? cap.normal ?? 0),
+      JSON.stringify(cap.appearance ?? null),
       Number(a[2]).toPrecision(12),
       lineIntervalKey(axis, 12),
     ].join('|');
