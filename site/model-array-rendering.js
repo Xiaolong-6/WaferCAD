@@ -104,27 +104,44 @@ export function buildArrayRenderPlan(model, clip, build) {
           });
         return owned;
       });
+      // Process Topology already determines which vertical edges are physical
+      // creases. Array rendering only owns exposure against adjacent tiles;
+      // never invent vertical edges at every polygon sampling vertex.
+      const boundaryWalls = sidewalls.filter(
+        (wall) => !wall.buried && boundaryLine(wall.p, wall.q, part.model.boundary),
+      );
       const borders = plan.borderLines.filter(([a, b]) => !boundaryLine(a, b, part.model.boundary));
-      for (const w of sidewalls)
-        if (boundaryLine(w.p, w.q, part.model.boundary) && !w.buried)
-          borders.push(
-            [
-              [...w.p, w.z0],
-              [...w.q, w.z0],
-            ],
-            [
-              [...w.p, w.z1],
-              [...w.q, w.z1],
-            ],
-            [
-              [...w.p, w.z0],
-              [...w.p, w.z1],
-            ],
-            [
-              [...w.q, w.z0],
-              [...w.q, w.z1],
-            ],
-          );
+      for (const wall of boundaryWalls)
+        borders.push(
+          [[...wall.p, wall.z0], [...wall.q, wall.z0]],
+          [[...wall.p, wall.z1], [...wall.q, wall.z1]],
+        );
+      // Reuse the physical crease segments emitted by Process Topology and
+      // retain only the exposed height intervals after instance ownership.
+      // Splitting a wall by its neighbor must not create a new dark vertical.
+      const emittedVertical = new Set();
+      for (const [a, b] of plan.borderLines) {
+        if (!boundaryLine(a, b, part.model.boundary)) continue;
+        if (Math.abs(a[0] - b[0]) > EPS || Math.abs(a[1] - b[1]) > EPS) continue;
+        const z0 = Math.min(a[2], b[2]),
+          z1 = Math.max(a[2], b[2]);
+        for (const wall of boundaryWalls) {
+          const dx = wall.q[0] - wall.p[0],
+            dy = wall.q[1] - wall.p[1],
+            length = Math.hypot(dx, dy);
+          if (!(length > EPS)) continue;
+          const projection = ((a[0] - wall.p[0]) * dx + (a[1] - wall.p[1]) * dy) / (length * length);
+          const distance = Math.abs((a[0] - wall.p[0]) * dy - (a[1] - wall.p[1]) * dx) / length;
+          if (projection < -EPS || projection > 1 + EPS || distance > EPS) continue;
+          const low = Math.max(z0, wall.z0),
+            high = Math.min(z1, wall.z1);
+          if (high <= low + EPS) continue;
+          const key = [a[0], a[1], low, high].join('|');
+          if (emittedVertical.has(key)) continue;
+          emittedVertical.add(key);
+          borders.push([[a[0], a[1], low], [a[0], a[1], high]]);
+        }
+      }
       entry = { caps: plan.caps, sidewalls, borderLines: borders, translations: [] };
       groups.set(key, entry);
     }
