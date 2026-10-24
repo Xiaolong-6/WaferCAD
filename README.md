@@ -73,7 +73,7 @@ The [GitHub Wiki](https://github.com/Xiaolong-6/WaferCAD/wiki) is the product us
 - [Recipe Code Tutorial](docs/wiki/Recipe-Code-Tutorial.md) — supported commands and executable-style examples.
 - [Masks and ROI](docs/wiki/Masks-and-ROI.md) — the difference between processing bounds and 3D inspection bounds.
 - [History, Variants and Recovery](docs/wiki/History-Variants-and-Recovery.md) — reversible work, browser recovery and backups.
-- [Illustrated Process Operations](docs/wiki/Process-Operations.md) — 19 canonical Before → After operation schematics, generated from the same catalog as the in-app guide.
+- [Illustrated Process Operations](docs/wiki/Process-Operations.md) — 20 canonical Before → After operation schematics, generated from the same catalog as the in-app guide.
 
 These diagrams are conceptual process-geometry explanations, **not** predictions of deposition kinetics or fabrication yield.
 
