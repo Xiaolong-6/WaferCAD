@@ -167,11 +167,10 @@ test('Wiki uses legible first-party visual evidence or task-specific diagrams, a
     'Troubleshooting',
     'Process-Operations',
   ];
-  const screenshotPrefix = 'docs/wiki/assets/screenshots/2026-10-24/';
-  // Load screenshot provenance only when an actual checked-in screenshot is embedded.
-  // Older Wiki pages remain valid without introducing unused screenshot assets.
-  let screenshotManifest;
-  let approvedScreenshots;
+  const screenshotPrefix = 'docs/wiki/assets/screenshots/';
+  // Each dated capture set owns an independent manifest and source SHA.
+  // Keep all checked-in screenshots verifiable without hard-coding a capture date.
+  const manifests = new Map();
   const screenshotPages = {
     Home: ['desktop-overview.png'],
     'Getting-Started': ['mobile-view-navigation.png', 'mobile-project-base.png'],
@@ -202,34 +201,42 @@ test('Wiki uses legible first-party visual evidence or task-specific diagrams, a
       );
       const asset = url.slice(prefix.length).split('?')[0];
       assert.ok(
-        /^(?:docs\/wiki\/assets\/(?:process|screenshots\/2026-10-24)|site\/examples\/thumbnails|tests\/visual-baselines\/windows-chromium)\//.test(
+        /^(?:docs\/wiki\/assets\/(?:process|screenshots\/[0-9]{4}-[0-9]{2}-[0-9]{2})|site\/examples\/thumbnails|tests\/visual-baselines\/windows-chromium)\//.test(
           asset,
         ),
         `${page}: image path must be from an approved reviewed asset family (${asset})`,
       );
       await access(new URL('../../../' + asset, import.meta.url));
       if (asset.startsWith(screenshotPrefix)) {
-        if (!screenshotManifest) {
-          screenshotManifest = JSON.parse(
+        const relative = asset.slice(screenshotPrefix.length);
+        const dated = relative.match(/^([0-9]{4}-[0-9]{2}-[0-9]{2})\/([^/]+\.png)$/);
+        assert.ok(dated, `${page}: screenshot must live in a dated capture folder`);
+        const [, captureDate, filename] = dated;
+        let approved = manifests.get(captureDate);
+        if (!approved) {
+          const capturePrefix = screenshotPrefix + captureDate + '/';
+          const manifest = JSON.parse(
             await readFile(
-              new URL('../../../' + screenshotPrefix + 'manifest.json', import.meta.url),
+              new URL('../../../' + capturePrefix + 'manifest.json', import.meta.url),
               'utf8',
             ),
           );
-          assert.match(screenshotManifest.source_sha, /^[a-f0-9]{40}$/);
-          assert.ok(Number.isInteger(screenshotManifest.source_workflow_run));
-          approvedScreenshots = new Map(
-            screenshotManifest.files.map((item) => [item.filename, item]),
-          );
+          assert.match(manifest.source_sha, /^[a-f0-9]{40}$/);
+          assert.ok(Number.isInteger(manifest.source_workflow_run));
+          approved = {
+            manifest,
+            files: new Map(manifest.files.map((item) => [item.filename, item])),
+          };
+          manifests.set(captureDate, approved);
         }
-        const filename = asset.slice(screenshotPrefix.length);
-        const record = approvedScreenshots.get(filename);
+        const { manifest, files } = approved;
+        const record = files.get(filename);
         assert.ok(record, `${page}: capture requires versioned source manifest (${filename})`);
         assert.ok(
           (screenshotPages[page] || []).includes(filename),
           `${page}: captured UI is unrelated to this page (${filename})`,
         );
-        assert.equal(record.source_sha, screenshotManifest.source_sha);
+        assert.equal(record.source_sha, manifest.source_sha);
         assert.ok(record.artifact_id > 0 && record.artifact_path);
         assert.ok(record.pixel_width >= 320 && record.pixel_height >= 400);
         const bytes = await readFile(new URL('../../../' + asset, import.meta.url));
@@ -240,7 +247,7 @@ test('Wiki uses legible first-party visual evidence or task-specific diagrams, a
           match.index + match[0].length + 700,
         );
         assert.ok(
-          afterImage.includes(screenshotManifest.source_sha.slice(0, 12)),
+          afterImage.includes(manifest.source_sha.slice(0, 12)),
           `${page}: screenshot caption needs exact source revision`,
         );
       }

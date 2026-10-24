@@ -46,8 +46,8 @@ views are omitted with explicit warnings.
 
 The report is read-only: the historical Section SVGs are inspection figures,
 not restorable or editable project geometry. **Export a separate `.wafercad`**
-to preserve the engineering backup. See [Process Report Export](../io/REPORT_EXPORT.md)
-and [Report Keyframes](../io/REPORT_KEYFRAMES.md) for provenance, export limits,
+to preserve the engineering backup. See [Process Report Export](https://github.com/Xiaolong-6/WaferCAD/blob/main/docs/io/REPORT_EXPORT.md)
+and [Report Keyframes](https://github.com/Xiaolong-6/WaferCAD/blob/main/docs/io/REPORT_KEYFRAMES.md) for provenance, export limits,
 and acceptance coverage.
 
 ## Persistence safety
