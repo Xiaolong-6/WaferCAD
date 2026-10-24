@@ -695,6 +695,88 @@ function canonicalizeProcessPartition(model, regions, operation = 'Isotropic rel
     .filter((region) => !isEmpty(region.geom));
 }
 
+// A bounded 0.1 nm process-grid seam can appear when a diagonal incidence
+// footprint is independently Boolean-clipped against adjacent owners.
+// A total-area tolerance cannot distinguish a long one-grid seam from a real
+// small junction. Require each component to be physically narrow instead.
+function fixedIncidenceGridSeam(geometry) {
+  for (const polygon of geometry || []) {
+    let perimeter = 0;
+    for (const ring of polygon) {
+      for (let i = 1; i < ring.length; i++) {
+        const [x0, y0] = ring[i - 1];
+        const [x1, y1] = ring[i];
+        perimeter += Math.hypot(x1 - x0, y1 - y0);
+      }
+    }
+    if (!(perimeter > 0)) return false;
+    // 2A/P is a conservative representative seam width. The allowed width
+    // comes exclusively from the two independently rounded 0.1 nm XY owners.
+    if ((2 * processGeometryArea([polygon])) / perimeter > PROCESS_GEOMETRY_GRID_UM * 2 + 1e-10)
+      return false;
+  }
+  return true;
+}
+
+function reconcileFixedAngleOwnerSeams(model, inputCoverage) {
+  // An incidence deposit changes vertical material Z ownership, not the
+  // existing XY support. Reject genuine overlaps; repair only grid-thin
+  // splits created by the Boolean process along pre-existing owner edges.
+  for (let i = 0; i < model.regions.length; i++) {
+    for (let j = i + 1; j < model.regions.length; j++) {
+      const overlap = intersection(model.regions[i].geom, model.regions[j].geom);
+      if (!isEmpty(overlap) && !fixedIncidenceGridSeam(overlap)) {
+        throw new Error('Fixed-angle Direct generated non-grid-width material overlap.');
+      }
+    }
+  }
+  // The tallest deposited surface owns any grid-thin ambiguity, not a
+  // lower uncoated base sliver. This changes no intentional XY domain.
+  model.regions = partitionProcessRegions(
+    [...model.regions].sort((a, b) => surfaceZ(b.stack, 'front') - surfaceZ(a.stack, 'front')),
+  );
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const coverage = unionGeometries(model.regions.map((region) => region.geom));
+    const overgrown = difference(coverage, inputCoverage);
+    if (!isEmpty(overgrown) && !fixedIncidenceGridSeam(overgrown))
+      throw new Error('Fixed-angle Direct changed XY support beyond the process grid.');
+    let missing = difference(inputCoverage, coverage);
+    // A Boolean difference against a big union may report spurious pixels.
+    // Confirm that no *individual* region actually owns the candidate.
+    for (const region of model.regions) {
+      missing = difference(missing, region.geom);
+      if (isEmpty(missing)) break;
+    }
+    if (isEmpty(missing)) return;
+    if (!fixedIncidenceGridSeam(missing))
+      throw new Error('Fixed-angle Direct removed non-grid-width XY material support.');
+    for (const polygon of missing) {
+      const crack = [polygon],
+        halo = bufferMulti(crack, PROCESS_GEOMETRY_GRID_UM * 4, 12);
+      let owner = null,
+        bestContact = 0;
+      for (const region of model.regions) {
+        const contact = geometryArea(intersection(region.geom, halo));
+        if (contact > bestContact) {
+          owner = region;
+          bestContact = contact;
+        }
+      }
+      if (!owner || !(bestContact > 0))
+        throw new Error('Fixed-angle Direct cannot assign a numerical XY seam.');
+      owner.geom = unionGeometries([owner.geom, crack]);
+    }
+    // Do not snap repaired owners again before validating exact Boolean
+    // partition: repeated independent snapping reopens diagonal seams.
+    model.regions = partitionProcessRegions(
+      model.regions,
+      PROCESS_GEOMETRY_GRID_UM ** 2 * 2,
+      'Fixed-angle Direct seam repair',
+    );
+  }
+  throw new Error('Fixed-angle Direct left XY coverage cracks after grid-seam repair.');
+}
+
 function stackKey(stack) {
   return (stack || [])
     .map((seg) =>
@@ -1502,9 +1584,25 @@ function applyOperationImpl(
   // Preserve legacy Direct exactly unless fixed incidence was requested.
   if (incidence != null && (type !== 'add' || growth !== 'direct'))
     return { changed: false, error: 'Fixed incidence is available only for Direct Deposit.' };
-  const sidewallPlans = incidence?.sidewallGeometry != null
-    ? isolatedDirectSidewallPlan(model, intersection(area, model.boundary), incidence, amount)
-    : [];
+  // The prior XY support is an immutable conservation reference: ordinary
+  // Direct deposition must neither punch through-Si holes nor add material
+  // outside existing horizontal columns.
+  const beforeIncidenceCoverage =
+    incidence?.tiltDeg > 0 && incidence?.sidewallGeometry == null
+      ? unionGeometries(model.regions.map((region) => region.geom))
+      : null;
+  if (beforeIncidenceCoverage) {
+    // Pre-existing real overlaps are never reclassified as new Boolean seams.
+    const tolerance = Math.max(
+      PROCESS_GEOMETRY_GRID_UM ** 2 * 2,
+      model.width * model.height * 1e-15,
+    );
+    partitionProcessRegions(model.regions, tolerance, 'Fixed-angle Direct input');
+  }
+  const sidewallPlans =
+    incidence?.sidewallGeometry != null
+      ? isolatedDirectSidewallPlan(model, intersection(area, model.boundary), incidence, amount)
+      : [];
   let active = intersection(area, model.boundary);
   if (incidence != null) {
     const exposure = directIncidenceArea(model, active, incidence, {
@@ -1786,25 +1884,31 @@ function applyOperationImpl(
       // A conformal-sidewall segment is a finite-width surrogate for a vertical
       // film. Its outward Z cap is not a physical horizontal process surface, so
       // directional Deposit/Extend must not grow another layer from that cap.
-      if (!exposed || ['conformal-sidewall', 'direct-sidewall'].includes(exposed.role)) return stack;
+      if (!exposed || ['conformal-sidewall', 'direct-sidewall'].includes(exposed.role))
+        return stack;
       return mutateStack(stack, { type, layerId: layer?.id, targetLayerId, amount, face });
     });
   }
   for (const wall of sidewallPlans) {
-    splitByArea(model, wall.area, (stack) => {
-      const z = surfaceZ(stack, face);
-      if (z == null || z < wall.lowZ - 1e-6 || z >= wall.highZ - 1e-9) return stack;
-      const bands = wall.visibleHeightIntervals || [[wall.lowZ, wall.highZ]];
-      const segments = bands
-        .map(([bottom, top]) => ({
-          layerId: layer.id,
-          z0: Math.max(z, bottom),
-          z1: top,
-          role: 'direct-sidewall',
-        }))
-        .filter((segment) => segment.z1 > segment.z0 + 1e-9);
-      return normalizeStack([...stack, ...segments]);
-    }, false);
+    splitByArea(
+      model,
+      wall.area,
+      (stack) => {
+        const z = surfaceZ(stack, face);
+        if (z == null || z < wall.lowZ - 1e-6 || z >= wall.highZ - 1e-9) return stack;
+        const bands = wall.visibleHeightIntervals || [[wall.lowZ, wall.highZ]];
+        const segments = bands
+          .map(([bottom, top]) => ({
+            layerId: layer.id,
+            z0: Math.max(z, bottom),
+            z1: top,
+            role: 'direct-sidewall',
+          }))
+          .filter((segment) => segment.z1 > segment.z0 + 1e-9);
+        return normalizeStack([...stack, ...segments]);
+      },
+      false,
+    );
   }
   model.regions = mergeRegions(model, model.regions);
   if (growth === 'conformal') {
@@ -1851,10 +1955,12 @@ function applyOperationImpl(
     healConformalCoverageCracks(model, protectedVoids);
   }
 
-  // Reject a real duplicate material owner rather than return an invalid model.
-  // The incidence transaction rollback restores the entire predecessor.
+  // Fix only process-grid-width Boolean seams with a prior-coverage witness.
+  // Never relax the existing strict physical-overlap gate.
+  if (beforeIncidenceCoverage) reconcileFixedAngleOwnerSeams(model, beforeIncidenceCoverage);
   if (incidence != null && incidence.tiltDeg > 0)
     model.regions = canonicalizeProcessPartition(model, model.regions, 'Fixed-angle Direct');
+  if (beforeIncidenceCoverage) reconcileFixedAngleOwnerSeams(model, beforeIncidenceCoverage);
   model.revision++;
   model.processRevision = (model.processRevision || 0) + 1;
   return { changed: true, layerId: layer?.id || targetLayerId || null };

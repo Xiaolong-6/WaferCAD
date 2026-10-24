@@ -668,3 +668,60 @@ polygon-Boolean regressions passed locally with 15 baseline Recipe tests
 remote blob. The **original** `sample.gds` and exact-HEAD full replay were
 not available to this runtime, so complete Q2/Chromium acceptance is still
 pending. The fallback does not validate a Josephson tunneling barrier.
+
+### Original GDS Q2 native three-dose Process execution (2026-10-24)
+
+The original author archive `Zenodo_files(1).zip` was supplied directly
+for the acceptance attempt. `Zenodo_files/sample.gds` verified the pinned
+SHA-256 `6e9db7d506e17f82fd22250db9a380a420b2a1088bac4a33b8c747930e9d5c02`.
+The parser confirmed the real `chip2/jj_width0p18` +90° SREF at
+`(1400, 2513) µm`, its 17 local junction polygons and a
+`760 µm²` Nb/Si opening in the `40 × 30 µm` ROI.
+
+**A real fixed-angle Process failure was reproduced:** the third Al dose
+was rejected by the strict owner check for `0.0000264993 µm²` of
+overlapping XY regions. Simply accepting an overlap or subtracting it was
+not a valid fix: the same Boolean splitting stage lost an additional
+`0.000148206 µm²` of otherwise occupied Si support.
+
+The Direct-only partition repair now performs strict pre-operation owner
+validation, checks numerical seams against the 0.1 nm persistence grid
+using component width rather than a loose total-area tolerance, gives
+ambiguous cells to the taller exposed material, and repairs newly lost
+existing coverage using neighboring physical owners. It repeats the
+coverage proof *after* the existing partition quantization; wider overlaps
+still fail and roll back. Legacy Direct and opt-in isolated-sidewall
+modeling retain their previous paths.
+
+Actual author-source **Native Direct Process** replay with no assumed
+oxide yielded these geometries:
+
+| Quantity | Measured |
+| --- | ---: |
+| First Al, −45°, 40 nm (persisted XY area) | 1.990337 µm² |
+| Second Al, +45°, 30 nm (persisted XY area) | 2.548931 µm² |
+| Third Al, −135°, 30 nm (persisted XY area) | 2.551283 µm² |
+| First-two-Al common area | 0.03226303 µm² |
+| Three-Al common area | 0.03226055 µm² |
+| Final region count, no oxide | 9 |
+| Post-process XY area / original wafer XY area | 1200 / 1200 µm² |
+| Duplicate XY owner area / unowned Si area | 0 / 0 µm² |
+| Section vs 3D material Z slab mismatches | 0 |
+
+An explicitly *hypothetical* 2 nm AlOx spacer after the first Al also
+completed the three native doses (6 layers, 9 regions), with
+`0.03226302 µm²` first-two-Al overlap. No oxidization kinetics or
+electrical Josephson transport is claimed.
+
+The source-backed execution used the exact branch `site/model.js` Git
+blob `320f6a26720a191171dc00c832355c22a627e329` before the
+repair, then the repaired Process source, together with the branch
+fixed-incidence visibility algorithm and author GDS, on local Node 22.
+Two new rollback/through-hole safety tests and 15 baseline Recipe tests
+passed locally (17/17). A strictly validated `.wafercad` project was
+also rendered by the existing headed Chromium/SwiftShader production
+Three.js diagnostic with **no page errors**. The resulting browser capture
+was `about:blank` null-origin; normal-origin Worker Open,
+History/Recovery and full four-view cross-state acceptance remain open.
+The data identify a mathematically consistent geometry candidate, **not**
+a measured fabricated tunnel junction.

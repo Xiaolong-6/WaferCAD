@@ -5,7 +5,8 @@ import test from 'node:test';
 import { replayQ2ChipPose } from '../../scripts/transmon-q2-integrated-diagnostic.mjs';
 import { expandProjectStorage } from '../project-io.js';
 import { validateProjectFile } from '../project-schema.js';
-import { pointInMulti } from '../vector-geometry.js';
+import { difference, intersection, pointInMulti, unionGeometries } from '../vector-geometry.js';
+import { geometryArea } from '../model.js';
 import { materialSolids, sectionSlices } from '../model-view-geometry.js';
 
 test('Q2 actual chip2 pose + Nb/Si recess + three static Al shadows share one recoverable model', {
@@ -167,6 +168,28 @@ test('Q2 native Direct recomputes fixed-angle Al on the recessed Si within sourc
     restored.model.layers.filter((layer) => alIds.has(layer.id)).length,
     3,
   );
+  // The original 40 × 30 µm Si wafer remains fully owned after every Al
+  // split. The fixed-angle process must neither fabricate through-wafer gaps
+  // nor leave duplicate XY material owners at its 0.1 nm persistence grid.
+  const regions = restored.model.regions;
+  const coverage = unionGeometries(regions.map((region) => region.geom));
+  const gridCellArea = 1e-8; // (0.1 nm)², in µm².
+  assert.ok(
+    geometryArea(difference(restored.model.boundary, coverage)) <= gridCellArea * 2,
+    'Native Q2 deposit introduced an unowned wafer XY gap.',
+  );
+  assert.ok(
+    geometryArea(difference(coverage, restored.model.boundary)) <= gridCellArea * 2,
+    'Native Q2 deposit leaked outside the original wafer.',
+  );
+  for (let i = 0; i < regions.length; i++) {
+    for (let j = i + 1; j < regions.length; j++) {
+      assert.ok(
+        geometryArea(intersection(regions[i].geom, regions[j].geom)) <= gridCellArea * 2,
+        'Q2 must not persist duplicate XY material owners.',
+      );
+    }
+  }
   const solids = materialSolids(restored.model);
   const slices = sectionSlices(restored.model, restored.section.a, restored.section.b)
     .filter((s) => alIds.has(s.layerId));
