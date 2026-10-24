@@ -1,42 +1,10 @@
 import { unionGeometries } from './vector-geometry.js';
+import { compileContinuousFootprintDistance } from './continuous-footprint-distance-index.js';
+export { compileContinuousFootprintDistance } from './continuous-footprint-distance-index.js';
 
 // Derived visualization geometry. The immutable continuous material owner remains
 // authoritative: mesh resolution must never enter project storage or Process.
 // Input: validated {sourceModel, fronts}; output: physical-um surface triangles.
-
-function pointInRing(x, y, ring) {
-  let inside = false;
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const a = ring[i];
-    const b = ring[j];
-    if (a[1] > y !== b[1] > y && x < ((b[0] - a[0]) * (y - a[1])) / (b[1] - a[1]) + a[0])
-      inside = !inside;
-  }
-  return inside;
-}
-
-function signedFootprintDistance(x, y, multi) {
-  let inside = false;
-  let minSquared = Infinity;
-  for (const poly of multi || []) {
-    if (pointInRing(x, y, poly[0]) && !poly.slice(1).some((r) => pointInRing(x, y, r)))
-      inside = true;
-    for (const ring of poly)
-      for (let k = 1; k < ring.length; k++) {
-        const a = ring[k - 1];
-        const b = ring[k];
-        const dx = b[0] - a[0];
-        const dy = b[1] - a[1];
-        const l2 = dx * dx + dy * dy;
-        const t = l2 ? Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / l2)) : 0;
-        const rx = x - a[0] - t * dx;
-        const ry = y - a[1] - t * dy;
-        minSquared = Math.min(minSquared, rx * rx + ry * ry);
-      }
-  }
-  const magnitude = Math.sqrt(minSquared);
-  return inside ? magnitude : -magnitude;
-}
 
 const TETS = [
   [0, 5, 1, 6],
@@ -307,15 +275,18 @@ export function buildContinuousMaterialSurfaceMesh(
   }));
   const planeSize = (nx + 1) * (ny + 1);
   const xySigned = solids.map(() => new Float32Array(planeSize));
+  const solidDistances = solids.map((solid) => compileContinuousFootprintDistance(solid.geom));
+  const frontDistances = owner.fronts.map((front) =>
+    compileContinuousFootprintDistance(front.seedGeom),
+  );
   const depthFields = owner.fronts.map((f) => new Float32Array(planeSize));
   for (let iy = 0; iy <= ny; iy++)
     for (let ix = 0; ix <= nx; ix++) {
       const p = ix + (nx + 1) * iy;
-      for (let r = 0; r < solids.length; r++)
-        xySigned[r][p] = signedFootprintDistance(xs[ix], ys[iy], solids[r].geom);
+      for (let r = 0; r < solids.length; r++) xySigned[r][p] = solidDistances[r](xs[ix], ys[iy]);
       for (let f = 0; f < owner.fronts.length; f++) {
         const front = owner.fronts[f];
-        const seedSigned = signedFootprintDistance(xs[ix], ys[iy], front.seedGeom);
+        const seedSigned = frontDistances[f](xs[ix], ys[iy]);
         const distance = Math.max(0, -seedSigned);
         if (distance >= front.lateralUm) {
           depthFields[f][p] = 0;

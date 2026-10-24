@@ -1015,6 +1015,12 @@ export function createThreeView({
       host.dataset.rendererFrameArrayLodTier = host.dataset.transparentArrayLodTier || 'exact';
       host.dataset.rendererFrameSceneGeneration = host.dataset.sceneGeneration || '0';
       host.dataset.rendererFrameMs = String(performance.now() - frameStartedAt);
+      if (
+        host.dataset.renderFidelity === 'exact-continuous-etch' &&
+        !host.dataset.continuousEtchFirstDrawMs
+      ) {
+        host.dataset.continuousEtchFirstDrawMs = host.dataset.rendererFrameMs;
+      }
       if (Number.isFinite(progressiveProfileStart)) {
         if (
           host.dataset.renderFidelity === 'approximate' &&
@@ -3563,10 +3569,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
   // Experimental native ThreeView path for exact continuous material. The
   // displayed triangles are derived: the persisted owner remains analytic.
   async function renderContinuousEtch(model, isSuperseded) {
+    const continuousStartedAt = performance.now();
     const clip = getClipGeometry();
     const roiBounds = continuousRectRoiBounds(clip);
     const owner = validateContinuousEtchModel(model);
     if (!owner) throw new RangeError('Missing or invalid continuous material owner');
+    host.dataset.continuousEtchOwnerValidationMs = String(performance.now() - continuousStartedAt);
     // This analytic path bypasses buildRenderSurfacePlan(), so it must build
     // its own structural outlines from the very same clipped display meshes.
     // THREE.EdgesGeometry removes coplanar triangulation diagonals; the
@@ -3774,6 +3782,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     };
     const updateMaterialAppearance = () => {
       const inspection = getInspection() || {};
+      let structuralBorderMs = 0;
       for (const mesh of presentationObjects) {
         const layerId = mesh.userData?.continuousLayerId;
         if (!layerId) continue;
@@ -3792,13 +3801,18 @@ diffuseColor.a *= waferCadAlphaScale;`,
             layerInspectionTone(layerId, highlightedLayerId),
           );
         }
-        if (mesh.visible && inspection.borders) ensureContinuousBorder(mesh);
+        if (mesh.visible && inspection.borders) {
+          const startedAt = performance.now();
+          ensureContinuousBorder(mesh);
+          structuralBorderMs += performance.now() - startedAt;
+        }
         const outline = mesh.userData.continuousBorder;
         if (outline)
           outline.visible =
             mesh.visible &&
             presentationState({ kind: 'border', category: 'exterior' }, inspection).visible;
       }
+      host.dataset.continuousEtchBorderBuildMs = String(structuralBorderMs);
       if (renderer) renderer.localClippingEnabled = false;
       host.dataset.continuousEtchRoi = roiBounds ? 'rect-clipped' : 'full-model';
       scheduleFrame();
@@ -3830,9 +3844,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
     // its first painted WebGL frame before releasing the startup overlay.
     progressiveProfileStart = performance.now();
     delete host.dataset.rendererExactFirstFrameMs;
+    delete host.dataset.continuousEtchFirstDrawMs;
     host.dataset.renderFidelity = 'pending-continuous-etch';
     host.dataset.renderState = 'building';
     const { edgeTable, triTable } = await import('three/addons/objects/MarchingCubes.js');
+    host.dataset.continuousEtchDependencyImportMs = String(performance.now() - continuousStartedAt);
     if (isSuperseded()) {
       const error = new Error('Continuous 3D scene superseded by newer model/ROI');
       error.name = 'SceneVariantSuperseded';
@@ -3859,6 +3875,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       error.name = 'SceneVariantSuperseded';
       throw error;
     }
+    host.dataset.continuousEtchWorkerWallMs = String(performance.now() - meshBuildAt);
     const silicon = siliconResult?.mesh || null;
     host.dataset.continuousEtchMeshBackend = siliconResult?.backend || 'generic';
     const sceneAssemblyAt = performance.now();
@@ -3894,6 +3911,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         data.triangles += part.triangles;
       }
     }
+    host.dataset.continuousEtchSurfaceComposeMs = String(performance.now() - sceneAssemblyAt);
     host.dataset.continuousEtchMeshBuildMs = String(performance.now() - meshBuildAt);
     if (data.triangles > 1500000)
       throw new RangeError('Continuous hybrid mesh exceeds triangle budget');
@@ -3904,6 +3922,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     if (!data.layers.length) throw new RangeError('Continuous Etch has no visible solid');
     // The candidate is complete; do not retire the old group for stale work.
     disposeGroup();
+    const meshObjectsStartedAt = performance.now();
     const materialState = presentationState(
       { kind: 'material-exterior' },
       getInspection() || {},
@@ -3947,6 +3966,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         };
       }
     }
+    host.dataset.continuousEtchObjectCreateMs = String(performance.now() - meshObjectsStartedAt);
     physicalSceneModel = model;
     physicalSceneSignature = 'continuous-etch-v1';
     activeSceneVariant = null;
@@ -3963,10 +3983,18 @@ diffuseColor.a *= waferCadAlphaScale;`,
     applyPresentationState({ profile: false, settle: true });
     const roiStartAt = performance.now();
     cropMaterialMeshes();
+    const roiCropEnd = performance.now();
     updateRoiCaps();
+    const roiCapsEnd = performance.now();
     updateZBreakCaps();
+    const zBreakCapsEnd = performance.now();
     updateMaterialAppearance();
-    host.dataset.continuousEtchRoiUpdateMs = String(performance.now() - roiStartAt);
+    const roiEnd = performance.now();
+    host.dataset.continuousEtchRoiCropMs = String(roiCropEnd - roiStartAt);
+    host.dataset.continuousEtchRoiCapsMs = String(roiCapsEnd - roiCropEnd);
+    host.dataset.continuousEtchZBreakCapsMs = String(zBreakCapsEnd - roiCapsEnd);
+    host.dataset.continuousEtchRoiAppearanceMs = String(roiEnd - zBreakCapsEnd);
+    host.dataset.continuousEtchRoiUpdateMs = String(roiEnd - roiStartAt);
     host.dataset.continuousEtchMainThreadBuildMs = String(performance.now() - sceneAssemblyAt);
     host.dataset.renderFidelity = 'exact-continuous-etch';
     host.dataset.rendererExactSceneMs = String(performance.now() - progressiveProfileStart);
