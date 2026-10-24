@@ -22,10 +22,23 @@ const points = (e) => [[e.points]];
 
 /**
  * Source-backed integrated geometry diagnostic. It deliberately computes
- * static horizontal shadow footprints; it does NOT claim dynamic 3D Direct
- * material self-shadow, real sidewall coating, oxidation or lift-off.
+ * static footprints by default. The opt-in native Direct mode recomputes
+ * ray visibility on the current material surface for every Al dose. Neither
+ * mode creates real MMA/PMMA resist solids, oxidation or lift-off.
  */
-export function replayQ2ChipPose(source, { oxide = null } = {}) {
+export function replayQ2ChipPose(
+  source,
+  { oxide = null, transport = 'static', heightStepUm = 0.0375 } = {},
+) {
+  if (!['static', 'native-direct'].includes(transport))
+    throw new RangeError('Q2 transport must be static or native-direct.');
+  if (!Number.isFinite(heightStepUm) || heightStepUm <= 0 || heightStepUm > 0.0375)
+    throw new RangeError('Q2 shadow heightStepUm must be finite and within (0, 0.0375] um.');
+  // Static geometry uses the same two-layer sampled-resist budget as the
+  // native Direct kernel. Reject very small steps before allocating O(1/h)
+  // intersections; the native solver also has its own per-surface budget.
+  if (Math.ceil(0.5 / heightStepUm) + Math.ceil(0.4 / heightStepUm) + 2 > 3000)
+    throw new RangeError('Q2 shadow heightStepUm exceeds the 3000-sample budget.');
   if (sha(source) !== EXPECTED) throw new Error('Author Zenodo GDS SHA-256 mismatch.');
   const parsed = parseGDS(
     source.buffer.slice(source.byteOffset, source.byteOffset + source.byteLength),
@@ -59,12 +72,13 @@ export function replayQ2ChipPose(source, { oxide = null } = {}) {
 
   const model = createModel({ shape: 'rect', width: 40, height: 30, thickness: 675 });
   model.layers[0].name = 'Si (100)';
-  const add = (name, thickness, area, type = 'add') => {
+  const add = (name, thickness, area, type = 'add', incidence = null) => {
     const outcome = applyOperation(model, {
       type,
       name,
       growth: 'direct',
       ...(type === 'etch' ? { etchProfile: 'directional' } : {}),
+      ...(incidence ? { incidence } : {}),
       thickness,
       area,
       face: 'front',
@@ -100,30 +114,62 @@ export function replayQ2ChipPose(source, { oxide = null } = {}) {
   const footprints = [];
   const operations = [];
   for (const [index, beam] of beams.entries()) {
-    const theta = Math.PI / 4;
-    const az = (beam.azimuth * Math.PI) / 180;
-    const vx = Math.tan(theta) * Math.cos(az);
-    const vy = Math.tan(theta) * Math.sin(az);
-    let visible = domain;
-    for (const resist of apertures) {
-      const n = Math.ceil((resist.top - resist.bottom) / 0.0375);
-      for (let i = 0; i <= n; i++) {
-        const z = resist.bottom + ((resist.top - resist.bottom) * i) / n;
-        const translated = transformMulti(resist.opening, ([x, y]) => [
-          x - (z - siTopZ) * vx,
-          y - (z - siTopZ) * vy,
-        ]);
-        visible = intersection(visible, translated);
+    let footprint;
+    let outcome;
+    if (transport === 'native-direct') {
+      // This restricted research replay illuminates only the original GDS
+      // etched-Si footprint. Nb outside that aperture has a different surface
+      // elevation; a flat, source-anchored resist stack is not valid there.
+      outcome = add(
+        'Al ' + (index + 1) + ' (native fixed-angle Direct)',
+        beam.thickness,
+        nbMask,
+        'add',
+        {
+          tiltDeg: 45,
+          azimuthDeg: beam.azimuth,
+          heightStepUm,
+          apertureStack: apertures.map(({ bottom, top, opening }) => ({
+            bottomZUm: bottom,
+            topZUm: top,
+            opening,
+          })),
+        },
+      );
+      // Read the actual persisted Al owner geometry AFTER this Process step;
+      // do not mistake a theoretical input footprint for deposited material.
+      footprint = unionGeometries(
+        model.regions
+          .filter((region) => region.stack.some((part) => part.layerId === outcome.layerId))
+          .map((region) => intersection(region.geom, nbMask))
+          .filter((geom) => geom.length),
+      );
+    } else {
+      const theta = Math.PI / 4;
+      const az = (beam.azimuth * Math.PI) / 180;
+      const vx = Math.tan(theta) * Math.cos(az);
+      const vy = Math.tan(theta) * Math.sin(az);
+      let visible = domain;
+      for (const resist of apertures) {
+        const n = Math.ceil((resist.top - resist.bottom) / heightStepUm);
+        for (let i = 0; i <= n; i++) {
+          const z = resist.bottom + ((resist.top - resist.bottom) * i) / n;
+          const translated = transformMulti(resist.opening, ([x, y]) => [
+            x - (z - siTopZ) * vx,
+            y - (z - siTopZ) * vy,
+          ]);
+          visible = intersection(visible, translated);
+          if (!visible.length) break;
+        }
         if (!visible.length) break;
       }
-      if (!visible.length) break;
+      footprint = intersection(visible, nbMask);
+      if (!footprint.length) throw new Error('No Al exposure in the author Q2 etched area.');
+      outcome = add('Al ' + (index + 1) + ' (static shadow)', beam.thickness, footprint);
     }
-    // Purposeful diagnostic restriction: Al lands on the etched Si mask only.
-    // This is not the branch's dynamic native Direct shadow solver.
-    const footprint = intersection(visible, nbMask);
-    if (!footprint.length) throw new Error('No Al exposure in the author Q2 etched area.');
+    if (!footprint.length)
+      throw new Error('No persisted Al in the author Q2 etched area after dose ' + (index + 1));
     footprints.push(footprint);
-    const outcome = add('Al ' + (index + 1) + ' (static shadow)', beam.thickness, footprint);
     operations.push({
       index,
       polarTiltDeg: 45,
@@ -159,7 +205,9 @@ export function replayQ2ChipPose(source, { oxide = null } = {}) {
   const project = {
     format: 'WaferCAD-vector',
     version: 14,
-    name: 'Transmon Q2 integrated STATIC shadow diagnostic (not a verified Josephson junction)',
+    name: transport === 'native-direct'
+      ? 'Transmon Q2 NATIVE DIRECT geometry diagnostic (not a verified Josephson junction)'
+      : 'Transmon Q2 integrated STATIC shadow diagnostic (not a verified Josephson junction)',
     model,
     layout: {
       ...junction,
@@ -208,6 +256,8 @@ export function replayQ2ChipPose(source, { oxide = null } = {}) {
     project: json,
     report: {
       sourceSha256: sha(source),
+      transport,
+      heightStepUm,
       physicalPlacement: { cell: 'chip2 / jj_width0p18', xUm: 1400, yUm: 2513, rotationDeg: 90 },
       etchedSiTopZUm: siTopZ,
       resistAssumption: '0.5 um MMA + 0.4 um PMMA relative to etched silicon',
@@ -221,7 +271,9 @@ export function replayQ2ChipPose(source, { oxide = null } = {}) {
       processRevisions: model.processRevision,
       oxideHypothesis: oxide,
       strictProjectRoundTrip: true,
-      method: 'STATIC horizontal shadow footprint; not dynamic Direct deposition or lift-off',
+      method: transport === 'native-direct'
+        ? 'NATIVE fixed-angle sampled surface visibility and persisted Al; no modeled resist solids, sidewall deposition, oxidation kinetics or lift-off'
+        : 'STATIC horizontal shadow footprint; not dynamic Direct deposition or lift-off',
       tunnelJunctionValidated: false,
     },
   };
@@ -231,14 +283,18 @@ if (process.argv[1]?.endsWith('transmon-q2-integrated-diagnostic.mjs')) {
   const input = arg('--gds');
   const output = arg('--output');
   if (!input || !output)
-    throw new Error('Usage: --gds sample.gds --output candidate.wafercad [--report evidence.json]');
+    throw new Error('Usage: --gds sample.gds --output candidate.wafercad [--native-direct] [--height-step-um 0.0375] [--report evidence.json]');
   const source = await readFile(input);
   const t = arg('--oxide-thickness-um'),
     evidence = arg('--oxide-source');
   if ((t === null) !== (evidence === null))
     throw new Error('AlOx hypothesis requires both thickness and provenance.');
   const oxide = t === null ? null : { thicknessUm: Number(t), source: evidence };
-  const { project, report } = replayQ2ChipPose(source, { oxide });
+  const { project, report } = replayQ2ChipPose(source, {
+    oxide,
+    transport: args.includes('--native-direct') ? 'native-direct' : 'static',
+    heightStepUm: arg('--height-step-um') === null ? 0.0375 : Number(arg('--height-step-um')),
+  });
   await writeFile(output, project);
   if (arg('--report')) await writeFile(arg('--report'), JSON.stringify(report, null, 2) + '\n');
   console.log(JSON.stringify(report, null, 2));

@@ -94,3 +94,79 @@ test('Q2 cross-section material interfaces match the native 3D solid slab Z owne
   }
   assert.ok(Math.abs((slices[0].t1 - slices[0].t0) - 0.2540003) < 1e-4);
 });
+
+test('Q2 replay rejects unsupported transport and non-converged coarse sampling before GDS import', () => {
+  const absentSource = Buffer.alloc(0);
+  assert.throws(
+    () => replayQ2ChipPose(absentSource, { transport: 'empirical-PVD' }),
+    /transport must be static or native-direct/,
+  );
+  for (const heightStepUm of [0, -0.01, 0.075, 1e-8, Infinity, NaN]) {
+    assert.throws(
+      () => replayQ2ChipPose(absentSource, { transport: 'native-direct', heightStepUm }),
+      /heightStepUm/,
+    );
+  }
+});
+
+test('Q2 native Direct recomputes fixed-angle Al on the recessed Si within source GDS mask', {
+  skip: !process.env.WAFERCAD_TRANSMON_GDS,
+}, async () => {
+  const source = await readFile(process.env.WAFERCAD_TRANSMON_GDS);
+  const oxide = {
+    thicknessUm: 0.002,
+    source: 'Illustrative geometry only; author oxide thickness not established',
+  };
+  const { project, report } = replayQ2ChipPose(source, {
+    transport: 'native-direct',
+    heightStepUm: 0.0375,
+    oxide,
+  });
+  assert.equal(report.transport, 'native-direct');
+  assert.equal(report.heightStepUm, 0.0375);
+  assert.match(report.method, /NATIVE fixed-angle/);
+  assert.equal(report.tunnelJunctionValidated, false);
+  assert.deepEqual(report.physicalPlacement, {
+    cell: 'chip2 / jj_width0p18', xUm: 1400, yUm: 2513, rotationDeg: 90,
+  });
+  assert.ok(Math.abs(report.etchedSiTopZUm - 337.45) < 1e-9);
+  assert.ok(Math.abs(report.firstTwoAlOverlapAreaUm2 - 0.0324) < 0.002);
+  assert.equal(report.operations.length, 3);
+  assert.equal(new Set(report.operations.map((o) => o.layerId)).size, 3);
+  assert.equal(report.processRevisions, 6);
+  assert.equal(report.modelLayers, 6);
+  assert.equal(report.strictProjectRoundTrip, true);
+
+  const restored = JSON.parse(project);
+  expandProjectStorage(restored);
+  validateProjectFile(restored);
+  assert.ok(restored.layout.elements.every((element) => element.layer === 8));
+  const regionAt = (xy) =>
+    restored.model.regions.find((region) => pointInMulti(xy, region.geom));
+  assert.equal(regionAt([0, 0]).stack.at(-1).layerId, 'base');
+  const nb = regionAt([0, 12]).stack;
+  assert.ok(Math.abs(nb.at(-1).z1 - 337.7) < 1e-8);
+  assert.equal(nb.at(-1).layerId !== 'base', true);
+  const alIds = new Set(report.operations.map((o) => o.layerId));
+  for (const { layerId, footprintAreaUm2 } of report.operations) {
+    assert.ok(footprintAreaUm2 > 0);
+    assert.ok(restored.model.regions.some((r) =>
+      r.stack.some((segment) => segment.layerId === layerId)));
+  }
+  assert.equal(
+    restored.model.layers.filter((layer) => alIds.has(layer.id)).length,
+    3,
+  );
+  const solids = materialSolids(restored.model);
+  const slices = sectionSlices(restored.model, restored.section.a, restored.section.b)
+    .filter((s) => alIds.has(s.layerId));
+  assert.ok(slices.length >= 2, 'Q2 native First/Second Al must intersect the section');
+  for (const slice of slices) {
+    assert.ok(solids.some((solid) =>
+      solid.layerId === slice.layerId &&
+      solid.slabs.some((slab) =>
+        Math.abs(slab.z0 - slice.z0) < 1e-8 &&
+        Math.abs(slab.z1 - slice.z1) < 1e-8
+      )), 'Section and 3D material slabs must share the same physical Z owners');
+  }
+});

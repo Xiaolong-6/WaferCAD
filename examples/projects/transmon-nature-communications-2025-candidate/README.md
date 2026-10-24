@@ -506,3 +506,43 @@ interaction does not validate Worker/History/Recovery. **Visual and
 exact merged-HEAD acceptance are still open.** See
 \`q2-integrated-chip-pose-evidence.json\` for the machine-readable
 diagnostic and the explicit release limits.
+
+## Q2 source-pose native Direct replay (opt-in research path)
+
+The integrated `transmon-q2-integrated-diagnostic.mjs` script now accepts
+`--native-direct`. Unlike its default static footprint comparison, this
+mode feeds the author's **actual +90° chip2 Q2 layout** and the source-derived
+Nb-removal polygon into the native `applyOperation` fixed-angle Direct
+kernel. Every Al exposure recalculates visibility from the model's current
+top material Z, including the preceding Al exposure or an explicitly
+hypothetical AlOx spacer. The output footprint is measured from **persisted
+Al material owners**, not from the nominal incident aperture.
+
+```sh
+node scripts/transmon-q2-integrated-diagnostic.mjs \
+  --gds /path/to/Zenodo_files/sample.gds \
+  --native-direct --height-step-um 0.0375 \
+  --output /tmp/Q2-native-direct.wafercad \
+  --report /tmp/Q2-native-direct.json
+
+WAFERCAD_TRANSMON_GDS=/path/to/Zenodo_files/sample.gds \
+  node --test site/tests/transmon-q2-integrated-diagnostic.test.mjs
+```
+
+The existing default **static** diagnostic is unchanged, except for an
+explicit sampling-budget guard. This research path intentionally restricts
+Al targets to source `2/0` Nb-removal openings. Nb-retaining regions
+sit **250 nm above the recessed exposed Si** and cannot use the same
+flat, Si-anchored resist openings as though that topography did not exist.
+The two hypothetical resist openings remain `8/1` (upper) and
+`8/1 ∪ 8/0` (lower); exposure-dose mapping and the wafer-frame azimuths
+are not author-verified. Resist is an aperture stack rather than stored
+PMMA/MMA solids. The model still lacks physical overhang sidewall growth,
+resist-contact occlusion, a calibrated AlOx interface, argon milling,
+lift-off and Josephson electrical properties.
+
+**Acceptance status:** syntax/static integration checks only during this
+change. The source-dependent native Q2 replay and newly added science
+tests require the SHA-256-verified original GDS and full exact-HEAD
+local runtime. No new result, physical overlap area, native Chromium
+screenshot or Section/3D acceptance is claimed until those tests run.
