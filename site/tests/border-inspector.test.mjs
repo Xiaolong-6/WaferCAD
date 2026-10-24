@@ -338,3 +338,91 @@ test('automatic buried border alpha follows material transmittance, explicit X-r
   );
   assert.equal(exterior.materialState.opacity, 0.65);
 });
+
+test('tiled same-material interface suppresses artificial instance seams', async () => {
+  const { ARRAY_MODEL_KERNEL } = await import('../model-array.js');
+  const { rectMulti } = await import('../vector-geometry.js');
+  const leaf = createModel({ shape: 'rect', width: 10, height: 10, thickness: 2 });
+  const model = {
+    ...leaf,
+    kernel: ARRAY_MODEL_KERNEL,
+    width: 20,
+    boundary: rectMulti(20, 10),
+    regions: [],
+    array: {
+      version: 1,
+      templates: [{ id: 'cell', model: leaf }],
+      instances: [
+        { id: 'left', templateId: 'cell', x: -5, y: 0 },
+        { id: 'right', templateId: 'cell', x: 5, y: 0 },
+      ],
+    },
+  };
+  assert.equal(
+    applyOperation(model, {
+      type: 'add',
+      name: 'Continuous oxide',
+      thickness: 0.5,
+      area: rectMulti(20, 10),
+    }).changed,
+    true,
+  );
+  const plan = buildRenderSurfacePlan(model);
+  const hiddenInterfaces = buriedInterfaceContours(plan.caps, {
+    includeCap: (cap) => Boolean(cap.interfaceLayerId),
+  });
+  assert.ok(hiddenInterfaces.length > 0, 'exterior interface perimeter remains available');
+  assert.equal(
+    hiddenInterfaces.some(
+      ([a, b]) => Math.abs(a[0]) < 1e-9 && Math.abs(b[0]) < 1e-9 && Math.abs(a[1] - b[1]) > 1e-9,
+    ),
+    false,
+    'a continuous buried interface cannot acquire a dark line at the template seam',
+  );
+  assert.equal(
+    borderInspectorContours(plan).interface.some(
+      ([a, b]) => Math.abs(a[0]) < 1e-9 && Math.abs(b[0]) < 1e-9 && Math.abs(a[1] - b[1]) > 1e-9,
+    ),
+    false,
+    'Structure and X-Ray must not expose an internal array seam',
+  );
+});
+
+test('coplanar interface parity cancels subdivided common edges but preserves heterogeneous junctions', () => {
+  const left = {
+    z: 1,
+    layerId: 'oxide',
+    interfaceLayerId: 'base',
+    buried: true,
+    polys: [
+      [
+        [0, 0],
+        [2, 0],
+        [2, 1],
+        [2, 2],
+        [0, 2],
+        [0, 0],
+      ],
+    ].map((ring) => [ring]),
+  };
+  const right = {
+    ...left,
+    polys: [
+      [
+        [2, 0],
+        [4, 0],
+        [4, 2],
+        [2, 2],
+        [2, 0],
+      ],
+    ].map((ring) => [ring]),
+  };
+  const shared = ([a, b]) =>
+    Math.abs(a[0] - 2) < 1e-9 && Math.abs(b[0] - 2) < 1e-9 && Math.abs(a[1] - b[1]) > 1e-9;
+  const contiguous = buriedInterfaceContours([left, right]);
+  assert.equal(contiguous.filter(shared).length, 0);
+  assert.ok(contiguous.some(([a, b]) => a[0] === 0 && b[0] === 0));
+  assert.ok(contiguous.some(([a, b]) => a[0] === 4 && b[0] === 4));
+  const different = buriedInterfaceContours([left, { ...right, layerId: 'nitride' }]);
+  assert.ok(different.some(shared), 'different material boundaries are not cancelled');
+});
