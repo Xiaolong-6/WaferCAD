@@ -518,8 +518,18 @@ test('array exterior crease classifier ignores duplicate straight rays while kee
     'the true horizontal-to-vertical exterior corner remains',
   );
   const grouped = [
-    { parts: [incoming, short, { ...short }], instanceTranslations: [[0, 0], [10, 0]] },
+    {
+      parts: [incoming, short, { ...short }],
+      instanceTranslations: [
+        [0, 0],
+        [10, 0],
+      ],
+    },
   ];
   assert.deepEqual(atPoint(grouped, 0), [[1, 2]]);
-  assert.deepEqual(atPoint(grouped, 10), [[1, 2]], 'instance translations preserve height ownership');
+  assert.deepEqual(
+    atPoint(grouped, 10),
+    [[1, 2]],
+    'instance translations preserve height ownership',
+  );
 });
