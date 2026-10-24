@@ -1,6 +1,15 @@
 // Playwright page.evaluate expression. Independent production Three.js instance.
 // It does not assign live Workstation state, bypass Recovery or replace Worker.
-async ({ model: providedModel, demo = false, roiBounds = null, zBreak = null }) => {
+async ({
+  model: providedModel,
+  demo = false,
+  roiBounds = null,
+  zBreak = null,
+  zDisplayFactor = 1,
+  roughReliefFactor = 1,
+  quality = false,
+  inspectionOpacity = 1,
+}) => {
   const [{ createThreeView }, { buildRenderSurfacePlan, rememberRenderSurfacePlan }] =
     await Promise.all([
       import('https://wafercad.local/three-view.js'),
@@ -59,7 +68,7 @@ async ({ model: providedModel, demo = false, roiBounds = null, zBreak = null }) 
   const title = document.createElement('div');
   title.textContent = demo
     ? 'WaferCAD production Three.js — in-memory three-material demo'
-    : 'WaferCAD production Three.js — validated project model (isolated viewport)';
+    : `WaferCAD production Three.js — validated model, Z ×${zDisplayFactor}, relief ×${roughReliefFactor}`;
   title.style.cssText = 'padding:10px 18px;color:#2a3035;font:600 18px sans-serif;';
   const host = document.createElement('div');
   host.style.cssText = 'position:relative;width:100%;height:calc(100% - 70px);';
@@ -68,22 +77,30 @@ async ({ model: providedModel, demo = false, roiBounds = null, zBreak = null }) 
   overlay.append(title, host);
   host.append(stats);
   document.body.append(overlay);
+  const originState = { visible: false };
   const renderer = createThreeView({
     host,
     stats,
     getModel: () => model,
     getClipGeometry: () => clip,
     getZCollapse: () => collapse,
-    getInspection: () => ({ opacity: 1, borders: true, fast: true }),
+    getZDisplayFactor: () => zDisplayFactor,
+    getShowOrigin: () => originState.visible,
+    getRoughReliefFactor: () => roughReliefFactor,
+    getInspection: () => ({ opacity: inspectionOpacity, borders: true, fast: !quality }),
   });
   const initialized = await renderer.init();
   // init() already schedules a full native scene build; another render()
   // during that build supersedes the rough-mesh refinement.
-  window.__wafercadOfflineModel = { model, host, renderer };
+  window.__wafercadOfflineModel = { model, host, renderer, originState };
   return {
     initialized,
     roiBounds,
     zBreak,
+    zDisplayFactor,
+    roughReliefFactor,
+    renderQuality: quality ? 'Quality' : 'Fast',
+    inspectionOpacity,
     roughCaps: plan.caps.filter((cap) => cap.appearance?.kind === 'rough').length,
     exposedRoughCaps: plan.caps.filter((cap) => !cap.buried && cap.appearance?.kind === 'rough')
       .length,

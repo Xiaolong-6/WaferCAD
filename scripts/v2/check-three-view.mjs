@@ -179,8 +179,29 @@ try {
       // Presentation changes reuse scientific scene resources.
       const generation = await host.getAttribute('data-scene-generation');
       const surfacePlan = await host.getAttribute('data-surface-plan-build-count');
-      await command('opacity:three');
+      await command('display:three');
       assert.equal(await page.locator('#threeOpacityRange').getAttribute('min'), '0.1');
+      const origin = page.getByRole('button', { name: 'Show Origin', exact: true });
+      assert.equal(await origin.getAttribute('aria-pressed'), 'false');
+      assert.equal(await host.getAttribute('data-origin-visible'), 'false');
+      assert.equal(
+        await page.getByRole('slider', { name: '3D vertical display scale' }).count(),
+        1,
+      );
+      assert.equal(
+        await page
+          .getByRole('spinbutton', { name: '3D vertical display scale exact factor' })
+          .count(),
+        0,
+      );
+      await origin.click();
+      await waitForPaint(page);
+      assert.equal(await origin.getAttribute('aria-pressed'), 'true');
+      assert.equal(await host.getAttribute('data-origin-visible'), 'true');
+      await origin.click();
+      await waitForPaint(page);
+      assert.equal(await origin.getAttribute('aria-pressed'), 'false');
+      assert.equal(await host.getAttribute('data-origin-visible'), 'false');
       if (!(await snapshot()).threeDisplay.borders) await command('borders:three');
       await ready();
       assert.equal((await snapshot()).threeDisplay.borders, true);
@@ -189,7 +210,7 @@ try {
       await command('borders:three');
       await ready();
       await page.keyboard.press('Escape');
-      await command('opacity:three');
+      await command('display:three');
       await page.locator('#threeOpacityRange').focus();
       await page.keyboard.press('Home');
       await ready();

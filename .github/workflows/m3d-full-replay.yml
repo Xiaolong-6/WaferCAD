@@ -1,22 +1,6 @@
 name: M3D full replay
 
 on:
-  push:
-    branches:
-      - fix/m3d-conformal-microcracks-20261008
-      - integrate/reviewed-branches-20261008
-    paths:
-      - "scripts/m3d-kernel-full-replay.mjs"
-      - "site/tests/m3d-reconstruction-regression.test.mjs"
-      - "site/model.js"
-      - "site/history-operation-label.js"
-      - "site/tests/history/history-operation-label.test.mjs"
-      - "site/project-io.js"
-      - "site/project-export-worker.js"
-      - "site/tests/project-file.test.mjs"
-      - "scripts/m3d-visual-acceptance.mjs"
-      - "examples/projects/m3d-selfpowered-2026-candidate/**"
-      - ".github/workflows/m3d-full-replay.yml"
   workflow_dispatch:
 
 concurrency:

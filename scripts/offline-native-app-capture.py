@@ -62,6 +62,89 @@ def local_file(url: str, site: Path, three: Path, version: str):
     return path, kind
 
 
+def check_stable_rough_ui(page, out: Path):
+    """Real Manual Process, Worker, Undo/Redo, local Save and file Open."""
+    snapshot = lambda: page.evaluate('() => window.WaferCadV2Workstation.snapshot()')
+    initial = snapshot()['model']
+    if initial['width'] != 2 or initial['height'] != 2:
+        raise ValueError('Stable rough UI probe requires an explicit 2 um base project')
+    page.locator('[data-action="domain:process"]').click()
+    for control, value in [('operationType', 'etch'), ('etchProfile', 'directional'),
+                           ('operationArea', 'full'), ('faceToggleBtn', 'front'),
+                           ('etchSurfaceMode', 'rough-stable')]:
+        page.locator('#' + control).select_option(value)
+    for control, value in [('operationThickness', '0.75'), ('roughFeatureSize', '0.3'),
+                           ('roughAmplitude', '0.4'), ('roughFeatureCv', '25'),
+                           ('roughHeightCv', '30'), ('roughSeed', '123')]:
+        page.locator('#' + control).fill(value)
+    # The 0.75 um Etch leaves exactly 0.25 um, avoiding binary subtraction
+    # roundoff when asserting exact file/Recovery equality at the 0.1 nm grid.
+    page.locator('#applyOperationBtn').click()
+    page.wait_for_function('''() => {
+      const s=window.WaferCadV2Workstation.snapshot();
+      return !s.workflow.busy && s.model.regions[0]?.stack[0]?.frontSurface?.morphology === 'stochastic-v2';
+    }''', timeout=60000)
+    etched = snapshot()
+    replay = etched['workflow']['steps'][-1]['operation']['replay']['params']['surface']
+    if replay['morphology'] != 'stochastic-v2':
+        raise RuntimeError('Manual Apply lost stable profile replay identity')
+    page.screenshot(path=str(out / 'stable-rough-process.png'), animations='disabled')
+    page.locator('#operationType').select_option('add')
+    page.locator('#growthMode').select_option('conformal')
+    page.locator('#layerName').fill('Stable ALD 50 nm')
+    page.locator('#operationThickness').fill('0.05')
+    page.locator('#applyOperationBtn').click()
+    page.wait_for_function('''() => {
+      const s=window.WaferCadV2Workstation.snapshot();
+      return !s.workflow.busy && s.model.layers.length === 2;
+    }''', timeout=60000)
+    coated = snapshot()
+    stack = coated['model']['regions'][0]['stack']
+    if stack[0]['frontSurface'] != stack[-1]['frontSurface'] or abs(stack[-1]['z1'] - stack[0]['z1'] - 0.05) > 1e-10:
+        raise RuntimeError('Stable conformal film lost its 50 nm profile registration')
+    page.locator('[data-action="domain:history"]').click()
+    page.locator('#undoBtn').click()
+    if snapshot()['model'] != etched['model']:
+        raise RuntimeError('Undo failed to restore the exact stable Etch')
+    page.locator('#redoBtn').click()
+    if snapshot()['model'] != coated['model']:
+        raise RuntimeError('Redo changed stable profile or film geometry')
+    page.locator('[data-action="domain:project"]').click()
+    page.locator('#projectNameInput').fill('Stable rough acceptance')
+    page.locator('#saveProjectBtn').click()
+    page.wait_for_function('''() => /Saved/.test(
+      document.querySelector('[data-slot="status.message"]')?.textContent || '')''', timeout=30000)
+    page.locator('#projectExportMenuBtn').click()
+    with page.expect_download(timeout=60000) as download:
+        page.locator('#exportProjectBtn').click()
+    target = out / 'stable-rough-roundtrip.wafercad'
+    download.value.save_as(str(target))
+    page.locator('#openProjectInput').set_input_files(str(target))
+    button = page.get_by_role('button', name='Open project', exact=True)
+    if button.count() and button.last.is_visible():
+        button.last.click()
+    page.wait_for_function('''() => /Opened/.test(
+      document.querySelector('[data-slot="status.message"]')?.textContent || '')''', timeout=60000)
+    (out / 'stable-model-before-open.json').write_text(json.dumps(coated['model']))
+    (out / 'stable-model-after-open.json').write_text(json.dumps(snapshot()['model']))
+    if snapshot()['model'] != coated['model']:
+        raise RuntimeError('Worker file round-trip changed stable physical geometry')
+    page.reload(wait_until='domcontentloaded')
+    page.wait_for_function('''() => document.body.dataset.ready === 'true' &&
+      window.WaferCadV2Workstation.snapshot().model.layers.length === 2''', timeout=60000)
+    if snapshot()['model'] != coated['model']:
+        raise RuntimeError('Saved workspace reload changed stable physical geometry')
+    page.wait_for_function('''() => {
+      const host=document.getElementById('threeHost');
+      return host?.dataset.renderState === 'ready' && host.dataset.renderPhase === 'complete' &&
+        host.querySelector('canvas')?.dataset.roughMeshMode === 'detailed';
+    }''', timeout=60000)
+    page.screenshot(path=str(out / 'stable-rough-reloaded.png'), animations='disabled')
+    return {'manualWorkerApply': True, 'conformal50nm': True, 'undoRedoExact': True,
+            'fileOpenExact': True, 'localSaveReloadExact': True,
+            'project': target.name, 'model': coated['model']}
+
+
 def is_optional_build_info_rejection(item: dict) -> bool:
     """Only the optional app-origin build stamp may be ignored in offline mode."""
     parsed = urlsplit(item['url'])
@@ -313,7 +396,9 @@ def source_revision(root: Path):
     try:
         commit = subprocess.run(['git', '-C', str(root), 'rev-parse', 'HEAD'],
                                 capture_output=True, text=True, check=True, timeout=4).stdout.strip()
-        return {'revision': commit, 'source': 'git'}
+        dirty = bool(subprocess.run(['git', '-C', str(root), 'status', '--porcelain'],
+                                    capture_output=True, text=True, check=True, timeout=4).stdout.strip())
+        return {'revision': commit, 'dirty': dirty, 'source': 'git'}
     except (OSError, subprocess.SubprocessError):
         return {'revision': 'unavailable', 'source': 'unversioned-source'}
 
@@ -417,53 +502,6 @@ def run(args):
             report['images'] = {'fourView': {'file': base.name, 'sha256': snapshot_sha(base)}}
             if args.inspect_ui_controls:
                 report['uiControlDiagnostic'] = inspect_native_ui_controls(page, out)
-            if args.inspect_history:
-                # These are real app controls; null-origin remains diagnostic-only
-                # because process Workers and Recovery cannot operate there.
-                history_nav = page.locator('button[data-action="domain:history"]')
-                process_nav = page.locator('button[data-action="domain:process"]')
-                if history_nav.count() != 1 or process_nav.count() != 1:
-                    raise RuntimeError('Native History/Process navigation controls are missing')
-                history_nav.click()
-                page.wait_for_timeout(350)
-                base_step = page.locator('#snapshotList .snapshot-base-step')
-                history_visible = base_step.count() == 1 and base_step.is_visible()
-                history_img = out / 'history-step0.png'
-                page.mouse.move(args.width - 8, args.height - 8)
-                page.screenshot(path=str(history_img), animations='disabled')
-                report['images']['historyStep0'] = {
-                    'file': history_img.name, 'sha256': snapshot_sha(history_img)}
-                base_step.click()
-                page.wait_for_timeout(350)
-                project_selected = page.locator('button[data-action="domain:project"][aria-pressed="true"]')
-                base_editor_visible = page.locator('#applyBaseBtn').is_visible()
-                step0_opens_editor = bool(project_selected.count() == 1 and base_editor_visible)
-                editor_img = out / 'step0-base-editor.png'
-                page.mouse.move(args.width - 8, args.height - 8)
-                page.screenshot(path=str(editor_img), animations='disabled')
-                report['images']['step0BaseEditor'] = {
-                    'file': editor_img.name, 'sha256': snapshot_sha(editor_img)}
-                process_nav.click()
-                page.wait_for_timeout(350)
-                undo = page.get_by_role('button', name='Undo model operation')
-                redo = page.get_by_role('button', name='Redo model operation')
-                process_actions = undo.count() == 1 and redo.count() == 1
-                process_img = out / 'process-undo.png'
-                page.mouse.move(args.width - 8, args.height - 8)
-                page.screenshot(path=str(process_img), animations='disabled')
-                report['images']['processUndo'] = {
-                    'file': process_img.name, 'sha256': snapshot_sha(process_img)}
-                report['historyProcessDiagnostic'] = {
-                    'stepZeroVisible': history_visible,
-                    'processUndoRedoVisible': process_actions,
-                    'stepZeroOpensBaseEditor': step0_opens_editor,
-                    'historyRecoveryVerified': False,
-                }
-                fail = fail or not (history_visible and process_actions and step0_opens_editor)
-                project_nav = page.locator('button[data-action="domain:project"]')
-                if project_nav.count():
-                    project_nav.click()
-                    page.wait_for_timeout(200)
             three_rect = before.get('three')
             three_ok = (bool(before['webgl']['available'])
                         and bool(before['webgl']['nativeThreeContext'])
@@ -520,6 +558,63 @@ def run(args):
                         report['images']['maximized'] = {'file': maximized.name,
                              'sha256': snapshot_sha(maximized)}
                         report['afterMaximize'] = runtime_probe(page)
+            if args.check_z_ui and three_ok:
+                trigger = page.locator('#threePanel [data-action="display:three"]')
+                if trigger.count() != 1:
+                    raise RuntimeError('3D Display Settings toolbar trigger is missing')
+                trigger.click()
+                opacity_slider = page.locator('#threeOpacityRange')
+                origin_button = page.get_by_role('button', name='Show Origin')
+                if opacity_slider.count() != 1 or origin_button.count() != 1:
+                    raise RuntimeError('3D Display Settings must contain opacity and origin controls')
+                if origin_button.get_attribute('aria-pressed') != 'false':
+                    raise RuntimeError('World origin must default to hidden')
+                origin_button.click()
+                page.wait_for_timeout(250)
+                origin_on_state = page.locator('#threeHost').get_attribute('data-origin-visible')
+                pressed_on = origin_button.get_attribute('aria-pressed')
+                style_on = origin_button.get_attribute('data-variant')
+                page.mouse.move(650, 550)
+                page.wait_for_timeout(200)
+                origin_image = out / 'three-origin-on-ui.png'
+                page.screenshot(path=str(origin_image), animations='disabled')
+                report['images']['originOnUi'] = {'file': origin_image.name,
+                                                  'sha256': snapshot_sha(origin_image)}
+                origin_button.click()
+                page.wait_for_timeout(250)
+                origin_off_state = page.locator('#threeHost').get_attribute('data-origin-visible')
+                pressed_off = origin_button.get_attribute('aria-pressed')
+                style_off = origin_button.get_attribute('data-variant')
+                if (origin_on_state, pressed_on, style_on, origin_off_state, pressed_off, style_off) != \
+                        ('true', 'true', 'primary', 'false', 'false', 'secondary'):
+                    raise RuntimeError('Native 3D world-origin toggle did not match pressed state')
+                slider = page.get_by_role('slider', name='3D vertical display scale')
+                if slider.count() != 1 or page.get_by_role('spinbutton', name='3D vertical display scale exact factor').count():
+                    raise RuntimeError('3D Display Settings must have one Z slider, without a multiplier input')
+                if page.get_by_role('button', name='Reset 3D vertical display scale to one').count():
+                    raise RuntimeError('Retired vertical scale reset control is still present')
+                slider.fill('1.75')
+                page.wait_for_timeout(350)
+                selected = page.locator('#threeHost').get_attribute('data-z-display-factor')
+                indicator = page.locator('#threeHost .v2-three-z-display-indicator')
+                indicator_text = indicator.inner_text() if indicator.is_visible() else ''
+                page.mouse.move(650, 550)
+                page.wait_for_timeout(200)
+                image = out / 'three-z-display-ui.png'
+                page.screenshot(path=str(image), animations='disabled')
+                report['images']['zDisplayUi'] = {'file': image.name, 'sha256': snapshot_sha(image)}
+                factor_label = page.locator('[data-three-display-settings] output').last.inner_text()
+                relief_buttons = page.locator('[data-three-relief-factor]').count()
+                section_physical_button = page.locator('#sectionRoughPhysicalBtn').count()
+                report['zDisplayUi'] = {'factor1Point75': selected, 'factorLabel': factor_label,
+                                        'indicator': indicator_text, 'originPressedOn': pressed_on,
+                                        'reliefButtons': relief_buttons,
+                                        'extraSectionPhysicalButton': section_physical_button,
+                                        'nullOrigin': mode != 'https-origin'}
+                if selected != '1.75' or factor_label != '×1.75' or \
+                        relief_buttons != 0 or section_physical_button != 0 or \
+                        'not physical' not in indicator_text:
+                    raise RuntimeError('Continuous Z control or retired Relief/Section UI failed')
             if args.project:
                 if mode != 'https-origin':
                     report['exampleLoad'] = 'NOT ATTEMPTED: null origin prevents native Worker access'
@@ -541,9 +636,16 @@ def run(args):
                     report['images']['project'] = {'file': image.name, 'sha256': snapshot_sha(image)}
                     report['exampleLoad'] = 'attempted; independently inspect native page and Worker logs'
                     report['afterProject'] = runtime_probe(page)
+            if args.check_stable_rough_ui:
+                if mode != 'https-origin':
+                    raise RuntimeError('Stable rough UI acceptance requires normal HTTPS Origin')
+                report['stableRoughUi'] = check_stable_rough_ui(page, out)
             if args.inmemory_demo or args.inmemory_project:
                 model_input = {'model': None, 'demo': args.inmemory_demo,
-                               'roiBounds': args.inmemory_roi, 'zBreak': args.inmemory_z_break}
+                               'roiBounds': args.inmemory_roi, 'zBreak': args.inmemory_z_break,
+                               'zDisplayFactor': args.inmemory_z_scale,
+                               'roughReliefFactor': args.inmemory_relief_scale,
+                               'quality': args.quality, 'inspectionOpacity': args.inmemory_opacity}
                 input_evidence = None
                 if args.inmemory_project:
                     project_path = args.inmemory_project.resolve()
@@ -578,7 +680,8 @@ def run(args):
                         raise ValueError('Continuous Main native projection failed')
                     section_expression = (root / 'scripts/offline-native-section-view.js').read_text(
                         encoding='utf-8')
-                    section_a_b = {'a': [-170, 0], 'b': [170, 0]}
+                    half_width = float(model_input['model'].get('width') or 340) / 2
+                    section_a_b = {'a': [-half_width, 0], 'b': [half_width, 0]}
                     section_result = page.evaluate(section_expression, {
                         'model': model_input['model'], 'section': section_a_b})
                     section_image = out / 'continuous-section-native.png'
@@ -587,7 +690,27 @@ def run(args):
                     report['images']['continuousSectionNative'] = {
                         'file': section_image.name, 'sha256': snapshot_sha(section_image)}
                     report['continuousSectionNative'] = section_result
-                    page.locator('#wc-offline-section-capture').evaluate('(el) => el.remove()')
+                    if model_input['model'].get('electricalRegions') or model_input['model'].get('implants'):
+                        # Two independent real-Canvas acceptance modes: annotation visibility
+                        # cannot depend on structure borders or a Z Break toggle.
+                        for mode, settings in (
+                            ('no-borders', {'borders': False}),
+                            ('explicit-zbreak', {'borders': False, 'collapse': {
+                                'enabled': True, 'continuousEtchExplicit': True,
+                                'top': 1, 'bottom': -1}}),
+                        ):
+                            result = page.evaluate(section_expression, {
+                                'model': model_input['model'], 'section': section_a_b,
+                                **settings})
+                            image = out / ('continuous-annotation-' + mode + '.png')
+                            page.locator('#wc-offline-section-capture').screenshot(
+                                path=str(image), animations='disabled')
+                            report['images']['continuousAnnotation_' + mode] = {
+                                'file': image.name, 'sha256': snapshot_sha(image)}
+                            report['continuousAnnotation_' + mode] = result
+                            page.locator('#wc-offline-section-capture').evaluate('(el) => el.remove()')
+                    else:
+                        page.locator('#wc-offline-section-capture').evaluate('(el) => el.remove()')
                 expression = (root / 'scripts/offline-native-model-view.js').read_text(
                     encoding='utf-8')
                 details = page.evaluate(expression, model_input)
@@ -613,6 +736,14 @@ def run(args):
                     roughMeshMode:canvas?.dataset?.roughMeshMode || 'none',
                     roughMeshBackend:canvas?.dataset?.roughMeshBackend || null,
                     roughTriangleCount:Number(canvas?.dataset?.roughTriangleCount || 0),
+                    rendererFinalReadyMs:Number(item?.host?.dataset?.rendererFinalReadyMs || 0),
+                    rendererRoughMs:Number(item?.host?.dataset?.rendererRoughMs || 0),
+                    roughSaturatedLodTrim:item?.host?.dataset?.roughSaturatedLodTrim || null,
+                    roughSaturatedLodDebug:globalThis.__waferCadLocalSaturationDebug || null,
+                    roughTaskSpecialDebug:globalThis.__waferCadTaskSpecialDebug || null,
+                    roughLodTrace:globalThis.__waferCadLodTrace || null,
+                    roughDisplaySamplePitchUm:Number(item?.host?.dataset?.roughDisplaySamplePitchUm || 0),
+                    roughDisplayBlendMin:Number(item?.host?.dataset?.roughDisplayBlendMin ?? 1),
                     roughRebuildCount:Number(canvas?.dataset?.roughRebuildCount || 0),
                     continuousRoiMode:item?.host?.dataset?.continuousEtchRoi || null,
                     continuousRoiMeshMode:item?.host?.dataset?.continuousEtchRoiMeshMode || null,
@@ -634,6 +765,43 @@ def run(args):
                 ready = bool(details['initialized'] and state['ready'] and rough_ready and clipped_ready
                              and state['renderState'] == 'ready'
                              and state['width'] > 100 and state['height'] > 100)
+                if args.check_png_wysiwyg and ready:
+                    import base64
+                    from PIL import Image
+                    from io import BytesIO
+                    export = page.evaluate('''async () => {
+                      const item = window.__wafercadOfflineModel;
+                      const beforeModel = JSON.stringify(item.model);
+                      item.originState.visible = true;
+                      item.renderer.refreshOrigin();
+                      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+                      const originVisible = item.host.dataset.originVisible;
+                      const renderMode = item.host.querySelector('canvas')?.dataset?.roughMeshMode;
+                      const source = item.host.querySelector('canvas');
+                      const beforeWidth = source?.width;
+                      const blob = await item.renderer.capturePng(3);
+                      const data = await new Promise(resolve => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result);
+                        reader.readAsDataURL(blob);
+                      });
+                      return {originVisible, modelUnchanged: JSON.stringify(item.model) === beforeModel,
+                        renderMode, renderModeAfter: source?.dataset?.roughMeshMode,
+                        beforeWidth, data};
+                    }''')
+                    if export['originVisible'] != 'true' or not export['modelUnchanged'] or \
+                            export['renderMode'] != export['renderModeAfter']:
+                        raise RuntimeError('PNG diverged from current visible scene or changed model')
+                    image_bytes = base64.b64decode(export.pop('data').split(',', 1)[1])
+                    png_path = out / 'native-png-3x-wysiwyg.png'
+                    png_path.write_bytes(image_bytes)
+                    with Image.open(BytesIO(image_bytes)) as png:
+                        export['pngSize'] = list(png.size)
+                    if export['pngSize'][0] < export['beforeWidth']:
+                        raise RuntimeError('Native PNG did not capture expected scene resolution')
+                    report['pngWysiwyg'] = export
+                    report['images']['nativePng'] = {'file': png_path.name,
+                                                     'sha256': snapshot_sha(png_path)}
                 if args.inspect_ui_controls and ready:
                     base_img = out / 'isolated-before-highlight.png'
                     page.screenshot(path=str(base_img), animations='disabled')
@@ -784,6 +952,52 @@ def run(args):
                     'Isolated native Three.js viewport: Main/Mask/Section, History and Recovery are not synchronized.')
                 if not ready:
                     fail = True
+                if args.native_section_compare:
+                    if not args.rough_cutline or not args.inmemory_roi:
+                        raise ValueError('Native Section comparison requires --rough-cutline and --inmemory-roi')
+                    import base64
+                    expression = (root / 'scripts/offline-native-section-comparison.js').read_text(encoding='utf-8')
+                    section_images = page.evaluate(expression, {
+                        'roiBounds': args.inmemory_roi, 'line': args.rough_cutline,
+                        'zBreak': args.inmemory_z_break, 'borders': args.native_section_borders})
+                    section_data = {'modelUnchanged': section_images['modelUnchanged'],
+                                    'actualProductionSectionRenderer': section_images['actualProductionSectionRenderer']}
+                    for section_mode in ('physical',):
+                        result = section_images[section_mode]
+                        if result['sampleMode'] != section_mode:
+                            raise RuntimeError('Native Section mode incorrectly selected')
+                        name = 'native-section-' + section_mode + '.png'
+                        section_path = out / name
+                        section_path.write_bytes(base64.b64decode(result['png'].split(',', 1)[1]))
+                        report['images'][name] = {'file': name, 'sha256': snapshot_sha(section_path)}
+                        section_data[section_mode] = {'density': result['pixelDensity'], 'image': name}
+                    report['nativeSectionComparison'] = section_data
+                if args.check_rough_parity:
+                    expression = (root / 'scripts/offline-native-rough-parity.js').read_text(encoding='utf-8')
+                    report['roughHeightParity'] = page.evaluate(expression, model_input['model'])
+                if args.check_glb:
+                    expression = (root / 'scripts/offline-native-glb-check.js').read_text(encoding='utf-8')
+                    report['physicalGlb'] = page.evaluate(expression)
+                if args.rough_cutline:
+                    roi = args.inmemory_roi
+                    density = 1100 / (roi[2] - roi[0]) if roi else 100
+                    report['physicalRoughCutline'] = page.evaluate('''(params) => {
+                      const instance = window.__wafercadOfflineModel;
+                      const before = JSON.stringify(instance.model);
+                      const result = instance.renderer.sampleRoughCutline(params);
+                      if (before !== JSON.stringify(instance.model)) {
+                        throw Error('Read-only cutline probe mutated project data');
+                      }
+                      return { ...result, modelUnchanged: true };
+                    }''',
+                      {'xMin': args.rough_cutline[0], 'xMax': args.rough_cutline[1],
+                       'y': args.rough_cutline[2], 'pixelsPerUm': density, 'samples': 65})
+                    if report['physicalRoughCutline']['missingCount']:
+                        raise RuntimeError('Rough cutline missed real mesh positions')
+                    for point in report['physicalRoughCutline']['points']:
+                        if abs(point['errorUm'] - point['meshInterpolationErrorUm'] -
+                               point['displayAttenuationErrorUm']) > 1e-9:
+                            raise RuntimeError('Rough error decomposition violated signed sum')
             report['httpRequestsAllowed'] = dict(counts)
             report['rejectedRequests'] = rejected
             # Only exact build-info.json is known harmless; any other denial needs review.
@@ -828,9 +1042,26 @@ def main():
                         help='Test real continuous-material layer color and visibility without rebuilding mesh')
     parser.add_argument('--capture-continuous-ui', action='store_true',
                         help='Capture and inspect the real experimental Continuous Etch Process form')
+    parser.add_argument('--inmemory-relief-scale', type=int, choices=(1, 10, 30), default=1,
+                        help='Opt-in local monotone roughness relief display magnification')
+    parser.add_argument('--inmemory-opacity', type=float, default=1,
+                        help='Local in-memory renderer inspection opacity for transparency diagnosis')
+    parser.add_argument('--inmemory-z-scale', type=float, default=1,
+                        help='Diagnostic-only continuous 3D Z multiplier (0.25 to 20)')
     parser.add_argument('--wait-ms', type=int, default=5500)
     parser.add_argument('--width', type=int, default=1600)
     parser.add_argument('--height', type=int, default=1000)
+    parser.add_argument('--check-z-ui', action='store_true', help='Exercise real v2 display-only Z menu')
+    parser.add_argument('--check-rough-parity', action='store_true', help='Probe production GLSL at Photodetector physical coordinates')
+    parser.add_argument('--check-stable-rough-ui', action='store_true', help='Apply stable rough Etch/ALD and verify native Undo, Save, file Open and reload on a 2 um base')
+    parser.add_argument('--check-glb', action='store_true', help='Check production physical GLB stable-profile heights and 50 nm film')
+    parser.add_argument('--check-png-wysiwyg', action='store_true',
+                        help='Capture exact native 3D PNG with origin on and compare scene state')
+    parser.add_argument('--quality', action='store_true', help='Use Quality instead of Fast 3D mesh budget')
+    parser.add_argument('--rough-cutline', help='Physical xMin,xMax,y versus actual 3D rough mesh')
+    parser.add_argument('--native-section-compare', action='store_true',
+                        help='Compare genuine physical Section canvas against the actual 3D mesh')
+    parser.add_argument('--native-section-borders', action='store_true', help='Include real structural Section borders in native model comparison')
     parser.add_argument('--headless', action='store_true', help='Opt out of headful/Xvfb; may disable WebGL')
     parser.add_argument('--require-origin', action='store_true', help='Fail rather than use null-origin diagnostic')
     parser.add_argument('--inspect-ui-controls', action='store_true',
@@ -840,13 +1071,32 @@ def main():
     args = parser.parse_args()
     if not 300 <= args.width <= 4096 or not 300 <= args.height <= 4096 or not 500 <= args.wait_ms <= 60000:
         parser.error('Invalid dimensions or wait interval')
+    if not math.isfinite(args.inmemory_z_scale) or not 0.25 <= args.inmemory_z_scale <= 20:
+        parser.error('In-memory 3D Z scale must be finite and between 0.25 and 20')
+    if not math.isfinite(args.inmemory_opacity) or not 0.1 <= args.inmemory_opacity <= 1:
+        parser.error('In-memory inspection opacity must be between 0.1 and 1')
     if args.capture_continuous_appearance and not args.inmemory_project:
         parser.error('Continuous appearance capture requires an in-memory project')
     if (args.inmemory_roi or args.inmemory_z_break or args.inmemory_camera) and not args.inmemory_project:
         parser.error('ROI, Z break and camera require --inmemory-project')
+    if args.native_section_borders and not args.native_section_compare:
+        parser.error('--native-section-borders requires --native-section-compare')
+    if args.native_section_compare and (not args.rough_cutline or not args.inmemory_roi):
+        parser.error('--native-section-compare requires --rough-cutline and --inmemory-roi')
+    if args.check_rough_parity and not args.inmemory_project:
+        parser.error('Rough height parity requires --inmemory-project')
+    if args.check_glb and not args.inmemory_project:
+        parser.error('Physical GLB check requires --inmemory-project')
+    if (args.rough_cutline or args.quality or args.native_section_compare or args.native_section_borders) and not args.inmemory_project:
+        parser.error('Rough cutline and Quality require --inmemory-project')
     try:
         args.inmemory_roi = parse_native_bounds(args.inmemory_roi, 'ROI', 4)
         args.inmemory_z_break = parse_native_bounds(args.inmemory_z_break, 'Z break', 2)
+        if args.rough_cutline:
+            values = [float(part) for part in args.rough_cutline.split(',')]
+            if len(values) != 3 or not all(math.isfinite(v) for v in values) or values[1] <= values[0]:
+                raise ValueError('Rough cutline must be finite xMin,xMax,y with xMax > xMin')
+            args.rough_cutline = values
         args.inmemory_camera = parse_native_camera(args.inmemory_camera)
     except ValueError as exc:
         parser.error(str(exc))

@@ -62,9 +62,11 @@ test('all documentation PRs retain automatic local Quality ownership and manual 
     'Quality must include every PR source path',
   );
   assert.match(quality, /QUALITY_SCOPE: .*'draft'.*'full'/);
-  assert.ok(quality.includes('run: node scripts/local-verification.mjs verify "$QUALITY_SCOPE"'));
-  assert.match(quality, /name: Execute Draft Quality fallback/);
-  assert.match(quality, /site\/tests\/documentation-suite\.test\.mjs/);
+  assert.ok(quality.includes('node scripts/local-verification.mjs verify "$QUALITY_SCOPE"'));
+  assert.match(quality, /name: Reject missing or stale PR proof before remote tests/);
+  assert.doesNotMatch(quality, /name: Execute Draft Quality fallback/);
+  assert.match(quality, /name: Final lint, formatting, generated documentation and Node tests/);
+  assert.match(quality, /run: npm run check/);
   assert.match(quality, /node scripts\/local-verification\.mjs verify full/);
   assert.ok(
     qualityPlan('draft').at(-1).args.includes('site/tests/documentation-suite.test.mjs'),

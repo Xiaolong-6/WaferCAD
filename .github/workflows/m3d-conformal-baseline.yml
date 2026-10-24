@@ -1,14 +1,6 @@
 name: M3D conformal baseline audit
 
 on:
-  pull_request:
-    branches:
-      - main
-    paths:
-      - "site/model.js"
-      - "site/app.html"
-      - "site/controllers/process-panel-controller.js"
-      - "docs/wiki/**"
   workflow_dispatch:
 
 concurrency:

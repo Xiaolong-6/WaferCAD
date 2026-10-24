@@ -2,12 +2,17 @@
 import { createThreeView } from '../three-view.js';
 import { mountToolPopover } from './view-kit/tool-popover.js';
 import { BORDER_CATEGORIES, BORDER_PRESETS, normalizeBorderSettings } from '../border-inspector.js';
+import { THREE_Z_DISPLAY_RANGE, normalizeThreeZDisplayFactor } from '../three-z-display.js';
 
 export function createWorkstationThreeView({ store, workstation }) {
   const { el, button, toolbar } = window.WaferCadV2Components;
   const state = store.state;
   const local = store.local.three;
   local.borderSettings = normalizeBorderSettings(local.borderSettings);
+  local.zDisplayFactor = normalizeThreeZDisplayFactor(local.zDisplayFactor);
+  local.showOrigin = local.showOrigin === true;
+  // Retire the nonlinear multi-band Relief setting, including previously saved UI values.
+  local.roughReliefFactor = 1;
   const icon = (label, action, glyph) =>
     button('', action, glyph, {
       title: label,
@@ -18,7 +23,7 @@ export function createWorkstationThreeView({ store, workstation }) {
         'tool:pan:three': 'three.pan',
         'tool:zoom:three': 'three.zoom',
         'quality:three': 'three.quality',
-        'opacity:three': 'three.opacity',
+        'display:three': 'three.display',
         'borders:three': 'three.borders',
         'maximize:three': 'shell.maximize',
       }[action],
@@ -29,6 +34,12 @@ export function createWorkstationThreeView({ store, workstation }) {
     'data-v2-stage-host': '',
     'aria-label': 'Physical 3D model',
   });
+  const zDisplayIndicator = el('output', {
+    class: 'v2-three-z-display-indicator',
+    'aria-live': 'polite',
+    hidden: '',
+  });
+  host.append(zDisplayIndicator);
   const tools = toolbar(
     '3D',
     [
@@ -40,7 +51,7 @@ export function createWorkstationThreeView({ store, workstation }) {
       ],
       [
         icon('Render mode', 'quality:three', 'quality'),
-        icon('Opacity', 'opacity:three', 'eye'),
+        icon('Display settings', 'display:three', 'sliders'),
         icon('Borders', 'borders:three', 'rectangle'),
       ],
     ],
@@ -66,6 +77,7 @@ export function createWorkstationThreeView({ store, workstation }) {
   // project's persisted Quality choice or change canonical scene geometry.
   let startupPreview = Boolean(workstation.progressive);
   let firstSceneFrame = false;
+  let firstExactSceneFrame = false;
   let backgroundRefine = false;
   let assemblyFinished = false;
   let refinementStartSerial = 0;
@@ -83,6 +95,9 @@ export function createWorkstationThreeView({ store, workstation }) {
       fast: startupPreview || state.threeFastMode,
     }),
     getZCollapse: () => state.sectionCollapse,
+    getZDisplayFactor: () => local.zDisplayFactor,
+    getShowOrigin: () => local.showOrigin,
+    getRoughReliefFactor: () => 1,
     onViewChanged: (camera) => {
       state.threeCamera = camera;
       workstation.changed('three');
@@ -145,10 +160,40 @@ export function createWorkstationThreeView({ store, workstation }) {
   function inspectCommittedFrame() {
     if (!progressive || progressive.snapshot().project !== 'ready') return;
     const serial = Number(host.dataset.rendererFrameSerial || 0);
-    if (!serial || !['ready', 'refining'].includes(host.dataset.renderState)) return;
-    if (!firstSceneFrame) {
+    const approximate = host.dataset.renderFidelity === 'approximate';
+    // The exact Worker can fail between the preview mesh commit and the
+    // first painted preview frame. Keep the painted approximate scene visible
+    // and interactive; it is never promoted to exact Ready.
+    if (
+      !serial ||
+      (!['ready', 'refining'].includes(host.dataset.renderState) &&
+        !(approximate && host.dataset.renderState === 'error'))
+    )
+      return;
+    // A caps-only frame is interactive but must never start a second Quality
+    // build while Material Solids Boolean is still running in the first Worker.
+    if (approximate) {
+      if (!host.dataset.rendererProgressiveFirstFrameMs) return;
+      if (!firstSceneFrame) {
+        firstSceneFrame = true;
+        progressive.viewFrame('three', 'coarse');
+      }
+      return;
+    }
+    // These native exact geometry owners do not use the Surface Plan
+    // Fast/Quality refinement tier; a painted frame is already final.
+    const exactNativeMaterial =
+      host.dataset.renderFidelity === 'exact-physical-facet' ||
+      host.dataset.renderFidelity === 'exact-continuous-etch';
+    if (
+      (host.dataset.renderFidelity !== 'exact-surface-plan' && !exactNativeMaterial) ||
+      !host.dataset.rendererExactFirstFrameMs
+    )
+      return;
+    if (!firstExactSceneFrame) {
       firstSceneFrame = true;
-      if (state.threeFastMode === false) {
+      firstExactSceneFrame = true;
+      if (state.threeFastMode === false && !exactNativeMaterial) {
         progressive.viewFrame('three', 'coarse');
         scheduleQualityRefinement();
       } else {
@@ -203,9 +248,8 @@ export function createWorkstationThreeView({ store, workstation }) {
     value: state.threeOpacity,
   });
   const opacityValue = el('output', {}, `${Math.round(state.threeOpacity * 100)}%`);
-  const form = el(
-    'div',
-    { class: 'p-form' },
+  const displayMenu = el('div', { class: 'p-form', 'data-three-display-settings': '' });
+  displayMenu.append(
     el(
       'label',
       { class: 'wc-field' },
@@ -218,6 +262,63 @@ export function createWorkstationThreeView({ store, workstation }) {
     opacityValue.textContent = `${Math.round(state.threeOpacity * 100)}%`;
     requestRender();
   };
+  // The complete 3D scene shares this presentation transform: physical
+  // Process geometry, export and thin-film Z ownership remain unchanged.
+  const scaleSlider = el('input', {
+    type: 'range',
+    class: 'wc-input',
+    min: THREE_Z_DISPLAY_RANGE.min,
+    max: THREE_Z_DISPLAY_RANGE.max,
+    step: THREE_Z_DISPLAY_RANGE.step,
+    'aria-label': '3D vertical display scale',
+  });
+  const scaleValue = el('output', {}, `×${local.zDisplayFactor}`);
+  displayMenu.append(
+    el(
+      'label',
+      { class: 'wc-field' },
+      el('span', { class: 'wc-label' }, 'Vertical scale · display only ', scaleValue),
+      scaleSlider,
+    ),
+  );
+  const originButton = button('Show Origin', null, null, {
+    'aria-label': 'Show Origin',
+    'aria-pressed': 'false',
+    'data-help': 'three.origin',
+  });
+  originButton.onclick = () => {
+    local.showOrigin = !local.showOrigin;
+    updateOriginControls();
+    renderer.refreshOrigin();
+  };
+  displayMenu.append(originButton);
+  function updateOriginControls() {
+    originButton.setAttribute('aria-pressed', String(local.showOrigin));
+    originButton.dataset.variant = local.showOrigin ? 'primary' : 'secondary';
+  }
+  let zScaleFramePending = false;
+  function commitZDisplayFactor(value) {
+    local.zDisplayFactor = normalizeThreeZDisplayFactor(value);
+    updateZDisplayControls();
+    // Never auto-fit on value change: doing so hides the visual multiplier.
+    // A large scene may require Fit, which remains an explicit viewport action.
+    if (zScaleFramePending) return;
+    zScaleFramePending = true;
+    requestAnimationFrame(() => {
+      zScaleFramePending = false;
+      renderer.updateZCollapse();
+    });
+  }
+  scaleSlider.oninput = () => commitZDisplayFactor(scaleSlider.value);
+  function updateZDisplayControls() {
+    local.zDisplayFactor = normalizeThreeZDisplayFactor(local.zDisplayFactor);
+    scaleSlider.value = String(local.zDisplayFactor);
+    scaleValue.textContent = `×${local.zDisplayFactor}`;
+    host.dataset.zDisplayFactorSelected = String(local.zDisplayFactor);
+    zDisplayIndicator.hidden = local.zDisplayFactor === 1;
+    zDisplayIndicator.textContent = `Display Z ×${local.zDisplayFactor} · not physical`;
+  }
+
   const borderNames = {
     exterior: 'Exterior',
     interface: 'Material interfaces',
@@ -401,6 +502,8 @@ export function createWorkstationThreeView({ store, workstation }) {
     quality.setAttribute('aria-pressed', String(state.threeFastMode === false));
     host.dataset.v2Gesture = local.mode;
     host.dataset.wheelZoom = String(local.zoomEnabled);
+    updateZDisplayControls();
+    updateOriginControls();
     panel
       .querySelector('[data-action="borders:three"]')
       .setAttribute('aria-pressed', String(state.threeShowBorders));
@@ -421,12 +524,12 @@ export function createWorkstationThreeView({ store, workstation }) {
       startupPreview = false;
       sync();
       requestRender();
-    } else if (action === 'opacity:three') {
+    } else if (action === 'display:three') {
       opacity.value = state.threeOpacity;
       opacityValue.textContent = `${Math.round(state.threeOpacity * 100)}%`;
       mountToolPopover(workstation.overlays, {
-        label: '3D opacity',
-        content: form,
+        label: '3D display settings',
+        content: displayMenu,
         trigger,
       });
     } else if (action === 'borders:three') {
@@ -443,7 +546,9 @@ export function createWorkstationThreeView({ store, workstation }) {
         content: el(
           'div',
           { class: 'p-form v2-three-floating' },
-          button('PNG · 3×', 'export:three:png', 'export', { 'data-help': 'three.export.png' }),
+          button('PNG · 3×', 'export:three:png', 'export', {
+            'data-help': 'three.export.png',
+          }),
           button('GLB · physical units', 'export:three:glb', 'export', {
             'data-help': 'three.export.glb',
           }),

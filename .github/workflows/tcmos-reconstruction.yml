@@ -1,45 +1,6 @@
 name: T-CMOS candidate reconstruction
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'scripts/build-tcmos-inverter-example.mjs'
-      - 'scripts/build-tcmos-array-patch.mjs'
-      - 'scripts/build-tcmos-array-recipe-experiment.mjs'
-      - 'scripts/build-tcmos-array-interconnect.mjs'
-      - 'scripts/build-tcmos-array-physical-interconnect.mjs'
-      - 'scripts/tcmos-array-interconnect-browser-acceptance.mjs'
-      - 'scripts/perf-workstation-cold-open.mjs'
-      - 'site/tests/tcmos-array-physical-interconnect.test.mjs'
-      - 'site/tests/tcmos-array-physical-fast.test.mjs'
-      - 'site/tests/tcmos-array-interconnect.test.mjs'
-      - 'scripts/tcmos-array-recipe-browser-acceptance.mjs'
-      - 'site/model-array-context.js'
-      - 'site/model-array-process.js'
-      - 'site/mask-instance-index.js'
-      - 'site/process-worker.js'
-      - 'site/tests/model-array.test.mjs'
-      - 'site/tests/mask-instance-index.test.mjs'
-      - 'site/tests/tcmos-array-recipe-experiment.test.mjs'
-      - 'site/tests/tcmos-svg-metal-connectivity.test.mjs'
-      - 'scripts/tcmos-array-browser-acceptance.mjs'
-      - 'site/tests/tcmos-array-patch.test.mjs'
-      - 'scripts/tcmos-svg-mask.mjs'
-      - 'scripts/tcmos-browser-acceptance.mjs'
-      - 'scripts/tcmos-svg-mask-browser-acceptance.mjs'
-      - 'site/tests/tcmos-inverter-reconstruction.test.mjs'
-      - 'site/tests/implant-buried-interval.test.mjs'
-      - 'site/tests/dopant-regions.test.mjs'
-      - 'site/dopant-regions.js'
-      - 'site/model.js'
-      - 'site/process-recipe.js'
-      - 'site/project-schema.js'
-      - 'site/project-io.js'
-      - 'site/controllers/process-panel-controller.js'
-      - 'site/controllers/process-recipe-controller.js'
-      - 'examples/projects/tcmos-ternary-inverter-2019-candidate/**'
-      - '.github/workflows/tcmos-reconstruction.yml'
   workflow_dispatch:
 
 permissions:

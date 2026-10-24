@@ -97,3 +97,91 @@ test('large scenes use a disposable worker and cache the exact completed result'
     globalThis.Worker = original;
   }
 });
+
+test('ROI suppresses sketch requests, and Abort rejects late exact Worker replies', async () => {
+  const original = globalThis.Worker;
+  const model = createModel({ shape: 'rect', width: 22, height: 20, thickness: 2 });
+  model.layers.push(...Array.from({ length: 5 }, (_, i) => ({ id: `roi-${i}` })));
+  const clip = [
+    [
+      [
+        [-3, -2],
+        [3, -2],
+        [3, 2],
+        [-3, 2],
+        [-3, -2],
+      ],
+    ],
+  ];
+  let worker;
+  globalThis.Worker = class {
+    constructor() {
+      worker = this;
+    }
+    postMessage(request) {
+      this.request = structuredClone(request);
+    }
+    terminate() {
+      this.terminated = true;
+    }
+  };
+  try {
+    const controller = new AbortController();
+    const pending = buildRenderSurfacePlanAsync(model, clip, { signal: controller.signal });
+    assert.equal(worker.request.preview, false, 'ROI cannot request an uncut sketch');
+    assert.deepEqual(worker.request.clip, clip, 'Worker preserves the physical ROI');
+    worker.onmessage({
+      data: { id: 1, type: 'preview', preview: { kind: 'approximate-caps-preview' } },
+    });
+    assert.equal(cachedRenderSurfacePlan(model, clip), null);
+    controller.abort();
+    await assert.rejects(pending, { name: 'AbortError' });
+    assert.equal(worker.terminated, true);
+    worker.onmessage({ data: { id: 1, type: 'done', plan: { caps: [], sidewalls: [] } } });
+    assert.equal(cachedRenderSurfacePlan(model, clip), null, 'Abort discards stale ROI geometry');
+  } finally {
+    globalThis.Worker = original;
+  }
+});
+
+test('exact Worker failure after a displayed sketch never commits the sketch or a late plan', async () => {
+  const original = globalThis.Worker;
+  const model = createModel({ shape: 'rect', width: 23, height: 20, thickness: 2 });
+  model.layers.push(...Array.from({ length: 5 }, (_, i) => ({ id: `failed-${i}` })));
+  let worker;
+  globalThis.Worker = class {
+    constructor() {
+      worker = this;
+    }
+    postMessage(request) {
+      this.request = request;
+    }
+    terminate() {
+      this.terminated = true;
+    }
+  };
+  try {
+    let visible = 0;
+    const sketch = {
+      kind: 'approximate-caps-preview',
+      caps: [],
+      borderPositions: new Float32Array(),
+    };
+    const pending = buildRenderSurfacePlanAsync(model, null, { onPreview: () => visible++ });
+    assert.equal(worker.request.preview, true);
+    worker.onmessage({ data: { id: 1, type: 'preview', preview: sketch } });
+    assert.equal(visible, 1);
+    assert.equal(cachedRenderSurfacePlan(model), null, 'Sketch cannot populate the exact cache');
+    worker.onmessage({ data: { id: 1, type: 'error', message: 'Injected ownership failure' } });
+    await assert.rejects(pending, /Injected ownership failure/);
+    assert.equal(worker.terminated, true);
+    worker.onmessage({ data: { id: 1, type: 'done', plan: { caps: [], sidewalls: [] } } });
+    assert.equal(
+      cachedRenderSurfacePlan(model),
+      null,
+      'Late completion cannot resurrect a failure',
+    );
+  } finally {
+    globalThis.Worker = original;
+  }
+});

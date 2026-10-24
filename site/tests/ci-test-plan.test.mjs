@@ -302,3 +302,18 @@ test('scientific geometry, transaction and release owners remain selected', () =
   assert.equal(buildCiTestPlan(['site/ui-v2/main-view.js']).release.main_mask, true);
   assert.equal(buildCiTestPlan(['site/gds.js']).release.klayout, true);
 });
+
+test('Example assets and bundled recipes select their owning browser suite', () => {
+  for (const path of [
+    'site/examples/suspended-silica-microdisks.wafercad',
+    'site/bundled-example-history.js',
+    'site/example-asset.js',
+  ]) {
+    assert.equal(buildCiTestPlan([path]).suites.examples, true, path);
+  }
+});
+
+test('project open and replacement controller changes retain browser workstation acceptance', () => {
+  const plan = buildCiTestPlan(['site/controllers/project-controller.js']);
+  assert.deepEqual(enabled(plan), ['smoke', 'workstation', 'history', 'persistence']);
+});

@@ -1,15 +1,7 @@
 name: Physical facet scientific contracts
 
 on:
-  pull_request:
-    paths:
-      - 'site/experimental/physical-facets/physical-facet-*.js'
-      - 'site/model.js'
-      - 'site/project-schema.js'
-      - 'site/project-io.js'
-      - 'site/controllers/workspace-persistence-controller.js'
-      - 'site/tests/physical-facet-*.test.mjs'
-      - '.github/workflows/physical-facet-science.yml'
+  workflow_call:
   workflow_dispatch:
 
 permissions:

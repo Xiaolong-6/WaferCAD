@@ -573,7 +573,8 @@ test('GPU rough cap interior without physical boundary does not sample the CPU m
       { kind: 'rough', featureSize: 0.5 },
       {
         get(target, property) {
-          if (property === 'featureSize' || property === 'kind') return target[property];
+          // Morphology selects the LOD policy; no height-field inputs may be read.
+          if (['featureSize', 'kind', 'morphology'].includes(property)) return target[property];
           throw new Error(`CPU morphology field was sampled through ${String(property)}`);
         },
       },

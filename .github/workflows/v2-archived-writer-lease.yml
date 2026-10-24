@@ -1,14 +1,6 @@
 name: V2 archived workspace and writer lease
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'scripts/v2/check-archived-writer-lease.mjs'
-      - 'site/workspace-persistence.js'
-      - 'site/project-io.js'
-      - 'site/controllers/workspace-session-controller.js'
-      - '.github/workflows/v2-archived-writer-lease.yml'
   workflow_dispatch:
 
 permissions:

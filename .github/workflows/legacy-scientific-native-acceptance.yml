@@ -1,14 +1,7 @@
 name: PR290 Native scientific candidate
 
 on:
-  pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened]
-    paths:
-      - 'scripts/v2/check-source-sunset-science.mjs'
-      - 'site/tests/source-sunset-scientific-candidates.test.mjs'
-      - '.github/workflows/legacy-scientific-native-acceptance.yml'
-
+  workflow_dispatch:
 permissions:
   contents: read
 

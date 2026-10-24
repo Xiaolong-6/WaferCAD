@@ -6,8 +6,6 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { launchBrowser, newUiPage, waitForPaint, canvasInkFraction } from '../test-helpers/ui.mjs';
-import { selectScientificView } from './desktop-view-selector.mjs';
 
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4173';
 const output = resolve('test-results/literature-figure-cuts/native-v2-nine-family');
@@ -60,6 +58,9 @@ async function run() {
     cases: [],
   };
   await mkdir(output, { recursive: true });
+  const { launchBrowser, newUiPage, waitForPaint, canvasInkFraction } =
+    await import('../test-helpers/ui.mjs');
+  const { selectScientificView } = await import('./desktop-view-selector.mjs');
   const browser = await launchBrowser();
   try {
     for (const item of selected) {
@@ -119,9 +120,25 @@ async function run() {
         const model = await page.evaluate(
           async ({ a, b }) => {
             const state = window.WaferCadV2Workstation.snapshot();
-            const { sectionSlices } = await import('/model-view-geometry.js');
-            const physical = sectionSlices(state.model, a, b);
+            // Continuous Etch uses an analytic physical material owner, not the
+            // protected pre-release 2.5D region stack. Query that same owner
+            // used by native Section; never sample a flat compatibility surrogate.
+            const { validateContinuousEtchModel } = await import('/continuous-etch-model.js');
+            const continuousOwner = validateContinuousEtchModel(state.model);
+            let physical, physicalSampler;
+            if (continuousOwner) {
+              const { sampleContinuousOwnerSection } =
+                await import('/continuous-material-owner.js');
+              const sites = sampleContinuousOwnerSection(continuousOwner, a, b, 32);
+              physical = sites.flatMap(({ column }) => column);
+              physicalSampler = 'continuous-analytic-column-samples';
+            } else {
+              const { sectionSlices } = await import('/model-view-geometry.js');
+              physical = sectionSlices(state.model, a, b);
+              physicalSampler = 'canonical-section-slices';
+            }
             return {
+              physicalSampler,
               layers: state.model.layers.length,
               regions: state.model.regions.length,
               arrayBacked: Boolean(state.model.array),
@@ -177,9 +194,17 @@ async function run() {
         if (threeSamples.has(item.id)) {
           await selectScientificView(page, 'three', 1560);
           await page.waitForFunction(
-            () =>
-              document.querySelector('#threeHost canvas')?.width > 100 &&
-              document.querySelector('#threeHost')?.dataset.renderState === 'ready',
+            () => {
+              const host = document.querySelector('#threeHost');
+              const panel = document.querySelector('#threePanel');
+              return (
+                host?.querySelector('canvas')?.width > 100 &&
+                host.dataset.renderState === 'ready' &&
+                host.dataset.renderFidelity?.startsWith('exact-') &&
+                Number(host.dataset.rendererExactFirstFrameMs || 0) > 0 &&
+                ['coarse', 'ready'].includes(panel?.dataset.viewLoad)
+              );
+            },
             null,
             { timeout: 180000 },
           );
