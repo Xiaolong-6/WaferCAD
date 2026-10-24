@@ -138,6 +138,22 @@ test('Q2 native Direct recomputes fixed-angle Al on the recessed Si within sourc
   assert.equal(report.processRevisions, 6);
   assert.equal(report.modelLayers, 6);
   assert.equal(report.strictProjectRoundTrip, true);
+  const { verifyPersistedQ2Project } =
+    await import('../../scripts/transmon-q2-persisted-proof.mjs');
+  const persistedProof = verifyPersistedQ2Project(project, report);
+  assert.equal(persistedProof.section3dZSlabMismatches, 0);
+  assert.ok(persistedProof.firstTwoAlOverlapAreaUm2 > 0);
+  assert.throws(
+    () => verifyPersistedQ2Project(project, {
+      ...report,
+      firstTwoAlOverlapAreaUm2: report.firstTwoAlOverlapAreaUm2 + 0.1,
+    }),
+    /persisted junction area disagrees/,
+  );
+  assert.throws(
+    () => verifyPersistedQ2Project(project, { ...report, sectionIncludesThirdAl: false }),
+    /third dose material ownership/,
+  );
 
   const restored = JSON.parse(project);
   expandProjectStorage(restored);

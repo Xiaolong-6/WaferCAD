@@ -753,3 +753,25 @@ no-oxide geometry; recompute its three-way-overlap witness when using a
 different project or optional oxide. The capture still used null-origin
 fallback, so Worker Open/History/Recovery and normal-origin workstation
 acceptance have **not** passed.
+
+#### Post-export Q2 material proof (2026-10-24)
+
+The source-backed acceptance entrypoint now independently expands and
+validates the **saved native-direct .wafercad artifact**, not only the
+pre-export footprint report. `scripts/transmon-q2-persisted-proof.mjs`
+checks author-source provenance, Process step count, persisted Al material
+ownership and first-two Al intersection, the third-Al Section witness,
+whole-wafer XY coverage, duplicate owners, and Section/3D physical Z slabs.
+Every mismatch fails the local science gate; it never marks browser
+acceptance as passed. The static footprint path remains separately labeled.
+
+Local artifact check on the user-supplied original Q2 source's persisted
+native no-oxide project: 9 regions; 0 µm² missing Si, overgrowth or
+duplicate XY owner area; 10 Section slices, 0 Section/3D Z-slab mismatches;
+first-two saved Al intersection `0.03226275 µm²`. The geometry was
+recomputed with WaferCAD Boolean/Section/Material Solids on the validated
+source-only baseline. Six intentional-corruption probes (source hash,
+reported area, third-dose ownership, missing dose, false physics claim,
+and compressed material-owner reference) all failed closed. This is a
+**post-export proof**, not a full exact-HEAD suite, normal-origin Worker
+Open, History/Recovery, or a measured Josephson device validation.

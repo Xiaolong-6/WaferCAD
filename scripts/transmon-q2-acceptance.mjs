@@ -17,6 +17,10 @@ const TESTS = [
   'site/tests/transmon-shadow-al-preview.test.mjs',
   'site/tests/transmon-q2-integrated-diagnostic.test.mjs',
   'site/tests/direct-fixed-incidence.test.mjs',
+  'site/tests/direct-nb-recess-shadow-analytic.test.mjs',
+  'site/tests/direct-resist-occluded-target.test.mjs',
+  'site/tests/transmon-direct-owner-conservation.test.mjs',
+  'site/tests/junction-three-dose-section.test.mjs',
 ];
 
 function readArguments(argv) {
@@ -110,6 +114,15 @@ async function main() {
         modelRegions: result.modelRegions,
         processRevisions: result.processRevisions,
       };
+      if (mode === 'native-direct') {
+        // A green replay report is insufficient: verify the persisted,
+        // expanded material model and Section/3D owners after serialization.
+        const { verifyPersistedQ2Project } = await import('./transmon-q2-persisted-proof.mjs');
+        report.projectRoundTrips[mode].persistedScience = verifyPersistedQ2Project(
+          await readFile(join(args.outputDir, basename + '.wafercad'), 'utf8'),
+          result,
+        );
+      }
     }
 
     const testOutput = runNode(['--test', ...TESTS], { WAFERCAD_TRANSMON_GDS: args.gds });
