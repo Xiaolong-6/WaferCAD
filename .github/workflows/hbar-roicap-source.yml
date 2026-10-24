@@ -1,0 +1,61 @@
+name: HBAR ROI cap exact source-only transport
+
+on:
+  push:
+    branches: [transport/hbar-roicap-source-6083249]
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Build source-only ZIP without npm or Three.js
+        id: bundle
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          import subprocess
+          import zipfile
+          from pathlib import Path
+
+          sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+          tracked = [os.fsdecode(p) for p in subprocess.check_output(
+              ["git", "ls-files", "-z"]).split(b"\0") if p]
+          excluded = {"vendor/npm/three-0.179.1.tgz"}
+          files = [name for name in tracked if name not in excluded]
+          output = Path(f"wafercad-source-{sha}.zip")
+          manifest = {"schema": "wafercad-source-only-v1", "revision": sha,
+                      "trackedFiles": len(tracked), "packagedFiles": len(files),
+                      "excludedDependencyArchives": sorted(set(tracked) & excluded), "files": {}}
+          with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED,
+                               compresslevel=6) as archive:
+              for name in files:
+                  path = Path(name)
+                  if not path.is_file() or path.is_symlink():
+                      raise ValueError(f"Missing or unsafe source file: {name}")
+                  content = path.read_bytes()
+                  manifest["files"][name] = hashlib.sha256(content).hexdigest()
+                  archive.writestr(name, content)
+              archive.writestr("wafercad-source-manifest.json",
+                               json.dumps(manifest, sort_keys=True, indent=2) + "\n")
+          print(json.dumps({"revision": sha, "tracked": len(tracked),
+                            "packaged": len(files), "zipBytes": output.stat().st_size}, indent=2))
+          PY
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v6
+        with:
+          name: wafercad-source-${{ steps.bundle.outputs.sha }}
+          path: wafercad-source-${{ steps.bundle.outputs.sha }}.zip
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
