@@ -725,3 +725,31 @@ was `about:blank` null-origin; normal-origin Worker Open,
 History/Recovery and full four-view cross-state acceptance remain open.
 The data identify a mathematically consistent geometry candidate, **not**
 a measured fabricated tunnel junction.
+
+#### Native Section screenshot capture (smooth Q2 model)
+
+The original `offline-native-app-capture.py --native-section-compare`
+required `--rough-cutline`, which also unconditionally queried a detailed
+rough 3D mesh. That caused a false diagnostic failure for Q2's entirely
+smooth Nb/Al geometry *after* the genuine production Section image had been
+rendered. The original runner now also accepts `--native-section-line`
+for a physical Section line without requiring unrelated roughness sampling:
+
+```sh
+python3 scripts/offline-native-app-capture.py \
+  --output /tmp/q2-native-view \
+  --inmemory-project /tmp/Q2-native-direct.wafercad \
+  --inmemory-roi=-5.5,-0.4,-4.5,0.4 \
+  --inmemory-z-break=337.44,-337.4 \
+  --inmemory-z-scale=10 \
+  --native-section-line=-5.5,-4.5,-0.01285 \
+  --native-section-compare --native-section-borders
+```
+
+This exact runner path produced genuine Three.js and production Section
+screenshots on the author-source material model, with no page errors and a
+successful diagnostic exit. The section line here is for the measured
+no-oxide geometry; recompute its three-way-overlap witness when using a
+different project or optional oxide. The capture still used null-origin
+fallback, so Worker Open/History/Recovery and normal-origin workstation
+acceptance have **not** passed.

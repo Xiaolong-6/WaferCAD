@@ -953,12 +953,13 @@ def run(args):
                 if not ready:
                     fail = True
                 if args.native_section_compare:
-                    if not args.rough_cutline or not args.inmemory_roi:
-                        raise ValueError('Native Section comparison requires --rough-cutline and --inmemory-roi')
+                    if not (args.native_section_line or args.rough_cutline) or not args.inmemory_roi:
+                        raise ValueError('Native Section comparison requires a physical cutline and ROI')
                     import base64
                     expression = (root / 'scripts/offline-native-section-comparison.js').read_text(encoding='utf-8')
                     section_images = page.evaluate(expression, {
-                        'roiBounds': args.inmemory_roi, 'line': args.rough_cutline,
+                        'roiBounds': args.inmemory_roi,
+                        'line': args.native_section_line or args.rough_cutline,
                         'zBreak': args.inmemory_z_break, 'borders': args.native_section_borders})
                     section_data = {'modelUnchanged': section_images['modelUnchanged'],
                                     'actualProductionSectionRenderer': section_images['actualProductionSectionRenderer']}
@@ -1061,6 +1062,8 @@ def main():
     parser.add_argument('--rough-cutline', help='Physical xMin,xMax,y versus actual 3D rough mesh')
     parser.add_argument('--native-section-compare', action='store_true',
                         help='Compare genuine physical Section canvas against the actual 3D mesh')
+    parser.add_argument('--native-section-line',
+                        help='xMin,xMax,y for a smooth-model Section, without requesting rough mesh sampling')
     parser.add_argument('--native-section-borders', action='store_true', help='Include real structural Section borders in native model comparison')
     parser.add_argument('--headless', action='store_true', help='Opt out of headful/Xvfb; may disable WebGL')
     parser.add_argument('--require-origin', action='store_true', help='Fail rather than use null-origin diagnostic')
@@ -1081,8 +1084,8 @@ def main():
         parser.error('ROI, Z break and camera require --inmemory-project')
     if args.native_section_borders and not args.native_section_compare:
         parser.error('--native-section-borders requires --native-section-compare')
-    if args.native_section_compare and (not args.rough_cutline or not args.inmemory_roi):
-        parser.error('--native-section-compare requires --rough-cutline and --inmemory-roi')
+    if args.native_section_compare and (not (args.rough_cutline or args.native_section_line) or not args.inmemory_roi):
+        parser.error('--native-section-compare requires --native-section-line (or --rough-cutline) and --inmemory-roi')
     if args.check_rough_parity and not args.inmemory_project:
         parser.error('Rough height parity requires --inmemory-project')
     if args.check_glb and not args.inmemory_project:
@@ -1092,11 +1095,13 @@ def main():
     try:
         args.inmemory_roi = parse_native_bounds(args.inmemory_roi, 'ROI', 4)
         args.inmemory_z_break = parse_native_bounds(args.inmemory_z_break, 'Z break', 2)
-        if args.rough_cutline:
-            values = [float(part) for part in args.rough_cutline.split(',')]
-            if len(values) != 3 or not all(math.isfinite(v) for v in values) or values[1] <= values[0]:
-                raise ValueError('Rough cutline must be finite xMin,xMax,y with xMax > xMin')
-            args.rough_cutline = values
+        for line_name in ('rough_cutline', 'native_section_line'):
+            text = getattr(args, line_name)
+            if text:
+                values = [float(part) for part in text.split(',')]
+                if len(values) != 3 or not all(math.isfinite(v) for v in values) or values[1] <= values[0]:
+                    raise ValueError(f'{line_name} must be finite xMin,xMax,y with xMax > xMin')
+                setattr(args, line_name, values)
         args.inmemory_camera = parse_native_camera(args.inmemory_camera)
     except ValueError as exc:
         parser.error(str(exc))
