@@ -3619,8 +3619,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
         host.dataset.continuousEtchRoiCapTriangles = '0';
         return true;
       }
-      const exterior = { kind: 'material-exterior' };
-      const state = presentationState(exterior, getInspection() || {}).materialState;
+      const state = presentationState(
+        { kind: 'material-exterior' },
+        getInspection() || {},
+      ).materialState;
       // Build XY cut faces from the physically ROI-clipped source, before
       // applying display Z Break. Otherwise an omitted middle Z interval
       // creates spurious open ROI intersection loops.
@@ -3628,6 +3630,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         .map((mesh) => mesh.userData?.continuousRoiSourcePart)
         .filter(Boolean);
       for (const part of buildContinuousRectMeshCaps(THREE, clippedParts, roiBounds)) {
+        const exterior = { kind: 'material-exterior', layerId: part.layerId };
         const displayed = clipContinuousDisplayZBreak(part, currentZDisplay);
         if (!displayed.triangles) continue;
         const geometry = new THREE.BufferGeometry();
@@ -3726,8 +3729,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
         if (!byLayer.has(layerId)) byLayer.set(layerId, []);
         byLayer.get(layerId).push(source);
       }
-      const exterior = { kind: 'material-exterior' };
-      const state = presentationState(exterior, getInspection() || {}).materialState;
+      const state = presentationState(
+        { kind: 'material-exterior' },
+        getInspection() || {},
+      ).materialState;
       for (const [layerId, parts] of byLayer) {
         // Unreleased layers retain exact 2.5D ownership. Their sampled display
         // meshes can omit buried interfaces and cannot reliably form planar
@@ -3737,6 +3742,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           ? buildContinuousZBreakCaps(THREE, parts, currentZDisplay)
           : buildContinuousPlanarZBreakCaps(THREE, owner, layerId, currentZDisplay, roiBounds);
         for (const part of capParts) {
+          const exterior = { kind: 'material-exterior', layerId };
           const geometry = new THREE.BufferGeometry();
           geometry.setAttribute('position', new THREE.BufferAttribute(part.positions, 3));
           geometry.setAttribute('normal', new THREE.BufferAttribute(part.normals, 3));
@@ -3771,7 +3777,19 @@ diffuseColor.a *= waferCadAlphaScale;`,
         if (!layerId) continue;
         const layer = layerById(model, layerId);
         mesh.visible = layer?.visible !== false && !mesh.userData.continuousRoiEmpty;
-        mesh.material?.color?.set(layer?.color || '#999');
+        // Restore the authored layer color before applying the view-only focus
+        // tint. Keep the cache in sync with later Layer recolors so toggling
+        // focus never restores an obsolete palette entry.
+        if (mesh.material?.color) {
+          const color = layer?.color || '#999';
+          const original = originalInspectionAppearance.get(mesh.material);
+          if (original) original.color.set(color);
+          mesh.material.color.set(color);
+          applyLayerInspectionMaterial(
+            mesh.material,
+            layerInspectionTone(layerId, highlightedLayerId),
+          );
+        }
         if (mesh.visible && inspection.borders) ensureContinuousBorder(mesh);
         const outline = mesh.userData.continuousBorder;
         if (outline)
@@ -3884,9 +3902,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
     if (!data.layers.length) throw new RangeError('Continuous Etch has no visible solid');
     // The candidate is complete; do not retire the old group for stale work.
     disposeGroup();
-    const exterior = { kind: 'material-exterior' };
-    const materialState = presentationState(exterior, getInspection() || {}).materialState;
+    const materialState = presentationState(
+      { kind: 'material-exterior' },
+      getInspection() || {},
+    ).materialState;
     for (const part of data.layers) {
+      const exterior = { kind: 'material-exterior', layerId: part.layerId };
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.BufferAttribute(part.positions, 3));
       geometry.setAttribute('normal', new THREE.BufferAttribute(part.normals, 3));

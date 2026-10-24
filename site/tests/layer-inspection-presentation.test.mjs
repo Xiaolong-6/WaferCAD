@@ -50,3 +50,29 @@ test('Three.js uses shared focus state without changing geometry or transparency
     /material\.(?:opacity|transparent|depthWrite|depthTest)\s*=/,
   );
 });
+
+test('Continuous HBAR 3D tags every material/cut-cap by Layer and re-applies focus after recolor', () => {
+  const source = readFileSync(new URL('../three-view.js', import.meta.url), 'utf8');
+  const continuous = source.slice(
+    source.indexOf('async function renderContinuousEtch('),
+    source.indexOf('function updateProgressiveCapVisibility('),
+  );
+  // Separate descriptors are required for native material, ROI cuts and
+  // explicit Z Break caps. Generic material-exterior loses the Layer id.
+  assert.equal(
+    (
+      continuous.match(
+        /const exterior = \{ kind: 'material-exterior', layerId: part\.layerId \}/g,
+      ) || []
+    ).length,
+    2,
+  );
+  assert.match(continuous, /const exterior = \{ kind: 'material-exterior', layerId \}/);
+  assert.match(continuous, /originalInspectionAppearance\.get\(mesh\.material\)/);
+  assert.match(continuous, /original\.color\.set\(color\)/);
+  assert.match(
+    continuous,
+    /applyLayerInspectionMaterial\(\s*mesh\.material,\s*layerInspectionTone\(layerId, highlightedLayerId\)/,
+  );
+  assert.doesNotMatch(continuous, /mesh\.material\?\.color\?\.set\(layer\?\.color/);
+});
