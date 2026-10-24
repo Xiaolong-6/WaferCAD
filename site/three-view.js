@@ -3580,7 +3580,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
       // contain an applied Z display transform.
       const canonical = new THREE.BufferGeometry();
       canonical.setAttribute('position', new THREE.BufferAttribute(part.positions, 3));
-      const sharp = new THREE.EdgesGeometry(canonical, 25);
+      // Filter shallow tessellation facets; retain major structural corners.
+      const sharp = new THREE.EdgesGeometry(canonical, 60);
       const vertices = sharp.getAttribute('position');
       if (vertices?.count) {
         const border = addBorderPositions(Array.from(vertices.array), {
@@ -3597,9 +3598,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       canonical.dispose();
     };
     const zBreakSignature = () =>
-      currentZDisplay?.enabled === true
-        ? [currentZDisplay.top, currentZDisplay.bottom]
-        : null;
+      currentZDisplay?.enabled === true ? [currentZDisplay.top, currentZDisplay.bottom] : null;
     const updateRoiCaps = () => {
       const signature = JSON.stringify([roiBounds, zBreakSignature()]);
       if (continuousRoiCapSignature === signature) return false;
@@ -3733,24 +3732,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
         const released = owner.fronts.some((front) => front.layerId === layerId);
         const capParts = released
           ? buildContinuousZBreakCaps(THREE, parts, currentZDisplay)
-          : buildContinuousPlanarZBreakCaps(
-              THREE,
-              owner,
-              layerId,
-              currentZDisplay,
-              roiBounds,
-            );
+          : buildContinuousPlanarZBreakCaps(THREE, owner, layerId, currentZDisplay, roiBounds);
         for (const part of capParts) {
           const geometry = new THREE.BufferGeometry();
           geometry.setAttribute('position', new THREE.BufferAttribute(part.positions, 3));
           geometry.setAttribute('normal', new THREE.BufferAttribute(part.normals, 3));
           geometry.userData.analyticSurfaceNormals = true;
-          let material = createSurfaceMaterial(
-            layerById(model, layerId),
-            state,
-            null,
-            exterior,
-          );
+          let material = createSurfaceMaterial(layerById(model, layerId), state, null, exterior);
           if (material.userData?.waferCadPooledPresentationMaterial) {
             material = material.clone();
             material.userData.waferCadPooledPresentationMaterial = false;

@@ -72,3 +72,28 @@ test('sharp-edge structural Border keeps exterior edges, never flat triangulatio
   edges.dispose();
   geometry.dispose();
 });
+
+// The Continuous material renderer uses a 60-degree edge threshold so sampled
+// release profiles do not become dense fake structural lines in the 3D Border.
+test('continuous Border rejects shallow facets but keeps major physical corners', () => {
+  function segmentsAtAngle(foldDegrees, thresholdDegrees = 60) {
+    const radians = (foldDegrees * Math.PI) / 180;
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute(
+      'position',
+      new THREE.Float32BufferAttribute(
+        [0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, -Math.cos(radians), Math.sin(radians)],
+        3,
+      ),
+    );
+    const edges = new THREE.EdgesGeometry(geometry, thresholdDegrees);
+    const count = edges.getAttribute('position').count / 2;
+    edges.dispose();
+    geometry.dispose();
+    return count;
+  }
+
+  assert.equal(segmentsAtAngle(35, 25), 5, 'old threshold drew the sampled facet seam');
+  assert.equal(segmentsAtAngle(35), 4, 'shallow facet seam is not structural');
+  assert.equal(segmentsAtAngle(85), 5, 'a major physical corner remains visible');
+});
