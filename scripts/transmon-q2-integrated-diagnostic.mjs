@@ -9,7 +9,7 @@ const { intersection, unionGeometries, transformMulti, rectMulti, pointInMulti }
   await import('../site/vector-geometry.js');
 const { validateProcessModel, validateProjectFile } = await import('../site/project-schema.js');
 const { prepareProjectForExport, expandProjectStorage } = await import('../site/project-io.js');
-const { junctionSectionWitness } = await import('../site/junction-section-witness.js');
+const { junctionThreeDoseSectionWitness } = await import('../site/junction-section-witness.js');
 
 const EXPECTED = '6e9db7d506e17f82fd22250db9a380a420b2a1088bac4a33b8c747930e9d5c02';
 const center = [1400, 2513];
@@ -189,11 +189,14 @@ export function replayQ2ChipPose(
     }
   }
   validateProcessModel(model);
-  const overlap = intersection(footprints[0], footprints[1]);
-  if (!overlap.length) throw new Error('Author Q2 first two deposited layers do not overlap.');
-  // Vertex averaging can place Section outside a concave overlap or inside
-  // a hole. Scan the actual first-two Al intersection for an interior witness.
-  const cross = junctionSectionWitness(overlap);
+  // Keep the first-two Al overlap as the junction-area candidate. The
+  // Section should also cross Al3 when a physical three-dose intersection
+  // exists; otherwise explicitly report that Al3 does not cover this point.
+  const {
+    point: cross,
+    firstTwoOverlap: overlap,
+    sectionIncludesThirdAl,
+  } = junctionThreeDoseSectionWitness(...footprints);
   const layoutElements = junction.elements.map((e) => ({
     ...e,
     points: e.points?.map(([x, y]) => [-y, x]),
@@ -265,6 +268,7 @@ export function replayQ2ChipPose(
       operations,
       firstTwoAlOverlapAreaUm2: geometryArea(overlap),
       crossSectionCenterUm: cross,
+      sectionIncludesThirdAl,
       modelRegions: model.regions.length,
       modelLayers: model.layers.length,
       processRevisions: model.processRevision,

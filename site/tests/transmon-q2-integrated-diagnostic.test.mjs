@@ -28,6 +28,7 @@ test('Q2 actual chip2 pose + Nb/Si recess + three static Al shadows share one re
   assert.equal(report.processRevisions, 6);
   assert.equal(report.strictProjectRoundTrip, true);
   assert.equal(report.tunnelJunctionValidated, false);
+  assert.equal(report.sectionIncludesThirdAl, true);
   assert.match(report.method, /STATIC/);
   const restored = JSON.parse(project);
   expandProjectStorage(restored);
@@ -148,6 +149,15 @@ test('Q2 native Direct recomputes fixed-angle Al on the recessed Si within sourc
   assert.ok(Math.abs(nb.at(-1).z1 - 337.7) < 1e-8);
   assert.equal(nb.at(-1).layerId !== 'base', true);
   const alIds = new Set(report.operations.map((o) => o.layerId));
+  const sectionStack = regionAt(report.crossSectionCenterUm)?.stack || [];
+  const sectionLayers = new Set(sectionStack.map((segment) => segment.layerId));
+  assert.ok(sectionLayers.has(report.operations[0].layerId), 'First Al is absent at Section');
+  assert.ok(sectionLayers.has(report.operations[1].layerId), 'Second Al is absent at Section');
+  assert.equal(
+    sectionLayers.has(report.operations[2].layerId),
+    report.sectionIncludesThirdAl,
+    'Third Al ownership must match the reported three-dose Section selection',
+  );
   for (const { layerId, footprintAreaUm2 } of report.operations) {
     assert.ok(footprintAreaUm2 > 0);
     assert.ok(restored.model.regions.some((r) =>

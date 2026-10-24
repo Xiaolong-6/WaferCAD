@@ -1,4 +1,9 @@
-import { lineIntervalsInMulti, multiBounds, pointInMulti } from './vector-geometry.js';
+import {
+  intersection,
+  lineIntervalsInMulti,
+  multiBounds,
+  pointInMulti,
+} from './vector-geometry.js';
 
 /**
  * Choose a deterministic material-interior Section witness for a multi-polygon
@@ -46,4 +51,21 @@ export function junctionSectionWitness(overlap, { quantumUm = 1e-4 } = {}) {
   }
   if (!winner) throw new RangeError('No resolvable material-interior Section witness in overlap.');
   return winner.point;
+}
+
+/**
+ * Prefer a Section that actually crosses all three metal doses, while the
+ * first-two overlap remains the candidate tunnel-junction reference. A third
+ * dose may be disjoint; that must be reported instead of inventing coverage.
+ */
+export function junctionThreeDoseSectionWitness(first, second, third, options) {
+  const firstTwoOverlap = intersection(first, second);
+  if (!firstTwoOverlap.length) throw new RangeError('First-two Al footprint overlap is empty.');
+  const threeDoseOverlap = intersection(firstTwoOverlap, third);
+  const sectionFootprint = threeDoseOverlap.length ? threeDoseOverlap : firstTwoOverlap;
+  return {
+    point: junctionSectionWitness(sectionFootprint, options),
+    firstTwoOverlap,
+    sectionIncludesThirdAl: threeDoseOverlap.length > 0,
+  };
 }

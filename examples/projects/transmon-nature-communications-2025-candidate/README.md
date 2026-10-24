@@ -647,3 +647,24 @@ source data when the input is absent. Its own local fail-closed preflight and
 baseline Direct/Recipe suites passed 24/24 on Node 22.16.0; the original
 GDS-backed acceptance is still blocked until the original file is available
 in the exact-HEAD test environment.
+
+### Q2 Section witness under the third Al exposure
+
+The diagnostic now distinguishes two geometric facts: the candidate
+junction area is the **first-two-Al** footprint intersection, while a
+physical cross-section that displays all three metal doses must lie inside
+their **three-way** intersection. The Section witness selects an interior
+point of the three-way intersection when available. If the third dose does
+not cover the first-two junction area, it retains an interior first-two-Al
+point and records `sectionIncludesThirdAl: false` in the JSON report.
+It must never imply that Al3 is present at a point outside its stored
+material footprint.
+
+The source-GDS tests retain their stringent static-stack expectation and
+now check whether the actual native Section material owner agrees with
+the reported third-dose coverage. Three new source-independent native
+polygon-Boolean regressions passed locally with 15 baseline Recipe tests
+(18/18 on Node 22.16.0); the helper Git blob was checked against the exact
+remote blob. The **original** `sample.gds` and exact-HEAD full replay were
+not available to this runtime, so complete Q2/Chromium acceptance is still
+pending. The fallback does not validate a Josephson tunneling barrier.
