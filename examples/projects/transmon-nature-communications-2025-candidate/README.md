@@ -621,3 +621,29 @@ source-only baseline was manifest-verified. The current full branch `model.js`
 and original-GDS replay are **not claimed to be exact-HEAD locally validated**.
 This independent Nb/process fixture is *not* a reproduction of the GDS Q2
 junction or measured device physics.
+
+### Fail-closed source-GDS acceptance entrypoint
+
+Run locally, using the **original author** `Zenodo_files/sample.gds`:
+
+```sh
+node scripts/transmon-q2-acceptance.mjs \
+  --gds /path/to/Zenodo_files/sample.gds \
+  --output-dir .local/transmon-q2
+```
+
+The command verifies the pinned original GDS SHA-256, separately exports and
+strictly round-trips the **static** and **native-direct** Q2 projects, then
+executes seven source-GDS-gated suites. **Any failed test, skipped test, absent
+source, checksum mismatch, zero first-two-Al overlap, or failed project export
+is an error**, not a green acceptance result. Outputs include both project
+files, mode reports and `q2-acceptance-report.json`. No CI is triggered.
+
+This is a **science/data acceptance** entrypoint only. A successful run
+reports `science-gates-passed-browser-pending`; it cannot claim a verified
+Josephson tunnel junction, calibrated resist dose, original evaporator azimuth,
+or real Chromium Section/3D parity. The tool does not access Zenodo or fabricate
+source data when the input is absent. Its own local fail-closed preflight and
+baseline Direct/Recipe suites passed 24/24 on Node 22.16.0; the original
+GDS-backed acceptance is still blocked until the original file is available
+in the exact-HEAD test environment.
