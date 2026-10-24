@@ -114,12 +114,17 @@ making an independent, conflicting view-only label.
 
 ## Save, Recovery and Export
 
-| Action | What it protects | Important limitation |
-| --- | --- | --- |
-| **Save** | Current project in browser storage and an explicit local Recovery checkpoint | Not a portable file or an off-device backup |
-| **Recovery** | Lists, restores or clears local checkpoints in the Project tab | Restore changes the current workspace; clear deletes stored checkpoints |
-| **Export** | Downloads an independent portable `.wafercad` project with saved History/Variants | Keep the file in a safe location for archival research |
-| **Open/Import** | Loads a portable project after schema/geometry validation | May replace the active project; confirm first |
+- **Save:** Writes the current project to browser storage and creates
+  an explicit local Recovery checkpoint. It is not a portable file or
+  off-device backup.
+- **Recovery:** Lists, restores or clears local checkpoints in the
+  Project tab. Restoring replaces workspace state; clearing deletes
+  stored checkpoints.
+- **Export:** Downloads an independent portable `.wafercad` project
+  with saved History and Variants. Keep this file in a safe location
+  for archival research.
+- **Open/Import:** Loads a portable project after schema/geometry
+  validation and may replace the active project. Confirm first.
 
 Save and automatic browser persistence are not the same
 as exporting a file. Clearing site data, changing profiles

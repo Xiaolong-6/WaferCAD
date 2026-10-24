@@ -107,8 +107,10 @@ its **own** XY line and does not automatically follow the ROI perimeter.
 The Mask ROI instead constrains Process selection. Do not infer a
 process etch from a 3D crop.
 
-Physical GLB uses the exact canonical material model and
-camera-independent deterministic geometry. 3D PNG exports the **visible
+Where a material kernel supports physical GLB export, the output is
+derived from exact canonical material ownership and camera-independent
+deterministic geometry; unsupported special owners must fail explicitly
+rather than exporting a display proxy. 3D PNG exports the **visible
 exact 3D frame** at native 3× capture resolution; it reflects selected
 opacity, borders, origin, scale and current rough LOD. It is a
 presentation snapshot, not a measurement or material export.
