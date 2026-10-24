@@ -606,8 +606,15 @@ Halving or doubling height step remains consistent with the independent
 convex analytical geometry, rather than merely comparing two numeric
 approximations to one another.
 
+Two more tests replay a native 40 nm first-Al Process step before
+evaluating the succeeding 30 nm beam. Independent step-height geometry
+requires the second-dose +X shadow edge at `x = -0.04 µm`
+(`15.84 µm²` coverage). Reverse azimuth exposes the full target
+(`16.00 µm²`). Both are verified against the stored first-Al material
+height rather than merely the initial Si/Nb surface.
+
 Local execution: `node --test site/tests/direct-nb-recess-shadow-analytic.test.mjs
-site/tests/process-recipe.test.mjs` on Node 22.16.0, **18 passed,
+site/tests/process-recipe.test.mjs` on Node 22.16.0, **20 passed,
 0 failed**. The isolated visibility module Git blob matched
 `e2ad535e83f0bd079eac489ef11dbf8152c481ff`; the restored 1,192-file
 source-only baseline was manifest-verified. The current full branch `model.js`

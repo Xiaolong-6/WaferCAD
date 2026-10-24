@@ -100,3 +100,52 @@ test('Q2-like two-layer opening remains sampling-convergent at a known analytic 
   assert.ok(Math.abs(geometryArea(coarse.area) - geometryArea(fine.area)) < 1e-8);
   assert.ok(Math.abs(geometryArea(fine.area) - 1.7) < 1e-8);
 });
+
+test('subsequent 30 nm Al dose self-shadows by the previous 40 nm Al material', () => {
+  const model = createModel({ shape: 'rect', width: 8, height: 4, thickness: 10 });
+  assert.equal(
+    applyOperation(model, {
+      type: 'add',
+      name: 'First Al: 40 nm',
+      thickness: 0.04,
+      area: rectMulti(4, 4, 2, 0),
+      face: 'front',
+      growth: 'direct',
+    }).changed,
+    true,
+  );
+  const lowerExposedSi = rectMulti(4, 4, -2, 0);
+  const beam = { tiltDeg: 45, azimuthDeg: 0, heightStepUm: 0.01 };
+  const secondDose = directIncidenceArea(model, lowerExposedSi, beam, {
+    depositedThicknessUm: 0.03,
+  });
+  const extent = multiBounds(secondDose.area);
+  assert.ok(Math.abs(extent.maxX + 0.04) < 1e-8);
+  assert.ok(Math.abs(geometryArea(secondDose.area) - 15.84) < 1e-8);
+  assert.equal(pointInMulti([-0.03, 0], secondDose.area), false);
+  assert.equal(pointInMulti([-0.05, 0], secondDose.area), true);
+});
+
+test('second-dose metal self-shadow reverses with wafer-frame beam azimuth', () => {
+  const model = createModel({ shape: 'rect', width: 8, height: 4, thickness: 10 });
+  assert.equal(
+    applyOperation(model, {
+      type: 'add',
+      name: 'First Al: 40 nm',
+      thickness: 0.04,
+      area: rectMulti(4, 4, 2, 0),
+      face: 'front',
+      growth: 'direct',
+    }).changed,
+    true,
+  );
+  const opposite = directIncidenceArea(
+    model,
+    rectMulti(4, 4, -2, 0),
+    { tiltDeg: 45, azimuthDeg: 180, heightStepUm: 0.01 },
+    { depositedThicknessUm: 0.03 },
+  );
+  assert.ok(Math.abs(multiBounds(opposite.area).maxX) < 1e-8);
+  assert.ok(Math.abs(geometryArea(opposite.area) - 16) < 1e-8);
+  assert.equal(pointInMulti([-0.03, 0], opposite.area), true);
+});
