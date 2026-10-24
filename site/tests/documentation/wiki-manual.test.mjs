@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { access, readFile } from 'node:fs/promises';
+import { access, readFile, readdir } from 'node:fs/promises';
 import test from 'node:test';
 
 import { BUNDLED_EXAMPLES } from '../../bundled-examples.js';
@@ -270,6 +270,28 @@ test('Wiki uses legible first-party visual evidence or task-specific diagrams, a
           `${page}: explain image provenance, purpose and schematic/actual status immediately below it`,
         );
       }
+    }
+  }
+});
+
+test('GitHub Wiki page links resolve after the flat source pages are published', async () => {
+  const root = new URL('../../../docs/wiki/', import.meta.url);
+  const filenames = (await readdir(root)).filter((name) => name.endsWith('.md'));
+  const wikiPages = new Set(filenames.map((name) => name.slice(0, -3)));
+  for (const filename of filenames) {
+    const source = await readFile(new URL(filename, root), 'utf8');
+    for (const [, target] of source.matchAll(/(?<!!)\[[^\]\n]+\]\(([^)\s]+)\)/g)) {
+      const destination = target.split('#')[0];
+      if (!destination || /^(?:https?:\/\/|mailto:)/.test(destination)) continue;
+      assert.match(
+        destination,
+        /^[A-Za-z0-9_-]+$/,
+        `${filename}: repository-relative links do not resolve in a flat GitHub Wiki; use a page slug or an absolute GitHub URL`,
+      );
+      assert.ok(
+        wikiPages.has(destination),
+        `${filename}: unknown published Wiki page ${destination}`,
+      );
     }
   }
 });

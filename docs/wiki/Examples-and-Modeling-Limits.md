@@ -130,7 +130,7 @@ The Welcome preview uses a **single-site source** for responsive inspection. Ope
 
 ![Actual WaferCAD Mask view of the illustrative 4,725-site TiO₂ metalens array showing its patterned mask geometry](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/screenshots/2026-10-24/metalens-array-mask.png)
 
-_Real Chromium **Mask** view of WaferCAD's illustrative 4,725-site TiO₂ array, source main@90fb16836eec, 1440 × 960. It shows the reconstructed mask footprint, **not** an original paper GDS/OAS layout or optical phase simulation. The screenshot does not verify per-site material convergence._
+_Real Chromium **Mask** view of WaferCAD's illustrative TiO₂ array (main@90fb16836eec, 1440 × 960). The 80 × 80 grid reports **6,400 instances**: **4,725 active TiO₂ sites** and **1,675 background cells**. This is a reconstructed Mask, **not** the paper's GDS/OAS or an optical simulation; this capture cannot establish per-site material accuracy._
 
 ![Actual WaferCAD Chromium 3D render of the illustrative 4,725-site TiO₂ metalens array](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/tio2-metalens-four-unit-three.webp)
 
