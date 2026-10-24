@@ -10,6 +10,14 @@
 
 ## How the workspace fits together
 
+![Actual mobile Workstation View navigation with the fixed bottom bar and an empty circular Base](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/screenshots/2026-10-24/mobile-view-navigation.png)
+
+_Real Chromium compact-screen **View** mode, showing the persistent bottom View/Edit navigation and an unprocessed circular Base. Source main@90fb16836eec, 390 × 844; this is not the rectangular tutorial substrate._
+
+![Actual mobile Project Base editor showing display units, Base size and Recovery controls](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/screenshots/2026-10-24/mobile-project-base.png)
+
+_Real Chromium compact-screen **Project** editor showing where to configure Base, rebuild geometry and manage local Recovery. Source main@90fb16836eec, 390 × 844. The 100000 µm circular default values here are **not** the 100 × 100 µm tutorial dimensions; enter the tutorial's values before Apply._
+
 On desktop, use the left workflow sidebar to edit the project and the centered controls above the right workspace to show **Overview**, **Main**, **Mask**, **3D** or **Section**. On mobile/compact screens, the fixed bottom bar switches between **Edit** and **View**, with contextual tabs for each mode; the Welcome return link is under **Project** in Edit mode.
 
 - **Project:** Select **New**, **Open**, **Save**, **Export** and **Recovery**. Under **Display**, choose the **XYZ unit** before typing dimensions.

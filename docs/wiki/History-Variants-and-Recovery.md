@@ -8,6 +8,10 @@ mechanism before editing an old Step or replacing the Base.
 
 ## History and snapshots
 
+![Actual WaferCAD History panel showing Starting Wafer Step 0 and multiple TiO2 metalens process steps alongside a Section view](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/screenshots/2026-10-24/history-metalens-steps.png)
+
+_Real Chromium capture of the **TiO₂ four-meta-atom** example's History and Section view, source main@90fb16836eec, 1440 × 960. Step 0, numbered process steps and the current HEAD are visible. This image does **not** demonstrate a Variant creation dialog, an edited Step, or successful Recovery storage._
+
 ### From Step 0 to a finished process
 
 ```mermaid

@@ -1,0 +1,78 @@
+{
+  "source_sha": "90fb16836eecca3ebcfdf734b15150232d081c74",
+  "source_workflow_run": 40074390721,
+  "description": "Original real WaferCAD native Chromium screenshots; no mocked or generated UI",
+  "capture_limitations": "Only visible states are verified; no image alone proves material accuracy, paper fidelity, full application history interaction or exact Worker readiness.",
+  "files": [
+    {
+      "filename": "desktop-overview.png",
+      "sha256": "2f773533ff07968826510be916ce275f0a89cce853c7507232ab00bfae2825e9",
+      "source_file": "01-desktop-overview.png",
+      "artifact_id": 12553481159,
+      "artifact_path": "ui-v2-desktop-docking/overview-1440.png",
+      "source_sha": "90fb16836eecca3ebcfdf734b15150232d081c74",
+      "pixel_width": 1440,
+      "pixel_height": 960
+    },
+    {
+      "filename": "mobile-view-navigation.png",
+      "sha256": "074394e7eb142dd642f716b86369276006dcdd5a4bed11098b302ad7e1e66c45",
+      "source_file": "02-mobile-view-navigation.png",
+      "artifact_id": 12553481159,
+      "artifact_path": "ui-v2-mobile/mobile-390x844-view-navigation.png",
+      "source_sha": "90fb16836eecca3ebcfdf734b15150232d081c74",
+      "pixel_width": 390,
+      "pixel_height": 844
+    },
+    {
+      "filename": "mobile-project-base.png",
+      "sha256": "036277a2ddc06c32f2afb01296c13dfa6e2e4cc44847cf198a0599d1a7975dea",
+      "source_file": "03-mobile-project-base.png",
+      "artifact_id": 12553481159,
+      "artifact_path": "ui-v2-mobile/mobile-390x844-project-welcome.png",
+      "source_sha": "90fb16836eecca3ebcfdf734b15150232d081c74",
+      "pixel_width": 390,
+      "pixel_height": 844
+    },
+    {
+      "filename": "section-zbreak.png",
+      "sha256": "9fede38e83f9587eee69a19b481da4fa20c8bf6e17ff9658e9c7cb9116d9141b",
+      "source_file": "05-section-zbreak.png",
+      "artifact_id": 12553481159,
+      "artifact_path": "ui-v2-section-review/section-zbreak-1440.png",
+      "source_sha": "90fb16836eecca3ebcfdf734b15150232d081c74",
+      "pixel_width": 1440,
+      "pixel_height": 960
+    },
+    {
+      "filename": "history-metalens-steps.png",
+      "sha256": "9ea0e3ec8fdfa84aff14d2e5cbf2e7542d37c51f4888b99ab579bb9cb63503ab",
+      "source_file": "07-history-step-list.png",
+      "artifact_id": 12553481159,
+      "artifact_path": "ui-v2-review-interactions/review-1440.png",
+      "source_sha": "90fb16836eecca3ebcfdf734b15150232d081c74",
+      "pixel_width": 1440,
+      "pixel_height": 960
+    },
+    {
+      "filename": "mobile-border-inspector.png",
+      "sha256": "8b460bb67a04cde55ce577447c7a37e5af7c4ea45241331222064c83b6c2113f",
+      "source_file": "08-mobile-border-inspector.png",
+      "artifact_id": 12553481159,
+      "artifact_path": "ui-v2-mobile/mobile-390x844-border-inspector.png",
+      "source_sha": "90fb16836eecca3ebcfdf734b15150232d081c74",
+      "pixel_width": 390,
+      "pixel_height": 844
+    },
+    {
+      "filename": "metalens-array-mask.png",
+      "sha256": "51af2f8793a95738d73dd5191248c80ac195517b4a6e338460ba96b6dfa9734f",
+      "source_file": "10-metalens-mask.png",
+      "artifact_id": 12552423731,
+      "artifact_path": "v2-metalens-science/mask-before-replay.png",
+      "source_sha": "90fb16836eecca3ebcfdf734b15150232d081c74",
+      "pixel_width": 1440,
+      "pixel_height": 960
+    }
+  ]
+}

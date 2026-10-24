@@ -40,11 +40,19 @@ A selected control indicates a persistent state (for example, Pan or Border). An
 
 **Z Break** is in the Section title bar. It opens an editor even when the break is off. **Enable Z-axis break** controls whether the center interval is omitted from the display; the **Upper boundary** and **Lower boundary** fields edit the physical Z values, with material-boundary snapping available on the ruler. **Advanced display scaling** contains the optional linked Front/Back weights; they influence Section Auto and 3D, while **1:1 X:Z** retains its physical scale. Z Break never changes the Kernel geometry or physical exports.
 
+![Actual WaferCAD Section Z Break editor over M3D layered material cross-section](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/screenshots/2026-10-24/section-zbreak.png)
+
+_Real Chromium **Section Z Break** editor for the shipped M3D example, source main@90fb16836eec, 1440 × 960. The omitted Z interval is a **display transformation**, not etched air or missing material; Z scaling does not alter canonical layer thickness or physical export._
+
 ## 3D ROI versus Section A–B
 
 Main ROI clips only the visible 3D inspection volume; it does not constrain Process. Section is evaluated along A–B. The ROI edge and A–B can cross different physical locations, so a 3D sidewall does not necessarily match the Section unless those paths are aligned.
 
 ## Visibility
+
+![Actual WaferCAD mobile Border Inspector showing visible and X-ray line modes](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/screenshots/2026-10-24/mobile-border-inspector.png)
+
+_Real Chromium compact-screen **3D Border Inspector** controls, source main@90fb16836eec, 390 × 844. These switches alter the presentation of borders, **not** material interfaces or Kernel geometry; the open settings panel does not itself demonstrate a finished 3D mesh._
 
 Material opacity controls whether buried regions show through in 3D. Implant and Electrical Region overlays are annotations. A cut face can expose an otherwise buried implant, but that does not mean the original material was removed.
 

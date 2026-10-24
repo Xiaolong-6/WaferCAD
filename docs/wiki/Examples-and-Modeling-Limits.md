@@ -128,6 +128,10 @@ The Welcome preview uses a **single-site source** for responsive inspection. Ope
 
 ## 8. TiO₂ achromatic metalens · four meta-atoms
 
+![Actual WaferCAD Main view of the illustrative 4725-site TiO2 metalens array with its patterned footprint](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/screenshots/2026-10-24/metalens-array-mask.png)
+
+_Real Chromium **Main** view of WaferCAD's illustrative 4,725-site TiO₂ array, source main@90fb16836eec, 1440 × 960. It visualizes the reconstruction's XY geometry, **not** an original paper GDS/OAS mask or optical phase simulation. The screenshot does not verify per-site material convergence._
+
 ![Actual WaferCAD Chromium 3D render of the illustrative 4,725-site TiO₂ metalens array](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/tio2-metalens-four-unit-three.webp)
 
 _This is a real WaferCAD 3D renderer screenshot of the illustrative full array, not the paper's unpublished original GDS. The four-unit interactive preview remains lightweight._
