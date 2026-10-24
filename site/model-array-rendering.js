@@ -84,6 +84,101 @@ function ownBoundaryWall(w, part, neighbors, layerOrder) {
   }
   return out;
 }
+// A template corner can become a straight exterior wafer wall where another
+// array instance continues the same material. This is instance-seam ownership,
+// NOT another physical crease-angle rule: Process Topology supplied the crease.
+function removeCollinearInstanceSeams(lines, entries) {
+  const key = (x, y) => `${x.toFixed(8)},${y.toFixed(8)}`;
+  const endpoints = new Map();
+  for (let group = 0; group < entries.length; group++) {
+    const entry = entries[group];
+    for (let index = 0; index < entry.translations.length; index++) {
+      const [x, y] = entry.translations[index];
+      const instance = `${group}:${index}`;
+      for (const wall of entry.boundaryWalls) {
+        const dx = wall.q[0] - wall.p[0],
+          dy = wall.q[1] - wall.p[1];
+        const length = Math.hypot(dx, dy);
+        if (!(length > EPS)) continue;
+        for (const [point, sign] of [
+          [wall.p, 1],
+          [wall.q, -1],
+        ]) {
+          const id = key(point[0] + x, point[1] + y);
+          if (!endpoints.has(id)) endpoints.set(id, []);
+          endpoints.get(id).push({
+            instance,
+            layerId: wall.layerId,
+            z0: wall.z0,
+            z1: wall.z1,
+            dx: (sign * dx) / length,
+            dy: (sign * dy) / length,
+          });
+        }
+      }
+    }
+  }
+  const result = [];
+  for (const [a, b] of lines) {
+    if (Math.abs(a[0] - b[0]) > EPS || Math.abs(a[1] - b[1]) > EPS) {
+      result.push([a, b]);
+      continue;
+    }
+    const rays = endpoints.get(key(a[0], a[1])) || [];
+    if (rays.length < 2) {
+      result.push([a, b]);
+      continue;
+    }
+    const lo = Math.min(a[2], b[2]),
+      hi = Math.max(a[2], b[2]);
+    const levels = [
+      ...new Set([
+        lo,
+        hi,
+        ...rays.flatMap(({ z0, z1 }) => [z0, z1]).filter((z) => z > lo + EPS && z < hi - EPS),
+      ]),
+    ].sort((l, r) => l - r);
+    for (let n = 1; n < levels.length; n++) {
+      const low = levels[n - 1],
+        high = levels[n],
+        mid = (low + high) / 2;
+      const visible = rays.filter((r) => r.z0 <= mid + EPS && r.z1 >= mid - EPS);
+      let continuous = false;
+      for (let i = 0; i < visible.length && !continuous; i++)
+        for (let j = i + 1; j < visible.length; j++) {
+          const left = visible[i],
+            right = visible[j];
+          if (left.instance === right.instance || left.layerId !== right.layerId) continue;
+          if (
+            Math.abs(left.dx * right.dy - left.dy * right.dx) < 1e-8 &&
+            left.dx * right.dx + left.dy * right.dy < -1 + 1e-8
+          ) {
+            continuous = true;
+            break;
+          }
+        }
+      if (!continuous && high > low + EPS)
+        result.push([
+          [a[0], a[1], low],
+          [a[0], a[1], high],
+        ]);
+    }
+  }
+  // Neighboring templates can each contribute the same physical corner.
+  // Deduplicate only exact world-space vertical intervals; horizontal cap
+  // ownership remains with Process Topology and the existing outline pipeline.
+  const seenVertical = new Set();
+  return result.filter(([a, b]) => {
+    if (Math.abs(a[0] - b[0]) > EPS || Math.abs(a[1] - b[1]) > EPS) return true;
+    const id = [a[0], a[1], Math.min(a[2], b[2]), Math.max(a[2], b[2])]
+      .map((v) => v.toFixed(9))
+      .join('|');
+    if (seenVertical.has(id)) return false;
+    seenVertical.add(id);
+    return true;
+  });
+}
+
 export function buildArrayRenderPlan(model, clip, build) {
   if (clip) return build(resolveArrayModel(model, geometryBounds(clip)), clip);
   const groups = new Map(),
@@ -142,7 +237,7 @@ export function buildArrayRenderPlan(model, clip, build) {
           borders.push([[a[0], a[1], low], [a[0], a[1], high]]);
         }
       }
-      entry = { caps: plan.caps, sidewalls, borderLines: borders, translations: [] };
+      entry = { caps: plan.caps, sidewalls, borderLines: borders, boundaryWalls, translations: [] };
       groups.set(key, entry);
     }
     entry.translations.push([part.x, part.y]);
@@ -264,7 +359,7 @@ export function buildArrayRenderPlan(model, clip, build) {
   return {
     caps,
     sidewalls,
-    borderLines,
+    borderLines: removeCollinearInstanceSeams(borderLines, entries),
     arrayInstances: model.array.instances.length,
     arrayNeighborhoods: groups.size,
   };
