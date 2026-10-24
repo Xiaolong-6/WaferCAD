@@ -56,7 +56,6 @@ The [CI architecture audit](archive/CI_ARCHITECTURE_AUDIT_2026-10-12.md) tracks 
 - [Process numerical and physical interpretation contract](science/PROCESS_NUMERICAL_CONTRACT_2026-10-14.md) — numerical Z resolution, sub-0.01 nm preservation and continuum-film limitations.
 - [Both-face Process Kernel](science/PROCESS_BOTH_FACE_2026-10-11.md) — Front → Back execution, two independent Front/Back Layer IDs, atomic failure and current v2 Manual Surface selector.
 - [Both-face bundled-example consolidation](examples/EXAMPLE_BOTH_FACE_CONSOLIDATION_2026-10-13.md) — Photodetector, PERC and Tandem process changes, modeling assumptions and regeneration evidence.
-- [Bundled-example literature fidelity audit (2026-10-14)](archive/examples/EXAMPLE_LITERATURE_FIDELITY_2026-10-14.md) — eight literature families, source-to-Recipe/Mask material probes, microdisk process correction and remaining figure-alignment gates.
 - [Photodetector reconstruction (2026-10-08)](examples/PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md) — historical paper-derived process evidence; later Both-face consolidation supersedes applicable front/back steps.
 - [Lift-off v1 implementation record](science/LIFTOFF_V1_2026-10-09.md) — ideal geometry, original 2026-10-09 checks and remaining model limits; PR #167 has merged.
 - [TiO2 metalens reconstruction](examples/TIO2_METALENS_RECONSTRUCTION_2026-10-09.md) — paper-derived process, four-cell Recipe and the 4,725-site full-array Welcome project with matching Mask and compiled History.
@@ -67,7 +66,7 @@ The [CI architecture audit](archive/CI_ARCHITECTURE_AUDIT_2026-10-12.md) tracks 
 - [Mask File/Draw](science/MASK_DRAW.md) — independent sources, Process selection and export scope.
 - [KLayout compatibility](io/KLAYOUT_LAYOUT_COMPATIBILITY.md) — pinned parser/import oracle; recorded corpus results are revision-specific evidence.
 
-## Design contracts, ongoing work and dated verification
+## Design contracts, open work and dated verification
 
 Dated implementation plans and handoffs preserve the status of their original revision. For merged PRs (notably #188 and #267), their old Draft/approval language is historical; always check the linked PR and latest Main implementation before interpreting a dated acceptance claim.
 

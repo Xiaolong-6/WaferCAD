@@ -97,7 +97,7 @@ The following are previously committed, revision-specific records preserved in f
 
 ## Relocated full records (2026-10-12)
 
-**68 superseded or revision-specific reports** now have canonical full text under `docs/archive/`. Original dates, SHAs, results, language and completion status remain preserved; relative Markdown links were adjusted for relocation. The former locations are deleted; external URLs to them may no longer work. A dated pass or failure is not current-release acceptance evidence.
+At the original 2026-10-12 lifecycle checkpoint, **68 superseded or revision-specific reports** had been relocated under `docs/archive/`. Additional completed records were moved later, including the 2026-10-24 entries above. Original dates, SHAs, results, language and completion status remain preserved; relative Markdown links were adjusted for relocation. The former locations are deleted; external URLs to them may no longer work. A dated pass or failure is not current-release acceptance evidence.
 
 ### Root-level investigations, completed implementations and research snapshots
 

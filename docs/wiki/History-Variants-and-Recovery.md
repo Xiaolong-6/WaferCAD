@@ -6,7 +6,9 @@ History is a **process timeline and branching graph**; Recovery and
 Export are different ways to protect saved projects. Use the correct
 mechanism before editing an old Step or replacing the Base.
 
-## From Step 0 to a finished process
+## History and snapshots
+
+### From Step 0 to a finished process
 
 ```mermaid
 flowchart LR
@@ -34,6 +36,12 @@ without changing solids. Aborted, failed, busy and no-change
 operations do not add a physical Step. An optional **bookmark**
 names a Step or a saved inspection state; a bookmark is not another
 material processing operation.
+
+## Variants
+
+A Variant is a branch of the process lineage, not a second bookmark.
+Its saved HEAD can contain its own later Steps and child Variants;
+restoring the parent must not delete that child history.
 
 ## Inspect versus change a historical Step
 
@@ -104,7 +112,7 @@ Layer/Implant/Electrical Region renaming must preserve the
 stable entity IDs used by History and replay, rather than
 making an independent, conflicting view-only label.
 
-## Save, Recovery and portable Export
+## Save, Recovery and Export
 
 | Action | What it protects | Important limitation |
 | --- | --- | --- |
@@ -119,7 +127,9 @@ or losing the device can destroy browser-local Recovery.
 For research records and before risky edits, **Export** an
 independent project.
 
-## Two tabs, writer ownership and failure recovery
+## Multi-tab editing
+
+### Writer ownership and failure recovery
 
 Only the active writer should save the shared workspace.
 Another tab may be in read-only or takeover state and show
@@ -138,7 +148,7 @@ the current project before experimenting with restoration.
 Two concurrently open tabs are not a merge/conflict-resolution
 system; export separate copies if both contain useful work.
 
-## Recipe replays and geometric limits
+## Recipe and geometry replays
 
 A Recipe runs actual geometry operations; running it twice
 is **not** necessarily idempotent. Compare a new process
