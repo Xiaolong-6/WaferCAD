@@ -29,7 +29,7 @@ Export SVG, GDSII or OASIS from the active Mask view. Select export scope as app
 ## View and geometry export
 
 - **Main/Section** provide schematic SVG exports.
-- **3D PNG** captures the inspected view.
+- **3D PNG** captures the currently visible 3D view at 3× resolution, including its active opacity, vertical display scale, origin visibility, border and current roughness LOD. It is a presentation capture, not a physical geometry export; the GLB geometry contract is unchanged.
 - **GLB** exports the visible physical inspection geometry and respects an active Main ROI.
 - GLB can embed deterministic rough/pyramid relief. Export mesh quality is constrained by a triangle budget and is not a TCAD mesh.
 

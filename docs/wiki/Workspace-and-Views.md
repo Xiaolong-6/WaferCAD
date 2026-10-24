@@ -23,12 +23,12 @@ _A genuine 920 × 600-pixel **Section A–B** output from the shipped MAGIC-1000
 - **Overview** restores Main, Mask, 3D and Section together for quick inspection.
 - **Main** is a planar view of the Front/Back surface and provides A–B and 3D ROI editing.
 - **Mask** shows either the imported layout (**File**) or local editable primitives (**Draw**). Mask opacity changes visualization, not physical coverage.
-- **3D** shows extruded vector structure, rough/pyramid relief, material transparency and ROI cut faces. Switch Fast/Quality for mesh detail.
+- **3D** shows extruded vector structure, rough/pyramid relief, material transparency and ROI cut faces. Switch Fast/Quality for mesh detail; Display controls opacity, vertical display scale and Show Origin without changing physical geometry.
 - **Section A–B** shows the material stack sampled along the chosen A–B path. On desktop it is a peer of Main, Mask and 3D: it can be hidden, restored, arranged or maximized as a scientific view.
 
 ## Toolbar states
 
-All four view headers now use explicit **mode selectors** (Mask File/Draw, 3D Fast/Quality and Section Auto/1:1), high-frequency actions, **Display**, **More**, and a conditional maximize action. Main exposes Slice, **3D ROI**, Pan and Fit; Mask exposes **Mask ROI** and Fit. Zoom +/- and export actions are in **More**. Display contains visualization-only controls (Mask opacity; 3D opacity and Border; Section Border). At narrow panel widths, secondary tools move into the _same More menu_ without creating duplicate buttons.
+All four view headers now use explicit **mode selectors** (Mask File/Draw, 3D Fast/Quality and Section Auto/1:1), high-frequency actions, **Display**, **More**, and a conditional maximize action. Main exposes Slice, **3D ROI**, Pan and Fit; Mask exposes **Mask ROI** and Fit. Zoom +/- and export actions are in **More**. Display contains visualization-only controls (Mask opacity; 3D opacity and continuous vertical display scale, Show Origin and Border; Section Border). At narrow panel widths, secondary tools move into the _same More menu_ without creating duplicate buttons.
 
 A selected control indicates a persistent state (for example, Pan or Border). An opened editor is an independent state: closing Display never disables Border. Mode labels describe the **current selection**, not a click-to-toggle target. Menus close on Escape, clicking the canvas or completing a one-shot menu action. Section's **Detail ROI** is found in More and is different from Main's 3D ROI or Mask's Process ROI.
 

@@ -45,8 +45,8 @@ The [CI architecture audit](archive/CI_ARCHITECTURE_AUDIT_2026-10-12.md) tracks 
 
 - [Process benchmarks](science/PROCESS_BENCHMARKS.md) — analytic geometry acceptance and approximation limits.
 - [Welcome Example loading baseline](performance/WELCOME_LOADING_BASELINE.md) — per-phase timing methods and limits.
-- [Experimental isotropic release oracle (2026-10-16)](science/ISOTROPIC_RELEASE_ORACLE_2026-10-16.md) — continuous Euclidean release reference, adaptive partition bounds, and unresolved production topology.
-- [Paper-figure provenance matrix (2026-10-16)](evidence/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md) — eight-family figure provenance and explicit unaccepted fidelity.
+- [Isotropic release oracle and historical adaptive model (2026-10-16)](science/ISOTROPIC_RELEASE_ORACLE_2026-10-16.md) — numerical bounds for earlier banded models, current Continuous-release publication boundary and remaining paper-fidelity limits.
+- [Paper-figure provenance matrix (2026-10-16)](evidence/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md) — current nine-family provenance with historical eight-family evidence bounded to its original sources; no paper match yet accepted.
 - [Process numerical and physical interpretation contract](science/PROCESS_NUMERICAL_CONTRACT_2026-10-14.md) — numerical Z resolution, sub-0.01 nm preservation and continuum-film limitations.
 - [Both-face Process Kernel](science/PROCESS_BOTH_FACE_2026-10-11.md) — Front → Back execution, two independent Front/Back Layer IDs, atomic failure and current v2 Manual Surface selector.
 - [Both-face bundled-example consolidation](examples/EXAMPLE_BOTH_FACE_CONSOLIDATION_2026-10-13.md) — Photodetector, PERC and Tandem process changes, modeling assumptions and regeneration evidence.

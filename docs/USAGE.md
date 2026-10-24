@@ -87,7 +87,7 @@ The 3D ROI boundary is not automatically the Section A–B line. Section samples
 
 ### Fast / Quality 3D
 
-The 3D header exposes **Fast** and **Quality** modes. Fast is the default and lowers render-mesh sampling, rough-surface subdivision and pixel ratio while preserving the same canonical material ownership, openings, sidewalls and annotation envelopes. Quality uses the denser inspection mesh for close morphology review. During rotate/pan/zoom, 3D may temporarily enter an even lighter Interactive policy and automatically return to the selected Fast/Quality mode when interaction ends. These modes change presentation only; Main, Section, project geometry and physical GLB export are unchanged.
+The 3D header exposes **Fast** and **Quality** modes. **Display** contains live Opacity and vertical-scale sliders, a pressed-state **Show Origin** control and Border visibility; these are view-only controls, not geometry edits. Fast is the default and lowers render-mesh sampling, rough-surface subdivision and pixel ratio while preserving the same canonical material ownership, openings, sidewalls and annotation envelopes. Quality uses the denser inspection mesh for close morphology review. During rotate/pan/zoom, 3D may temporarily enter an even lighter Interactive policy and automatically return to the selected Fast/Quality mode when interaction ends. These modes change presentation only; Main, Section, project geometry and physical GLB export are unchanged. **3D PNG** exports a native 3× WYSIWYG capture of the visible 3D state, including current roughness LOD and display controls; unlike the PNG, GLB preserves physical geometry.
 
 ## 6. Apply an operation
 

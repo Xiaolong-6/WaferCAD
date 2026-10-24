@@ -1,6 +1,6 @@
 # CI routing
 
-WaferCAD keeps the full regression inventory, but pull requests do not run every browser suite unconditionally. The browser workflow first classifies the changed paths with `scripts/ci-test-plan.mjs`, then runs the narrowest regression scopes that own those changes.
+WaferCAD keeps the full regression inventory without running Browser/science suites automatically on ordinary Draft pushes. The Ready acceptance owner uses `scripts/ci-test-plan.mjs` to classify cumulative changed paths, then runs only the selected reusable gates. The daily controller and Main release have separate exact-SHA execution rules.
 
 ## Authoritative execution strategy (effective 2026-10-22)
 
@@ -56,10 +56,7 @@ repository settings and **cannot be guaranteed by YAML alone**.
 
 ---
 
-**Historical implementation notes below:** older paragraphs describing Draft
-Browser automation, automatic specialized PR replay, and weekly independent
-Browser schedules document the previous policy and are superseded by the
-2026-10-22 routing table above. Do not use them to infer current triggers.
+**Authority note:** The table above and `AGENTS.md` govern execution. The sections below detail local verification, accepted visual evidence, Ready routing and release. Any historical references to automatic Draft/weekly Browser runs are explicitly superseded by the 2026-10-22 policy.
 
 ## Local Quality evidence
 
@@ -277,7 +274,7 @@ GPU parity.
 
 ## MAGIC-1000 v2 visualization owner
 
-`magic1000-candidate.yml` is a read-only, path-gated PR and manual acceptance
+`magic1000-candidate.yml` is a read-only **manual-dispatch** acceptance
 for the current v2 Section/3D preview of MAGIC-1000. It replaces the obsolete
 self-pushing feature-branch workflow, drops repository write permission, and
 uploads screenshots/reports without rewriting the committed thumbnail.
@@ -300,14 +297,14 @@ Draft-trigger rules were retired by the 2026-10-22 policy.
 
 - Quality and release Quality validate local evidence without installing npm or repeating the local Node/lint/format/docs gate.
 - Browser PR jobs do not repeat the locally executed Node gate certified by `Quality`.
-- Node tests run inside independent weekly/manual Browser regression, but are skipped in the Pages release call where the release Quality job already owns them.
+- The daily full integration controller intentionally reruns the full Node suite on its tested SHA. Ready Quality is proof-only; release gates follow their own exact-source verification and selected execution paths.
 - Chromium and npm downloads remain cached.
 - Normal targeted suites share one Chromium job to avoid repeated setup cost.
 - Human-review screenshot galleries are not a Draft default; they are reserved for explicitly selected Ready, daily or manual full runs.
 - Renderer stress cases and the full Process Geometry permutation set belong to the daily/manual full inventory; Ready PRs use risk-selected owners.
 - Process Geometry is invoked only by the selected acceptance owner, daily controller or approved manual/release gate, never as a Draft fallback.
 - Node-test-only changes under `site/tests/` should use their local owning Node suite; browser acceptance still follows the Ready/release risk selector.
-- KLayout parser/browser compatibility stays path-filtered on PRs and is reused as a required same-SHA release gate on layout/interop changes.
+- KLayout parser/browser compatibility is selected by the Ready risk router and reused as a same-SHA release gate on layout/interop changes; it is not an automatic Draft PR job.
 - Main/Mask and Recipe browser acceptances are similarly reusable release gates. They do not run unconditionally for documentation-only changes.
 
 ## Local equivalents
