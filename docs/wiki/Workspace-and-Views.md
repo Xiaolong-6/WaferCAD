@@ -48,6 +48,26 @@ Main ROI clips only the visible 3D inspection volume; it does not constrain Proc
 
 Material opacity controls whether buried regions show through in 3D. Implant and Electrical Region overlays are annotations. A cut face can expose an otherwise buried implant, but that does not mean the original material was removed.
 
+## Progressive 3D and reliable captures
+
+On supported ordinary models, 3D may first show a temporary cap-and-border
+preview before the exact physical surfaces arrive. This is **not** a new
+fabrication step and does not change the saved project or the Section
+material stack. ROI-clipped and repeated-array models may skip the preview.
+For a scientific check, wait for the exact 3D scene and compare the
+same History state, ROI, A–B position, material visibility and Z display
+settings. A visible first frame alone is not proof that the exact solid
+or a complex undercut has finished loading.
+
+**3D PNG** captures the visible, painted **exact** scene (including the
+current border, opacity, Show Origin, vertical display scale and roughness
+LOD) at higher resolution; it is an inspection image, not a physical
+geometry file. The app refuses a PNG capture while only the early
+preview is available. **GLB** is physical model-derived geometry where
+that model supports GLB export; unsupported special material owners
+must not silently export a simplified display mesh. Section screenshots
+show a 2D material cut and can use a different scale from 3D.
+
 ## Performance
 
 Use **Fast** mode or a smaller Main ROI for large repeated arrays or fine rough features. Switching Quality changes only rendering detail, not material geometry, saved project dimensions, or the physical export.

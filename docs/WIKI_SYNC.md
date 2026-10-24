@@ -19,6 +19,53 @@ Wiki illustrations must be **relevant to the adjacent procedure**. Prefer exact,
 
 See [Wiki content and visual audit](archive/WIKI_CONTENT_VISUAL_AUDIT_2026-10-12.md) for the page-level inventory and decisions.
 
+## Native UI screenshot promotion gate
+
+Use screenshot evidence **from the actual product**, not mock HTML,
+generated shell-only previews or hand-drawn copies of interface controls.
+The first choice is a real Chromium/Playwright capture from an exact-SHA
+source checkout and valid normal Origin. A pre-existing GitHub Actions
+capture for that exact main SHA may be **reused** for a documentation
+review without running CI again. Its artifact, run ID, filename, test
+model and viewport must be recorded, and the pixels independently
+inspected before any crop is promoted.
+
+For each screenshot inserted into a current Wiki page:
+
+1. Check the depicted **product revision**, exact named Example,
+   active History Step/Variant, selected views, ROI, Z scaling and
+   opacity/Border mode. Confirm all relevant UI labels are actually
+   visible and legible at the Wiki's display width.
+2. Verify whether the captured state is **preview** or exact painted
+   scene. A real screenshot of an early approximate 3D frame is
+   insufficient to illustrate exact 3D, export, Section/3D agreement or
+   paper-figure fidelity.
+3. Save the reviewed screenshot as a **version-controlled image**
+   under `docs/wiki/assets/` (or use an already version-controlled,
+   accurately labeled first-party image). Embed via a stable repository
+   `main` raw URL. Do **not** embed ephemeral Actions artifact URLs,
+   `sandbox:` links, issue attachments, personal storage, or local
+   filesystem paths in published Wiki Markdown.
+4. Supply adjacent, specific alt text and a caption stating which
+   view, Example, Step, source SHA and important display limitation
+   the image illustrates. A screenshot of a real photodetector or
+   metalens is **not** the resulting image of the beginner
+   oxide-window exercise.
+5. Compare the rendered Wiki page (desktop and narrow screens) after
+   the image reaches `main`. Keep separate approved visual regression
+   baselines untouched; documentation figures are not a substitute
+   for tests or release acceptance.
+
+**Current capture priorities:** desktop four-view Overview, compact
+Edit/View navigation, the real Draw Mask/Mask ROI editor, Main 3D ROI,
+Section Z Break, 3D Display (opacity, Z scale, Show Origin, Border),
+the actual beginner Deposit/Etch stages, and History
+Step 0/Edit/Variant/Recovery. A screenshot only covering one of these
+must not be captioned as proof of the other controls. Where no
+matching checked-in capture exists, prefer the already verified
+Process Guide SVG or a purpose-specific Mermaid diagram until a
+real image is ready.
+
 ## Pre-publication PR verification
 
 Documentation changes are checked locally through `node scripts/local-verification.mjs run draft` (or a current `full` receipt), including the focused documentation contracts. The [Documentation and Wiki targeted checks](../.github/workflows/documentation-wiki-targeted.yml) workflow is **manual-dispatch only** under the 2026-10-22 CI policy; it has read-only repository permissions and cannot publish Wiki or Pages. Automatic Draft `Quality` verifies exact-source-bound local evidence **without rerunning lint, formatting, or `docs:check` remotely**. Ready and Main release use their separately governed gates; see [CI routing](CI.md).

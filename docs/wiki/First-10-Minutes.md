@@ -42,7 +42,7 @@ _This diagram illustrates the operation, not your project's exact dimensions._
 3. Set **Layer name = SiO2** and **Thickness / depth = 0.2** with display units set to µm (equivalent to 200 nm). This layer name labels geometric material; it does not activate a chemical simulation model.
 4. Set **Also add to Recipe → No**; then click **Apply** **once**.
 
-**Check:** **Section A–B** should show a thin oxide layer over the silicon. The process History should have advanced. Section **Auto** can exaggerate Z; switch to **1:1** to compare physical scales, although a 0.2 µm film may then be difficult to see.
+**Check:** **Section A–B** should show a thin oxide layer over the Base. The process History should have advanced. Section **Auto** can exaggerate Z; switch to **1:1** to compare physical scales, although a 0.2 µm film may then be difficult to see.
 
 **If nothing happens:** Check **Front**, **Whole face**, the selected operation and the Z input. Look for an on-screen warning before clicking Apply again; repeating Deposit can add a second film.
 
@@ -89,6 +89,6 @@ Open **Project** and use **Save** if you want a checkpoint in this browser's **R
 
 ## Where next?
 
-Try the [Workspace and Views](Workspace-and-Views) chapter to learn navigation, then [Masks and ROI](Masks-and-ROI) to understand selected/inverted regions. Use [Process and Recipes](Process-and-Recipes) when you are ready to automate the sequence. For ready-made research structures, see the [eight Welcome examples](Examples-and-Modeling-Limits) and their modeling limits. If an operation gives an unexpected result, consult [Troubleshooting](Troubleshooting).
+Try the [Workspace and Views](Workspace-and-Views) chapter to learn navigation, then [Masks and ROI](Masks-and-ROI) to understand selected/inverted regions. Use [Process and Recipes](Process-and-Recipes) when you are ready to automate the sequence. For ready-made research structures, see the [nine Welcome examples](Examples-and-Modeling-Limits) and their modeling limits. If an operation gives an unexpected result, consult [Troubleshooting](Troubleshooting).
 
 **Scope:** WaferCAD demonstrates mask-conditioned geometry. It does not calculate actual etch rates, deposition kinetics, dopant physics, or device electrical performance.

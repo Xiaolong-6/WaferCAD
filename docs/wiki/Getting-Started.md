@@ -19,6 +19,8 @@ On desktop, use the left workflow sidebar to edit the project and the centered c
 - **Main / Section A–B / 3D:** See a top view, a slice along A–B, and a rotatable 3D view. Move the A–B line through the feature you want to inspect.
 - **Process → Recipe:** Collect several Process operations into an ordered procedure. Use **Validate** before execution and choose the starting state carefully.
 
+**Do not confuse an early 3D frame with a finished scene.** For compatible non-array models, WaferCAD may paint a simplified display-only preview while the exact material surfaces are computed. The preview is useful for orientation but does not validate interfaces, border geometry or exports. Wait for the exact 3D rendering to finish before inspecting fine features or exporting a 3D PNG. Read [Workspace and Views](Workspace-and-Views) for export and ROI distinctions.
+
 **Section first:** When assessing deposition, etch, a void or an internal layer, inspect **Section A–B**. **Auto** fits XY and Z separately and may visually exaggerate the film thickness; **1:1** shows the same physical scale on both axes. 3D transparency and borders are display controls, not etch operations.
 
 ![Directional deposition — schematic Before and After](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-directional.svg?sanitize=true)
