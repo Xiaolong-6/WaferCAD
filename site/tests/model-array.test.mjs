@@ -254,6 +254,77 @@ test('array border matches resolved physical vertical edges across a partial-hei
     'array seams cannot introduce vertical edges absent from physical topology',
   );
 });
+test('array external Border matches resolved Process Topology at heterogeneous junctions', () => {
+  const normalizedVertical = (model, clip = null) => {
+    const locations = new Map();
+    for (const [a, b] of buildRenderSurfacePlan(model, clip).borderLines) {
+      if (Math.hypot(a[0] - b[0], a[1] - b[1]) > 1e-7 || Math.abs(a[2] - b[2]) <= 1e-7) continue;
+      const key = [a[0], a[1]].map((value) => value.toFixed(6)).join(',');
+      if (!locations.has(key)) locations.set(key, []);
+      locations.get(key).push([Math.min(a[2], b[2]), Math.max(a[2], b[2])]);
+    }
+    return [...locations]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([point, spans]) => {
+        spans.sort(([a], [b]) => a - b);
+        const merged = [];
+        for (const [low, high] of spans) {
+          if (merged.length && low <= merged.at(-1)[1] + 1e-7)
+            merged.at(-1)[1] = Math.max(merged.at(-1)[1], high);
+          else merged.push([low, high]);
+        }
+        return [
+          point,
+          merged.map(([low, high]) => [Number(low.toFixed(6)), Number(high.toFixed(6))]),
+        ];
+      });
+  };
+  const scenarios = [
+    [
+      'partial overlap after etch',
+      [
+        { type: 'add', name: 'Film', thickness: 0.5, area: rectMulti(14, 9) },
+        { type: 'etch', thickness: 0.2, area: rectMulti(8, 10, -4, 0) },
+      ],
+    ],
+    [
+      'multilevel junction',
+      [
+        { type: 'add', name: 'Film', thickness: 0.5, area: rectMulti(12, 10) },
+        { type: 'etch', thickness: 0.3, area: rectMulti(10, 10, 5, 0) },
+        { type: 'add', name: 'Pad', thickness: 0.4, area: rectMulti(3, 3) },
+      ],
+    ],
+    [
+      'different materials at boundary',
+      [
+        { type: 'add', name: 'A', thickness: 0.3, area: rectMulti(10, 10, -5, 0) },
+        { type: 'add', name: 'B', thickness: 0.2, area: rectMulti(10, 10, 5, 0) },
+      ],
+    ],
+    [
+      'interlocking material junctions',
+      [
+        { type: 'add', name: 'A', thickness: 0.4, area: rectMulti(3, 3, -1.5, 1) },
+        { type: 'add', name: 'B', thickness: 0.4, area: rectMulti(3, 3, 1.5, -1) },
+      ],
+    ],
+  ];
+  for (const [name, operations] of scenarios) {
+    const model = twoSites();
+    for (const operation of operations)
+      assert.equal(applyOperation(model, operation).changed, true, name);
+    validateProcessModel(model);
+    const expanded = resolveArrayModel(model);
+    assert.deepEqual(normalizedVertical(model), normalizedVertical(expanded), name);
+    const clip = rectMulti(4, 8);
+    assert.deepEqual(
+      normalizedVertical(model, clip),
+      normalizedVertical(expanded, clip),
+      `${name}: ROI`,
+    );
+  }
+});
 test('array transfer uses one global plane across different site heights', () => {
   const m = twoSites();
   applyOperation(m, {
