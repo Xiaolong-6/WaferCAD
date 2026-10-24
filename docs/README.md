@@ -73,8 +73,8 @@ Dated implementation plans and handoffs preserve the status of their original re
 
 - [Process Report Export](io/REPORT_EXPORT.md) — portable offline HTML/Markdown ZIP, complete History ledger, export limits and accepted capture boundaries.
 - [Report historical keyframes](io/REPORT_KEYFRAMES.md) — saved-state Section SVG provenance, keyframe budgets, failure reporting and planned extensions.
-- [UI v2 DOM contract](ui-v2/CONTRACT.md) — revision-specific generated inventory; do not mistake legacy selector evidence for current UI.
-- [Progressive Workstation startup (P1)](ui-v2/PROGRESSIVE_STARTUP_2026-10-13.md) — UI/view first-frame lifecycle, transient 3D preview, cooperative scheduling and hardware acceptance limits.
+- [UI v2 DOM contract](archive/ui-v2/CONTRACT.md) — revision-specific generated inventory; do not mistake legacy selector evidence for current UI.
+- [Progressive Workstation startup (P1)](archive/ui-v2/PROGRESSIVE_STARTUP_2026-10-13.md) — UI/view first-frame lifecycle, transient 3D preview, cooperative scheduling and hardware acceptance limits.
 - [Production Workstation edge-to-edge viewport — 2026-10-15](ui-v2/EDGE_TO_EDGE_WORKSTATION_2026-10-15.md) — full-viewport shell, mobile scroll preservation and browser regression handoff.
 - [Desktop View Docking reconstruction — 2026-10-15](ui-v2/DESKTOP_DOCKING_PLAN_2026-10-15.md) — desktop-only view state, Snap templates, stable scientific panels and required acceptance gates.
 
@@ -92,7 +92,7 @@ Dated implementation plans and handoffs preserve the status of their original re
 - [UI v2 Manual Both acceptance — 2026-10-12](ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md) — Front/Back/Both Manual selector, paired Layer IDs, Recipe restore, atomicity and CI evidence at its tested revision.
 - [UI v2 contextual tooltip architecture](ui-v2/TOOLTIP_ARCHITECTURE_2026-10-13.md) — delegated plain-text hover, focus and lifecycle contract for the production UI.
 - [UI v2 Z Break editor integration — 2026-10-13](ui-v2/Z_BREAK_EDITOR_2026-10-13.md) — precision-first editor, physical-Z ownership, keyboard controls and contextual-tooltip migration.
-- [UI v2 architecture health](ui-v2/MAIN_ARCHITECTURE_HEALTH_2026-10-11.md) — implementation risk and ownership evidence; review against current main before applying recommendations.
+- [UI v2 architecture health](archive/ui-v2/MAIN_ARCHITECTURE_HEALTH_2026-10-11.md) — implementation risk and ownership evidence; review against current main before applying recommendations.
 - [PR 250 renderer audit (2026-10-15)](renderer/PR250_RENDERER_AUDIT_2026-10-15.md) — merged implementation, dated visual evidence and independent GPU/Worker acceptance limits.
 - [Renderer transparency roadmap](renderer/RENDERER_TRANSPARENCY_ROADMAP.md) — shipped phases, deferred work, and separate hardware validation.
 - [Renderer PNG capture and resource retirement](renderer/RENDERER_LIFECYCLE_CORRECTNESS_2026-10-12.md) — transaction-safe export, nested owned-resource cleanup and test boundaries.

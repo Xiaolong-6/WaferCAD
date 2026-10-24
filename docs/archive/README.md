@@ -2,6 +2,18 @@
 
 This is an evidence index, not an alternative product contract. Canonical historical text lives under `docs/archive/`. Original files have been removed; internal documentation links point directly to the archived copies. Branch names, pending gates, test counts and measurements describe the recorded revision. Start from the [documentation map](../README.md) for current behavior.
 
+## Completed-document relocations — 2026-10-24
+
+These records preserve their original audited revisions, measurements and
+Draft/merge history. They are not current product contracts.
+
+- [M0 Workstation DOM inventory](ui-v2/CONTRACT.md) and [JSON inventory](ui-v2/contract.json).
+- [Main view-kit extraction checkpoint](ui-v2/MAIN_ARCHITECTURE_HEALTH_2026-10-11.md).
+- [Merged PR #188 progressive startup evidence](ui-v2/PROGRESSIVE_STARTUP_2026-10-13.md).
+
+For current contracts see [Workstation](../ui-v2/WORKSTATION_CONTRACT.md)
+and [Architecture](../ARCHITECTURE.md).
+
 ## Dated audits relocated on 2026-10-16
 
 - [CI architecture audit](CI_ARCHITECTURE_AUDIT_2026-10-12.md)

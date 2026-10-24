@@ -5,7 +5,7 @@
 ## 交付
 
 - [用户 r2 执行计划](R2_PLAN.md)：阶段门槛与禁止修改范围。
-- [DOM 契约](../../ui-v2/CONTRACT.md) / [contract.json](../../ui-v2/contract.json)：静态 ID、属性、引用方、动态创建/结构/状态和未解析点。
+- [DOM 契约](CONTRACT.md) / [contract.json](contract.json)：静态 ID、属性、引用方、动态创建/结构/状态和未解析点。
 - [隐式依赖](IMPLICIT_DEPS.md)：40 条，包括启动先后、重挂、祖先选择器、可见性、事件传播、测试耦合。
 - [PR #161 复盘](PR161_POSTMORTEM.md)：描述/diff/讨论/CI，视觉失败与 interaction/格式失败分开。
 - [风险和估算](RISKS_AND_ESTIMATE.md)：装配重写、DOM 适配域和分阶段工作量。
