@@ -367,10 +367,24 @@ export function exteriorVerticalBordersFromSidewalls(sidewalls = [], thresholdDe
         (ray) =>
           ray.z0 <= midpoint + TOPOLOGY_EPSILON_UM && ray.z1 >= midpoint - TOPOLOGY_EPSILON_UM,
       );
+      // Coincident wall ownership fragments can contribute identical outgoing
+      // rays at a straight partition. Deduplicate geometric directions before
+      // classifying the corner; do not erase real Z-coverage discontinuities.
+      const unique = [];
+      for (const ray of active) {
+        if (
+          !unique.some(
+            (other) =>
+              Math.abs(other.direction[0] - ray.direction[0]) <= 1e-10 &&
+              Math.abs(other.direction[1] - ray.direction[1]) <= 1e-10,
+          )
+        )
+          unique.push(ray);
+      }
       const crease =
-        active.length === 1 ||
-        active.some((first, i) =>
-          active
+        unique.length === 1 ||
+        unique.some((first, i) =>
+          unique
             .slice(i + 1)
             .some((second) => isPhysicalWallTurn(first.direction, second.direction, threshold)),
         );
