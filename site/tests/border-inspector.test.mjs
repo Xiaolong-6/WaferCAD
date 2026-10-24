@@ -434,16 +434,34 @@ test('same-layer cap with different appearance or facing retains the physical in
     layerId: 'oxide',
     interfaceLayerId: 'base',
     buried: true,
-    polys: [[[[0, 0], [2, 0], [2, 2], [0, 2], [0, 0]]]],
+    polys: [
+      [
+        [
+          [0, 0],
+          [2, 0],
+          [2, 2],
+          [0, 2],
+          [0, 0],
+        ],
+      ],
+    ],
   };
   const right = {
     ...left,
-    polys: [[[[2, 0], [4, 0], [4, 2], [2, 2], [2, 0]]]],
+    polys: [
+      [
+        [
+          [2, 0],
+          [4, 0],
+          [4, 2],
+          [2, 2],
+          [2, 0],
+        ],
+      ],
+    ],
   };
   const seam = ([a, b]) =>
-    Math.abs(a[0] - 2) < 1e-9 &&
-    Math.abs(b[0] - 2) < 1e-9 &&
-    Math.abs(a[1] - b[1]) > 1e-9;
+    Math.abs(a[0] - 2) < 1e-9 && Math.abs(b[0] - 2) < 1e-9 && Math.abs(a[1] - b[1]) > 1e-9;
   assert.equal(
     buriedInterfaceContours([left, right]).some(seam),
     false,
