@@ -171,7 +171,7 @@ WaferCAD does not predict ALD/sputter transport, etch rates, implantation dose/e
 
 ## Optional research geometry: not required for Welcome projects
 
-The eight Welcome examples deliberately use **lightweight process geometry**
+The nine Welcome examples deliberately use **lightweight process geometry**
 and display-only Roughness/pyramidal relief where appropriate. Rendering a
 pyramid does not imply that the full 3D facets participated in Boolean Process
 operations; that is an intentional performance trade-off, **not** a defect or
