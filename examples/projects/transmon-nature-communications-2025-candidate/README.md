@@ -546,3 +546,20 @@ change. The source-dependent native Q2 replay and newly added science
 tests require the SHA-256-verified original GDS and full exact-HEAD
 local runtime. No new result, physical overlap area, native Chromium
 screenshot or Section/3D acceptance is claimed until those tests run.
+
+## Source-backed Q2 section witness
+
+Both the static and opt-in native Direct Q2 diagnostics now select their
+Section cross-section from the **actual polygon intersection** of the first
+two persisted Al footprints. The previous mean of the first overlap ring's
+vertices is not guaranteed to lie in material for concave rings or holes.
+The new locator scans geometry-vertex Y-bands and returns the midpoint of
+a resolvable interior horizontal interval; it fails closed if none exists.
+This is a Section/3D geometry-position invariant, **not** an estimate of
+Josephson tunnel area or an author-verified junction width.
+
+Focused local native polygon-kernel tests (concave ring, ring with hole,
+Boolean Al cross, disconnected islands, sub-grid rejection) **5/5 passed**
+using Node 22 and the manifest-verified base source with the same
+`site/vector-geometry.js` Git blob as this branch. The full native Q2 replay
+and integrated Section/3D Chromium screenshots are **not yet accepted**.

@@ -9,6 +9,7 @@ const { intersection, unionGeometries, transformMulti, rectMulti, pointInMulti }
   await import('../site/vector-geometry.js');
 const { validateProcessModel, validateProjectFile } = await import('../site/project-schema.js');
 const { prepareProjectForExport, expandProjectStorage } = await import('../site/project-io.js');
+const { junctionSectionWitness } = await import('../site/junction-section-witness.js');
 
 const EXPECTED = '6e9db7d506e17f82fd22250db9a380a420b2a1088bac4a33b8c747930e9d5c02';
 const center = [1400, 2513];
@@ -189,12 +190,10 @@ export function replayQ2ChipPose(
   }
   validateProcessModel(model);
   const overlap = intersection(footprints[0], footprints[1]);
-  const ring = overlap[0]?.[0] || [];
-  if (!ring.length) throw new Error('Author Q2 first two deposited layers do not overlap.');
-  const cross = [
-    ring.reduce((v, p) => v + p[0], 0) / ring.length,
-    ring.reduce((v, p) => v + p[1], 0) / ring.length,
-  ];
+  if (!overlap.length) throw new Error('Author Q2 first two deposited layers do not overlap.');
+  // Vertex averaging can place Section outside a concave overlap or inside
+  // a hole. Scan the actual first-two Al intersection for an interior witness.
+  const cross = junctionSectionWitness(overlap);
   const layoutElements = junction.elements.map((e) => ({
     ...e,
     points: e.points?.map(([x, y]) => [-y, x]),
