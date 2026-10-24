@@ -53,13 +53,13 @@ radii** evenly and maps those endpoints through the continuous
 `z(L)=sqrt(r²-L²)` profile. Its variable-depth bands are guaranteed to
 have at most the requested lateral footprint error when the midpoint
 radius is used. At 36 µm radius, the mathematical target 0.5 µm
-requires 36 bands, compared to the current fixed **eight** uniform
+requires 36 bands, compared to the original fixed **eight** uniform
 Z-depth bands (whose conservative lateral bound is 12.53 µm).
 The guarantee is geometric and applies to one seed front only.
 
 `adaptiveReleaseDepthBands({ radius, maxLateralErrorUm, maxBands })`
 rejects nonpositive/infinite tolerances, exceeded work budgets and
-numerically degenerate band partitions. The current Kernel's material
+numerically degenerate band partitions. At that checkpoint, the banded Kernel's material
 selectivity, XY Boolean clip, runtime cost, save/replay and radial SEM
 correspondence are intentionally unchanged and remain integration gates.
 
@@ -144,11 +144,11 @@ rejects unsupported array/rough owners, and requires exact model-revision
 parity for material queries. Section curves may be sampled at an arbitrary
 display resolution; those samples never become canonical material geometry.
 
-**Integration is partial.** Legacy `model.js` still performs 8-band or
-adaptive-band isotropic Process for existing projects. New continuous models
-are opt-in and remain isolated until native Section/3D and follow-on Process
-can consume their true canonical material occupancy. Existing Microdisk and
-all legacy History states remain unchanged.
+**Historical integration status (2026-10-19):** Legacy `model.js` performed 8-band or
+adaptive-band isotropic Process for existing projects. At that checkpoint, continuous models
+were opt-in pending native Section/3D and follow-on Process integration.
+This statement does not describe the later published Continuous Microdisk;
+consult the publication note above and current bundled catalog.
 
 The additional `site/continuous-material-owner.js` is a **separate,
 losslessly JSON-serializable scientific owner**. It deep-clones the original
