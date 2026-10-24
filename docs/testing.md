@@ -20,6 +20,16 @@ documented in [Legacy source sunset](operations/LEGACY_SOURCE_SUNSET.md) and Iss
 Do not interpret a native replacement as identical old-UI gesture behavior,
 and do not skip physics, Recovery, worker rollback or morphology contracts.
 
+## Current scientific and UI contracts
+
+[Workstation](ui-v2/WORKSTATION_CONTRACT.md),
+[Renderer/Section](renderer/RENDERER_CONTRACT.md) and
+[Continuous release](science/CONTINUOUS_RELEASE_CONTRACT.md)
+describe feature invariants. This document owns which tests
+validate them; [CI routing](CI.md) alone owns when they run.
+An offline native 3D visualization cannot replace normal-Origin
+Worker, History or Recovery checks.
+
 ## Repository ownership and layout
 
 - `site/tests/*.test.mjs`: flat Node/science ownership and the retained `npm test` discovery glob. Documentation/Wiki/Process Guide checks now live under `site/tests/documentation/*.test.mjs` and are **all imported by** `site/tests/documentation-suite.test.mjs` through the original glob. Five native History tests live under `site/tests/history/`, and four Workspace/Project Recovery tests under `site/tests/recovery/`. Their root suite entrypoints preserve automatic discovery; specialized CI/owner references use canonical nested paths. Adding a documentation test is automatically discovered; other domains must have an explicit verified runner before any relocation. Silent coverage loss is forbidden.

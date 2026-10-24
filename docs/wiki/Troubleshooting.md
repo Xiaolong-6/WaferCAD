@@ -70,6 +70,28 @@ If you see an unexplained **black line**, toggle **3D Border** once to see wheth
 
 **Why is an implant hidden in opaque 3D?** It is an internal annotation. An ROI cut may expose its colored cut face; lower opacity can show the buried annotation volume without removing material.
 
+## Continuous release and historical replay failures
+
+**Why does a second Process Step refuse a Continuous-release model?**
+Continuous release owns a dedicated analytic material model with one
+physical release per lineage. Follow-on Deposit/Etch or unsupported
+array/rough/ROI combinations are not automatically converted to a
+2.5D approximation. Inspect the selected target and physical seed,
+then rebuild from a supported predecessor or create a separate Variant.
+A display-only rough surface is not a valid physical release seed.
+
+**Why is an old Step visible but Edit Step is disabled?** Some imported
+projects predate versioned replay metadata. Their saved states may
+still be restorable, but automatically recomputing later Steps would
+require inventing original Process parameters. Use a new Variant from
+a restorable Step or reconstruct the Recipe explicitly.
+
+**Why can two tabs not both save?** A writer lease prevents an older
+tab from overwriting a newer owner's state. Export useful work from
+each tab before any takeover, and inspect the browser-local Recovery
+list after a rejected Save. Do not assume a stale tab will be merged
+automatically. See [History, Variants and Recovery](History-Variants-and-Recovery).
+
 ## Recipe and saved-state safety
 
 - **Recipe template selection** only previews replacement. Use **Load template** to apply; review the confirmation before **Replace Recipe**. An in-session Recipe Undo cannot replace a long-term backup.

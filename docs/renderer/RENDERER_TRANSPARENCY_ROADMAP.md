@@ -2,6 +2,25 @@
 
 **Status:** Open performance debt; frame-time targets remain **non-blocking** under the recorded 2026-10-08 acceptance policy. Current main includes the integrated renderer; PR #135 is historical provenance, not a pending main blocker. Owner: 3D Renderer / persistent-scene presentation. This document is the canonical forward plan, not a claim that all phases have shipped; see [the dated v2.1 audit](../archive/RENDERER_PERSISTENT_SCENE_V2_1_AUDIT_2026-10-08.md) for the commit-by-commit experiments and CI evidence.
 
+## Current implementation versus the open roadmap
+
+The active implementation has since added display-only progressive
+first-frame sketches and exact Worker handoff (PR #359), a bounded
+Continuous display-mesh Worker (PR #365), near-opaque/internal-line
+presentation fixes (PR #367), and exact-frame-gated WYSIWYG PNG
+with unified Display settings (PR #368). These are documented in
+the [current Renderer contract](RENDERER_CONTRACT.md). None of
+the 2026-10-08/09 frame timings below independently measures the
+October 24 full-wafer transparent 3D result. Keep their exact
+hardware/browser provenance; repeat on equivalent hardware and
+identical scene state before setting new targets.
+
+**Open:** transparent repeated buried interfaces, electrical
+annotation raster cost, adaptive rough LOD cache coherency and
+cross-view physical boundary checks. Faster visible *preview*
+frames do not establish faster painted **exact** geometry,
+interactive hardware responsiveness or original SEM fidelity.
+
 ## Scope and measured evidence
 
 The workload is **Native Fig3: 625 sites / 1,885 render instances**, examined in full-wafer transparent 3D. The active bottleneck is browser **WebGL draw/vertex/raster submission of repeated buried interfaces and Electrical Region volumes**. Kernel geometry and the shared CPU scene assembly plan are not the current dominant cost.
