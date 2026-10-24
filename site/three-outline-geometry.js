@@ -1,6 +1,11 @@
 import { roughProfileOffsetAtPoint } from './surface-rendering.js';
 import { sidewallBoundarySamples } from './rough-boundary-profile.js';
-import { canonicalLineInterval, lineIntervalKey } from './line-intervals.js';
+import {
+  canonicalLineInterval,
+  lineIntervalKey,
+  partitionLineIntervals,
+  pointAtLineT,
+} from './line-intervals.js';
 
 // Presentation-only contour ownership for transparent 3D inspection.
 // Never derive contour lines from triangle edges: LOD boundaries are not physical interfaces.
@@ -69,13 +74,58 @@ function translate(segment, delta) {
   return segment.map((p) => [p[0] + delta[0], p[1] + delta[1], p[2]]);
 }
 
+// A repeated cap represents a single material interface, not an interface
+// between adjacent array tiles. Cancel oppositely directed coplanar edges of
+// the SAME material/interface before feeding the Border Inspector. This is
+// presentation ownership, not a change to the physical cap or its instances.
+// Partition in a shared line frame so differently tessellated neighbor edges
+// can cancel only their common intervals; exposed remainders stay visible.
+function tiledCapPerimeterSegments(items) {
+  const lines = new Map(),
+    result = [];
+  for (const {
+    line: [a, b],
+    cap,
+  } of items) {
+    if (Math.abs(a[2] - b[2]) > 1e-9 || cap?.appearance?.kind === 'rough') {
+      result.push([a, b]);
+      continue;
+    }
+    const axis = canonicalLineInterval(a, b);
+    if (!axis) continue;
+    const identity = [
+      cap.layerId,
+      cap.interfaceLayerId,
+      Number(a[2]).toPrecision(12),
+      lineIntervalKey(axis, 12),
+    ].join('|');
+    if (!lines.has(identity)) lines.set(identity, []);
+    lines.get(identity).push({ line: axis, forward: axis.forward, z: a[2] });
+  }
+  for (const spans of lines.values()) {
+    for (const { t0, t1, covering } of partitionLineIntervals(spans)) {
+      const winding = covering.reduce((sum, item) => sum + (item.forward ? 1 : -1), 0);
+      if (!winding) continue;
+      const axis = covering[0].line,
+        a = pointAtLineT(axis, t0),
+        b = pointAtLineT(axis, t1),
+        z = covering[0].z;
+      result.push([
+        [...a, z],
+        [...b, z],
+      ]);
+    }
+  }
+  return ownedContourSegments(result);
+}
+
 // Buried caps are owned material interfaces; their perimeters include true
 // material edges and clipped inspection edges. Ignore all artificial LOD edges.
 export function buriedInterfaceContours(
   caps = [],
   { boundaryProfiles = null, includeCap = null } = {},
 ) {
-  const segments = [];
+  const tiled = [];
   for (const [capIndex, cap] of caps.entries()) {
     if (!cap?.buried || (includeCap && !includeCap(cap))) continue;
     const profile = boundaryProfiles?.get(capIndex),
@@ -87,13 +137,13 @@ export function buriedInterfaceContours(
         : capPerimeter(cap);
     if (cap.instanceTranslations?.length) {
       for (const delta of cap.instanceTranslations) {
-        for (const line of boundary) segments.push(translate(line, delta));
+        for (const line of boundary) tiled.push({ line: translate(line, delta), cap });
       }
     } else {
-      segments.push(...boundary);
+      for (const line of boundary) tiled.push({ line, cap });
     }
   }
-  return ownedContourSegments(segments);
+  return tiledCapPerimeterSegments(tiled);
 }
 
 // Internal, physically owned vertical junctions. A wall partition is not by
