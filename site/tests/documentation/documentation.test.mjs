@@ -1,10 +1,31 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { access, mkdtemp, mkdir, readFile, readdir, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { auditDocumentation, headingAnchors } from '../../../scripts/check-documentation.mjs';
 import { qualityPlan } from '../../../scripts/local-verification.mjs';
+
+test('archived M0 DOM inventory preserves the exact original machine-readable evidence', async () => {
+  const bytes = await readFile(
+    new URL('../../../docs/archive/ui-v2/contract.json', import.meta.url),
+  );
+  assert.ok(
+    bytes.byteLength > 1_000_000,
+    'archived M0 DOM inventory must not be empty or replaced by a stub',
+  );
+  assert.doesNotThrow(() => JSON.parse(bytes.toString('utf8')));
+  const gitBlobSha = createHash('sha1')
+    .update(`blob ${bytes.byteLength}\0`)
+    .update(bytes)
+    .digest('hex');
+  assert.equal(
+    gitBlobSha,
+    '128a709cdf1c1b4f610f32813b3df2f81fb1c1f7',
+    'archival DOM inventory must retain the byte-exact original main blob',
+  );
+});
 
 async function fixture(t, entries) {
   const rootDir = await mkdtemp(join(tmpdir(), 'wafercad-docs-'));
