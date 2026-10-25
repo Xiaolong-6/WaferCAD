@@ -67,3 +67,11 @@ test('rotated thin segments obey a local width, not axis-aligned bounding boxes'
   assert.equal(isFixedDirectGridSeam(rotate(rectMulti(10, grid * 2)), grid, area), true);
   assert.equal(isFixedDirectGridSeam(rotate(rectMulti(10, grid * 2.5)), grid, area), false);
 });
+
+test('a true thin polygon ring is measured relative to both its outer and hole edges', async () => {
+  const { difference } = await import('../vector-geometry.js');
+  const annulus = difference(rectMulti(1, 1), rectMulti(1 - 2 * grid, 1 - 2 * grid));
+  assert.equal(annulus.length, 1);
+  assert.equal(annulus[0].length, 2);
+  assert.equal(isFixedDirectGridSeam(annulus, grid, area), true);
+});

@@ -20,6 +20,7 @@ const TESTS = [
   'site/tests/direct-nb-recess-shadow-analytic.test.mjs',
   'site/tests/direct-resist-occluded-target.test.mjs',
   'site/tests/transmon-direct-owner-conservation.test.mjs',
+  'site/tests/direct-grid-seam.test.mjs',
   'site/tests/junction-three-dose-section.test.mjs',
 ];
 
