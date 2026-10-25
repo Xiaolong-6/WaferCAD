@@ -26,3 +26,29 @@ The physical silicon handle started around 525 µm in the run card; this ROI pro
 - On PR #352 HEAD `4b652cb`, Process Recipe supports an **executable** `continuous` etch. The candidate stores the exact final target, author-GDS release-hole mask and XY/Z release reaches in both History and Recipe. The complete 11-Step Recipe has been replayed through the production process geometry APIs and matches the saved analytic material owner after excluding view-only layer colors. Oxide-hole etching stops at the 5.9 µm oxide/Si boundary (avoiding a formerly silent 20 nm Si overetch), and CMP uses absolute 23.9 µm Z in both History and Recipe. Full Workstation Run All / Worker / Recovery acceptance remains **unverified**; production geometry-API parity is not a substitute for browser integration.
 
 Refer to `reconstruction-report.json` for polygon counts, material properties and unresolved provenance. The baseline S04 and released S06 native screenshots are held in local diagnostics and must be individually reviewed before publication.
+
+## Real Workstation acceptance (pending browser evidence)
+
+Run the actual native-v2 Workstation in a **normal-origin Chromium** environment
+with locked dependencies and a local WaferCAD server, then execute:
+
+```sh
+npm run test:ui:hbar
+```
+
+The fail-closed browser owner `scripts/hbar-workstation-browser-acceptance.mjs`
+opens the bundled `.wafercad`, checks actual Main/Mask/Section and an **exact
+painted** 3D frame, inspects and returns from a historical physical Step,
+checks IndexedDB Save and a read-only second-tab writer lease, restores a named
+HBAR Recovery checkpoint after opening an empty project, reloads it, and
+replays all 11 Recipe Steps using the real UI and 9 browser Process Worker
+operations (including both Record History commits). The last material owner
+must exactly match the saved candidate, apart from display-only palette data.
+Screenshots and a status JSON are written under `test-results/hbar-workstation/`.
+
+**Do not treat syntax/Node tests or isolated `about:blank` Three.js evidence as
+passing this command.** Managed Chrome's `ERR_BLOCKED_BY_ADMINISTRATOR` stops
+this normal-Origin acceptance; no bypass or mock execution is permitted. The
+existing `npm run test:ui:state` separately owns broader multi-tab lease-loss,
+takeover and Recovery failure atomicity. The HBAR test is opt-in and does not
+add automatic GitHub Actions triggers or a first-frame time limit.
