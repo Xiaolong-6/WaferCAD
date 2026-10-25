@@ -13,7 +13,7 @@ identity, material occupancy, Z coordinates, process lineage and physical
 geometry. Ordinary `vector-2.5d-v1` models use region stacks and
 `site/process-topology.js` to derive exposed caps, real walls, buried
 interfaces and Section slices. `site/renderer-geometry.js` consumes this
-topology to build an *exact, derived* surface-ownership plan. It must not
+topology to build an _exact, derived_ surface-ownership plan. It must not
 invent physical walls at computational polygon partitions. The
 `vector-continuous-etch-v1` kernel has its separate analytic material
 owner and consumers; see the
@@ -132,7 +132,7 @@ cleanup failure rather than corrupting the live viewport.
   same-cut/ROI Chromium evidence for material boundaries.
 - Actual product scenes and staging:
   `scripts/v2/check-three-view.mjs` and the owning real-browser
-  Renderer/Section regression scripts; only successful *normal-origin*
+  Renderer/Section regression scripts; only successful _normal-origin_
   browser runs certify Worker Open, IndexedDB, History and Recovery.
 
 The [transparency and LOD roadmap](RENDERER_TRANSPARENCY_ROADMAP.md)

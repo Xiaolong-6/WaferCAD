@@ -14,7 +14,7 @@
 - `docs/operations/` owns repository release/retirement administration.
 - `docs/evidence/` owns research figure provenance and reproducibility registers.
 
-When moving documentation, keep exactly one canonical file in the owning directory and update every tracked Markdown link, source reference and workflow path to that location. **Do not add forwarding Markdown stubs or compatibility ledgers for moved repository documents.** Exception: a pre-existing public **GitHub Wiki** URL may retain a minimal English compatibility pointer (for example `docs/wiki/Recipe-Code-Tutorial-zh-CN.md`) so external bookmarks continue to resolve. The old GitHub *repository file* URL may cease to work; current links must point to the canonical file. Run the documentation link graph check and keep scientific provenance intact.
+When moving documentation, keep exactly one canonical file in the owning directory and update every tracked Markdown link, source reference and workflow path to that location. **Do not add forwarding Markdown stubs or compatibility ledgers for moved repository documents.** Exception: a pre-existing public **GitHub Wiki** URL may retain a minimal English compatibility pointer (for example `docs/wiki/Recipe-Code-Tutorial-zh-CN.md`) so external bookmarks continue to resolve. The old GitHub _repository file_ URL may cease to work; current links must point to the canonical file. Run the documentation link graph check and keep scientific provenance intact.
 
 ## Contract lifecycle
 

@@ -17,7 +17,7 @@ identical scene state before setting new targets.
 
 **Open:** transparent repeated buried interfaces, electrical
 annotation raster cost, adaptive rough LOD cache coherency and
-cross-view physical boundary checks. Faster visible *preview*
+cross-view physical boundary checks. Faster visible _preview_
 frames do not establish faster painted **exact** geometry,
 interactive hardware responsiveness or original SEM fidelity.
 

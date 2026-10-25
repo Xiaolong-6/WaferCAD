@@ -86,7 +86,7 @@ original mask; M09 is a record-only process entry. The reported
 silica dimensions (outer radius 148 µm, inner radius 82 µm,
 approximately 1.8 µm oxide) are separate from WaferCAD's
 **assumed 36 µm lateral/vertical reach**. The cited
-Basiri-Esfahani Fig. 2a depicts a *similar* disk.
+Basiri-Esfahani Fig. 2a depicts a _similar_ disk.
 Neither the 72-band historical Chromium capture nor the current
 3D thumbnail proves the new device's original SEM correspondence.
 The bundled interactive preview may retain an intentionally
