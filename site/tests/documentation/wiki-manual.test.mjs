@@ -264,9 +264,11 @@ test('Wiki uses legible first-party visual evidence or task-specific diagrams, a
       }
       if (page !== 'Process-Operations') {
         const after = source.slice(match.index + match[0].length).trimStart();
+        const caption = after.split(/\n\s*\n/, 1)[0];
+        assert.ok(caption.length <= 700, `${page}: image caption must be concise`);
         assert.match(
-          after.slice(0, 400),
-          /^_[^\n]+_\s*\n/,
+          caption,
+          /^_[\s\S]+_$/,
           `${page}: explain image provenance, purpose and schematic/actual status immediately below it`,
         );
       }
