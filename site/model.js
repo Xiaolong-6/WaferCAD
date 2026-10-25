@@ -16,6 +16,7 @@ import {
   validateMaterialThicknessUm,
 } from './process-numerical-contract.js';
 import { applyProcessFaces } from './process-face-execution.js';
+import { isFixedDirectGridSeam } from './direct-grid-seam.js';
 import { directIncidenceArea } from './direct-incidence-geometry.js';
 import { isolatedDirectSidewallPlan } from './direct-sidewall-geometry.js';
 import { localGeometry } from './model-array-context.js';
@@ -700,22 +701,7 @@ function canonicalizeProcessPartition(model, regions, operation = 'Isotropic rel
 // A total-area tolerance cannot distinguish a long one-grid seam from a real
 // small junction. Require each component to be physically narrow instead.
 function fixedIncidenceGridSeam(geometry) {
-  for (const polygon of geometry || []) {
-    let perimeter = 0;
-    for (const ring of polygon) {
-      for (let i = 1; i < ring.length; i++) {
-        const [x0, y0] = ring[i - 1];
-        const [x1, y1] = ring[i];
-        perimeter += Math.hypot(x1 - x0, y1 - y0);
-      }
-    }
-    if (!(perimeter > 0)) return false;
-    // 2A/P is a conservative representative seam width. The allowed width
-    // comes exclusively from the two independently rounded 0.1 nm XY owners.
-    if ((2 * processGeometryArea([polygon])) / perimeter > PROCESS_GEOMETRY_GRID_UM * 2 + 1e-10)
-      return false;
-  }
-  return true;
+  return isFixedDirectGridSeam(geometry, PROCESS_GEOMETRY_GRID_UM, processGeometryArea);
 }
 
 function reconcileFixedAngleOwnerSeams(model, inputCoverage) {
