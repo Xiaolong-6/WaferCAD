@@ -31,7 +31,41 @@ export function isFixedDirectGridSeam(geometry, gridUm, polygonArea) {
     }
     if (!(perimeter > 0)) return false;
     const area = polygonArea([polygon]);
-    if (!(Number.isFinite(area) && area > 0)) return false;
+    if (!Number.isFinite(area) || area < 0) return false;
+    if (area === 0) {
+      // Boolean clipping can produce geometrically collinear zero-area rings.
+      // Treat them as numerical seams only if EVERY vertex lies within the
+      // process grid of a single supporting line. Shoelace cancellation in a
+      // real self-intersecting bow-tie must NOT be accepted as a zero-area seam.
+      if (polygon.length !== 1) return false;
+      const ring = polygon[0];
+      let supportA = null;
+      let supportB = null;
+      let longestSquared = 0;
+      for (let i = 1; i < ring.length; i++) {
+        const a = ring[i - 1],
+          b = ring[i];
+        const squared = (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2;
+        if (squared > longestSquared) {
+          longestSquared = squared;
+          supportA = a;
+          supportB = b;
+        }
+      }
+      if (!(longestSquared > 0)) return false;
+      const dx = supportB[0] - supportA[0];
+      const dy = supportB[1] - supportA[1];
+      const invLength = 1 / Math.sqrt(longestSquared);
+      if (
+        !ring.every(
+          ([x, y]) =>
+            Math.abs((x - supportA[0]) * dy - (y - supportA[1]) * dx) * invLength <=
+            gridUm * 2 + 1e-10,
+        )
+      )
+        return false;
+      continue;
+    }
     if ((2 * area) / perimeter > gridUm * 2 + 1e-10) return false;
     if (!isEmpty(difference([polygon], unionGeometries(buffers)))) return false;
   }

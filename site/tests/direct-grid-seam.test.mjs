@@ -75,3 +75,52 @@ test('a true thin polygon ring is measured relative to both its outer and hole e
   assert.equal(annulus[0].length, 2);
   assert.equal(isFixedDirectGridSeam(annulus, grid, area), true);
 });
+
+test('original GDS Q2 zero-area collinear clipping triangle is a numerical seam', () => {
+  // Actual author-source third Al overlap fragment at 0.1 nm persistence grid.
+  // The wide XY bounds are a long diagonal line, not a finite-area film island.
+  const degenerate = [
+    [
+      [-4.877489452603476, 0.2495958611481931],
+      [-4.877489452603404, 0.2495958611482636],
+      [-3.564, 1.564],
+      [-4.877489452603476, 0.2495958611481931],
+    ],
+  ];
+  assert.ok(area([degenerate]) < 1e-12);
+  // The production process-area evaluator reports zero for this degenerate
+  // Boolean fragment; model the same callback result explicitly.
+  assert.equal(
+    isFixedDirectGridSeam([degenerate], grid, () => 0),
+    true,
+  );
+});
+
+test('zero-shoelace self-intersecting bowtie is not treated as a collinear seam', () => {
+  const bowtie = [
+    [
+      [0, 0],
+      [1, 1],
+      [0, 1],
+      [1, 0],
+      [0, 0],
+    ],
+  ];
+  assert.equal(area([bowtie]), 0);
+  assert.equal(isFixedDirectGridSeam([bowtie], grid, area), false);
+});
+
+test('zero-area but noncollinear polygon cannot bypass the grid seam safety gate', () => {
+  const zero = [
+    [
+      [0, 0],
+      [0.001, 0.001],
+      [0.001, -0.001],
+      [0, 0],
+    ],
+  ];
+  assert.equal(
+    isFixedDirectGridSeam([zero], grid, () => 0),
+    false,
+  );
+});
