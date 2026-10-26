@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { access, readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { access, readFile, readdir } from 'node:fs/promises';
 import test from 'node:test';
 
 import { BUNDLED_EXAMPLES } from '../../bundled-examples.js';
@@ -162,9 +163,21 @@ test('Wiki uses legible first-party visual evidence or task-specific diagrams, a
     'Recipe-Code-Tutorial',
     'AI-Assisted-Workflows',
     'Examples-and-Modeling-Limits',
+    'History-Variants-and-Recovery',
     'Troubleshooting',
     'Process-Operations',
   ];
+  const screenshotPrefix = 'docs/wiki/assets/screenshots/';
+  // Each dated capture set owns an independent manifest and source SHA.
+  // Keep all checked-in screenshots verifiable without hard-coding a capture date.
+  const manifests = new Map();
+  const screenshotPages = {
+    Home: ['desktop-overview.png'],
+    'Getting-Started': ['mobile-view-navigation.png', 'mobile-project-base.png'],
+    'Workspace-and-Views': ['section-zbreak.png', 'mobile-border-inspector.png'],
+    'History-Variants-and-Recovery': ['history-metalens-steps.png'],
+    'Examples-and-Modeling-Limits': ['metalens-array-mask.png'],
+  };
   for (const page of pages) {
     const source = await manual(page);
     const images = [...source.matchAll(/!\[([^\]]*)\]\(([^)]+)\)/g)];
@@ -188,12 +201,56 @@ test('Wiki uses legible first-party visual evidence or task-specific diagrams, a
       );
       const asset = url.slice(prefix.length).split('?')[0];
       assert.ok(
-        /^(?:docs\/wiki\/assets\/process|site\/examples\/thumbnails|tests\/visual-baselines\/windows-chromium)\//.test(
+        /^(?:docs\/wiki\/assets\/(?:process|screenshots\/[0-9]{4}-[0-9]{2}-[0-9]{2})|site\/examples\/thumbnails|tests\/visual-baselines\/windows-chromium)\//.test(
           asset,
         ),
         `${page}: image path must be from an approved reviewed asset family (${asset})`,
       );
       await access(new URL('../../../' + asset, import.meta.url));
+      if (asset.startsWith(screenshotPrefix)) {
+        const relative = asset.slice(screenshotPrefix.length);
+        const dated = relative.match(/^([0-9]{4}-[0-9]{2}-[0-9]{2})\/([^/]+\.png)$/);
+        assert.ok(dated, `${page}: screenshot must live in a dated capture folder`);
+        const [, captureDate, filename] = dated;
+        let approved = manifests.get(captureDate);
+        if (!approved) {
+          const capturePrefix = screenshotPrefix + captureDate + '/';
+          const manifest = JSON.parse(
+            await readFile(
+              new URL('../../../' + capturePrefix + 'manifest.json', import.meta.url),
+              'utf8',
+            ),
+          );
+          assert.match(manifest.source_sha, /^[a-f0-9]{40}$/);
+          assert.ok(Number.isInteger(manifest.source_workflow_run));
+          approved = {
+            manifest,
+            files: new Map(manifest.files.map((item) => [item.filename, item])),
+          };
+          manifests.set(captureDate, approved);
+        }
+        const { manifest, files } = approved;
+        const record = files.get(filename);
+        assert.ok(record, `${page}: capture requires versioned source manifest (${filename})`);
+        assert.ok(
+          (screenshotPages[page] || []).includes(filename),
+          `${page}: captured UI is unrelated to this page (${filename})`,
+        );
+        assert.equal(record.source_sha, manifest.source_sha);
+        assert.ok(record.artifact_id > 0 && record.artifact_path);
+        assert.ok(record.pixel_width >= 320 && record.pixel_height >= 400);
+        const bytes = await readFile(new URL('../../../' + asset, import.meta.url));
+        assert.equal(bytes.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+        assert.equal(createHash('sha256').update(bytes).digest('hex'), record.sha256);
+        const afterImage = source.slice(
+          match.index + match[0].length,
+          match.index + match[0].length + 700,
+        );
+        assert.ok(
+          afterImage.includes(manifest.source_sha.slice(0, 12)),
+          `${page}: screenshot caption needs exact source revision`,
+        );
+      }
       if (asset.startsWith('site/examples/thumbnails/')) {
         const allowed =
           page === 'Examples-and-Modeling-Limits' ||
@@ -207,12 +264,36 @@ test('Wiki uses legible first-party visual evidence or task-specific diagrams, a
       }
       if (page !== 'Process-Operations') {
         const after = source.slice(match.index + match[0].length).trimStart();
+        const caption = after.split(/\n\s*\n/, 1)[0];
+        assert.ok(caption.length <= 700, `${page}: image caption must be concise`);
         assert.match(
-          after.slice(0, 400),
-          /^_[^\n]+_\s*\n/,
+          caption,
+          /^_[\s\S]+_$/,
           `${page}: explain image provenance, purpose and schematic/actual status immediately below it`,
         );
       }
+    }
+  }
+});
+
+test('GitHub Wiki page links resolve after the flat source pages are published', async () => {
+  const root = new URL('../../../docs/wiki/', import.meta.url);
+  const filenames = (await readdir(root)).filter((name) => name.endsWith('.md'));
+  const wikiPages = new Set(filenames.map((name) => name.slice(0, -3)));
+  for (const filename of filenames) {
+    const source = await readFile(new URL(filename, root), 'utf8');
+    for (const [, target] of source.matchAll(/(?<!!)\[[^\]\n]+\]\(([^)\s]+)\)/g)) {
+      const destination = target.split('#')[0];
+      if (!destination || /^(?:https?:\/\/|mailto:)/.test(destination)) continue;
+      assert.match(
+        destination,
+        /^[A-Za-z0-9_-]+$/,
+        `${filename}: repository-relative links do not resolve in a flat GitHub Wiki; use a page slug or an absolute GitHub URL`,
+      );
+      assert.ok(
+        wikiPages.has(destination),
+        `${filename}: unknown published Wiki page ${destination}`,
+      );
     }
   }
 });

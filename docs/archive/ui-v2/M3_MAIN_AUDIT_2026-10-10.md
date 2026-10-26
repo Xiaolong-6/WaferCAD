@@ -83,7 +83,7 @@ Each domain requires real scenarios + M1.5 visual comparison at four widths, no 
 2. Before wiring, resolve the public v2 bootstrap topology: prefer `site/app-v2.html` as the eventual stable public route with real production adapter, while `site/ui-v2/app.html` remains an explicit isolated shell fixture. Retain a separate mock/gallery route through D1; this is a **proposal**, not a code change.
 3. Once the source audit and its explicit runtime/tooling limitations are accepted, request a separate **D1 authorization**; proceed one domain at a time.
 
-Cross-reference: [M0 implicit dependencies](IMPLICIT_DEPS.md), [original contract](../../ui-v2/CONTRACT.md), [placement audit](PLACEMENT_MAP.md), [legacy browser comparison](LEGACY_BROWSER_COMPARISON_2026-10-10.md), [M3 issue delta](ISSUES.md).
+Cross-reference: [M0 implicit dependencies](IMPLICIT_DEPS.md), [original contract](CONTRACT.md), [placement audit](PLACEMENT_MAP.md), [legacy browser comparison](LEGACY_BROWSER_COMPARISON_2026-10-10.md), [M3 issue delta](ISSUES.md).
 
 ## 7. Executable pre-D1 acceptance checkpoint
 

@@ -23,12 +23,12 @@ _A genuine 920 × 600-pixel **Section A–B** output from the shipped MAGIC-1000
 - **Overview** restores Main, Mask, 3D and Section together for quick inspection.
 - **Main** is a planar view of the Front/Back surface and provides A–B and 3D ROI editing.
 - **Mask** shows either the imported layout (**File**) or local editable primitives (**Draw**). Mask opacity changes visualization, not physical coverage.
-- **3D** shows extruded vector structure, rough/pyramid relief, material transparency and ROI cut faces. Switch Fast/Quality for mesh detail.
+- **3D** shows extruded vector structure, rough/pyramid relief, material transparency and ROI cut faces. Switch Fast/Quality for mesh detail; Display controls opacity, vertical display scale and Show Origin without changing physical geometry.
 - **Section A–B** shows the material stack sampled along the chosen A–B path. On desktop it is a peer of Main, Mask and 3D: it can be hidden, restored, arranged or maximized as a scientific view.
 
 ## Toolbar states
 
-All four view headers now use explicit **mode selectors** (Mask File/Draw, 3D Fast/Quality and Section Auto/1:1), high-frequency actions, **Display**, **More**, and a conditional maximize action. Main exposes Slice, **3D ROI**, Pan and Fit; Mask exposes **Mask ROI** and Fit. Zoom +/- and export actions are in **More**. Display contains visualization-only controls (Mask opacity; 3D opacity and Border; Section Border). At narrow panel widths, secondary tools move into the _same More menu_ without creating duplicate buttons.
+All four view headers now use explicit **mode selectors** (Mask File/Draw, 3D Fast/Quality and Section Auto/1:1), high-frequency actions, **Display**, **More**, and a conditional maximize action. Main exposes Slice, **3D ROI**, Pan and Fit; Mask exposes **Mask ROI** and Fit. Zoom +/- and export actions are in **More**. Display contains visualization-only controls (Mask opacity; 3D opacity and continuous vertical display scale, Show Origin and Border; Section Border). At narrow panel widths, secondary tools move into the _same More menu_ without creating duplicate buttons.
 
 A selected control indicates a persistent state (for example, Pan or Border). An opened editor is an independent state: closing Display never disables Border. Mode labels describe the **current selection**, not a click-to-toggle target. Menus close on Escape, clicking the canvas or completing a one-shot menu action. Section's **Detail ROI** is found in More and is different from Main's 3D ROI or Mask's Process ROI.
 
@@ -40,13 +40,41 @@ A selected control indicates a persistent state (for example, Pan or Border). An
 
 **Z Break** is in the Section title bar. It opens an editor even when the break is off. **Enable Z-axis break** controls whether the center interval is omitted from the display; the **Upper boundary** and **Lower boundary** fields edit the physical Z values, with material-boundary snapping available on the ruler. **Advanced display scaling** contains the optional linked Front/Back weights; they influence Section Auto and 3D, while **1:1 X:Z** retains its physical scale. Z Break never changes the Kernel geometry or physical exports.
 
+![Actual WaferCAD Section Z Break editor over M3D layered material cross-section](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/screenshots/2026-10-24/section-zbreak.png)
+
+_Real Chromium **Section Z Break** editor for the shipped M3D example, source main@90fb16836eec, 1440 × 960. The omitted Z interval is a **display transformation**, not etched air or missing material; Z scaling does not alter canonical layer thickness or physical export._
+
 ## 3D ROI versus Section A–B
 
 Main ROI clips only the visible 3D inspection volume; it does not constrain Process. Section is evaluated along A–B. The ROI edge and A–B can cross different physical locations, so a 3D sidewall does not necessarily match the Section unless those paths are aligned.
 
 ## Visibility
 
+![Actual WaferCAD mobile Border Inspector showing visible and X-ray line modes](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/screenshots/2026-10-24/mobile-border-inspector.png)
+
+_Real Chromium compact-screen **3D Border Inspector** controls, source main@90fb16836eec, 390 × 844. These switches alter the presentation of borders, **not** material interfaces or Kernel geometry; the open settings panel does not itself demonstrate a finished 3D mesh._
+
 Material opacity controls whether buried regions show through in 3D. Implant and Electrical Region overlays are annotations. A cut face can expose an otherwise buried implant, but that does not mean the original material was removed.
+
+## Progressive 3D and reliable captures
+
+On supported ordinary models, 3D may first show a temporary cap-and-border
+preview before the exact physical surfaces arrive. This is **not** a new
+fabrication step and does not change the saved project or the Section
+material stack. ROI-clipped and repeated-array models may skip the preview.
+For a scientific check, wait for the exact 3D scene and compare the
+same History state, ROI, A–B position, material visibility and Z display
+settings. A visible first frame alone is not proof that the exact solid
+or a complex undercut has finished loading.
+
+**3D PNG** captures the visible, painted **exact** scene (including the
+current border, opacity, Show Origin, vertical display scale and roughness
+LOD) at higher resolution; it is an inspection image, not a physical
+geometry file. The app refuses a PNG capture while only the early
+preview is available. **GLB** is physical model-derived geometry where
+that model supports GLB export; unsupported special material owners
+must not silently export a simplified display mesh. Section screenshots
+show a 2D material cut and can use a different scale from 3D.
 
 ## Performance
 

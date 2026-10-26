@@ -59,6 +59,31 @@ _Three different controls, three different effects. A 3D ROI does not limit Etch
 
 **3D ROI** in Main may be rectangular, circular or sector-shaped. It limits the 3D viewport and GLB export; it does **not** limit Apply. This is a frequent source of confusion: to restrict Process, use **Mask ROI**.
 
+## Quick check: one rectangle, three different outcomes
+
+For an easily verified comparison, begin with a **new blank project**
+and a rectangular Draw Mask wholly inside the Base. Check the
+selected geometry before applying anything:
+
+1. **Mask ROI:** enable a smaller Mask ROI overlapping only part of
+   the rectangle. Even **Whole face** Process operations are now
+   restricted to this ROI. This changes Process selection, not
+   physical material until an operation is applied.
+2. **Main 3D ROI:** clear the Mask ROI, then set a Main ROI.
+   The 3D inspection (and supported physical GLB clipping) now shows
+   only the selected volume; the next Process operation is **not**
+   limited by that 3D crop.
+3. **Section A–B:** move the line through a feature and then away
+   from it. Section changes because the sampled XY path changed;
+   neither Mask selection nor previously committed material does.
+4. **Before Apply:** clear both ROIs if the intended operation truly
+   covers the entire face. Inspect the Process Area, current Mask
+   source and active Front/Back face one last time.
+
+The optional ROI editor permits geometric and numeric adjustment;
+its canvas outline is a selection aid, not an etched wall. Never
+infer a real Process cavity merely from a 3D ROI cut face.
+
 ## Troubleshooting selections
 
 If a Process changes the wrong area, verify which mask source is active, which File cell/layers are selected, whether Invert is enabled, and whether Mask ROI is still active. **Whole face does not bypass an active Mask ROI** in the current Process implementation. Imported mask geometry is not automatically resized to the base.

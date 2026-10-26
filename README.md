@@ -13,11 +13,11 @@ Its core question is practical: **given this mask and this sequence of process s
 
 The Workstation footer links the deployed short commit SHA to its GitHub commit (full SHA on hover); local builds show non-clickable `commit local`. The historical `app-legacy.html` URL redirects to the current v2 Workstation in published Pages; no separate Legacy editor is shipped. Existing `.wafercad` project files and browser Recovery remain supported.
 
-The Welcome page also offers **eight shipped example projects**, each with its own Mask, structure, and process/History context. The v2 Workstation is the default application since the [M5-Lite release](docs/archive/ui-v2/M5_LITE_HANDOFF_2026-10-12.md).
+The Welcome page also offers **nine shipped example projects**, each with its own Mask, structure, and process/History context. The v2 Workstation is the default application since the [M5-Lite release](docs/archive/ui-v2/M5_LITE_HANDOFF_2026-10-12.md).
 
 ## Your first five steps
 
-1. On the Welcome page, choose **Start empty** or open one of the [eight examples](docs/wiki/Examples-and-Modeling-Limits.md).
+1. On the Welcome page, choose **Start empty** or open one of the [nine examples](docs/wiki/Examples-and-Modeling-Limits.md).
 2. In **Project → Base**, choose the substrate shape and dimensions, then **Rebuild Base**. Rebuilding an existing processed project has History implications; follow the confirmation.
 3. In **Mask**, import a GDSII/OASIS file or switch the source to **Draw**. Inspect Cell, Layer/Datatype and Mask ROI before patterned processing.
 4. In **Process → Manual**, choose Surface, Operation, Area and thickness/depth, then **Apply**. Use **Process → Recipe** for an ordered flow or **Process → Code** for supported declarative Recipe syntax.
@@ -73,7 +73,7 @@ The [GitHub Wiki](https://github.com/Xiaolong-6/WaferCAD/wiki) is the product us
 - [Recipe Code Tutorial](docs/wiki/Recipe-Code-Tutorial.md) — supported commands and executable-style examples.
 - [Masks and ROI](docs/wiki/Masks-and-ROI.md) — the difference between processing bounds and 3D inspection bounds.
 - [History, Variants and Recovery](docs/wiki/History-Variants-and-Recovery.md) — reversible work, browser recovery and backups.
-- [Illustrated Process Operations](docs/wiki/Process-Operations.md) — 19 canonical Before → After operation schematics, generated from the same catalog as the in-app guide.
+- [Illustrated Process Operations](docs/wiki/Process-Operations.md) — 20 canonical Before → After operation schematics, generated from the same catalog as the in-app guide.
 
 These diagrams are conceptual process-geometry explanations, **not** predictions of deposition kinetics or fabrication yield.
 
