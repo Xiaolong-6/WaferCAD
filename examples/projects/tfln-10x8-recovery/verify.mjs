@@ -25,7 +25,8 @@ const { borderInspectorContours } = await load('site/three-outline-geometry.js')
 
 const started = performance.now();
 const expected = {
-  'TFLN_10x8_REBUILT_editable.wafercad': '43b758303c226c00ab9b4909ef6cb93223cfc607edd888a6f58d4ac8d62481f9',
+  'TFLN_10x8_REBUILT_editable.wafercad':
+    '43b758303c226c00ab9b4909ef6cb93223cfc607edd888a6f58d4ac8d62481f9',
   'TFLN_M1_M2_10x8.gds': 'ebb37f61452bfb6ed13819c7deafe2040297903f931a63781d5c1b41a36ee7de',
   'TFLN_M1_M2_10x8.oas': '43ef9f97786546d8481c96dc30da75bc152cc288c9e23c16608c26749c4bb6f7',
   'routes.json': '95f0c1a9cb2ce926dd020d11a583e34b73e330414219a4c7710f8213a9686fd9',
@@ -63,14 +64,15 @@ function signature(element) {
   const canonical = (vertices) => {
     let first = 0;
     for (let i = 1; i < vertices.length; i++) {
-      const p = vertices[i], q = vertices[first];
+      const p = vertices[i],
+        q = vertices[first];
       if (p[0] < q[0] || (p[0] === q[0] && p[1] < q[1])) first = i;
     }
     return JSON.stringify([...vertices.slice(first), ...vertices.slice(0, first)]);
   };
-  return `${element.layer}|${element.datatype}|${[
-    canonical(a), canonical([...a].reverse()),
-  ].sort()[0]}`;
+  return `${element.layer}|${element.datatype}|${
+    [canonical(a), canonical([...a].reverse())].sort()[0]
+  }`;
 }
 const multiset = (elements) => {
   const map = new Map();
@@ -97,11 +99,12 @@ const parts = arrayParts(model).sort((a, b) => a.y - b.y);
 assert.equal(parts.length, 10);
 const routes = JSON.parse(sourceBytes.get('routes.json').toString('utf8'));
 assert.equal(routes.length, 160);
-const thickness = (part, x, y, layerId) => part.model.regions
-  .filter((region) => pointInMulti([x - part.x, y - part.y], region.geom))
-  .flatMap((region) => region.stack)
-  .filter((s) => s.layerId === layerId)
-  .reduce((z, s) => z + s.z1 - s.z0, 0);
+const thickness = (part, x, y, layerId) =>
+  part.model.regions
+    .filter((region) => pointInMulti([x - part.x, y - part.y], region.geom))
+    .flatMap((region) => region.stack)
+    .filter((s) => s.layerId === layerId)
+    .reduce((z, s) => z + s.z1 - s.z0, 0);
 let probes = 0;
 const errors = [];
 function check(part, label, x, y, ln, box) {
@@ -112,17 +115,33 @@ function check(part, label, x, y, ln, box) {
   }
 }
 for (let row = 0; row < 10; row++) {
-  const part = parts[row], cy = (row - 4.5) * 360;
+  const part = parts[row],
+    cy = (row - 4.5) * 360;
   assert.equal(part.y, cy);
   for (let col = 0; col < 8; col++) {
-    const cx = (col - 3.5) * 145, label = `${row}/${col}`;
+    const cx = (col - 3.5) * 145,
+      label = `${row}/${col}`;
     check(part, `${label} center`, cx, cy, 0.08, 0);
     check(part, `${label} rim`, cx + 18.5, cy, 0.3, 0);
     check(part, `${label} hole`, cx + 25, cy, 0, 2);
     for (const degrees of [45, 135, 225, 315]) {
-      const radians = degrees * Math.PI / 180;
-      check(part, `${label} anchor r30`, cx + 30 * Math.cos(radians), cy + 30 * Math.sin(radians), 0.08, 0);
-      check(part, `${label} anchor r40`, cx + 40 * Math.cos(radians), cy + 40 * Math.sin(radians), 0.08, 2);
+      const radians = (degrees * Math.PI) / 180;
+      check(
+        part,
+        `${label} anchor r30`,
+        cx + 30 * Math.cos(radians),
+        cy + 30 * Math.sin(radians),
+        0.08,
+        0,
+      );
+      check(
+        part,
+        `${label} anchor r40`,
+        cx + 40 * Math.cos(radians),
+        cy + 40 * Math.sin(radians),
+        0.08,
+        2,
+      );
     }
     check(part, `${label} BOX`, cx + 55, cy, 0.3, 2);
     check(part, `${label} bus`, cx, cy - 20.8, 0.3, 2);
@@ -130,9 +149,20 @@ for (let row = 0; row < 10; row++) {
 }
 for (const route of routes) {
   const points = route.centerline;
-  for (const i of [0, Math.floor(points.length / 4), Math.floor(points.length / 2),
-    Math.floor(3 * points.length / 4), points.length - 2]) {
-    check(parts[route.row], `fanout ${route.row}/${route.col}/${route.port}/${i}`, ...points[i], 0.3, 2);
+  for (const i of [
+    0,
+    Math.floor(points.length / 4),
+    Math.floor(points.length / 2),
+    Math.floor((3 * points.length) / 4),
+    points.length - 2,
+  ]) {
+    check(
+      parts[route.row],
+      `fanout ${route.row}/${route.col}/${route.port}/${i}`,
+      ...points[i],
+      0.3,
+      2,
+    );
   }
 }
 assert.equal(probes, 1840);
@@ -149,23 +179,44 @@ const roiStart = performance.now();
 const clipped = buildRenderSurfacePlan(model, roi);
 const roiPlanMs = Math.round(performance.now() - roiStart);
 assert.ok(full.caps.length > 0 && full.borderLines.length > 0);
-assert.ok(clipped.caps.length > 0 && clipped.sidewalls.length > 0 && clipped.borderLines.length > 0);
+assert.ok(
+  clipped.caps.length > 0 && clipped.sidewalls.length > 0 && clipped.borderLines.length > 0,
+);
 const evidence = {
   status: 'passed',
   repoSource: source,
   node: process.version,
   integrityFiles: checked.length,
-  project: { bytes: raw.length, version: project.version, instances: parts.length, sites: 80,
-    templates: model.array.templates.length, polygons: project.layout.elements.length,
-    dimensionsMicrometres: [model.width, model.height] },
+  project: {
+    bytes: raw.length,
+    version: project.version,
+    instances: parts.length,
+    sites: 80,
+    templates: model.array.templates.length,
+    polygons: project.layout.elements.length,
+    dimensionsMicrometres: [model.width, model.height],
+  },
   imported,
   physics: { probes, fanoutRoutes: routes.length, failures: errors.length },
-  render: { full: { caps: full.caps.length, walls: full.sidewalls.length,
-    exteriorLines: full.borderLines.length, internalInterfaceLines: fullContours.interface.length,
-    buriedLines: fullContours.buried.length, planMs: fullPlanMs, outlineMs: fullContourMs },
-    roi: { caps: clipped.caps.length, walls: clipped.sidewalls.length,
-      exteriorLines: clipped.borderLines.length, planMs: roiPlanMs } },
-  caveat: 'This is native Node scientific/renderer-geometry evidence, not normal-origin Workstation acceptance.',
+  render: {
+    full: {
+      caps: full.caps.length,
+      walls: full.sidewalls.length,
+      exteriorLines: full.borderLines.length,
+      internalInterfaceLines: fullContours.interface.length,
+      buriedLines: fullContours.buried.length,
+      planMs: fullPlanMs,
+      outlineMs: fullContourMs,
+    },
+    roi: {
+      caps: clipped.caps.length,
+      walls: clipped.sidewalls.length,
+      exteriorLines: clipped.borderLines.length,
+      planMs: roiPlanMs,
+    },
+  },
+  caveat:
+    'This is native Node scientific/renderer-geometry evidence, not normal-origin Workstation acceptance.',
   totalMs: Math.round(performance.now() - started),
 };
 console.log(JSON.stringify(evidence, null, 2));

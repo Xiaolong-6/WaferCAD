@@ -18,7 +18,9 @@ const { buildRenderSurfacePlan } = await import('../../../site/renderer-geometry
 const bytes = process.argv[2]
   ? readFileSync(resolve(process.argv[2]))
   : gunzipSync(
-      readFileSync(fileURLToPath(new URL('./TFLN_10x8_REBUILT_editable.wafercad.gz', import.meta.url))),
+      readFileSync(
+        fileURLToPath(new URL('./TFLN_10x8_REBUILT_editable.wafercad.gz', import.meta.url)),
+      ),
     );
 const { model, layout } = await readProjectFile({
   size: bytes.length,
