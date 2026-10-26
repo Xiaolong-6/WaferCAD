@@ -23,3 +23,15 @@ Decompress individually, e.g. `gzip -dk TFLN_10x8_recovered_native.wafercad.gz`.
 - Native headed Chromium/Three.js 0.179.1 rendered a real single-round-resonator ROI at 55% opacity with 0 page errors and 0 unexpected rejections. This was **`about:blank`/null-origin** native renderer diagnostics. Normal-origin Worker Open, History/Recovery and actual Clean/Structure/X-Ray controls are **not signed off**.
 - The archived flattened polygon topology still creates a dense full-array outline plan (~263k horizontal/vertical segment inputs in the 2026-10-23 baseline). Further ownership/performance tuning, full 10×8 visual inspection and comparison to the published device dimensions remain necessary before promotion to an official Example or PR merge.
 - This recovery adds **no alternative Renderer angle rule**, no process-kernel changes and no new CI triggers. It is meant to preserve the original disc-array source and enable targeted scientific/visual validation on PR #369.
+
+## Clean source fanout-border diagnosis (external original rebuild)
+
+The separately supplied `TFLN_10x8_REBUILT_editable.wafercad` (1,736,834 bytes, one native row template, 640 M1 and 480 M2 polygons) is **not the same file** as the earlier recovered 30-template archive in this directory. The original clean source must be supplied separately to run the diagnostic:
+
+```sh
+node examples/projects/tfln-10x8-recovery/verify-clean-fanout.mjs /path/to/TFLN_10x8_REBUILT_editable.wafercad
+```
+
+The test checks physical ownership, not just screenshot appearance. At `y = -1765.5` and `-1764.5 µm` in the first row, the full model contains horizontal exterior outlines at `z = 7.080` and `7.300 µm`, each about 1,103.16 µm long. Direct M1 mask membership probes on four X coordinates confirm these are the opposing sides of a 1 µm-wide **actual M1 etch corridor**, with 220 nm LN removal. The equivalent pair repeats at every 360 µm row pitch. The verifier checks 40 such physical outlines and also rejects long outlines at all nine internal array tile joins, at both heights (18 no-seam assertions).
+
+These dark full-array fanout stripes are therefore **not all renderer artifacts**. Their upstream source is the reconstructed mask/fanout route design, which was explicitly inferred rather than taken from the authors' original photomask. Do **not** hide them using global Border suppression or a new angle-based Renderer rule: that would conceal actual material steps. A design-level mask comparison and real-origin Workstation Inspector acceptance are still required before declaring the reconstruction visually or scientifically faithful.
