@@ -1,87 +1,171 @@
+/** Verify the user-supplied, fresh TFLN 10x8 mask-driven reconstruction.
+ * Run from the WaferCAD checkout root with:
+ *   node /path/to/verify-package.mjs /path/to/extracted-package
+ * Requires the production Geometry Kernel, not a mock polygon engine.
+ */
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
-import { loadGeometryKernel } from '../../../scripts/process-benchmarks.mjs';
+import { readFileSync } from 'node:fs';
+import { resolve, dirname, join } from 'node:path';
+import { pathToFileURL, fileURLToPath } from 'node:url';
 
-const dir = dirname(fileURLToPath(import.meta.url));
-const files = [
-  ['TFLN_10x8_recovered_native.wafercad', '3e0fcdcd1ef81419580695eb74b3ab30692f4ac014a701562b52f5ab74eb8df8'],
-  ['TFLN_M1_M2_10x8_recovered.gds', 'e5646056a2a215f596688f7b6eb617cce815c9db8d97dda24677634bcaef14d1'],
-  ['TFLN_M1_M2_10x8_recovered.oas', '9bbe1d46446e0a15be31b9434203e8f53ac114ef78b9fd109d8c8dfa1906f548'],
-];
-const bytes = new Map();
-for (const [name, sha256] of files) {
-  const buf = gunzipSync(readFileSync(join(dir, `${name}.gz`)));
-  assert.equal(createHash('sha256').update(buf).digest('hex'), sha256, name);
-  bytes.set(name, buf);
-}
+const pkg = dirname(fileURLToPath(import.meta.url));
+const source = resolve(pkg, '../../..');
+const load = async (relative) => import(pathToFileURL(resolve(source, relative)).href);
+const { loadGeometryKernel } = await load('scripts/process-benchmarks.mjs');
 await loadGeometryKernel();
-const { readProjectFile } = await import('../../../site/project-io.js');
-const { parseGDS, flattenGDS } = await import('../../../site/gds.js');
-const { parseOAS } = await import('../../../site/oasis.js');
-const { buildRenderSurfacePlan } = await import('../../../site/renderer-geometry.js');
-const { rectMulti } = await import('../../../site/vector-geometry.js');
-const projectText = bytes.get(files[0][0]).toString('utf8');
-const start = performance.now();
-const project = await readProjectFile({ size: Buffer.byteLength(projectText), text: async () => projectText });
-assert.equal(project.model.kernel, 'vector-2.5d-array-v1');
-assert.equal(project.model.array.instances.length, 80);
-assert.equal(project.model.array.templates.length, 30);
-assert.equal(project.model.width, 1160);
-assert.equal(project.model.height, 3600);
-assert.equal(project.layout.elements.length, 2000);
-const layerCounts = (elements) => {
-  const counts = new Map();
-  for (const e of elements) {
-    const key = `${e.layer}|${e.datatype}`;
-    counts.set(key, (counts.get(key) || 0) + 1);
-  }
-  return [...counts].sort();
+const { readProjectFile } = await load('site/project-io.js');
+const { parseGDS, flattenGDS } = await load('site/gds.js');
+const { parseOAS } = await load('site/oasis.js');
+const { arrayParts } = await load('site/model-array.js');
+const { rectMulti, pointInMulti } = await load('site/vector-geometry.js');
+const { buildRenderSurfacePlan } = await load('site/renderer-geometry.js');
+const { borderInspectorContours } = await load('site/three-outline-geometry.js');
+
+const started = performance.now();
+const expected = {
+  'TFLN_10x8_REBUILT_editable.wafercad': '43b758303c226c00ab9b4909ef6cb93223cfc607edd888a6f58d4ac8d62481f9',
+  'TFLN_M1_M2_10x8.gds': 'ebb37f61452bfb6ed13819c7deafe2040297903f931a63781d5c1b41a36ee7de',
+  'TFLN_M1_M2_10x8.oas': '43ef9f97786546d8481c96dc30da75bc152cc288c9e23c16608c26749c4bb6f7',
+  'routes.json': '95f0c1a9cb2ce926dd020d11a583e34b73e330414219a4c7710f8213a9686fd9',
 };
-assert.deepEqual(layerCounts(project.layout.elements), [['11|0', 1200], ['12|0', 800]]);
-// Compare exact quantized polygon vertices, up to ring rotation/reversal. This
-// checks more than count, total area or bounding boxes and catches mask drift.
-function canonicalElement(element) {
-  const coords = element.points.map(([x, y]) => [Math.round(x * 10000), Math.round(y * 10000)]);
-  if (coords.length > 1 && coords[0][0] === coords.at(-1)[0] && coords[0][1] === coords.at(-1)[1]) coords.pop();
-  function canonical(points) {
+const checked = [];
+const sourceBytes = new Map();
+for (const [filename, sha256] of Object.entries(expected)) {
+  const buf = gunzipSync(readFileSync(join(pkg, `${filename}.gz`)));
+  assert.equal(createHash('sha256').update(buf).digest('hex'), sha256, filename);
+  sourceBytes.set(filename, buf);
+  checked.push(filename);
+}
+const raw = sourceBytes.get('TFLN_10x8_REBUILT_editable.wafercad');
+const project = await readProjectFile({ size: raw.length, text: async () => raw.toString('utf8') });
+const model = project.model;
+assert.equal(project.version, 14);
+assert.equal(model.kernel, 'vector-2.5d-array-v1');
+assert.equal(model.width, 1160);
+assert.equal(model.height, 3600);
+assert.equal(model.array.instances.length, 10);
+assert.equal(model.array.templates.length, 1);
+assert.equal(project.maskSourceMode, 'file');
+assert.equal(project.layout.elements.length, 1120);
+assert.deepEqual(
+  [...new Set(project.layout.elements.map((el) => `${el.layer}|${el.datatype}`))].sort(),
+  ['11|0', '12|0'],
+);
+
+// GDS/OAS preserve every polygon, modulo explicitly duplicated consecutive
+// vertices. 0.1 nm coordinate grid; ring rotation and winding are ignored.
+function signature(element) {
+  let a = element.points.map(([x, y]) => [Math.round(x * 1e4), Math.round(y * 1e4)]);
+  if (a.length > 1 && a[0][0] === a.at(-1)[0] && a[0][1] === a.at(-1)[1]) a.pop();
+  a = a.filter((pt, i) => i === 0 || pt[0] !== a[i - 1][0] || pt[1] !== a[i - 1][1]);
+  const canonical = (vertices) => {
     let first = 0;
-    for (let i = 1; i < points.length; i++) {
-      const [x, y] = points[i], [px, py] = points[first];
-      if (x < px || (x === px && y < py)) first = i;
+    for (let i = 1; i < vertices.length; i++) {
+      const p = vertices[i], q = vertices[first];
+      if (p[0] < q[0] || (p[0] === q[0] && p[1] < q[1])) first = i;
     }
-    return JSON.stringify([...points.slice(first), ...points.slice(0, first)]);
-  }
-  return `${element.layer}|${element.datatype}|${[canonical(coords), canonical([...coords].reverse())].sort()[0]}`;
+    return JSON.stringify([...vertices.slice(first), ...vertices.slice(0, first)]);
+  };
+  return `${element.layer}|${element.datatype}|${[
+    canonical(a), canonical([...a].reverse()),
+  ].sort()[0]}`;
 }
-const signatureCounts = (elements) => {
-  const counts = new Map();
-  for (const element of elements) {
-    const key = canonicalElement(element);
-    counts.set(key, (counts.get(key) || 0) + 1);
+const multiset = (elements) => {
+  const map = new Map();
+  for (const e of elements) {
+    const key = signature(e);
+    map.set(key, (map.get(key) || 0) + 1);
   }
-  return [...counts].sort(([a], [b]) => a.localeCompare(b));
+  return [...map].sort(([a], [b]) => a.localeCompare(b));
 };
-const expected = signatureCounts(project.layout.elements);
-for (const [format, parse] of [
-  ['gds', (buf) => parseGDS(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength))],
-  ['oas', (buf) => parseOAS(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength))],
-]) {
-  const result = await parse(bytes.get(files[format === 'gds' ? 1 : 2][0]));
-  const flat = flattenGDS(result, 'WAFERCAD_EXPORT');
-  assert.equal(flat.elements.length, 2000);
-  assert.deepEqual(layerCounts(flat.elements), layerCounts(project.layout.elements));
-  assert.deepEqual(signatureCounts(flat.elements), expected, `${format} polygon-by-polygon parity`);
+const expectedMasks = multiset(project.layout.elements);
+const imported = {};
+for (const type of ['gds', 'oas']) {
+  const buf = sourceBytes.get(`TFLN_M1_M2_10x8.${type}`);
+  const ab = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+  const parsed = await (type === 'gds' ? parseGDS(ab) : parseOAS(ab));
+  const result = flattenGDS(parsed, project.layout.root);
+  assert.deepEqual(result.warnings || [], [], `${type} import warnings`);
+  assert.equal(result.elements.length, 1120, `${type} polygon count`);
+  assert.deepEqual(multiset(result.elements), expectedMasks, `${type} polygon geometry`);
+  imported[type] = { polygons: result.elements.length, bytes: buf.length, parity: true };
 }
-// Check the actual Array Model's own 3D/Border plan, using an exact single-disk ROI.
-const roi = rectMulti(115, 110, -507.5, -1605);
-const plan = buildRenderSurfacePlan(project.model, roi);
-assert.ok(plan.caps.length > 0 && plan.sidewalls.length > 0);
-assert.ok(plan.borderLines.length > 0);
-console.log(JSON.stringify({ ok: true, model: 'TFLN 10x8 recovered', instances: 80,
-  templates: 30, maskPolygons: 2000, layerCounts: layerCounts(project.layout.elements),
-  roi: { caps: plan.caps.length, sidewalls: plan.sidewalls.length, borderLines: plan.borderLines.length },
-  ms: Math.round(performance.now() - start) }, null, 2));
+
+const parts = arrayParts(model).sort((a, b) => a.y - b.y);
+assert.equal(parts.length, 10);
+const routes = JSON.parse(sourceBytes.get('routes.json').toString('utf8'));
+assert.equal(routes.length, 160);
+const thickness = (part, x, y, layerId) => part.model.regions
+  .filter((region) => pointInMulti([x - part.x, y - part.y], region.geom))
+  .flatMap((region) => region.stack)
+  .filter((s) => s.layerId === layerId)
+  .reduce((z, s) => z + s.z1 - s.z0, 0);
+let probes = 0;
+const errors = [];
+function check(part, label, x, y, ln, box) {
+  probes++;
+  const actual = [thickness(part, x, y, 'layer-2'), thickness(part, x, y, 'layer-1')];
+  if (Math.abs(actual[0] - ln) > 1e-5 || Math.abs(actual[1] - box) > 1e-5) {
+    errors.push({ label, x, y, actual, expected: [ln, box] });
+  }
+}
+for (let row = 0; row < 10; row++) {
+  const part = parts[row], cy = (row - 4.5) * 360;
+  assert.equal(part.y, cy);
+  for (let col = 0; col < 8; col++) {
+    const cx = (col - 3.5) * 145, label = `${row}/${col}`;
+    check(part, `${label} center`, cx, cy, 0.08, 0);
+    check(part, `${label} rim`, cx + 18.5, cy, 0.3, 0);
+    check(part, `${label} hole`, cx + 25, cy, 0, 2);
+    for (const degrees of [45, 135, 225, 315]) {
+      const radians = degrees * Math.PI / 180;
+      check(part, `${label} anchor r30`, cx + 30 * Math.cos(radians), cy + 30 * Math.sin(radians), 0.08, 0);
+      check(part, `${label} anchor r40`, cx + 40 * Math.cos(radians), cy + 40 * Math.sin(radians), 0.08, 2);
+    }
+    check(part, `${label} BOX`, cx + 55, cy, 0.3, 2);
+    check(part, `${label} bus`, cx, cy - 20.8, 0.3, 2);
+  }
+}
+for (const route of routes) {
+  const points = route.centerline;
+  for (const i of [0, Math.floor(points.length / 4), Math.floor(points.length / 2),
+    Math.floor(3 * points.length / 4), points.length - 2]) {
+    check(parts[route.row], `fanout ${route.row}/${route.col}/${route.port}/${i}`, ...points[i], 0.3, 2);
+  }
+}
+assert.equal(probes, 1840);
+assert.deepEqual(errors, []);
+
+const fullStart = performance.now();
+const full = buildRenderSurfacePlan(model);
+const fullPlanMs = Math.round(performance.now() - fullStart);
+const contourStart = performance.now();
+const fullContours = borderInspectorContours(full);
+const fullContourMs = Math.round(performance.now() - contourStart);
+const roi = rectMulti(235, 135, -432.5, -1617.5);
+const roiStart = performance.now();
+const clipped = buildRenderSurfacePlan(model, roi);
+const roiPlanMs = Math.round(performance.now() - roiStart);
+assert.ok(full.caps.length > 0 && full.borderLines.length > 0);
+assert.ok(clipped.caps.length > 0 && clipped.sidewalls.length > 0 && clipped.borderLines.length > 0);
+const evidence = {
+  status: 'passed',
+  repoSource: source,
+  node: process.version,
+  integrityFiles: checked.length,
+  project: { bytes: raw.length, version: project.version, instances: parts.length, sites: 80,
+    templates: model.array.templates.length, polygons: project.layout.elements.length,
+    dimensionsMicrometres: [model.width, model.height] },
+  imported,
+  physics: { probes, fanoutRoutes: routes.length, failures: errors.length },
+  render: { full: { caps: full.caps.length, walls: full.sidewalls.length,
+    exteriorLines: full.borderLines.length, internalInterfaceLines: fullContours.interface.length,
+    buriedLines: fullContours.buried.length, planMs: fullPlanMs, outlineMs: fullContourMs },
+    roi: { caps: clipped.caps.length, walls: clipped.sidewalls.length,
+      exteriorLines: clipped.borderLines.length, planMs: roiPlanMs } },
+  caveat: 'This is native Node scientific/renderer-geometry evidence, not normal-origin Workstation acceptance.',
+  totalMs: Math.round(performance.now() - started),
+};
+console.log(JSON.stringify(evidence, null, 2));

@@ -1,10 +1,12 @@
-/** Diagnose real M1 fanout trenches vs unowned row-instance seams.
- * Run with: node examples/projects/tfln-10x8-recovery/verify-clean-fanout.mjs <clean.wafercad>
- * The clean input is the original 2026-10-24 source package, not the older
- * compressed 30-template recovery committed beside this verifier.
+/** Distinguish real M1 fanout trenches from unowned row-instance seams.
+ * Run: node examples/projects/tfln-10x8-recovery/verify-clean-fanout.mjs
+ * Defaults to the exact clean, compressed, native project in this directory.
+ * An explicit uncompressed .wafercad argument remains supported.
  */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { gunzipSync } from 'node:zlib';
+import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { loadGeometryKernel } from '../../../scripts/process-benchmarks.mjs';
 
@@ -13,9 +15,11 @@ const { readProjectFile } = await import('../../../site/project-io.js');
 const { pointInMulti } = await import('../../../site/vector-geometry.js');
 const { buildRenderSurfacePlan } = await import('../../../site/renderer-geometry.js');
 
-const filename = process.argv[2];
-assert.ok(filename, 'Pass the clean TFLN_10x8_REBUILT_editable.wafercad path.');
-const bytes = readFileSync(resolve(filename));
+const bytes = process.argv[2]
+  ? readFileSync(resolve(process.argv[2]))
+  : gunzipSync(
+      readFileSync(fileURLToPath(new URL('./TFLN_10x8_REBUILT_editable.wafercad.gz', import.meta.url))),
+    );
 const { model, layout } = await readProjectFile({
   size: bytes.length,
   text: async () => bytes.toString('utf8'),

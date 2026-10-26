@@ -1,37 +1,28 @@
-# Recovered TFLN 10×8 resonator array — engineering candidate
+# TFLN 10×8 round-resonator reconstruction — clean native mask-driven source
 
-**Status: candidate reconstruction, not a published Welcome Example or paper-verified replacement.** This is the actual archived TFLN round-resonator/fanout geometry, not the synthetic 10×8 rectangular-island stress fixture. It is intentionally separate from the border renderer fix. Original clean-rebuild `TFLN_10x8_REBUILT_editable.wafercad` (reported as 1.74 MB) was not available in the recovered source files, so these are **new recovered outputs**, not byte-identical copies of that deliverable.
+**Status:** reproducible engineering candidate; **not** the authors' original photomask or a published/Welcome Example. This package replaces the archived 30-template recovery, which was heavier and did not faithfully carry the later clean Mask source.
 
-## Provenance and structure
+## Complete original deliverables
 
-- Recovered from the previously saved `TFLN_10x8_constrained_BOX_release.wafercad` (WaferCAD v14 `shared-assets-v2`), not fabricated from screenshots. The earlier `TFLN_10x8_corrected_mask_driven_80units.wafercad` and the unoptimized standalone source were inspected and not substituted without retaining BOX-release staging.
-- 8 columns × 10 rows, **80 instances**; overall 1,160 × 3,600 µm; cell pitch 145 × 360 µm. The array stores **30 unique physical-geometry templates** to retain archived per-cell segmentation instead of assuming every cell's final polygon clipping is bit-identical. Material stacks include base silicon, SiO₂ BOX (5–7 µm Z), and X-cut LiNbO₃ (nominally 7–7.3 µm Z, locally reduced by the archived release model).
-- File Mask: 1,200 polygons on **11/0 (M1)** and 800 polygons on **12/0 (M2)**. The lossless geometry derives from the archived mask reconstruction. The two native mask exports were parsed back and matched **every polygon** on the 0.1 nm database-unit coordinate grid, allowing ring rotation/reversal.
-- Project geometry and all original mask elements are stored in native WaferCAD format; physical Z and layer ownership remain in µm. Not a canonical single-template process replay: exact original M1/M2 operation history was not recovered.
+Four gzip-compressed, byte-for-byte preserved files from `TFLN_10x8_Clean_Mask_Driven_Rebuild_20261024(1).zip`:
 
-## Files
+| File (`.gz`) | Original size | Original SHA-256 |
+| --- | ---: | --- |
+| `TFLN_10x8_REBUILT_editable.wafercad.gz` | 1,736,834 B | `43b758303c226c00ab9b4909ef6cb93223cfc607edd888a6f58d4ac8d62481f9` |
+| `TFLN_M1_M2_10x8.gds.gz` | 557,916 B | `ebb37f61452bfb6ed13819c7deafe2040297903f931a63781d5c1b41a36ee7de` |
+| `TFLN_M1_M2_10x8.oas.gz` | 364,120 B | `43ef9f97786546d8481c96dc30da75bc152cc288c9e23c16608c26749c4bb6f7` |
+| `routes.json.gz` | 58,339 B | `95f0c1a9cb2ce926dd020d11a583e34b73e330414219a4c7710f8213a9686fd9` |
 
-- `TFLN_10x8_recovered_native.wafercad.gz` — valid editable native array project, 4,686,270 bytes uncompressed (SHA-256 `3e0fcdcd1ef81419580695eb74b3ab30692f4ac014a701562b52f5ab74eb8df8`)
-- `TFLN_M1_M2_10x8_recovered.gds.gz` — 1,491,322 bytes uncompressed (SHA-256 `e5646056a2a215f596688f7b6eb617cce815c9db8d97dda24677634bcaef14d1`)
-- `TFLN_M1_M2_10x8_recovered.oas.gz` — 874,558 bytes uncompressed (SHA-256 `9bbe1d46446e0a15be31b9434203e8f53ac114ef78b9fd109d8c8dfa1906f548`)
+Decompress a copy of the `.wafercad.gz` file before opening it in WaferCAD (use native **Open**, not generic geometry import). Use `gzip -dk ...` to retain the compressed source. GDS/OAS contain editable file Mask shapes as 11/0 M1 (640 polygon pieces) and 12/0 M2 (480), 1,120 total; the native project has those same polygons embedded.
 
-Decompress individually, e.g. `gzip -dk TFLN_10x8_recovered_native.wafercad.gz`. Keep the `.wafercad` extension for the workstation's native Open action. The compressed files minimize repository transport and **do not change** the imported physical geometry. From the repository root run `node examples/projects/tfln-10x8-recovery/verify.mjs` to validate the payload digests, actual project schema, array hierarchy, the two complete Mask polygon round-trips, and the ROI geometry plan.
+## Geometry and acceptance
 
-## Acceptance and limitations
+- Native WaferCAD v14 `vector-2.5d-array-v1`, **one native mask-processed row template**, ten 8-device translated rows, 80 real disks and 160 independent fanout routes; wafer 1,160 × 3,600 µm, 145 × 360 µm pitch.
+- Published-device-inspired inputs: 40 µm outer ring diameter, about 17 µm inner rim radius, 0.4 µm anchor width, 300 nm starting LN, 80 nm retained membrane and 2 µm BOX. Inferred release holes, 1 µm-wide row fanout corridors, routing, array pitch and bounded BOX void are engineering assumptions. No HF release kinetics or optical-Q claim.
+- `node examples/projects/tfln-10x8-recovery/verify.mjs` uses the production geometry kernel to **verify each decompressed SHA-256**, parse full native project, prove polygon-by-polygon GDS/OAS parity at 0.1 nm DBU, perform 1,840 LN/BOX physical thickness-position checks and generate full/ROI native Renderer geometry.
+- `build_masks.py` is the original deterministic Shapely 2.1.2 geometry source, **not** precomputed mask data. Its outputs (`mask_input.json`, `routes.json`) can be regenerated by running `python build_masks.py` in a separate working directory with `shapely==2.1.2` installed. Do not overwrite verified source files to experiment.
+- A separate `verify-clean-fanout.mjs` gates the 40 *real* M1 fanout stripe borders and 18 absent row-join seams; formerly required an external file, now also supports this packaged project.
 
-- Local strict `readProjectFile()` completed, 80 array sites, 30 templates, 2,000 mask polygons; the full native 3D surface plan was constructed (260 caps, 144 sidewall groups). Six archived material-region footprint totals matched the recovered instances with a maximum relative deviation below `3e-13` following 0.0001 µm geometry quantization.
-- Native headed Chromium/Three.js 0.179.1 rendered a real single-round-resonator ROI at 55% opacity with 0 page errors and 0 unexpected rejections. This was **`about:blank`/null-origin** native renderer diagnostics. Normal-origin Worker Open, History/Recovery and actual Clean/Structure/X-Ray controls are **not signed off**.
-- The archived flattened polygon topology still creates a dense full-array outline plan (~263k horizontal/vertical segment inputs in the 2026-10-23 baseline). Further ownership/performance tuning, full 10×8 visual inspection and comparison to the published device dimensions remain necessary before promotion to an official Example or PR merge.
-- This recovery adds **no alternative Renderer angle rule**, no process-kernel changes and no new CI triggers. It is meant to preserve the original disc-array source and enable targeted scientific/visual validation on PR #369.
+## Visual / CI limitations
 
-## Clean source fanout-border diagnosis (external original rebuild)
-
-The separately supplied `TFLN_10x8_REBUILT_editable.wafercad` (1,736,834 bytes, one native row template, 640 M1 and 480 M2 polygons) is **not the same file** as the earlier recovered 30-template archive in this directory. The original clean source must be supplied separately to run the diagnostic:
-
-```sh
-node examples/projects/tfln-10x8-recovery/verify-clean-fanout.mjs /path/to/TFLN_10x8_REBUILT_editable.wafercad
-```
-
-The test checks physical ownership, not just screenshot appearance. At `y = -1765.5` and `-1764.5 µm` in the first row, the full model contains horizontal exterior outlines at `z = 7.080` and `7.300 µm`, each about 1,103.16 µm long. Direct M1 mask membership probes on four X coordinates confirm these are the opposing sides of a 1 µm-wide **actual M1 etch corridor**, with 220 nm LN removal. The equivalent pair repeats at every 360 µm row pitch. The verifier checks 40 such physical outlines and also rejects long outlines at all nine internal array tile joins, at both heights (18 no-seam assertions).
-
-These dark full-array fanout stripes are therefore **not all renderer artifacts**. Their upstream source is the reconstructed mask/fanout route design, which was explicitly inferred rather than taken from the authors' original photomask. Do **not** hide them using global Border suppression or a new angle-based Renderer rule: that would conceal actual material steps. A design-level mask comparison and real-origin Workstation Inspector acceptance are still required before declaring the reconstruction visually or scientifically faithful.
+The complete 10×8 and two-disk ROI were rendered in real headed Chromium / pinned Three.js 0.179.1, but only using the `about:blank` fallback. Normal-origin Workstation Open, Worker / History / Recovery and interactive Clean/Structure/X-Ray remain unverified due to policy-blocked browser origin. Full-array borders are dense; do not delete physical M1 fanout trenches as if they were false array seams. **This PR remains Draft until final quality and scientific/browser acceptance.**
