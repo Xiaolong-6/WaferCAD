@@ -520,8 +520,12 @@ export function sectionCutContours(
 // An owned material/cap border must not be drawn a second time by the
 // inspection-cut pass. Keep true cut-only edges (including material junctions).
 export function unownedContourSegments(segments = [], alreadyOutlined = []) {
+  const candidates = ownedContourSegments(segments);
+  // Empty internal categories are common in large arrays. Avoid rebuilding
+  // the potentially huge exterior ownership set when there is nothing to filter.
+  if (!candidates.length) return [];
   const owned = new Set(ownedContourSegments(alreadyOutlined).map(([a, b]) => segmentKey(a, b)));
-  return ownedContourSegments(segments).filter(([a, b]) => !owned.has(segmentKey(a, b)));
+  return candidates.filter(([a, b]) => !owned.has(segmentKey(a, b)));
 }
 
 export function contoursToPositions(lines) {

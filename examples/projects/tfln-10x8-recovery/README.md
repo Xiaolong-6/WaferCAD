@@ -23,6 +23,34 @@ Decompress a copy of the `.wafercad.gz` file before opening it in WaferCAD (use 
 - `build_masks.py` is the original deterministic Shapely 2.1.2 geometry source, **not** precomputed mask data. Its outputs (`mask_input.json`, `routes.json`) can be regenerated with `shapely==2.1.2`. **Copy `build_masks.py` to a temporary directory before running it:** the script writes both outputs next to its own path, not into the shell's current directory. Do not overwrite the checked-in reference files.
 - A separate `verify-clean-fanout.mjs` gates the 40 _real_ M1 fanout stripe borders and 18 absent row-join seams; formerly required an external file, now also supports this packaged project.
 
+## Rebuild the native project from masks
+
+`mask_input.json.gz` is the original generated M1, M2 and engineering BOX-void
+geometry snapshot. The decompressed JSON SHA-256 is
+`82ce62f4c3ef69c998390dee7c714f0cffd3b042d8a4484c05f409d89a76a708`.
+With the repository's pinned Node dependencies installed, run:
+
+```sh
+node examples/projects/tfln-10x8-recovery/rebuild.mjs /tmp/tfln-rebuilt
+node examples/projects/tfln-10x8-recovery/verify-clean-fanout.mjs /tmp/tfln-rebuilt/TFLN_10x8_REBUILT_editable.wafercad
+```
+
+The rebuild applies M1 and M2 through the production process kernel to one
+eight-device row, explicitly splits the engineering BOX void, places ten row
+instances, creates an editable mask layout, and exports GDS and OASIS. It
+strictly reads the generated project and compares its material regions, stacks,
+array placements and all 1,120 layout polygons against the saved reference on
+the 0.1 nm coordinate grid. It also reimports both generated mask exports and
+compares their polygon geometry. Ring start, winding, duplicate adjacent points
+and exactly collinear intermediate points do not change the comparison geometry.
+
+The original parameter generator can be run with Shapely 2.1.2 in a temporary
+directory; pass its resulting `mask_input.json` as the optional second argument
+to `rebuild.mjs`. The same reference comparisons must pass. The snapshot-to-
+project path has been independently exercised; parameter regeneration still
+requires a Shapely-equipped environment and must not be represented as tested
+where that dependency is unavailable.
+
 ## Visual / CI limitations
 
 The complete 10×8 and two-disk ROI were rendered in real headed Chromium / pinned Three.js 0.179.1, but only using the `about:blank` fallback. Normal-origin Workstation Open, Worker / History / Recovery and interactive Clean/Structure/X-Ray remain unverified due to policy-blocked browser origin. Full-array borders are dense; do not delete physical M1 fanout trenches as if they were false array seams. **This PR remains Draft until final quality and scientific/browser acceptance.**
