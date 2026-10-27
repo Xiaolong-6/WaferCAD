@@ -6,9 +6,17 @@
 
 **Never used a mask-based process editor?** Follow [First 10 Minutes](First-10-Minutes). It gives **exact values and the expected result after every Apply**: a 100 × 100 µm Base rectangle (treated as Si in this exercise), a 200 nm layer named SiO2 and a single etched window. You can draw the mask in the browser without importing any files.
 
-**Prefer to explore first?** Open [WaferCAD](https://xiaolong-6.github.io/WaferCAD/), then select one of the eight example projects by clicking its **title or description** on the Welcome page. The preview shows a curated state; opening the project exposes History, Variants, Mask and process data. **The preview can appear before the full project finishes opening**: wait for the project to load and for 3D to finish rendering before editing. Avoid rerunning a Recipe until you have exported a personal backup.
+**Prefer to explore first?** Open [WaferCAD](https://xiaolong-6.github.io/WaferCAD/), then select one of the nine example projects by clicking its **title or description** on the Welcome page. The preview shows a curated state; opening the project exposes History, Variants, Mask and process data. **The preview can appear before the full project finishes opening**: wait for the project to load and for 3D to finish rendering before editing. Avoid rerunning a Recipe until you have exported a personal backup.
 
 ## How the workspace fits together
+
+![Actual mobile Workstation View navigation with the fixed bottom bar and an empty circular Base](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/screenshots/2026-10-24/mobile-view-navigation.png)
+
+_Real Chromium compact-screen **View** mode, showing the persistent bottom View/Edit navigation and an unprocessed circular Base. Source main@90fb16836eec, 390 × 844; this is not the rectangular tutorial substrate._
+
+![Actual mobile Project Base editor showing display units, Base size and Recovery controls](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/screenshots/2026-10-24/mobile-project-base.png)
+
+_Real Chromium compact-screen **Project** editor showing where to configure Base, rebuild geometry and manage local Recovery. Source main@90fb16836eec, 390 × 844. The 100000 µm circular default values here are **not** the 100 × 100 µm tutorial dimensions; enter the tutorial's values before Apply._
 
 On desktop, use the left workflow sidebar to edit the project and the centered controls above the right workspace to show **Overview**, **Main**, **Mask**, **3D** or **Section**. On mobile/compact screens, the fixed bottom bar switches between **Edit** and **View**, with contextual tabs for each mode; the Welcome return link is under **Project** in Edit mode.
 
@@ -18,6 +26,8 @@ On desktop, use the left workflow sidebar to edit the project and the centered c
 - **Process → Manual:** Choose **Surface (Front/Back/Both)**, **Operation**, **Area**, and an applicable layer/material and **Thickness / depth**; click **Apply** once. Leave **Also add to Recipe → No** for a manual-only exercise.
 - **Main / Section A–B / 3D:** See a top view, a slice along A–B, and a rotatable 3D view. Move the A–B line through the feature you want to inspect.
 - **Process → Recipe:** Collect several Process operations into an ordered procedure. Use **Validate** before execution and choose the starting state carefully.
+
+**Do not confuse an early 3D frame with a finished scene.** For compatible non-array models, WaferCAD may paint a simplified display-only preview while the exact material surfaces are computed. The preview is useful for orientation but does not validate interfaces, border geometry or exports. Wait for the exact 3D rendering to finish before inspecting fine features or exporting a 3D PNG. Read [Workspace and Views](Workspace-and-Views) for export and ROI distinctions.
 
 **Section first:** When assessing deposition, etch, a void or an internal layer, inspect **Section A–B**. **Auto** fits XY and Z separately and may visually exaggerate the film thickness; **1:1** shows the same physical scale on both axes. 3D transparency and borders are display controls, not etch operations.
 

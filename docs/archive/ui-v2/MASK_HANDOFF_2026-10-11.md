@@ -4,7 +4,7 @@ Date: 2026-10-11. Branch: `codex/ui-v2-m3-main-audit-20261010`.
 Stage base: `22358329e9dc68f934c8ed17823eff1c6c587377` (Main view-kit extraction).
 This stage is authorized for Mask only and a local checkpoint, with no push.
 Resolve its checkpoint using `git log -1 --format=%H -- docs/ui-v2/MASK_HANDOFF_2026-10-11.md`.
-The earlier [Main architecture report](../../ui-v2/MAIN_ARCHITECTURE_HEALTH_2026-10-11.md)
+The earlier [Main architecture report](MAIN_ARCHITECTURE_HEALTH_2026-10-11.md)
 remains the historical extraction/audit record; its pending Mask status is
 superseded by this approved stage.
 

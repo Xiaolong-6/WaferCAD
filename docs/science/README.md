@@ -1,20 +1,35 @@
 # Scientific contracts
 
-Canonical descriptions of idealized process geometry and numerical/visual interpretation. No document here asserts predictive process physics. Links throughout the repository must point directly to these canonical files.
+WaferCAD's geometry calculations use idealized material ownership and
+physical micrometre coordinates; none of these files implies calibrated
+process kinetics or predictive TCAD.
 
-- [PROCESS GEOMETRY KERNEL V2](PROCESS_GEOMETRY_KERNEL_V2.md)
-- [PROCESS BENCHMARKS](PROCESS_BENCHMARKS.md)
-- [EXPERIMENTAL ISOTROPIC RELEASE ORACLE 2026-10-16](ISOTROPIC_RELEASE_ORACLE_2026-10-16.md) — geometric oracle only; not production etch.
-- [PROCESS NUMERICAL CONTRACT 2026-10-14](PROCESS_NUMERICAL_CONTRACT_2026-10-14.md)
-- [PROCESS BOTH FACE 2026-10-11](PROCESS_BOTH_FACE_2026-10-11.md)
-- [IMPLANT](IMPLANT.md)
-- [ROUGHNESS MORPHOLOGY](ROUGHNESS_MORPHOLOGY.md)
-- [Mask File and Draw contract](MASK_DRAW.md)
-- [Material/Target semantic proposal](MATERIAL_TARGET_SEMANTICS_2026-10-13.md)
-- [Lift-off v1 implementation record](LIFTOFF_V1_2026-10-09.md)
-- [Geometry and Process roadmap](PROCESS_GEOMETRY_ROADMAP_2026-10-09.md)
-- [PHYSICAL FACET MODELING 2026-10-16](PHYSICAL_FACET_MODELING_2026-10-16.md) — retained opt-in physical facet and SiO₂ research, **not a default process feature**. See [experimental ownership](../../site/experimental/README.md).
-- [Physical unit edit integrity](PHYSICAL_UNIT_EDIT_INTEGRITY_2026-10-13.md) — canonical µm coordinates and editor unit conversion.
-- [Process/History transaction integrity](PROCESS_HISTORY_TRANSACTION_INTEGRITY_2026-10-13.md) — Step atomicity and Variant rollback.
+## Current implementation and numerical contracts
 
-Other current contracts (Mask, Lift-off, History, and materials) remain linked from [Documentation map](../README.md).
+- [Process Geometry Kernel v2](PROCESS_GEOMETRY_KERNEL_V2.md) — exposed surfaces, physical sidewalls and owned material.
+- [Process benchmarks](PROCESS_BENCHMARKS.md) — independent analytic geometry invariants.
+- [Continuous release](CONTINUOUS_RELEASE_CONTRACT.md) — **experimental but selectable** single-release analytic material owner and its unsupported follow-on operations.
+- [Numerical and physical interpretation](PROCESS_NUMERICAL_CONTRACT_2026-10-14.md) — physical precision, compact versus lossless semantics.
+- [Both-face Process](PROCESS_BOTH_FACE_2026-10-11.md) — atomic Front/Back and paired Layer identities.
+- [Implant annotation](IMPLANT.md) — annotation limits and visual contract.
+- [Rough/Pyramid morphology](ROUGHNESS_MORPHOLOGY.md) — display displacement versus physical geometry.
+- [Mask File and Draw](MASK_DRAW.md) — process-area and independent Mask source ownership.
+- [Physical unit editing](PHYSICAL_UNIT_EDIT_INTEGRITY_2026-10-13.md) — 0.1 nm display grid versus canonical µm.
+- [Process/History transaction integrity](PROCESS_HISTORY_TRANSACTION_INTEGRITY_2026-10-13.md) — atomic candidate validation and rollback.
+
+## Open proposals and experimental work
+
+- [Material/Target semantics proposal](MATERIAL_TARGET_SEMANTICS_2026-10-13.md) — non-activated review matrix.
+- [Geometry/Process roadmap](PROCESS_GEOMETRY_ROADMAP_2026-10-09.md) — proposals are not automatically product features.
+- [Physical Facet modeling](PHYSICAL_FACET_MODELING_2026-10-16.md) — opt-in research, **not** normal Process parity; see [experimental ownership](../../site/experimental/README.md).
+
+## Dated research and implementation evidence
+
+- [Isotropic release oracle and historical 8-/72-band work](ISOTROPIC_RELEASE_ORACLE_2026-10-16.md) — original proofs, experiments, revision-scoped M07 screenshots; the currently bundled Continuous M08 is described separately above.
+- [Lift-off v1 implementation record](LIFTOFF_V1_2026-10-09.md) — original 2026-10-09 regression evidence, not a replacement for current tests.
+
+See [Documentation map](../README.md) for interchange,
+[Renderer and Section](../renderer/RENDERER_CONTRACT.md) for
+presentation boundaries and
+[figure provenance](../evidence/README.md) for example-paper
+evidence.

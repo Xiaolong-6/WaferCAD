@@ -20,6 +20,16 @@ documented in [Legacy source sunset](operations/LEGACY_SOURCE_SUNSET.md) and Iss
 Do not interpret a native replacement as identical old-UI gesture behavior,
 and do not skip physics, Recovery, worker rollback or morphology contracts.
 
+## Current scientific and UI contracts
+
+[Workstation](ui-v2/WORKSTATION_CONTRACT.md),
+[Renderer/Section](renderer/RENDERER_CONTRACT.md) and
+[Continuous release](science/CONTINUOUS_RELEASE_CONTRACT.md)
+describe feature invariants. This document owns which tests
+validate them; [CI routing](CI.md) alone owns when they run.
+An offline native 3D visualization cannot replace normal-Origin
+Worker, History or Recovery checks.
+
 ## Repository ownership and layout
 
 - `site/tests/*.test.mjs`: flat Node/science ownership and the retained `npm test` discovery glob. Documentation/Wiki/Process Guide checks now live under `site/tests/documentation/*.test.mjs` and are **all imported by** `site/tests/documentation-suite.test.mjs` through the original glob. Five native History tests live under `site/tests/history/`, and four Workspace/Project Recovery tests under `site/tests/recovery/`. Their root suite entrypoints preserve automatic discovery; specialized CI/owner references use canonical nested paths. Adding a documentation test is automatically discovered; other domains must have an explicit verified runner before any relocation. Silent coverage loss is forbidden.
@@ -100,8 +110,8 @@ read-only Example preview and verifies Section raster content and initialized
 and a JSON report to `test-results/magic1000/`, leaving committed thumbnails
 unchanged. Regenerate the repository thumbnail only with the explicit
 `--write-thumbnail` flag and visual review. The formerly obsolete
-`magic1000-candidate.yml` is now a read-only PR/manual browser gate rather
-than a branch-specific workflow with permission to push generated files.
+`magic1000-candidate.yml` is a read-only, **manual-dispatch-only** browser diagnostic
+rather than a branch-specific or automatically triggered PR gate. It never pushes thumbnails.
 Scientific geometry and Recipe replay remain governed by separate tests.
 
 ### KLayout v2 Mask-to-Process bridge
@@ -260,26 +270,27 @@ On POSIX shells, use `WAFERCAD_THREE_DIR="$PWD/node_modules/three" npm run test:
 
 The Browser regression workflow exposes the same local Three package through `WAFERCAD_THREE_DIR`. Normal browser contexts intercept the matching jsDelivr URLs and serve those modules from the local package, so CDN availability is not part of ordinary regression reliability. The dedicated CDN resilience case intentionally bypasses this route; the WebGL-unavailable case still uses pinned Three so it isolates WebGL failure.
 
-GitHub Actions caches both npm downloads and the Playwright Chromium browser directory. Pull requests share one targeted Chromium job for the normal suites so setup cost is paid once. The much longer Process Geometry regression is a separate conditional job: it runs only for relevant process/model geometry changes and full-regression events, where parallel execution improves wall time enough to justify the duplicated setup.
+The required local Chromium and scientific regression commands below remain
+available regardless of how GitHub jobs are scheduled. Their selection in
+the repository is governed by the [2026-10-22 CI policy](CI.md#authoritative-execution-strategy-effective-2026-10-22),
+not by historical weekly or automatic Draft workflow routing.
 
 ### CI cost controls
 
-- Quality runs on every PR, including documentation-only changes, and verifies source-bound local proof without installing npm or repeating checks. `node scripts/local-verification.mjs run draft` records lint/format/docs and focused CI/documentation contracts; `node scripts/local-verification.mjs run full` records the complete Node suite for Ready/release. Missing, failed or stale reports return to local execution. See [local Quality evidence](CI.md#local-quality-evidence).
-- Browser regression is path-filtered to application, examples, browser-test, dependency, and workflow changes; `site/tests/**` changes alone do not trigger it.
-- Every browser PR runs UI smoke. Workstation and resilience are ownership-selected rather than unconditional; `scripts/ci-test-plan.mjs` then selects History, Persistence, Interaction, Examples, Product Layout, Renderer, and Process Geometry from changed paths.
-- Browser PR jobs do not repeat `npm test`; non-PR runs execute the Node gate because a separate Quality run may not exist for direct pushes.
-- Process Geometry no longer runs on unrelated pull requests. When selected, it runs in a separate job in parallel with the targeted browser suites.
-- Pushes to `main` diff the previous and current main revisions and reuse the same change-impact planner as pull requests, so only the owning suites are repeated after merge.
-- Changes to `site/ui-v2/**` or `scripts/v2/**` select Workstation regression; changes to shared v2 entry/workflow modules may additionally select native-v2 History, Persistence and Interaction owners. Real v2 Stage C/M4 runs for applicable PRs and as a release gate before Pages publication.
-- The weekly Browser regression schedule (Monday 02:17 UTC) and manual `workflow_dispatch` runs execute the full browser inventory, including Process Geometry.
-- Workflow/planner-only changes stay on UI smoke; planner routing is covered by Node tests. The Product manual/Wiki job installs pinned dependencies before executing its generator.
-- Pull-request and targeted-main product checks suppress human-review screenshot galleries. Weekly/manual full runs retain galleries plus renderer stress and full Process Geometry permutations.
-- Dependency-lockfile or shared browser-test-helper changes conservatively request the full browser suite.
-- KLayout compatibility keeps its dedicated parser/UI workflow and caches Chromium for the browser import sweep.
-
-Designated full replay/fixture jobs and the 625-site renderer defer Draft PR execution until ready for review; other applicable fast/targeted jobs remain selected. The dedicated example/native replay workflows are PR/manual and are not automatically implied by a main push.
-
-See [CI routing](CI.md) for the path-to-suite policy and full-regression events.
+- Run focused owner tests and capture real local Chromium evidence before
+  proposing a change. The source-bound local `draft` receipt covers
+  formatting, lint, generated documentation and focused Node checks;
+  `full` is required before Ready/merge.
+- Automatic Draft `Quality` is proof-only. Missing or stale receipts
+  fail closed without remote reruns.
+- Ready PRs use `ready-impact.yml` and its cumulative-diff selected
+  scientific, History/Recovery/Worker or Browser/Renderer/Example owners.
+- One full integration controller runs at **02:30 UTC daily**, for its
+  exact SHA only. Former weekly Browser schedules are retired.
+- The Main Pages release has its independent fail-closed exact-source
+  checks. Do not weaken scientific or data-integrity tests to save minutes.
+- The Wiki documentation-targeted workflow is explicit-dispatch only;
+  local verification owns ordinary Draft documentation checks.
 
 ## Node test ownership
 

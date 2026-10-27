@@ -1,44 +1,170 @@
 # History, Variants and Recovery
 
-[Home](Home) · [Import and Export](Import-and-Export)
+[Home](Home) · [Process and Recipes](Process-and-Recipes) · [Import and Export](Import-and-Export) · [Troubleshooting](Troubleshooting)
+
+History is a **process timeline and branching graph**; Recovery and
+Export are different ways to protect saved projects. Use the correct
+mechanism before editing an old Step or replacing the Base.
 
 ## History and snapshots
 
+![Actual WaferCAD History panel showing Starting Wafer Step 0 and multiple TiO2 metalens process steps alongside a Section view](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/screenshots/2026-10-24/history-metalens-steps.png)
+
+_Real Chromium capture of the **TiO₂ four-meta-atom** example's History and Section view, source main@90fb16836eec, 1440 × 960. Step 0, numbered process steps and the current HEAD are visible. This image does **not** demonstrate a Variant creation dialog, an edited Step, or successful Recovery storage._
+
+### From Step 0 to a finished process
+
 ```mermaid
 flowchart LR
-  Base[Base structure] --> Step1[Process step 1]
-  Step1 --> Step2[Process step 2]
-  Step2 --> Main[Current Main HEAD]
-  Step1 --> Variant[Alternative Variant]
-  Main --> Save["Save: browser Recovery"]
-  Main --> Export["Export: portable .wafercad"]
+  Base["Step 0: Starting Wafer"] --> A["Step 1: Apply"]
+  A --> B["Step 2: Apply"]
+  A --> V["New Variant from here"]
+  B --> Head["Main Variant HEAD"]
+  Head --> Save["Save: browser checkpoint"]
+  Head --> Export["Export: portable .wafercad"]
 ```
 
-_History and Variants retain process lineage. Local Recovery checkpoints and portable exports are separate persistence mechanisms._
+**Step 0 · Starting Wafer** is the editable starting substrate.
+Select its row to inspect the initial condition or edit the Base;
+subsequent Process Steps are separate physical operations. Use
+**Project → Base → Rebuild Base** to change the initial substrate
+while managing existing History. When existing Steps/Variants
+would be affected, choose deliberately between **Keep previous
+history** (preserve the older Main as a restorable Variant),
+**Clear history** (replace its lineage) and **Cancel**. Clear
+is **not** an archive or automatic backup.
 
-Each successful geometric Process step advances the model and may carry a replay descriptor. History enables revisiting saved states and comparing intermediate Section/3D views. **Record** inserts metadata into the chronological process without changing geometry. Named snapshots are inspection bookmarks; they should not substitute for actual fabrication steps.
+Each successful **Apply** records a new physical Step with
+validated material state. A **Record** Step documents chronology
+without changing solids. Aborted, failed, busy and no-change
+operations do not add a physical Step. An optional **bookmark**
+names a Step or a saved inspection state; a bookmark is not another
+material processing operation.
 
 ## Variants
 
-A Variant is a branch of the process lineage. A new path can preserve earlier History rather than destructively overwriting it. The same substrate can be the root of multiple fabrication alternatives.
+A Variant is a branch of the process lineage, not a second bookmark.
+Its saved HEAD can contain its own later Steps and child Variants;
+restoring the parent must not delete that child history.
 
-When replacing a Base that already has history, the UI offers a choice to preserve the previous Main as a restorable Variant, clear history, or cancel. Clearing cannot be interpreted as archiving.
+## Inspect versus change a historical Step
 
-Clean History browsing preserves the Variant HEAD and does not create Recovery records. Genuine edits made while inspecting a historical Step remain protected before navigation or replacement. Recipe `snapshot()` is a structural bookmark change and participates in autosave even without a geometry operation.
+Click a restorable Step to inspect its exact saved material
+state. The active Variant still owns its previous **HEAD**.
+The Historical state indicator offers a route back to HEAD.
+Clean browsing alone must not generate extra Recovery checkpoints.
+Camera, pan/zoom, Section A–B, display and ROI are inspection
+state, not separate fabrication Steps; moving around the views
+must not silently replay a deposition.
+
+Applying a new operation while inspecting a historical Step
+creates a new continuation **Variant**, protecting the previous
+HEAD. Do not assume Apply overwrites the old branch or that
+navigating backward physically undoes saved later Steps.
+The History panel and the shell Undo/Redo follow the same
+underlying process transaction state.
+
+## Edit an existing operation
+
+1. In the History Step menu choose **Edit Step…** for a Step
+   with stored replay metadata. The editor restores that
+   Step's original Mask/ROI input and its **predecessor geometry**
+   and opens the Process form with its saved parameters.
+2. Adjust the parameters, then choose **Save edited Step**.
+   WaferCAD now presents the supported tail handling modes:
+   **Replace & discard later Steps**, **Replace & replay later Steps**
+   if all required Steps are replayable, or a **new Variant**.
+3. If child Variants depend on the original tail, use the
+   offered copy-on-write Variant path rather than silently
+   destroying their source history. Automatic replay stops on
+   its first failing/no-change step; unsupported legacy replay
+   metadata cannot be guessed.
+
+A Recovery checkpoint is required **before** a destructive
+History edit. If checkpoint creation fails, the edit must
+not proceed. Older imported Steps lacking replay descriptors
+can still be inspected or branched from when restorable,
+but **Edit Step** and automatic replay may be unavailable.
+
+## Insert before, continue or branch
+
+**Insert before…** restores the selected Step's predecessor
+and original saved input context, then inserts a new Process
+operation. Choose **Update current Variant** to recompute its
+later replayable tail; **New Variant · Carry later Steps**
+to preserve the original and replay a child tail; or
+**New Variant · Start from here** to keep the inserted Step
+without carrying the old tail. Dependent branches and missing
+replay metadata can restrict the available modes. An inserted
+material Step may require remapping downstream layer IDs;
+this is part of replay validation, not something to fix by
+renaming a visible Layer row.
+
+**Continue from here…** keeps the selected Step, truncates
+**later Steps on the same Variant**, and makes that Step HEAD.
+**New Variant from here** preserves the original path and
+creates a child rooted at the selected Step. **Delete last
+Step** is available only where a restorable predecessor
+can be recovered and child dependencies remain protected.
+Review the affected tail in the in-app confirmation before
+committing; these commands differ substantially.
+
+A Variant is not a bookmark. It has its own ancestry and
+HEAD, and may have child Variants anchored to intermediate
+Steps. Rename a Variant using its name or edit control.
+Layer/Implant/Electrical Region renaming must preserve the
+stable entity IDs used by History and replay, rather than
+making an independent, conflicting view-only label.
 
 ## Save, Recovery and Export
 
-- **Save** creates a local browser Recovery checkpoint.
-- **Recovery** loads or manages locally stored checkpoints.
-- **Export** writes a portable project file, generally `.wafercad`.
-- **Import/Open** loads an exported project after schema validation.
+- **Save:** Writes the current project to browser storage and creates
+  an explicit local Recovery checkpoint. It is not a portable file or
+  off-device backup.
+- **Recovery:** Lists, restores or clears local checkpoints in the
+  Project tab. Restoring replaces workspace state; clearing deletes
+  stored checkpoints.
+- **Export:** Downloads an independent portable `.wafercad` project
+  with saved History and Variants. Keep this file in a safe location
+  for archival research.
+- **Open/Import:** Loads a portable project after schema/geometry
+  validation and may replace the active project. Confirm first.
 
-A local browser cache is not guaranteed durable against storage clearance, browser-profile changes or device failure. Keep exported project files for archival research.
+Save and automatic browser persistence are not the same
+as exporting a file. Clearing site data, changing profiles
+or losing the device can destroy browser-local Recovery.
+For research records and before risky edits, **Export** an
+independent project.
 
 ## Multi-tab editing
 
-Two tabs can have different edit states. Watch for unsaved changes or takeover warnings before refreshing or switching tabs; export an independent copy before potentially destructive operations.
+### Writer ownership and failure recovery
+
+Only the active writer should save the shared workspace.
+Another tab may be in read-only or takeover state and show
+a conflict warning. Finish or export any unique work before
+accepting a takeover. If a tab loses its writer lease during
+an asynchronous Save, **that stale tab must not commit** a
+replacement workspace. Refreshing should normally restore
+the latest safely persisted state, but a stale in-memory
+view is not proof that its edits were saved.
+
+A failed Worker operation, failed Save or rejected History
+replay must leave the last committed geometry and lineage
+intact. If anything seems missing, stop applying Process
+operations, inspect available Recovery points, and export
+the current project before experimenting with restoration.
+Two concurrently open tabs are not a merge/conflict-resolution
+system; export separate copies if both contain useful work.
 
 ## Recipe and geometry replays
 
-A saved Recipe runs real geometry operations again. Do not assume that running a Recipe twice is idempotent. Select the Base-rebuild option for a clean comparison when appropriate.
+A Recipe runs actual geometry operations; running it twice
+is **not** necessarily idempotent. Compare a new process
+from the correct Base/Step, or use an explicitly selected
+Rebuild Base or Variant path. The experimental
+**Continuous release** can own one exact etch in a lineage;
+unsupported follow-on physical Process operations fail
+closed rather than flattening the analytic undercut into a
+banded approximation. See [Process Operations](Process-Operations)
+and [Troubleshooting](Troubleshooting).

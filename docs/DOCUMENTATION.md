@@ -14,11 +14,29 @@
 - `docs/operations/` owns repository release/retirement administration.
 - `docs/evidence/` owns research figure provenance and reproducibility registers.
 
-When moving documentation, keep exactly one canonical file in the owning directory and update every tracked Markdown link, source reference and workflow path to that location. **Do not add forwarding Markdown stubs or compatibility ledgers.** The old GitHub file URL may cease to work; clean directory ownership and correct current references take precedence. Run the documentation link graph check and keep scientific provenance intact.
+When moving documentation, keep exactly one canonical file in the owning directory and update every tracked Markdown link, source reference and workflow path to that location. **Do not add forwarding Markdown stubs or compatibility ledgers for moved repository documents.** Exception: a pre-existing public **GitHub Wiki** URL may retain a minimal English compatibility pointer (for example `docs/wiki/Recipe-Code-Tutorial-zh-CN.md`) so external bookmarks continue to resolve. The old GitHub _repository file_ URL may cease to work; current links must point to the canonical file. Run the documentation link graph check and keep scientific provenance intact.
+
+## Contract lifecycle
+
+Every domain README distinguishes **current implementation contracts**,
+**open experimental/forward plans**, and **historical evidence tied to a
+revision**. Technical descriptions of a shipped feature live in one
+current owner file, not scattered across merged-PR acceptance records.
+Revision-specific test results, older DOM inventories, authoring
+checkpoints and completed Draft/merge instructions belong in the
+archive. Archive a file only after updating all inbound Markdown and
+script references, preserving its original SHA and measured results;
+do not create repository Markdown forwarding stubs.
+
+Current domain owners are
+[Workstation](ui-v2/WORKSTATION_CONTRACT.md),
+[Renderer/Section](renderer/RENDERER_CONTRACT.md) and
+[Continuous release](science/CONTINUOUS_RELEASE_CONTRACT.md).
+Generated Process operations and SVGs must never be edited by hand.
 
 ## Authority and readers
 
-**Documentation language:** English is required for new and actively maintained WaferCAD documentation, release notes, code comments, UI text, prompts and development handoffs. Existing historical audits, plans and archived handoffs may remain in their original language; do not translate them solely to standardize language. When retiring localized Wiki content, update the tracked navigation and link destinations directly rather than creating a placeholder page.
+**Documentation language:** English is required for new and actively maintained WaferCAD documentation, release notes, code comments, UI text, prompts and development handoffs. Existing historical audits, plans and archived handoffs may remain in their original language; do not translate them solely to standardize language. When retiring localized Wiki content, update tracked navigation to the English page; retain only already-published Wiki aliases needed for external bookmark compatibility as short English pointer pages.
 
 [The documentation map](README.md) is the repository navigation root. [The root README](../README.md) introduces the product and links here; it should summarize rather than duplicate implementation details.
 
@@ -56,11 +74,11 @@ flowchart LR
 ```
 
 - Edit operation names/descriptions in `site/process-guide.js` and illustrations in `site/process-guide-svg.js`; run `npm run docs:build` and commit the generated operation reference **and all affected SVG assets** with their sources. The old `site/guide/` route is a compatibility redirect to the Wiki.
-- The same command generates `site/ui-v2/process-guide.generated.js`, a classic-script bridge used only by the portable mock preview, including direct `file://` boot. Never hand-edit its catalog or diagrams. `docs:check` rejects bridge drift; `process-guide.test.mjs` compares all 19 Before/After pairs to the canonical modules. This does not connect production Process controllers or alter geometry.
+- The same command generates `site/ui-v2/process-guide.generated.js`, a classic-script bridge used only by the portable mock preview, including direct `file://` boot. Never hand-edit its catalog or diagrams. `docs:check` rejects bridge drift; `process-guide.test.mjs` compares all 20 Before/After pairs to the canonical modules. This does not connect production Process controllers or alter geometry.
 - Edit other Wiki pages directly. For figures, use exact named-example WaferCAD assets or the canonical Process Guide schematics with source-aware captions; for interaction logic, prefer Mermaid. No generic filler images, unattributed article figures or unlabeled visual approximations. The [visual audit](archive/WIKI_CONTENT_VISUAL_AUDIT_2026-10-12.md) records the page-by-page decisions.
-- `site/bundled-examples.js` owns the eight-family Welcome catalog; its IDs, titles and DOI provenance must agree with the examples chapter.
+- `site/bundled-examples.js` owns the nine-family Welcome catalog; its IDs, titles and DOI provenance must agree with the examples chapter.
 - `docs/wiki/_Sidebar.md` and `Home.md` own manual navigation. Wiki-relative links omit `.md`; repository-relative links include real filenames. Use links, rather than inline code paths, when readers should open a file.
-- [Wiki sync](WIKI_SYNC.md) owns credentials and managed-page replacement. [CI routing](CI.md) owns trigger behavior. Relevant documentation PRs run focused Process Guide, Wiki and navigation Node tests in a read-only workflow; only the separate Main push workflow may publish Wiki content. Wiki checks also run on every Main push; referenced SVG assets are served from versioned repository files through main-branch raw URLs. Pages is independently path-filtered. A repository commit, a successful Wiki sync and a successful Pages deployment are distinct evidence.
+- [Wiki sync](WIKI_SYNC.md) owns credentials and managed-page replacement. [CI routing](CI.md) owns trigger behavior. Local Draft/full verification owns focused Process Guide, Wiki and navigation Node tests. The separate read-only documentation-targeted workflow is available by explicit manual dispatch, not automatic PR triggering; only the Main push Wiki workflow may publish content. Wiki checks also run on every Main push; referenced SVG assets are served from versioned repository files through main-branch raw URLs. Pages is independently path-filtered. A repository commit, a successful Wiki sync and a successful Pages deployment are distinct evidence.
 
 ## Change workflow
 
@@ -76,6 +94,6 @@ flowchart LR
 
 `npm run docs:check` checks generated operation output, managed manual pages, all tracked/new non-ignored Markdown internal destinations and headings, documentation reachability, current Architecture module paths, published Welcome links and atlas operation IDs. The standalone link/navigation gate is `node scripts/check-documentation.mjs` and uses only Node built-ins plus the existing application catalogs.
 
-`site/tests/documentation/wiki-manual.test.mjs` checks the eight-entry catalog, validates repository-owned images, and parses English Recipe and AI-assisted code examples. `site/tests/documentation/documentation.test.mjs` owns link/navigation parser and negative-fixture coverage. The root `site/tests/documentation-suite.test.mjs` entry point discovers those files for `npm test` and focused Wiki CI; the Wiki publishing workflow runs the same documentation checks before synchronization.
+`site/tests/documentation/wiki-manual.test.mjs` checks the nine-entry catalog, validates repository-owned images, and parses English Recipe and AI-assisted code examples. `site/tests/documentation/documentation.test.mjs` owns link/navigation parser and negative-fixture coverage. The root `site/tests/documentation-suite.test.mjs` entry point discovers those files for `npm test` and focused Wiki CI; the Wiki publishing workflow runs the same documentation checks before synchronization.
 
 These checks cannot prove prose/scientific correctness, execute every example as a fabrication process, validate external DOI/vendor URLs, certify the live Wiki/Pages deployment, or accept pixel baselines. External research statements retain their recorded date; full replay and visual acceptance remain in their scientific/browser suites.
