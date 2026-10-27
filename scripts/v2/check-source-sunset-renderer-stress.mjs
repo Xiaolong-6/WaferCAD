@@ -86,7 +86,9 @@ try {
       const interactionMs = Math.round(frameStartedAt - interactionStartedAt);
       const totalMs = Math.round(completedAt - interactionStartedAt);
       report.stages.push({ label, interactionMs, frameWaitMs, totalMs, ...status });
-      console.log(`625-site ${label}: interaction ${interactionMs} ms, frame/paint ${frameWaitMs} ms, total ${totalMs} ms`);
+      console.log(
+        `625-site ${label}: interaction ${interactionMs} ms, frame/paint ${frameWaitMs} ms, total ${totalMs} ms`,
+      );
       return status;
     }
     const qualityStartedAt = performance.now();
