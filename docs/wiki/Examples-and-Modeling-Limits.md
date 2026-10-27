@@ -197,4 +197,6 @@ migration to these research structures.
 
 ![Actual native Three.js diagnostic render of two suspended TFLN rings](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/suspended-tfln-microrings-three.webp)
 
+_Actual WaferCAD Three.js software-WebGL render of cropped reconstruction geometry; not an SEM or calibrated paper figure._
+
 The reported 40 µm-diameter rim, 300 nm X-cut LN film, 80 nm membrane and four 400 nm-wide supports motivate this structural model. The **10×8 array pitch**, waveguide fanout, finite BOX removal and source Mask polygons are engineering reconstructions, **not** original author GDS or measured HF kinetics. The six restorable process geometry checkpoints preserve Starting Wafer, BOX, LN, both mask etches and the assumed release; the final BOX release record does not run a predictive etch model. Welcome previews two translated/cropped ring sites; **Open** loads the full 80-site, editable Mask-driven project. [Original article: Yu et al., *Light: Science & Applications* 15, 389 (2026)](https://doi.org/10.1038/s41377-026-02506-z).

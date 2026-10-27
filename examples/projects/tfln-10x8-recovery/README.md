@@ -1,6 +1,6 @@
 # TFLN 10×8 round-resonator reconstruction — clean native mask-driven source
 
-**Status:** reproducible engineering candidate; **not** the authors' original photomask or a published/Welcome Example. This package replaces the archived 30-template recovery, which was heavier and did not faithfully carry the later clean Mask source.
+**Status:** reproducible source package for the independently promoted Welcome engineering example (`site/examples/suspended-tfln-microrings-10x8.wafercad`); **not** the authors' original photomask. This package replaces the archived 30-template recovery, which was heavier and did not faithfully carry the later clean Mask source. Publishing the example does not certify a quantitative source-paper geometry match.
 
 ## Complete original deliverables
 
@@ -65,5 +65,6 @@ underlying model. These software-rendered checks are not a GPU or browser
 first-frame performance guarantee.
 
 Full-array borders are dense; do not delete physical M1 fanout trenches as if
-they were false array seams. Ready risk-targeted CI and merge approval are
-required before merge.
+they were false array seams. The original PR #369 was merged; the separate
+Welcome-promotion PR requires its own source-bound Quality and interactive
+preview, Open, History and Recovery acceptance before being merged.

@@ -314,6 +314,10 @@ preview.name = 'Two representative suspended TFLN microrings · engineering prev
 const previewCore = structuredClone(preview);
 delete previewCore.snapshots;
 delete previewCore.snapshotBranches;
+const initialPreview = {
+  ...structuredClone(previewCore),
+  model: createModel({ shape: 'rect', width: 273, height: 152, thickness: 10 }),
+};
 preview.snapshotBranches = {
   version: 3,
   activeBranchId: 'main',
@@ -321,15 +325,28 @@ preview.snapshotBranches = {
   cursorSnapshotId: null,
   nodes: [
     {
-      id: 'tfln-preview-final',
+      id: 'tfln-preview-base',
       branchId: 'main',
       parentId: null,
       createdAt,
       processRevision: 0,
       operation: {
+        kind: 'base',
+        label: 'Representative preview starting substrate',
+        replay: { kind: 'base' },
+      },
+      state: initialPreview,
+    },
+    {
+      id: 'tfln-preview-final',
+      branchId: 'main',
+      parentId: 'tfln-preview-base',
+      createdAt: new Date(Date.parse(createdAt) + 60000).toISOString(),
+      processRevision: 1,
+      operation: {
         kind: 'record',
-        label: 'Two-device representative geometry · preview only',
-        replay: { kind: 'record' },
+        label: 'Two-device engineering geometry snapshot (not a fabrication replay)',
+        geometryChanged: true,
       },
       state: structuredClone(previewCore),
     },
@@ -337,9 +354,9 @@ preview.snapshotBranches = {
   branches: [
     {
       id: 'main',
-      name: 'Preview',
+      name: 'Representative two-site preview',
       parentBranchId: null,
-      rootNodeId: 'tfln-preview-final',
+      rootNodeId: 'tfln-preview-base',
       headNodeId: 'tfln-preview-final',
       rootSnapshotId: null,
       headSnapshotId: null,
@@ -356,7 +373,7 @@ const previewRead = await readProjectFile({
   size: Buffer.byteLength(previewText),
   text: async () => previewText,
 });
-assert.equal(previewRead.snapshotBranches.nodes.length, 1);
+assert.equal(previewRead.snapshotBranches.nodes.length, 2);
 assert.ok(previewRead.layout.elements.length > 0, 'representative mask is not empty');
 assert.ok(previewRead.model.regions.length > 0, 'real physical geometry');
 const outputs = [
