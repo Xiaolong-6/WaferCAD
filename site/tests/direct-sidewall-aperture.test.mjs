@@ -77,7 +77,9 @@ test('partial Z exposure becomes a material slab with real Z gaps, not a full-he
   });
   assert.equal(result.changed, true, result.error);
   const bands = m.regions.flatMap((region) =>
-    region.stack.filter((segment) => segment.layerId === result.layerId && segment.role === 'direct-sidewall'),
+    region.stack.filter(
+      (segment) => segment.layerId === result.layerId && segment.role === 'direct-sidewall',
+    ),
   );
   assert.equal(bands.length, 1);
   assert.ok(Math.abs(bands[0].z0 - 5.2) < 1e-7);

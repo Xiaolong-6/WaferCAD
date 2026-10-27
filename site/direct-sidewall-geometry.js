@@ -65,8 +65,7 @@ export function isolatedDirectSidewallPlan(model, area, incidence, thicknessUm) 
     // A tangent component makes the visible wall diagonal in (length, Z).
     // Conservative physical facets are needed instead of a full-height strip.
     const tangentFlux = Math.abs(dx) < TOL ? Math.abs(incidentY) : Math.abs(incidentX);
-    const obliqueMaskedWall =
-      (incidence.apertureStack?.length ?? 0) > 0 && tangentFlux > 1e-10;
+    const obliqueMaskedWall = (incidence.apertureStack?.length ?? 0) > 0 && tangentFlux > 1e-10;
     const patches = obliqueMaskedWall
       ? partitionFixedSidewallFacet({ a, b, lowZ, highZ }, incidence)
       : clipFixedSidewallLength({ a, b, lowZ, highZ }, incidence);

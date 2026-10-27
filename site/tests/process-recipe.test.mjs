@@ -294,9 +294,9 @@ test('Exact Continuous Etch Recipe rejects invalid material, face, shape and rea
   );
 });
 
-
 test('Direct fixed-angle Recipe round-trips θ/φ without a new process type', () => {
-  const source = 'deposit({ material: "Al", thickness: "40 nm", coverage: "direct", area: "full", tiltDeg: 45, azimuthDeg: -45, face: "front" });';
+  const source =
+    'deposit({ material: "Al", thickness: "40 nm", coverage: "direct", area: "full", tiltDeg: 45, azimuthDeg: -45, face: "front" });';
   const recipe = parseProcessRecipeSource(source);
   assert.equal(recipe.steps[0].params.coverage, 'direct');
   assert.equal(recipe.steps[0].params.tiltDeg, 45);
@@ -304,7 +304,9 @@ test('Direct fixed-angle Recipe round-trips θ/φ without a new process type', (
   const restored = parseProcessRecipeSource(serializeProcessRecipe(recipe));
   assert.equal(restored.steps[0].params.tiltDeg, 45);
   assert.equal(restored.steps[0].params.azimuthDeg, -45);
-  const legacy = parseProcessRecipeSource('deposit({ material: "Al", thickness: "40 nm", coverage: "direct" });');
+  const legacy = parseProcessRecipeSource(
+    'deposit({ material: "Al", thickness: "40 nm", coverage: "direct" });',
+  );
   assert.equal(legacy.steps[0].params.tiltDeg, undefined);
   assert.equal(serializeProcessRecipe(legacy).includes('tiltDeg'), false);
 });
@@ -316,8 +318,10 @@ test('angled recipe validation rejects invalid incidence and non-Direct modes', 
     'coverage: "direct", tiltDeg: -3',
     'coverage: "direct", tiltDeg: 45, face: "back"',
   ]) {
-    assert.throws(() => parseProcessRecipeSource(
-      'deposit({ material: "Al", thickness: "40 nm", ' + parameters + ' });'
-    ));
+    assert.throws(() =>
+      parseProcessRecipeSource(
+        'deposit({ material: "Al", thickness: "40 nm", ' + parameters + ' });',
+      ),
+    );
   }
 });

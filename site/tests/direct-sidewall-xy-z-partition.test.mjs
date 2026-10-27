@@ -40,7 +40,15 @@ const wallRegions = (model, layerId) =>
 
 test('perpendicular beam clips the physical wall length to the upper resist window', () => {
   const patches = clipFixedSidewallLength(facet, beam());
-  assert.deepEqual(patches.map(({ a, b }) => [a, b]), [[[2, -0.4], [2, 0.4]]]);
+  assert.deepEqual(
+    patches.map(({ a, b }) => [a, b]),
+    [
+      [
+        [2, -0.4],
+        [2, 0.4],
+      ],
+    ],
+  );
   const model = makeStep();
   const plan = isolatedDirectSidewallPlan(model, model.boundary, beam(), 0.04);
   assert.equal(plan.length, 1);
@@ -51,25 +59,41 @@ test('perpendicular beam clips the physical wall length to the upper resist wind
 
 test('upper aperture intersections, empty tangential windows and inward 0.1 nm snapping', () => {
   assert.deepEqual(
-    clipFixedSidewallLength(facet, beam(0, [
-      rectMulti(1.2, 0.8, 2.8),
-      rectMulti(3, 0.5, 3, 0.05),
-    ])).map(({ a, b }) => [a, b]),
-    [[[2, -0.2], [2, 0.3]]],
+    clipFixedSidewallLength(
+      facet,
+      beam(0, [rectMulti(1.2, 0.8, 2.8), rectMulti(3, 0.5, 3, 0.05)]),
+    ).map(({ a, b }) => [a, b]),
+    [
+      [
+        [2, -0.2],
+        [2, 0.3],
+      ],
+    ],
   );
   assert.deepEqual(clipFixedSidewallLength(facet, beam(0, [rectMulti(1.2, 0.3, 2.8, 2)])), []);
   assert.deepEqual(
-    clipFixedSidewallLength(facet, beam(0, [rectMulti(1.2, 0.800108, 2.8, 0)]))
-      .map(({ a, b }) => [a, b]),
-    [[[2, -0.4], [2, 0.4]]],
+    clipFixedSidewallLength(facet, beam(0, [rectMulti(1.2, 0.800108, 2.8, 0)])).map(({ a, b }) => [
+      a,
+      b,
+    ]),
+    [
+      [
+        [2, -0.4],
+        [2, 0.4],
+      ],
+    ],
   );
 });
 
 test('unmasked legacy Direct retains original sub-grid wall coordinates', () => {
   const original = { a: [2, -1.0000123], b: [2, 1.0000456], lowZ: 5, highZ: 6 };
-  assert.deepEqual(clipFixedSidewallLength(original, {
-    tiltDeg: 45, azimuthDeg: 0,
-  }), [original]);
+  assert.deepEqual(
+    clipFixedSidewallLength(original, {
+      tiltDeg: 45,
+      azimuthDeg: 0,
+    }),
+    [original],
+  );
 });
 
 test('native Direct allows wall-only deposition when no horizontal surface receives flux', () => {
@@ -144,14 +168,20 @@ test('angled partial exposure conservatively partitions wall length and Z', () =
 test('nonrectangular oblique partial-facet request fails and rolls back', () => {
   const model = makeStep();
   const before = structuredClone(model);
-  const triangle = [[[[2.2, -0.4], [3.4, -0.4], [3.0, 0.4]]]];
+  const triangle = [
+    [
+      [
+        [2.2, -0.4],
+        [3.4, -0.4],
+        [3.0, 0.4],
+      ],
+    ],
+  ];
   const result = applyOperation(model, {
     type: 'add',
     thickness: 0.04,
     area: model.boundary,
-    incidence: { ...beam(45), apertureStack: [
-      { bottomZUm: 6, topZUm: 6.6, opening: triangle },
-    ] },
+    incidence: { ...beam(45), apertureStack: [{ bottomZUm: 6, topZUm: 6.6, opening: triangle }] },
   });
   assert.equal(result.changed, false);
   assert.deepEqual(model, before);
@@ -160,28 +190,48 @@ test('nonrectangular oblique partial-facet request fails and rolls back', () => 
 test('strict project schema and compact storage preserve XY/Z sidewall segmentation', () => {
   const model = makeStep();
   const result = applyOperation(model, {
-    type: 'add', name: 'Al', thickness: 0.04, area: model.boundary, incidence: beam(),
+    type: 'add',
+    name: 'Al',
+    thickness: 0.04,
+    area: model.boundary,
+    incidence: beam(),
   });
   assert.equal(result.changed, true, result.error);
   const project = {
-    format: 'WaferCAD-vector', version: 14, model,
+    format: 'WaferCAD-vector',
+    version: 14,
+    model,
     name: 'Fixed Direct XY/Z isolation fixture',
     layout: {
-      name: 'None', root: 'EMPTY', elements: [], linework: [], combos: [], hierarchy: {},
+      name: 'None',
+      root: 'EMPTY',
+      elements: [],
+      linework: [],
+      combos: [],
+      hierarchy: {},
       bounds: { minX: -6, minY: -4, maxX: 6, maxY: 4, width: 12, height: 8 },
       units: { xy: 'µm', dbuToMicron: 1, hasPhysicalUnits: true },
     },
-    selectedLayerKeys: [], activeCell: 'EMPTY',
+    selectedLayerKeys: [],
+    activeCell: 'EMPTY',
     maskTransform: { x: 0, y: 0, scale: 1, rotation: 0 },
-    maskSourceMode: 'draw', drawMask: { nextShapeId: 1, shapes: [] },
-    activeFace: 'front', roi: null, maskRoi: null,
-    roiAnchor: 'center', maskRoiAnchor: 'center',
+    maskSourceMode: 'draw',
+    drawMask: { nextShapeId: 1, shapes: [] },
+    activeFace: 'front',
+    roi: null,
+    maskRoi: null,
+    roiAnchor: 'center',
+    maskRoiAnchor: 'center',
     section: { a: [1.8, 0], b: [2.2, 0] },
     planViews: { main: { zoom: 1, panX: 0, panY: 0 }, mask: { zoom: 1, panX: 0, panY: 0 } },
     display: {
-      xyUnit: 'um', structurePalette: 'balanced', sectionScaleMode: 'auto',
-      sectionShowBorders: true, threeShowBorders: true,
-      threeOpacity: 1, maskOpacity: 0.8,
+      xyUnit: 'um',
+      structurePalette: 'balanced',
+      sectionScaleMode: 'auto',
+      sectionShowBorders: true,
+      threeShowBorders: true,
+      threeOpacity: 1,
+      maskOpacity: 0.8,
     },
     snapshots: [],
   };

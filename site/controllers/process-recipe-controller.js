@@ -842,7 +842,10 @@ export function createProcessRecipeController({
         ]);
         if (p.coverage === 'direct') {
           bindText('Tilt θ (°)', 'tiltDeg', p.tiltDeg ?? 0, { type: 'number', step: 'any' });
-          bindText('Azimuth φ (°)', 'azimuthDeg', p.azimuthDeg ?? 0, { type: 'number', step: 'any' });
+          bindText('Azimuth φ (°)', 'azimuthDeg', p.azimuthDeg ?? 0, {
+            type: 'number',
+            step: 'any',
+          });
         }
         if (p.coverage === 'transfer') {
           bindSelect('Placement', 'placement', [

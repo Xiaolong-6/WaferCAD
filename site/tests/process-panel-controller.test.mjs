@@ -790,20 +790,25 @@ test('Lift-off requires an explicit sacrificial selection before Apply is enable
   assert.match(root.getElementById('liftoffTargetHint').textContent, /supported deposits/);
 });
 
-
 test('Direct UI forwards fixed θ/φ through existing Worker and History contracts', async () => {
-  const events = [], recorded = [];
+  const events = [],
+    recorded = [];
   let applied;
-  const controller = controllerForTask((model, _source, params) => {
-    applied = params;
-    return {
-      result: { changed: true, layerId: 'layer-1' },
-      model: {
-        ...model, revision: model.revision + 1,
-        processRevision: model.processRevision + 1,
-      },
-    };
-  }, events, { recorded });
+  const controller = controllerForTask(
+    (model, _source, params) => {
+      applied = params;
+      return {
+        result: { changed: true, layerId: 'layer-1' },
+        model: {
+          ...model,
+          revision: model.revision + 1,
+          processRevision: model.processRevision + 1,
+        },
+      };
+    },
+    events,
+    { recorded },
+  );
   const root = controller.__root;
   root.getElementById('directTilt').value = '45';
   root.getElementById('directAzimuth').value = '-135';

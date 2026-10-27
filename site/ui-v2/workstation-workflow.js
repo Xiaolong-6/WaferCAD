@@ -225,7 +225,10 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
         ]),
       ),
       row('directTiltRow', fields.input('Direct tilt θ · °', 'directTilt', 0, { kind: 'angle' })),
-      row('directAzimuthRow', fields.input('Direct azimuth φ · °', 'directAzimuth', 0, { kind: 'angle' })),
+      row(
+        'directAzimuthRow',
+        fields.input('Direct azimuth φ · °', 'directAzimuth', 0, { kind: 'angle' }),
+      ),
       row(
         'transferModeRow',
         choice('Placement', 'transferMode', [

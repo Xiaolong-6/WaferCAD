@@ -24,7 +24,8 @@ function records(bytes) {
   for (let offset = 0; offset < bytes.length;) {
     if (offset + 4 > bytes.length) throw Error('Truncated GDS record.');
     const len = bytes.readUInt16BE(offset);
-    if (len < 4 || offset + len > bytes.length) throw Error('Invalid GDS record at ' + offset + '.');
+    if (len < 4 || offset + len > bytes.length)
+      throw Error('Invalid GDS record at ' + offset + '.');
     result.push({
       type: bytes[offset + 2],
       dataType: bytes[offset + 3],
@@ -79,7 +80,10 @@ function elements(cell) {
 function boundsOfXY(element) {
   if (!element.xy) throw Error('Boundary is missing XY.');
   const xy = element.xy;
-  let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+  let x1 = Infinity,
+    y1 = Infinity,
+    x2 = -Infinity,
+    y2 = -Infinity;
   for (let i = 4; i + 7 < xy.length; i += 8) {
     const x = xy.readInt32BE(i) / 1000;
     const y = xy.readInt32BE(i + 4) / 1000;
@@ -90,8 +94,7 @@ function boundsOfXY(element) {
   }
   return [x1, y1, x2, y2];
 }
-const overlap = (a, b) =>
-  a[0] <= b[2] && a[2] >= b[0] && a[1] <= b[3] && a[3] >= b[1];
+const overlap = (a, b) => a[0] <= b[2] && a[2] >= b[0] && a[1] <= b[3] && a[3] >= b[1];
 const bytesOf = (records) => records.map((r) => r.bytes);
 
 /**
@@ -128,16 +131,9 @@ export function extractQ2ROI(
     throw Error('Base reference has unexpected transform.');
   const data = cells.get(field);
   if (!data) throw Error('Missing mask background cell.');
-  const area = [
-    center[0] - radius,
-    center[1] - radius,
-    center[0] + radius,
-    center[1] + radius,
-  ];
+  const area = [center[0] - radius, center[1] - radius, center[0] + radius, center[1] + radius];
   const candidates = elements(data);
-  const chosen = candidates.filter(
-    (e) => e.kind === 0x08 && overlap(boundsOfXY(e), area),
-  );
+  const chosen = candidates.filter((e) => e.kind === 0x08 && overlap(boundsOfXY(e), area));
   if (!chosen.length) throw Error('No original Nb-mask polygons in ROI.');
   const selected = new Map();
   const visit = (name, lineage = new Set()) => {
@@ -225,7 +221,9 @@ async function main(args) {
   const srcPath = argValue(args, '--input');
   const outPath = argValue(args, '--output');
   if (!srcPath || !outPath || resolve(srcPath) === resolve(outPath)) {
-    throw Error('Usage: --input ORIGINAL.gds --output Q2_ROI.gds [--radius 500] [--report report.json]');
+    throw Error(
+      'Usage: --input ORIGINAL.gds --output Q2_ROI.gds [--radius 500] [--report report.json]',
+    );
   }
   const source = await readFile(srcPath);
   const expected = argValue(args, '--expected-sha256');

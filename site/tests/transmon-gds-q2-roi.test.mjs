@@ -33,7 +33,13 @@ function polygon(layer, datatype, x, y) {
     rec(0x08),
     rec(0x0d, 2, l),
     rec(0x0e, 2, d),
-    xy([[x, y], [x + 200, y], [x + 200, y + 200], [x, y + 200], [x, y]]),
+    xy([
+      [x, y],
+      [x + 200, y],
+      [x + 200, y + 200],
+      [x, y + 200],
+      [x, y],
+    ]),
     rec(0x11),
   ];
 }
@@ -75,10 +81,7 @@ function fixture() {
       ...polygon(2, 0, 1400000, 2513000),
       ...polygon(2, 0, 9000000, 9000000),
     ]),
-    ...cell('jj_width0p18', [
-      ...polygon(8, 0, 0, 0),
-      ...polygon(8, 1, 300, 300),
-    ]),
+    ...cell('jj_width0p18', [...polygon(8, 0, 0, 0), ...polygon(8, 1, 300, 300)]),
     ...cell('chip2', [
       ...sref('Unnamed_b0465f83', 0, 0),
       ...sref('jj_width0p18', 1400000, 2513000),
@@ -97,9 +100,7 @@ test('Q2 selection preserves original layer geometry and JJ placement', () => {
   });
   assert.deepEqual(result.report.q2CenterUm, [1400, 2513]);
   const bytes = result.bytes;
-  const parsed = parseGDS(
-    bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.length),
-  );
+  const parsed = parseGDS(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.length));
   assert.deepEqual(parsed.roots, ['TRANSMON_Q2_ORIGINAL_ROI']);
   assert.equal(flattenGDS(parsed, parsed.root).elements.length, 3);
   assert.equal(result.report.noGeometryClipping, true);
@@ -113,19 +114,23 @@ test('Q2 selection refuses unverified ref and zero-radius ROI', () => {
   assert.throws(() => extractQ2ROI(fixture(), { radius: 0 }), /ROI radius/);
 });
 
-test('verify the original author GDS when available', {
-  skip: !process.env.WAFERCAD_TRANSMON_GDS,
-}, () => {
-  const source = readFileSync(process.env.WAFERCAD_TRANSMON_GDS);
-  const result = extractQ2ROI(source);
-  assert.equal(
-    result.report.sourceSha256,
-    '6e9db7d506e17f82fd22250db9a380a420b2a1088bac4a33b8c747930e9d5c02',
-  );
-  assert.equal(result.report.keptBackgroundPolygons, 28);
-  assert.deepEqual(result.report.polygonCounts, {
-    '2/0': 28,
-    '8/1': 9,
-    '8/0': 8,
-  });
-});
+test(
+  'verify the original author GDS when available',
+  {
+    skip: !process.env.WAFERCAD_TRANSMON_GDS,
+  },
+  () => {
+    const source = readFileSync(process.env.WAFERCAD_TRANSMON_GDS);
+    const result = extractQ2ROI(source);
+    assert.equal(
+      result.report.sourceSha256,
+      '6e9db7d506e17f82fd22250db9a380a420b2a1088bac4a33b8c747930e9d5c02',
+    );
+    assert.equal(result.report.keptBackgroundPolygons, 28);
+    assert.deepEqual(result.report.polygonCounts, {
+      '2/0': 28,
+      '8/1': 9,
+      '8/0': 8,
+    });
+  },
+);

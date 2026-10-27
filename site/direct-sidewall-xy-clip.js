@@ -56,9 +56,13 @@ export function clipFixedSidewallLength(facet, incidence) {
     const y0 = Math.min(...ys),
       y1 = Math.max(...ys);
     const corners = new Set(v.map(([x, y]) => x + ',' + y));
-    const expectedCorners = [[x0, y0], [x0, y1], [x1, y0], [x1, y1]];
-    if (corners.size !== 4 || expectedCorners.some(([x, y]) => !corners.has(x + ',' + y)))
-      continue;
+    const expectedCorners = [
+      [x0, y0],
+      [x0, y1],
+      [x1, y0],
+      [x1, y1],
+    ];
+    if (corners.size !== 4 || expectedCorners.some(([x, y]) => !corners.has(x + ',' + y))) continue;
     const window = tangent === 0 ? [x0, x1] : [y0, y1];
     // Nonzero tangential ray drift couples XY and Z; reject partial illumination
     // downstream rather than wrongly modeling a uniform-height rectangular strip.

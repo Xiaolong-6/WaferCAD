@@ -154,10 +154,10 @@ if (process.argv[1]?.endsWith('transmon-shadow-al-preview.mjs')) {
     thickness === null && sourceNote === null
       ? null
       : {
-        thicknessUm: Number(thickness),
-        provenance: 'hypothesis',
-        source: sourceNote || '',
-      };
+          thicknessUm: Number(thickness),
+          provenance: 'hypothesis',
+          source: sourceNote || '',
+        };
   const transport = args.includes('--native-direct') ? 'native-direct' : 'precomputed';
   const { project, report } = await produceAuthorShadowPreview(source, { barrier, transport });
   await writeFile(outPath, project);

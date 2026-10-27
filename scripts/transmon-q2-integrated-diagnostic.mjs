@@ -46,11 +46,12 @@ export function replayQ2ChipPose(
     source.buffer.slice(source.byteOffset, source.byteOffset + source.byteLength),
   );
   const chip = parsed.cells.get('chip2');
-  const placed = chip?.elements.find((e) =>
-    e.kind === 'sref' &&
-    e.name === 'jj_width0p18' &&
-    e.xy?.[0] === center[0] &&
-    e.xy?.[1] === center[1],
+  const placed = chip?.elements.find(
+    (e) =>
+      e.kind === 'sref' &&
+      e.name === 'jj_width0p18' &&
+      e.xy?.[0] === center[0] &&
+      e.xy?.[1] === center[1],
   );
   if (!placed || placed.angle !== 90 || placed.reflect)
     throw new Error('Q2 author chip2 placement must have the source GDS 90° rotation.');
@@ -103,7 +104,10 @@ export function replayQ2ChipPose(
       {
         bottomZUm: siTopZ,
         topZUm: siTopZ + 0.5,
-        selectors: [{ layer: 8, datatype: 0 }, { layer: 8, datatype: 1 }],
+        selectors: [
+          { layer: 8, datatype: 0 },
+          { layer: 8, datatype: 1 },
+        ],
       },
       {
         bottomZUm: siTopZ + 0.5,
@@ -190,10 +194,7 @@ export function replayQ2ChipPose(
       layerId: outcome.layerId,
     });
     if (index === 0 && oxide) {
-      if (
-        !(Number.isFinite(oxide.thicknessUm) && oxide.thicknessUm > 0) ||
-        !oxide.source?.trim()
-      )
+      if (!(Number.isFinite(oxide.thicknessUm) && oxide.thicknessUm > 0) || !oxide.source?.trim())
         throw new Error('Hypothetical AlOx requires explicit thickness and source.');
       add('AlOx hypothesis: ' + oxide.source, oxide.thicknessUm, footprint);
     }
@@ -217,9 +218,10 @@ export function replayQ2ChipPose(
   const project = {
     format: 'WaferCAD-vector',
     version: 14,
-    name: transport === 'native-direct'
-      ? 'Transmon Q2 NATIVE DIRECT geometry diagnostic (not a verified Josephson junction)'
-      : 'Transmon Q2 integrated STATIC shadow diagnostic (not a verified Josephson junction)',
+    name:
+      transport === 'native-direct'
+        ? 'Transmon Q2 NATIVE DIRECT geometry diagnostic (not a verified Josephson junction)'
+        : 'Transmon Q2 integrated STATIC shadow diagnostic (not a verified Josephson junction)',
     model,
     layout: {
       ...junction,
@@ -252,9 +254,13 @@ export function replayQ2ChipPose(
       mask: { zoom: 1, panX: 0, panY: 0 },
     },
     display: {
-      xyUnit: 'um', structurePalette: 'balanced',
-      sectionScaleMode: 'auto', sectionShowBorders: true,
-      threeShowBorders: true, threeOpacity: 1, maskOpacity: 0.8,
+      xyUnit: 'um',
+      structurePalette: 'balanced',
+      sectionScaleMode: 'auto',
+      sectionShowBorders: true,
+      threeShowBorders: true,
+      threeOpacity: 1,
+      maskOpacity: 0.8,
     },
     snapshots: [],
   };
@@ -284,9 +290,10 @@ export function replayQ2ChipPose(
       processRevisions: model.processRevision,
       oxideHypothesis: oxide,
       strictProjectRoundTrip: true,
-      method: transport === 'native-direct'
-        ? 'NATIVE fixed-angle sampled surface visibility and persisted Al; no modeled resist solids, sidewall deposition, oxidation kinetics or lift-off'
-        : 'STATIC horizontal shadow footprint; not dynamic Direct deposition or lift-off',
+      method:
+        transport === 'native-direct'
+          ? 'NATIVE fixed-angle sampled surface visibility and persisted Al; no modeled resist solids, sidewall deposition, oxidation kinetics or lift-off'
+          : 'STATIC horizontal shadow footprint; not dynamic Direct deposition or lift-off',
       tunnelJunctionValidated: false,
     },
   };
@@ -296,7 +303,9 @@ if (process.argv[1]?.endsWith('transmon-q2-integrated-diagnostic.mjs')) {
   const input = arg('--gds');
   const output = arg('--output');
   if (!input || !output)
-    throw new Error('Usage: --gds sample.gds --output candidate.wafercad [--native-direct] [--height-step-um 0.0375] [--report evidence.json]');
+    throw new Error(
+      'Usage: --gds sample.gds --output candidate.wafercad [--native-direct] [--height-step-um 0.0375] [--report evidence.json]',
+    );
   const source = await readFile(input);
   const t = arg('--oxide-thickness-um'),
     evidence = arg('--oxide-source');

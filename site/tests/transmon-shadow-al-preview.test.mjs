@@ -58,7 +58,10 @@ test(
     validateProjectFile(restored);
     assert.equal(restored.model.layers.length, 5);
     const crossing = restored.model.regions.find((region) => region.stack.length === 5);
-    assert.ok(crossing, 'Restored project must contain all three Al layers and an oxide interface.');
+    assert.ok(
+      crossing,
+      'Restored project must contain all three Al layers and an oxide interface.',
+    );
     assert.ok(Math.abs(crossing.stack[2].z1 - crossing.stack[2].z0 - 0.002) < 1e-9);
   },
 );
