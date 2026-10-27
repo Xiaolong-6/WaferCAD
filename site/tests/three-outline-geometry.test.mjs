@@ -5,6 +5,7 @@ import {
   buriedInterfaceContours,
   contoursToPositions,
   ownedContourSegments,
+  unownedContourSegments,
   sectionCutContours,
   borderInspectorContours,
   transparentInspectionContours,
@@ -21,6 +22,29 @@ const square = [
     [0, 0],
   ],
 ];
+
+test('unowned contours retain only unique valid lines outside existing ownership', () => {
+  const exterior = [
+    [0, 0, 0],
+    [2, 0, 0],
+  ];
+  const internal = [
+    [0, 1, 0],
+    [2, 1, 0],
+  ];
+  const degenerate = [
+    [1, 1, 1],
+    [1, 1, 1],
+  ];
+  assert.deepEqual(
+    unownedContourSegments(
+      [exterior, [...exterior].reverse(), internal, [...internal].reverse(), degenerate],
+      [exterior, [...exterior].reverse()],
+    ),
+    [internal],
+  );
+  assert.deepEqual(unownedContourSegments([degenerate], [exterior]), []);
+});
 
 test('production border inspector deduplicates physical edges', () => {
   const exterior = [

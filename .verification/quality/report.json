@@ -4,13 +4,13 @@
   "scope": "full",
   "status": "pass",
   "source": {
-    "digest": "ade5378f9a40935cd220dfb9ed419cd5f468986aa6386981ffab8c578f100bf2",
-    "fileCount": 1202
+    "digest": "db998ac8745db9982b25257171f4749f5dd93d7be6d74322a95ff06afcaa6c89",
+    "fileCount": 1212
   },
-  "sourceRevision": "5fc28276fac8f6bf1ca47edde9394dfc741ace32",
+  "sourceRevision": "36c5aee252b512db3d8a0f788fa8cfd3b3d6ec3a",
   "planDigest": "9e40e14c41649069d23911dc155328f17e554f0307619aef8493378a2f26b4b3",
   "environment": {
-    "node": "v22.16.0",
+    "node": "v24.22.1",
     "platform": "linux",
     "dependencies": {
       "eslint": "10.11.0",
@@ -19,7 +19,7 @@
       "three": "0.179.1"
     }
   },
-  "startedAt": "2026-10-26T14:35:09.242Z",
+  "startedAt": "2026-10-27T12:42:23.816Z",
   "checks": [
     {
       "id": "lint",
@@ -31,8 +31,8 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 6347,
-      "logDigest": "7e083cff9d323606d09accd3389828279cc52091b6c62b45c8100c1ced589c7c"
+      "durationMs": 5569,
+      "logDigest": "d46391803643bd553cf3c7de1bbada8ee5dd156a742fdb8a9656b12d4c141ba7"
     },
     {
       "id": "format",
@@ -44,8 +44,8 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 16849,
-      "logDigest": "1230617af071df8c1efeb12bcd6d41c3aa159e1cd0841cc546fbae4c8c56f867"
+      "durationMs": 16564,
+      "logDigest": "7af202ff04a2f06f11b43384352ea678f21e2248c50db67cb4d00c4a92fa69a7"
     },
     {
       "id": "docs",
@@ -57,8 +57,8 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 421,
-      "logDigest": "4a16e7f16bbb1d3277b46e87b445d366be769dff4e446a0e7629ddd655cf84aa"
+      "durationMs": 520,
+      "logDigest": "63b5e31b6b7f12ded1bd4ee99b1d9c8929772836d7b1499eb71183011d7979f7"
     },
     {
       "id": "node",
@@ -69,10 +69,10 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 256355,
-      "logDigest": "b1f1b62029f16e08dce46f7cac9e424f86534964df606b3e82ffc05c2a8f9dd5"
+      "durationMs": 143850,
+      "logDigest": "3ad4f32b03c28e6a1c7e60eb6ab78f5649c3f5f728f0fdecfeab2f42af87a374"
     }
   ],
-  "finishedAt": "2026-10-26T14:39:49.217Z",
-  "transcriptDigest": "d33caa718eecb1f21395761a2ceec37bd66ed498d5a98247b8d54463ce59dd60"
+  "finishedAt": "2026-10-27T12:45:10.323Z",
+  "transcriptDigest": "04d98e4853df246235ffa28afbc452713cbeabec71b0a8fee5a86bcb0d2fc9e2"
 }
