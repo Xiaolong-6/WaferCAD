@@ -4,13 +4,13 @@
   "scope": "full",
   "status": "pass",
   "source": {
-    "digest": "bac474630f1a8604d1080ca5103c4343a7bd4f47f720b160dd5ada8e6de6837f",
+    "digest": "c6eb88c7f7830e09928128863641e9edbb2dcde7666b507728187260b6552727",
     "fileCount": 1229
   },
-  "sourceRevision": "9e479857433386fa345e8699f7f7306641d8f1a1",
+  "sourceRevision": "a875c5c4b8c4977ad9fb155478e820eeb6d1d60e",
   "planDigest": "9e40e14c41649069d23911dc155328f17e554f0307619aef8493378a2f26b4b3",
   "environment": {
-    "node": "v22.16.0",
+    "node": "v22.23.3",
     "platform": "linux",
     "dependencies": {
       "eslint": "10.11.0",
@@ -19,7 +19,7 @@
       "three": "0.179.1"
     }
   },
-  "startedAt": "2026-10-27T15:41:04.694Z",
+  "startedAt": "2026-10-27T17:25:16.453Z",
   "checks": [
     {
       "id": "lint",
@@ -31,7 +31,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 8497,
+      "durationMs": 6886,
       "logDigest": "7e083cff9d323606d09accd3389828279cc52091b6c62b45c8100c1ced589c7c"
     },
     {
@@ -44,7 +44,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 20234,
+      "durationMs": 18477,
       "logDigest": "1230617af071df8c1efeb12bcd6d41c3aa159e1cd0841cc546fbae4c8c56f867"
     },
     {
@@ -57,7 +57,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 422,
+      "durationMs": 427,
       "logDigest": "e64592d072cce5e8416ff4a418f716e30b390035c8fef831fb5cd17b65ae59f6"
     },
     {
@@ -69,10 +69,10 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 643722,
+      "durationMs": 315028,
       "logDigest": "c81ae9f70ed8d0a786b2ab3d9448627a1bfbf239e61a34d2880e3d7fcce34904"
     }
   ],
-  "finishedAt": "2026-10-27T15:52:17.573Z",
+  "finishedAt": "2026-10-27T17:30:57.275Z",
   "transcriptDigest": "8a4ba18d787cbe4106a75abb0f843ef2d97a7ee969c8218d72782f74bc307028"
 }
