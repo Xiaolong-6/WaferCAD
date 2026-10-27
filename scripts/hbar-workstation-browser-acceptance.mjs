@@ -136,6 +136,10 @@ try {
   // Browser History, not the isolated SnapshotManager unit test: inspect a
   // historical Step, then return to real Variant HEAD without altering owner.
   await panel('history');
+  const preReleaseReference = expected.snapshotBranches.nodes.find(
+    (node) => node.id === 'hbar-stage-10',
+  );
+  assert.ok(preReleaseReference, 'HBAR pre-release History Step is missing');
   const preRelease = page.locator('.history-step-wrap[data-step-id="hbar-stage-10"]');
   await preRelease.locator('.process-history-row.history-step-row').click();
   await page.waitForFunction(
@@ -143,12 +147,12 @@ try {
       const current = window.WaferCadV2Workstation.snapshot();
       return !current.workflow.busy && current.model.processRevision === revision;
     },
-    expected.snapshotBranches.nodes.find((node) => node.id === 'hbar-stage-10').state.model.processRevision,
+    preReleaseReference.state.model.processRevision,
     { timeout: 120000 },
   );
   assert.deepEqual(
     (await snapshot()).model,
-    expected.snapshotBranches.nodes.find((node) => node.id === 'hbar-stage-10').state.model,
+    preReleaseReference.state.model,
     'Browser History restoration altered pre-release physical state',
   );
   await page.locator('.snapshot-return-head').click();
