@@ -14,6 +14,15 @@ on:
         type: boolean
         default: false
   workflow_dispatch:
+    inputs:
+      run_scope:
+        description: Run the complete Browser matrix or only 625-site renderer stress
+        required: false
+        type: choice
+        default: full
+        options:
+          - full
+          - renderer-array
 
 concurrency:
   group: browser-regression-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref || github.run_id }}
@@ -51,7 +60,16 @@ jobs:
         id: plan
         shell: bash
         run: |
-          if [[ "${{ inputs.force_full }}" == "true" ]]; then
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.run_scope }}" == "renderer-array" ]]; then
+            # Isolate the single expensive 625-site real-browser owner. This
+            # opt-in diagnostic does not replace any Ready/release suite.
+            for suite in full smoke workstation resilience history persistence interaction examples product_layout process extended; do
+              echo "$suite=false" >> "$GITHUB_OUTPUT"
+            done
+            echo 'renderer=true' >> "$GITHUB_OUTPUT"
+            echo 'extended_matrix=["none"]' >> "$GITHUB_OUTPUT"
+            echo 'Manual 625-site renderer-only acceptance (all 20 toggles)'
+          elif [[ "${{ inputs.force_full }}" == "true" ]]; then
             node scripts/ci-test-plan.mjs --full
           elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
             git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}" \
@@ -77,6 +95,7 @@ jobs:
   browser:
     name: ${{ github.event_name == 'push' && 'Main targeted regression' || 'Chromium targeted regression' }}
     needs: plan
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_scope != 'renderer-array' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -406,7 +425,7 @@ jobs:
   renderer-array-edge-on:
     name: 625-site edge-on exact-wall restoration
     needs: plan
-    if: ${{ needs.plan.outputs.renderer == 'true' && (github.event_name != 'pull_request' || !github.event.pull_request.draft || github.event.pull_request.number == 290) }}
+    if: ${{ needs.plan.outputs.renderer == 'true' && (github.event_name != 'workflow_dispatch' || inputs.run_scope != 'renderer-array') && (github.event_name != 'pull_request' || !github.event.pull_request.draft || github.event.pull_request.number == 290) }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
