@@ -1,6 +1,6 @@
-/** Verify the user-supplied, fresh TFLN 10x8 mask-driven reconstruction.
- * Run from the WaferCAD checkout root with:
- *   node /path/to/verify-package.mjs /path/to/extracted-package
+/** Verify the committed TFLN 10x8 native, mask-driven reconstruction.
+ * Run from the WaferCAD repository root:
+ *   node examples/projects/tfln-10x8-recovery/verify.mjs
  * Requires the production Geometry Kernel, not a mock polygon engine.
  */
 import assert from 'node:assert/strict';
