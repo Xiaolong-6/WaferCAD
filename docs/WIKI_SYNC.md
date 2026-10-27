@@ -4,7 +4,7 @@
 
 - `docs/wiki/*.md`: complete product user manual (Welcome/Getting Started, views, mask, Process, the English Recipe Code Tutorial and AI-assisted workflows guide, History, Variants, Recovery, I/O, examples, limits and troubleshooting).
 - `site/bundled-examples.js`: canonical Welcome project catalog. Keep `docs/wiki/Examples-and-Modeling-Limits.md` aligned with every promoted example ID/title; do not count unpromoted development fixtures as Welcome examples.
-- `site/process-guide.js`: canonical metadata for the 19 Process operation variants.
+- `site/process-guide.js`: canonical metadata for the 20 Process operation variants.
 - `site/process-guide-svg.js`: the paired Before → After diagrams.
 - `docs/wiki/assets/process/*.svg`: generated, version-controlled Before → After diagrams embedded directly in the Process wiki chapter.
 - `site/guide/index.html`: compatibility redirect only; old fragment bookmarks resolve into Wiki headings.
@@ -13,15 +13,64 @@
 
 To change an operation description, update the catalog and diagram, then run `npm run docs:build` and `npm run docs:check`. Commit the catalog, regenerated Markdown and any changed SVG assets together. `docs:check` checks images byte-for-byte against the in-app renderer. The tests check every defined operation ID and the exact operation-document snapshot. The [documentation architecture](DOCUMENTATION.md) owns navigation, authority and authored-versus-generated boundaries.
 
+GitHub Wiki copies each `docs/wiki/*.md` page to the Wiki root. Link between pages by Wiki slug (for example `(Getting-Started)`); use an absolute `https://github.com/.../blob/main/docs/...` link when pointing to repository documents outside the Wiki. A `../io/` or other repository-relative Markdown link can work inside the source checkout but break after publication.
+
 ## Figure and screenshot policy
 
 Wiki illustrations must be **relevant to the adjacent procedure**. Prefer exact, shipped WaferCAD example screenshots tied to the named example, or Before → After SVGs generated from the same `site/process-guide.js` catalog as the Process UI. When explaining ROI selection, workflows or History rather than a particular screen state, use a narrowly scoped Mermaid flowchart instead of unrelated imagery. Do not add stock, random microscopy, speculative AI renderings or publication figures without provenance and rights. Every manually inserted image needs descriptive alt text, an immediate caption identifying **actual app output / saved capture / conceptual guide schematic**, and a limitation where warranted. A green link check proves only that the asset path exists. Before adding any raster screenshot, inspect the **actual image content**, native dimensions, text/geometry legibility at the intended display width, correctness of the depicted UI version, and relevance to the adjacent task. Old 480 × 300 blurred `site/example-previews/` JPEGs and catalog-sized 3D covers are **not** instructional screenshots. Prefer a precisely matched Process SVG or Mermaid diagram when no readable current capture exists. Older UI captures belong in dated audit records; never label one as the current workstation. See the [content/pixel audit](archive/WIKI_CONTENT_VISUAL_AUDIT_2026-10-12.md).
 
 See [Wiki content and visual audit](archive/WIKI_CONTENT_VISUAL_AUDIT_2026-10-12.md) for the page-level inventory and decisions.
 
+## Native UI screenshot promotion gate
+
+Use screenshot evidence **from the actual product**, not mock HTML,
+generated shell-only previews or hand-drawn copies of interface controls.
+The first choice is a real Chromium/Playwright capture from an exact-SHA
+source checkout and valid normal Origin. A pre-existing GitHub Actions
+capture for that exact main SHA may be **reused** for a documentation
+review without running CI again. Its artifact, run ID, filename, test
+model and viewport must be recorded, and the pixels independently
+inspected before any crop is promoted.
+
+For each screenshot inserted into a current Wiki page:
+
+1. Check the depicted **product revision**, exact named Example,
+   active History Step/Variant, selected views, ROI, Z scaling and
+   opacity/Border mode. Confirm all relevant UI labels are actually
+   visible and legible at the Wiki's display width.
+2. Verify whether the captured state is **preview** or exact painted
+   scene. A real screenshot of an early approximate 3D frame is
+   insufficient to illustrate exact 3D, export, Section/3D agreement or
+   paper-figure fidelity.
+3. Save the reviewed screenshot as a **version-controlled image**
+   under `docs/wiki/assets/` (or use an already version-controlled,
+   accurately labeled first-party image). Embed via a stable repository
+   `main` raw URL. Do **not** embed ephemeral Actions artifact URLs,
+   `sandbox:` links, issue attachments, personal storage, or local
+   filesystem paths in published Wiki Markdown.
+4. Supply adjacent, specific alt text and a caption stating which
+   view, Example, Step, source SHA and important display limitation
+   the image illustrates. A screenshot of a real photodetector or
+   metalens is **not** the resulting image of the beginner
+   oxide-window exercise.
+5. Compare the rendered Wiki page (desktop and narrow screens) after
+   the image reaches `main`. Keep separate approved visual regression
+   baselines untouched; documentation figures are not a substitute
+   for tests or release acceptance.
+
+**Current capture priorities:** desktop four-view Overview, compact
+Edit/View navigation, the real Draw Mask/Mask ROI editor, Main 3D ROI,
+Section Z Break, 3D Display (opacity, Z scale, Show Origin, Border),
+the actual beginner Deposit/Etch stages, and History
+Step 0/Edit/Variant/Recovery. A screenshot only covering one of these
+must not be captioned as proof of the other controls. Where no
+matching checked-in capture exists, prefer the already verified
+Process Guide SVG or a purpose-specific Mermaid diagram until a
+real image is ready.
+
 ## Pre-publication PR verification
 
-[Documentation and Wiki targeted checks](../.github/workflows/documentation-wiki-targeted.yml) runs on relevant pull-request changes, exercises the Process Guide, Wiki Manual and Documentation test suites, and has repository read-only permissions. It cannot push to the Wiki or deploy Pages. Draft Quality separately runs lint, formatting and `docs:check` before the Main publication step.
+Documentation changes are checked locally through `node scripts/local-verification.mjs run draft` (or a current `full` receipt), including the focused documentation contracts. The [Documentation and Wiki targeted checks](../.github/workflows/documentation-wiki-targeted.yml) workflow is **manual-dispatch only** under the 2026-10-22 CI policy; it has read-only repository permissions and cannot publish Wiki or Pages. Automatic Draft `Quality` verifies exact-source-bound local evidence **without rerunning lint, formatting, or `docs:check` remotely**. Ready and Main release use their separately governed gates; see [CI routing](CI.md).
 
 ## Deploy workflow
 

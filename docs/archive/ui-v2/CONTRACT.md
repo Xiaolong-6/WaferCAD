@@ -2,7 +2,7 @@
 
 The historical inventory below remains unchanged. The approved 2026-10-11 Mask
 review uses newly built v2 hooks and the shared view-kit; see
-[Mask handoff](../archive/ui-v2/MASK_HANDOFF_2026-10-11.md). Its Draw strip contract is
+[Mask handoff](MASK_HANDOFF_2026-10-11.md). Its Draw strip contract is
 Select / Rectangle / Circle / Polygon / Ring / Ring sector / Delete selected /
 Clear / settings. “Add preview shape” is removed; Delete selected and settings
 are disabled without a selection. Strip visibility never changes File/Draw source

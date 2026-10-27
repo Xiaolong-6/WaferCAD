@@ -1,7 +1,10 @@
 import { arrayParts, resolveArrayModel, geometryBounds } from './model-array.js';
 import { neighborhood, neighborhoodKey } from './model-array-context.js';
 import { pointInMulti, difference } from './vector-geometry.js';
-import { sectionColumnsFromTopology } from './process-topology.js';
+import {
+  sectionColumnsFromTopology,
+  exteriorVerticalBordersFromSidewalls,
+} from './process-topology.js';
 
 const EPS = 1e-7;
 function boundaryLine(p, q, domain) {
@@ -104,7 +107,14 @@ export function buildArrayRenderPlan(model, clip, build) {
           });
         return owned;
       });
-      const borders = plan.borderLines.filter(([a, b]) => !boundaryLine(a, b, part.model.boundary));
+      // Instance ownership only clips horizontal perimeter segments. The
+      // physical vertical borders are derived once from the final owned walls
+      // by the shared Process Topology crease classifier.
+      const borders = plan.borderLines.filter(
+        ([a, b]) =>
+          (Math.abs(a[0] - b[0]) > EPS || Math.abs(a[1] - b[1]) > EPS) &&
+          !boundaryLine(a, b, part.model.boundary),
+      );
       for (const w of sidewalls)
         if (boundaryLine(w.p, w.q, part.model.boundary) && !w.buried)
           borders.push(
@@ -114,14 +124,6 @@ export function buildArrayRenderPlan(model, clip, build) {
             ],
             [
               [...w.p, w.z1],
-              [...w.q, w.z1],
-            ],
-            [
-              [...w.p, w.z0],
-              [...w.p, w.z1],
-            ],
-            [
-              [...w.q, w.z0],
               [...w.q, w.z1],
             ],
           );
@@ -247,7 +249,7 @@ export function buildArrayRenderPlan(model, clip, build) {
   return {
     caps,
     sidewalls,
-    borderLines,
+    borderLines: [...borderLines, ...exteriorVerticalBordersFromSidewalls(sidewalls)],
     arrayInstances: model.array.instances.length,
     arrayNeighborhoods: groups.size,
   };

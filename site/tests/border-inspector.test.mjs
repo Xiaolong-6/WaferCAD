@@ -72,6 +72,26 @@ test('buried wall corners retained but collinear computation partitions suppress
   assert.deepEqual(buriedSidewallContours([{ ...walls[0], buried: false }]), []);
 });
 
+test('buried wall preserves interface partner and facing changes but not split vertices', () => {
+  const wall = (p, q, interfaceLayerIds) => ({
+    layerId: 'film',
+    interfaceLayerIds,
+    buried: true,
+    p,
+    q,
+    z0: 0,
+    z1: 1,
+  });
+  const first = wall([-1, 0], [0, 0], ['oxide']);
+  const verticalAtJoin = (walls) =>
+    buriedSidewallContours(walls).filter(
+      ([a, b]) => a[0] === 0 && b[0] === 0 && a[1] === 0 && b[1] === 0 && a[2] !== b[2],
+    ).length;
+  assert.equal(verticalAtJoin([first, wall([0, 0], [1, 0], ['oxide'])]), 0);
+  assert.equal(verticalAtJoin([first, wall([0, 0], [1, 0], ['nitride'])]), 1);
+  assert.equal(verticalAtJoin([first, wall([1, 0], [0, 0], ['oxide'])]), 1);
+});
+
 test('buried interfaces and walls use real geometry and array translations', () => {
   const square = [
     [
@@ -337,4 +357,147 @@ test('automatic buried border alpha follows material transmittance, explicit X-r
     true,
   );
   assert.equal(exterior.materialState.opacity, 0.65);
+});
+
+test('tiled same-material interface suppresses artificial instance seams', async () => {
+  const { ARRAY_MODEL_KERNEL } = await import('../model-array.js');
+  const { rectMulti } = await import('../vector-geometry.js');
+  const leaf = createModel({ shape: 'rect', width: 10, height: 10, thickness: 2 });
+  const model = {
+    ...leaf,
+    kernel: ARRAY_MODEL_KERNEL,
+    width: 20,
+    boundary: rectMulti(20, 10),
+    regions: [],
+    array: {
+      version: 1,
+      templates: [{ id: 'cell', model: leaf }],
+      instances: [
+        { id: 'left', templateId: 'cell', x: -5, y: 0 },
+        { id: 'right', templateId: 'cell', x: 5, y: 0 },
+      ],
+    },
+  };
+  assert.equal(
+    applyOperation(model, {
+      type: 'add',
+      name: 'Continuous oxide',
+      thickness: 0.5,
+      area: rectMulti(20, 10),
+    }).changed,
+    true,
+  );
+  const plan = buildRenderSurfacePlan(model);
+  const hiddenInterfaces = buriedInterfaceContours(plan.caps, {
+    includeCap: (cap) => Boolean(cap.interfaceLayerId),
+  });
+  assert.ok(hiddenInterfaces.length > 0, 'exterior interface perimeter remains available');
+  assert.equal(
+    hiddenInterfaces.some(
+      ([a, b]) => Math.abs(a[0]) < 1e-9 && Math.abs(b[0]) < 1e-9 && Math.abs(a[1] - b[1]) > 1e-9,
+    ),
+    false,
+    'a continuous buried interface cannot acquire a dark line at the template seam',
+  );
+  assert.equal(
+    borderInspectorContours(plan).interface.some(
+      ([a, b]) => Math.abs(a[0]) < 1e-9 && Math.abs(b[0]) < 1e-9 && Math.abs(a[1] - b[1]) > 1e-9,
+    ),
+    false,
+    'Structure and X-Ray must not expose an internal array seam',
+  );
+});
+
+test('coplanar interface parity cancels subdivided common edges but preserves heterogeneous junctions', () => {
+  const left = {
+    z: 1,
+    layerId: 'oxide',
+    interfaceLayerId: 'base',
+    buried: true,
+    polys: [
+      [
+        [0, 0],
+        [2, 0],
+        [2, 1],
+        [2, 2],
+        [0, 2],
+        [0, 0],
+      ],
+    ].map((ring) => [ring]),
+  };
+  const right = {
+    ...left,
+    polys: [
+      [
+        [2, 0],
+        [4, 0],
+        [4, 2],
+        [2, 2],
+        [2, 0],
+      ],
+    ].map((ring) => [ring]),
+  };
+  const shared = ([a, b]) =>
+    Math.abs(a[0] - 2) < 1e-9 && Math.abs(b[0] - 2) < 1e-9 && Math.abs(a[1] - b[1]) > 1e-9;
+  const contiguous = buriedInterfaceContours([left, right]);
+  assert.equal(contiguous.filter(shared).length, 0);
+  assert.ok(contiguous.some(([a, b]) => a[0] === 0 && b[0] === 0));
+  assert.ok(contiguous.some(([a, b]) => a[0] === 4 && b[0] === 4));
+  const different = buriedInterfaceContours([left, { ...right, layerId: 'nitride' }]);
+  assert.ok(different.some(shared), 'different material boundaries are not cancelled');
+});
+
+test('same-layer cap with different appearance or facing retains the physical interface edge', () => {
+  const left = {
+    z: 1,
+    normal: 1,
+    layerId: 'oxide',
+    interfaceLayerId: 'base',
+    buried: true,
+    polys: [
+      [
+        [
+          [0, 0],
+          [2, 0],
+          [2, 2],
+          [0, 2],
+          [0, 0],
+        ],
+      ],
+    ],
+  };
+  const right = {
+    ...left,
+    polys: [
+      [
+        [
+          [2, 0],
+          [4, 0],
+          [4, 2],
+          [2, 2],
+          [2, 0],
+        ],
+      ],
+    ],
+  };
+  const seam = ([a, b]) =>
+    Math.abs(a[0] - 2) < 1e-9 && Math.abs(b[0] - 2) < 1e-9 && Math.abs(a[1] - b[1]) > 1e-9;
+  assert.equal(
+    buriedInterfaceContours([left, right]).some(seam),
+    false,
+    'identical, coplanar interfaces share no visible seam',
+  );
+  assert.equal(
+    buriedInterfaceContours([left, { ...right, normal: -1 }]).some(seam),
+    true,
+    'oppositely facing interfaces retain their geometric boundaries',
+  );
+  assert.equal(
+    buriedInterfaceContours([
+      { ...left, appearance: { kind: 'custom', opacity: 0.4 } },
+      { ...right, appearance: { kind: 'custom', opacity: 0.8 } },
+    ]).some(seam),
+    true,
+    'a material presentation discontinuity must not be deleted as an instance seam',
+  );
 });

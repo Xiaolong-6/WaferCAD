@@ -1,14 +1,28 @@
 # Production Workstation documentation
 
-Current and dated v2 implementation contracts. Older acceptance/branch statements apply only to their original SHA; confirm current behavior in [Architecture](../ARCHITECTURE.md).
+## Current contract
 
-- [CONTRACT](CONTRACT.md)
-- [DESKTOP DOCKING PLAN 2026-10-15](DESKTOP_DOCKING_PLAN_2026-10-15.md)
-- [EDGE TO EDGE WORKSTATION 2026-10-15](EDGE_TO_EDGE_WORKSTATION_2026-10-15.md)
-- [MAIN ARCHITECTURE HEALTH 2026-10-11](MAIN_ARCHITECTURE_HEALTH_2026-10-11.md)
-- [MANUAL BOTH ACCEPTANCE 2026-10-12](MANUAL_BOTH_ACCEPTANCE_2026-10-12.md)
-- [MOBILE CSS OWNERSHIP AUDIT 2026-10-16](MOBILE_CSS_OWNERSHIP_AUDIT_2026-10-16.md)
-- [MOBILE WORKSTATION LAYOUT 2026-10-13](MOBILE_WORKSTATION_LAYOUT_2026-10-13.md)
-- [PROGRESSIVE STARTUP 2026-10-13](PROGRESSIVE_STARTUP_2026-10-13.md)
-- [TOOLTIP ARCHITECTURE 2026-10-13](TOOLTIP_ARCHITECTURE_2026-10-13.md)
-- [Z BREAK EDITOR 2026-10-13](Z_BREAK_EDITOR_2026-10-13.md)
+- [Workstation shell, slots, state and transaction ownership](WORKSTATION_CONTRACT.md).
+- [Core module architecture](../ARCHITECTURE.md).
+- [History/Variants/Recovery user workflow](../wiki/History-Variants-and-Recovery.md).
+- [Renderer/Section/3D boundaries](../renderer/RENDERER_CONTRACT.md).
+
+## Focused implementation and open design constraints
+
+- [Desktop docking and layout](DESKTOP_DOCKING_PLAN_2026-10-15.md).
+- [Edge-to-edge workspace](EDGE_TO_EDGE_WORKSTATION_2026-10-15.md).
+- [Mobile Workstation layout](MOBILE_WORKSTATION_LAYOUT_2026-10-13.md).
+- [Mobile CSS ownership audit](MOBILE_CSS_OWNERSHIP_AUDIT_2026-10-16.md).
+- [Tooltip architecture](TOOLTIP_ARCHITECTURE_2026-10-13.md).
+- [Z Break editor](Z_BREAK_EDITOR_2026-10-13.md).
+
+## Historical implementation evidence, not current selectors or merge gates
+
+- [Original M0 DOM inventory](../archive/ui-v2/CONTRACT.md).
+- [Main extraction and budget checkpoint (2026-10-11)](../archive/ui-v2/MAIN_ARCHITECTURE_HEALTH_2026-10-11.md).
+- [PR #188 progressive startup record](../archive/ui-v2/PROGRESSIVE_STARTUP_2026-10-13.md).
+- [Manual Both acceptance checkpoint](MANUAL_BOTH_ACCEPTANCE_2026-10-12.md).
+
+These records preserve original tested revisions and failure conditions.
+Do not interpret a historical "Draft" instruction or old DOM ID as the
+current production source contract. For release rules see [CI](../CI.md).

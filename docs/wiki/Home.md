@@ -14,6 +14,12 @@ flowchart LR
 
 _This is the user journey, not a capture of the live interface. Actual device preview thumbnails are shown with the named projects in [Examples and Modeling Limits](Examples-and-Modeling-Limits)._
 
+## Current desktop Workstation
+
+![Actual WaferCAD desktop Overview showing Main, Mask, 3D and Section for a new blank circular Base](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/screenshots/2026-10-24/desktop-overview.png)
+
+_Real Chromium capture of the **empty project** in WaferCAD's desktop Overview; all four views and the Project/Base controls are visible. Source [main@90fb16836eec](https://github.com/Xiaolong-6/WaferCAD/commit/90fb16836eecca3ebcfdf734b15150232d081c74), 1440 × 960. This is a starting-wafer orientation image, **not** the completed oxide-window exercise or a research-device result._
+
 ## Choose your path
 
 **I want to try the app without coding.** [Open an existing example](Examples-and-Modeling-Limits) and click a project's title or description on the Welcome screen.

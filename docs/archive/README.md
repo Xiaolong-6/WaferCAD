@@ -2,6 +2,21 @@
 
 This is an evidence index, not an alternative product contract. Canonical historical text lives under `docs/archive/`. Original files have been removed; internal documentation links point directly to the archived copies. Branch names, pending gates, test counts and measurements describe the recorded revision. Start from the [documentation map](../README.md) for current behavior.
 
+## Completed-document relocations — 2026-10-24
+
+These records preserve their original audited revisions, measurements and
+Draft/merge history. They are not current product contracts.
+
+- [M0 Workstation DOM inventory](ui-v2/CONTRACT.md) and [JSON inventory](ui-v2/contract.json).
+- [Main view-kit extraction checkpoint](ui-v2/MAIN_ARCHITECTURE_HEALTH_2026-10-11.md).
+- [Merged PR #188 progressive startup evidence](ui-v2/PROGRESSIVE_STARTUP_2026-10-13.md).
+
+- [Merged PR #250 Renderer audit](renderer/PR250_RENDERER_AUDIT_2026-10-15.md) and [revision-scoped acceptance](renderer/PR250_RENDERER_ACCEPTANCE_2026-10-15.md).
+- [2026-10-14 eight-family literature comparison](examples/EXAMPLE_LITERATURE_FIDELITY_2026-10-14.md) — original eight-family evidence, not a nine-family paper match.
+
+For current contracts see [Workstation](../ui-v2/WORKSTATION_CONTRACT.md)
+and [Architecture](../ARCHITECTURE.md).
+
 ## Dated audits relocated on 2026-10-16
 
 - [CI architecture audit](CI_ARCHITECTURE_AUDIT_2026-10-12.md)
@@ -82,7 +97,7 @@ The following are previously committed, revision-specific records preserved in f
 
 ## Relocated full records (2026-10-12)
 
-**68 superseded or revision-specific reports** now have canonical full text under `docs/archive/`. Original dates, SHAs, results, language and completion status remain preserved; relative Markdown links were adjusted for relocation. The former locations are deleted; external URLs to them may no longer work. A dated pass or failure is not current-release acceptance evidence.
+At the original 2026-10-12 lifecycle checkpoint, **68 superseded or revision-specific reports** had been relocated under `docs/archive/`. Additional completed records were moved later, including the 2026-10-24 entries above. Original dates, SHAs, results, language and completion status remain preserved; relative Markdown links were adjusted for relocation. The former locations are deleted; external URLs to them may no longer work. A dated pass or failure is not current-release acceptance evidence.
 
 ### Root-level investigations, completed implementations and research snapshots
 

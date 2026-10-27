@@ -1,6 +1,6 @@
 # Main-only v2 hands-on review
 
-The local checkpoint's existing-file table, legacy-isolation evidence, workaround inventory and approved view-kit extraction are in the [Main architecture health report](../../ui-v2/MAIN_ARCHITECTURE_HEALTH_2026-10-11.md). The extraction section records the latest stage; historical stops below preserve earlier decisions. Mask implementation awaits user approval.
+The local checkpoint's existing-file table, legacy-isolation evidence, workaround inventory and approved view-kit extraction are in the [Main architecture health report](MAIN_ARCHITECTURE_HEALTH_2026-10-11.md). The extraction section records the latest stage; historical stops below preserve earlier decisions. Mask implementation awaits user approval.
 
 Date: 2026-10-11. Base: da37fe4d217d26f23941144908f5abe9d4dc784c. Branch: codex/ui-v2-m3-main-audit-20261010. The latest checkpoint section below supersedes historical behavior/status entries. Product changes are checkpointed locally; no push, merge, baseline replacement or D2 work. Resolve the exact local revision with `git log -1 --format=%H -- docs/ui-v2/MAIN_COURSE_CORRECTION_2026-10-11.md`.
 

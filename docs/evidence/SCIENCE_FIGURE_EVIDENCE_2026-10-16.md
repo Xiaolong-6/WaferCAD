@@ -6,26 +6,40 @@ second set of bundled-example source metadata. The authoritative file is
 Catalog ID, source URI and shipped project path must remain synchronized with
 `site/bundled-examples.js`.
 
-## Initial bounded findings
+## Published catalog and historical evidence boundary
 
-All eight families have existing real browser captures and saved-material
-probes from PR #242. The metadata labels all entries
-`open-paper-match`: this is deliberate. **Neither a passing screenshot job
-nor matching film thickness certifies an original SEM panel**. A figure match
-requires the exact device, scale calibration, XY cut, material stack,
-comparison protocol and quantitative deviations; where the authors have not
-published those inputs, the result remains a surrogate or blocked claim.
+The live `site/bundled-examples.js` catalog and its machine-readable
+provenance matrix currently enumerate **nine** Welcome families, including
+T-CMOS. All nine remain `open-paper-match`. No stored project screenshot,
+material-probe result or matching film thickness alone constitutes
+acceptance of an original paper's SEM or device cross-section. A verified
+paper-figure match requires the exact device, scale calibration, XY cut,
+material stack, comparison protocol and quantitative deviations.
 
-- Sahli Fig. 1/SI S2–S3: the real Si Z-plane is flat and the displayed
-  pyramids are render-only. True facet-normal conformality belongs to #297.
-- Basiri-Esfahani Fig. 2a: the caption shows a similar disk; our 36 µm
-  eight-slice undercut remains an assumption. Continuous release work is #298.
-- Lam: Fig. 1/2 own the physical structures and Fig. 3 is wafer-tier
-  statistics. The local 91/100 nm ILD model is engineering geometry.
-- PERC, MAGIC and TiO₂ use inferred masks. Do not label their placement as
-  originating from original manufacturer GDS.
-- Black-Si/Ge: the Ge two-branch thesis Fig. 15 is separate from the
-  2025 research article in the catalog bibliography.
+**Historical #242 checkpoint:** The first **eight** families had actual
+Chromium captures and saved-material probes at their recorded older
+project SHA(s). Those results remain valid only for their original sources,
+not as current ninth-family or Continuous-release acceptance.
+
+- **Microdisk:** Basiri-Esfahani Fig. 2a depicts a similar sample. The
+  earlier eight-band and subsequently saved 72-band models are historical.
+  The **currently bundled** M08 uses canonical circular Continuous XeF₂
+  removal; its 36 µm lateral/vertical reach remains an assumed engineering
+  parameter. The matrix's old Chromium screenshots validate **only the
+  72-band model**; the new Continuous project has separate native 3D
+  diagnostic evidence, but full normal-origin, exact published-blob and
+  original-paper overlay acceptance remain open.
+- **T-CMOS:** The ninth family has paper-derived vector Mask/structural
+  geometry; there is no independent calibrated paper Fig. 1a/1b overlay
+  establishing an accepted source-figure match.
+- **Sahli:** Rendered pyramids do not establish physical facet-normal
+  conformality, which remains separately bounded by #297.
+- **Lam:** The local 91/100 nm ILD stack is engineering geometry; its
+  original panels report distinct structures and wafer-tier statistics.
+- **PERC, MAGIC and TiO₂:** Masks/routes are inferred when the publication
+  does not supply the corresponding manufacturer GDS.
+- **Black-Si/Ge:** The Ge thesis Fig. 15 A/B branches remain distinct from
+  the 2025 journal article in the bibliography.
 
 ## Gate and ownership
 
@@ -41,8 +55,8 @@ independent interpretation of any mismatch.
 
 ## Acceptance escalation: independently reproducible paper match
 
-The `accepted-paper-match` state is deliberately unused for all eight
-families. The fail-closed metadata contract requires, _before_ this status
+The `accepted-paper-match` state is deliberately unused for all nine
+currently bundled families. The fail-closed metadata contract requires, _before_ this status
 can be assigned:
 
 - A specific original **paper panel** identified in the source citation,
