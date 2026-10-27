@@ -746,7 +746,16 @@ function topologyLineKey(a, b) {
 }
 
 function topologyVerticalPointKey(point) {
-  return `${Number(point[0]).toPrecision(14)},${Number(point[1]).toPrecision(14)}`;
+  // The same circular/tiling junction can arrive as exact zero and as a
+  // sub-femtometre residual after translation or polygon clipping. Without
+  // snapping that numerical zero, each one-ray endpoint becomes a fabricated
+  // full-height exterior crease. The tolerance is 100,000× below the 0.1 nm
+  // persisted geometry quantum; this affects outline ownership keys only.
+  const keyCoordinate = (value) => {
+    const number = Number(value);
+    return (Math.abs(number) < 1e-9 ? 0 : number).toPrecision(14);
+  };
+  return `${keyCoordinate(point[0])},${keyCoordinate(point[1])}`;
 }
 
 function ownedVerticalBorderLines(solids, sidewalls) {
