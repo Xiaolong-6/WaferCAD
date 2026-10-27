@@ -299,8 +299,8 @@ jobs:
     if: ${{ needs.plan.outputs.renderer == 'true' && (github.event_name != 'pull_request' || !github.event.pull_request.draft || github.event.pull_request.number == 290) }}
     runs-on: ubuntu-latest
     # All 20 completed full-quality transparent WebGL toggles remain mandatory.
-    # The reduced desktop framebuffer limits SwiftShader raster cost, not scene
-    # geometry or resource-retention assertions; hangs remain hard failures.
+    # Preserve the established 1440x960 framebuffer and scientific invariants;
+    # hangs and retained-resource failures remain hard failures.
     timeout-minutes: 60
     env:
       WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three

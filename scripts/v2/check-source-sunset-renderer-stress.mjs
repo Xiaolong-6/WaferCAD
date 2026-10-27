@@ -10,10 +10,9 @@ const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4173';
 const output = resolve('test-results/array-renderer');
 await mkdir(output, { recursive: true });
 const startedAt = performance.now();
-// Retention and topology are independent of pixel raster size. This remains a
-// desktop view with the complete 625-site Quality scene and real WebGL frames,
-// but avoids the excess SwiftShader fill cost of a 1440x960 framebuffer.
-const viewport = { width: 1024, height: 768 };
+// Preserve the previously accepted desktop 625-site framebuffer while
+// measuring exact Quality frames and the 20 real interaction toggles.
+const viewport = { width: 1440, height: 960 };
 const report = { result: 'running', viewport, stages: [], errors: [] };
 const browser = await launchBrowser();
 try {
