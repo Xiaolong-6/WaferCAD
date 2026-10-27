@@ -19,7 +19,7 @@
       "three": "0.179.1"
     }
   },
-  "startedAt": "2026-10-27T12:06:14.767Z",
+  "startedAt": "2026-10-27T12:36:41.584Z",
   "checks": [
     {
       "id": "lint",
@@ -31,7 +31,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 5968,
+      "durationMs": 5488,
       "logDigest": "d46391803643bd553cf3c7de1bbada8ee5dd156a742fdb8a9656b12d4c141ba7"
     },
     {
@@ -44,7 +44,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 15359,
+      "durationMs": 16858,
       "logDigest": "7af202ff04a2f06f11b43384352ea678f21e2248c50db67cb4d00c4a92fa69a7"
     },
     {
@@ -57,7 +57,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 450,
+      "durationMs": 451,
       "logDigest": "63b5e31b6b7f12ded1bd4ee99b1d9c8929772836d7b1499eb71183011d7979f7"
     },
     {
@@ -69,10 +69,10 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 137513,
-      "logDigest": "95e4e7cec27ea60700bd9eb545909d30d29c4a138bcedad86790734dacf5fbae"
+      "durationMs": 145562,
+      "logDigest": "838c8758c3c2be7c379cbf7290d20ca18e99ade359ebd88a38d52d1844602afb"
     }
   ],
-  "finishedAt": "2026-10-27T12:08:54.061Z",
-  "transcriptDigest": "4ac84c453196b958405136c95c9f780efed8f3a622d7a16ab89d73830fb359e7"
+  "finishedAt": "2026-10-27T12:39:29.946Z",
+  "transcriptDigest": "4e33e8ee3ef35624e43b04a41b2adee83ca32b84da76de3569fb8f24778ef878"
 }
