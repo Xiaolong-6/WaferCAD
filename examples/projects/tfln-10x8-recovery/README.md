@@ -46,11 +46,24 @@ and exactly collinear intermediate points do not change the comparison geometry.
 
 The original parameter generator can be run with Shapely 2.1.2 in a temporary
 directory; pass its resulting `mask_input.json` as the optional second argument
-to `rebuild.mjs`. The same reference comparisons must pass. The snapshot-to-
-project path has been independently exercised; parameter regeneration still
-requires a Shapely-equipped environment and must not be represented as tested
-where that dependency is unavailable.
+to `rebuild.mjs`. The same reference comparisons must pass. With Shapely 2.1.2
+and GEOS 3.13.1, the regenerated `mask_input.json` and `routes.json` were
+byte-identical to the original inputs, and the resulting masks passed the native
+project and GDS/OAS rebuild comparisons.
 
-## Visual / CI limitations
+## Visual / CI evidence
 
-The complete 10×8 and two-disk ROI were rendered in real headed Chromium / pinned Three.js 0.179.1, but only using the `about:blank` fallback. Normal-origin Workstation Open, Worker / History / Recovery and interactive Clean/Structure/X-Ray remain unverified due to policy-blocked browser origin. Full-array borders are dense; do not delete physical M1 fanout trenches as if they were false array seams. **This PR remains Draft until final quality and scientific/browser acceptance.**
+The rebuilt project was opened in the real Workstation on a local HTTP origin,
+and Main, Mask, 3D and Section were captured using pinned Chromium 140 and
+Three.js 0.179.1 with software WebGL. The original TFLN project was also opened
+through the project Worker, saved and restored through Recovery, and inspected
+at 55% opacity in Clean, Structure and X-Ray modes for both the full array and
+a two-disk ROI. A section through two disks was inspected. Separate real-app
+checks covered History/Recovery lease behavior, a partial-height two-site array,
+and a rough photodetector ROI with Z-break; presentation changes preserved the
+underlying model. These software-rendered checks are not a GPU or browser
+first-frame performance guarantee.
+
+Full-array borders are dense; do not delete physical M1 fanout trenches as if
+they were false array seams. Ready risk-targeted CI and merge approval are
+required before merge.
