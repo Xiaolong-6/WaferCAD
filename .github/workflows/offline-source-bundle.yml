@@ -75,17 +75,20 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
-      - name: Transfer exact locked Playwright packages (no tests)
+      - name: Transfer exact locked Playwright and Acorn packages (no tests)
         shell: bash
         run: |
           npm pack playwright@1.55.1 --ignore-scripts --pack-destination .
           npm pack playwright-core@1.55.1 --ignore-scripts --pack-destination .
+          ACORN_VERSION=$(node -p "require('./package-lock.json').packages['node_modules/acorn'].version")
+          npm pack "acorn@$ACORN_VERSION" --ignore-scripts --pack-destination .
           node - <<'JS'
           const fs = require('node:fs');
           const crypto = require('node:crypto');
           const lock = JSON.parse(fs.readFileSync('package-lock.json'));
-          for (const name of ['playwright', 'playwright-core']) {
-            const file = `${name}-1.55.1.tgz`;
+          for (const name of ['playwright', 'playwright-core', 'acorn']) {
+            const version = lock.packages[`node_modules/${name}`].version;
+            const file = `${name}-${version}.tgz`;
             const actual = 'sha512-' + crypto.createHash('sha512').update(fs.readFileSync(file)).digest('base64');
             const expected = lock.packages[`node_modules/${name}`].integrity;
             if (actual !== expected) throw Error(`Pinned archive mismatch: ${name}`);
@@ -93,10 +96,11 @@ jobs:
           JS
       - uses: actions/upload-artifact@v6
         with:
-          name: offline-playwright-1.55.1
+          name: offline-pinned-playwright-acorn-${{ github.event.pull_request.head.sha }}
           path: |
             playwright-1.55.1.tgz
             playwright-core-1.55.1.tgz
+            acorn-*.tgz
           if-no-files-found: error
           retention-days: 3
           compression-level: 0

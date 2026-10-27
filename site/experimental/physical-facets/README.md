@@ -3,7 +3,7 @@
 The regular WaferCAD **Roughness pyramid renderer remains the production
 solution** for fast visual reconstruction. These 3D physical-facet prototypes
 are **not** a default mode, not an example migration, and not required by
-the eight bundled literature projects.
+the nine bundled literature projects.
 
 This folder groups the analytical facet heightfield, exact Si/SiO₂ spatial
 material ownership, closed sampled coating surfaces, opt-in restricted

@@ -48,13 +48,13 @@ The following retained documents remain in their existing locations. **Classific
 
 ### UI v2 source-derived references and released gate ownership (10)
 
-- [`docs/ui-v2/CONTRACT.md`](../ui-v2/CONTRACT.md) — UI reference / review against released UI
+- [`docs/ui-v2/CONTRACT.md`](ui-v2/CONTRACT.md) — UI reference / review against released UI
 - [`docs/ui-v2/FEATURE_INVENTORY.md`](ui-v2/FEATURE_INVENTORY.md) — UI reference / review against released UI
 - [`docs/ui-v2/IMPLICIT_DEPS.md`](ui-v2/IMPLICIT_DEPS.md) — UI reference / review against released UI
 - [`docs/ui-v2/ISSUES.md`](ui-v2/ISSUES.md) — UI reference / review against released UI
 - [`docs/ui-v2/M4_ACCEPTANCE_2026-10-11.md`](ui-v2/M4_ACCEPTANCE_2026-10-11.md) — UI reference / review against released UI
 - [`docs/archive/ui-v2/M5_LITE_HANDOFF_2026-10-12.md`](ui-v2/M5_LITE_HANDOFF_2026-10-12.md) — UI reference / review against released UI
-- [`docs/ui-v2/MAIN_ARCHITECTURE_HEALTH_2026-10-11.md`](../ui-v2/MAIN_ARCHITECTURE_HEALTH_2026-10-11.md) — UI reference / review against released UI
+- [`docs/ui-v2/MAIN_ARCHITECTURE_HEALTH_2026-10-11.md`](ui-v2/MAIN_ARCHITECTURE_HEALTH_2026-10-11.md) — UI reference / review against released UI
 - [`docs/ui-v2/PLACEMENT_MAP.md`](ui-v2/PLACEMENT_MAP.md) — UI reference / review against released UI
 - [`docs/ui-v2/SYNC_TABLE_2026-10-11.md`](ui-v2/SYNC_TABLE_2026-10-11.md) — UI reference / review against released UI
 - [`docs/ui-v2/handoff/mask-browser-failure.txt`](ui-v2/handoff/mask-browser-failure.txt) — UI reference / review against released UI

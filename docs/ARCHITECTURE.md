@@ -8,6 +8,27 @@ Product positioning is **Visual Process CAD / geometric process emulation**. The
 
 The product is centered on four synchronized views: Mask, 3D, Main, and Section A–B.
 
+## Current Workstation and rendering boundaries
+
+The [production Workstation contract](ui-v2/WORKSTATION_CONTRACT.md)
+owns stable shell/view slots, Project/Process/History controllers,
+desktop/compact navigation and cross-tab persistence. The
+[Renderer + Section contract](renderer/RENDERER_CONTRACT.md)
+owns the split between the canonical physical material surface
+and display-only first-frame sketches, async exact surface-plan
+Workers, rough LOD, real painted-frame readiness, 3D ROI and
+GLB-versus-PNG semantics. The
+[Continuous release contract](science/CONTINUOUS_RELEASE_CONTRACT.md)
+covers the distinct `vector-continuous-etch-v1` material owner.
+
+A progressive cap sketch is never persisted, queried for physics
+or used for GLB/PNG export. The renderer's exact ownership Worker
+does not substitute for a Process Worker transaction; Section
+uses the canonical material owner, not the current 3D camera mesh.
+3D PNG requires a painted exact scene and temporary capture-state
+restoration; physical GLB remains model-derived. These contracts
+take precedence over dated M0/PR acceptance notes.
+
 ## Core geometry
 
 The canonical model is a **vector 2.5D region stack**.

@@ -1,6 +1,6 @@
 # CI routing
 
-WaferCAD keeps the full regression inventory, but pull requests do not run every browser suite unconditionally. The browser workflow first classifies the changed paths with `scripts/ci-test-plan.mjs`, then runs the narrowest regression scopes that own those changes.
+WaferCAD keeps the full regression inventory without running Browser/science suites automatically on ordinary Draft pushes. The Ready acceptance owner uses `scripts/ci-test-plan.mjs` to classify cumulative changed paths, then runs only the selected reusable gates. The daily controller and Main release have separate exact-SHA execution rules.
 
 ## Authoritative execution strategy (effective 2026-10-22)
 
@@ -56,10 +56,7 @@ repository settings and **cannot be guaranteed by YAML alone**.
 
 ---
 
-**Historical implementation notes below:** older paragraphs describing Draft
-Browser automation, automatic specialized PR replay, and weekly independent
-Browser schedules document the previous policy and are superseded by the
-2026-10-22 routing table above. Do not use them to infer current triggers.
+**Authority note:** The table above and `AGENTS.md` govern execution. The sections below detail local verification, accepted visual evidence, Ready routing and release. Any historical references to automatic Draft/weekly Browser runs are explicitly superseded by the 2026-10-22 policy.
 
 ## Local Quality evidence
 
@@ -208,86 +205,40 @@ blocks `localhost` cannot complete this capture; a geometry-only SVG/VTK image
 must not be reported as a substitute. See
 [Offline Visual Kernel](tools/OFFLINE_VISUAL_KERNEL.md) for separate diagnostic use.
 
-`visual-first.yml` automatically captures applicable **Draft** PRs, and
-can also be dispatched manually. It never publishes and cannot approve
-the PR. Draft `Quality` accepts matching Draft/full evidence or executes Draft checks;
-Ready for Review requires matching full evidence or executes full checks. The general Browser regression keeps smoke in Draft,
-and retains impact-selected Process Geometry, History and Persistence gates
-when needed to protect scientific invariants and stored project data.
-Heavy shared UI v2 Stage C/M4, Main/Mask/Mobile, D1, 3D Phase B and non-science Browser
-regressions defer until Ready for Review or explicit manual/release triggers.
-Other science-specific workflows may still run on Draft if their own
-contracts require it.
+**Superseded Draft-routing text (pre-2026-10-22):** Older versions of
+`visual-first.yml` automatically captured Draft PRs and used a remote
+Quality fallback. Neither behavior is the present policy. Ordinary Draft
+pushes now verify matching local Draft/full Quality receipts without
+automatically running Browser/Renderer/Example/science suites. The
+`visual-first.yml` workflow remains available by explicit dispatch where
+authorized; Ready impact and the daily controller own the current targeted
+and integration gates. Missing/stale evidence is fixed locally, not rerun
+remotely.
 
 The exact `main` release chain is unchanged: Quality, targeted Browser,
 real v2 Stage C/M4, selected scientific checks, staged Pages artifact and
 deployment verdict remain mandatory. A Draft skipped check means
 **unverified**, not passed; no one may merge on the basis of Draft green alone.
 
-## Narrow PR path routing
+## Current Ready impact routing
 
-**GitHub path filters apply to the cumulative base-to-HEAD pull-request
-diff**, not only to the latest documentation-only commit. If earlier commits
-in the same PR touched `scripts/v2/**`, workflows or application owners,
-later prose/formatting pushes can select the same UI/3D jobs again. The
-M3D conformal workflow also explicitly selects `docs/wiki/**`.
-Inspect the complete PR file diff and workflow `paths` filters before
-pushing; batch related documentation corrections and validate formatting
-and references locally first. Retain mandatory scientific/Recovery and
-final release gates; a skipped workflow is not an acceptance pass.
+The governing route for Ready PRs is `ready-impact.yml`. Its
+`scripts/ci-test-plan.mjs` classifier selects owner-specific acceptance
+gates based on the cumulative base-to-HEAD change set, not just the last
+commit. Ready PRs require a valid **full** local verification receipt.
+Only the selected reusable owner suites execute; the fixed
+`Ready impact verdict` rejects failed, cancelled or missing selected jobs.
+An unselected gate's skip is not a pass.
 
-Only production/source owners trigger heavyweight PR UI acceptance. A change to
-`site/tests/**` or the standalone screenshot collector does not start Stage C,
-Main/Mask, D1, Phase B or Example replay. The tests themselves still run under
-Quality. Stage C listens to `scripts/v2/**` and browser helpers, rather than
-all maintenance scripts. Example README/provenance edits do not select browser
-replay, while project files and fixtures still do.
-
-The Browser planner compares base/head `package.json` for PRs. It de-scopes
-**only** the addition of the exact `preview:visual` command. Dependency changes,
-lockfile changes, existing test command changes, missing history and all other
-npm script changes fail closed to the full browser suite. Reusable release gates,
-manual runs and required scientific ownership are unchanged. New configuration
-tests explicitly guard these assumptions.
-
-## Pull-request gates
-
-`Quality` is an unconditional gate for every pull request into `main`, including documentation-only changes, and retains its stable check name. Draft prefers current local Draft/full proof and Ready prefers full proof. If the matching proof is absent or stale, CI performs the identical required checks itself on the exact integration tree. A Draft report does not certify the complete Node suite. Repository ruleset configuration is a separate GitHub administration action.
-
-`Browser regression` always runs the small UI smoke when application/browser-test changes trigger the workflow. Workstation integration and degraded-mode resilience are selected only when their owned startup/shell or Three/WebGL paths change.
-
-The planner then enables focused suites as needed:
-
-| Change area                                         | Additional browser coverage                                                     |
-| --------------------------------------------------- | ------------------------------------------------------------------------------- |
-| History, replay, project History controls           | History + bundled examples                                                      |
-| Persistence, project IO/schema, startup/recovery    | Persistence + bundled examples                                                  |
-| Workstation/startup shell                           | Workstation integration; resilience only for Three/WebGL bootstrap paths        |
-| Pointer/view/layout controls                        | Interaction, and product layout only for layout-owning files                    |
-| Bundled example fixtures/metadata                   | Bundled examples                                                                |
-| GDS/OAS/layout pipeline                             | Interaction + product layout; KLayout keeps its separate compatibility workflow |
-| Renderer/Section/model-view geometry                | Renderer semantic regression; stress/gallery cases on weekly/manual full runs   |
-| Process/model/vector geometry                       | Process Geometry core browser path; full permutations on weekly/manual runs     |
-| Dependency lockfiles or shared browser-test helpers | Full browser regression                                                         |
-
-The real UI v2 [Stage C/M4 workflow](../.github/workflows/ui-v2-stage-c-m4.yml) runs for applicable PRs. Production publication calls this same suite as a reusable workflow, so it must pass at the exact `main` commit before Pages can deploy. It runs real v2 Startup, cross-interface Recovery, synchronization, review interactions, M4 projects and M2 structural layout parity. Ordinary Browser regression remains independent and routes former Legacy command names through native-v2 scientific owners. Its generated screenshots remain review artifacts rather than approved pixel baselines.
-
-Workflow/planner-only changes stay on UI smoke. The planner itself has Node unit tests, while the weekly/manual full sweep validates the complete job matrix. Shared scientific browser helpers that are consumed by Process, Examples, and Product Review remain full-suite triggers, and renderer ownership explicitly includes the Section/plan renderer, rough-mesh worker/geometry, surface renderer, and annotation renderer. Process Geometry remains reserved for geometry-impacting changes and explicit full-regression events.
-
-## Draft PRs and dedicated acceptance workflows
-
-Draft PRs still receive the applicable fast Quality/targeted browser checks. Heavy acceptance is deferred by explicit workflow conditions until `ready_for_review`:
-
-| Workflow                                                                                | Actual trigger and Draft behavior                                                                                                   |
-| --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| [Browser regression](../.github/workflows/browser-regression.yml)                       | Impact-selected PR runs, production-release calls plus weekly/manual full runs; the separate 625-site renderer job skips Draft PRs. |
-| [Example Recipe reconstruction](../.github/workflows/example-recipe-reconstruction.yml) | Path-filtered PR/manual; fixture verification and nine example/Variant Run All jobs skip Draft PRs. No main-push trigger.           |
-| [Native Fig3 full replay](../.github/workflows/native-fig3-full-replay.yml)             | Path-filtered PR/manual; skips Draft PRs. No main-push trigger.                                                                     |
-| [Recipe safety](../.github/workflows/process-recipe-safety.yml)                         | Path-filtered PR and the explicitly named Recipe feature branches; skips Draft PRs. No main-push trigger.                           |
-| [Pre-main full inventory](../.github/workflows/pre-main-integration-validation.yml)     | Manual only; does not run just because a PR is opened or main changes.                                                              |
-| [M3D Welcome integration](../.github/workflows/m3d-example-integration.yml)             | The named M3D feature branch, PRs targeting the named Recipe feature branch, or manual dispatch; not a general main gate.           |
-
-A skipped/deferred check is unverified, not passed. Marking a PR ready triggers its existing final-review jobs; direct main publication does not implicitly run every dedicated replay workflow. Costly manual acceptance still follows user authorization.
+Typical ownership: Process/Model changes select scientific/geometry
+checks; History, Recovery and Worker changes select the corresponding
+transaction and normal-origin suites; UI, Renderer and Example changes
+select actual-browser owners. Dependency/runner infrastructure changes
+may require broader gates. The 02:30 UTC daily controller performs the
+independent full inventory at its tested SHA. The old automatic Draft
+Browser routing and fallback policy is historical and **must not** be
+reintroduced via workflow path triggers. See the
+[authoritative execution table](#authoritative-execution-strategy-effective-2026-10-22).
 
 ## Documentation and publication workflows
 
@@ -323,7 +274,7 @@ GPU parity.
 
 ## MAGIC-1000 v2 visualization owner
 
-`magic1000-candidate.yml` is a read-only, path-gated PR and manual acceptance
+`magic1000-candidate.yml` is a read-only **manual-dispatch** acceptance
 for the current v2 Section/3D preview of MAGIC-1000. It replaces the obsolete
 self-pushing feature-branch workflow, drops repository write permission, and
 uploads screenshots/reports without rewriting the committed thumbnail.
@@ -331,46 +282,29 @@ uploads screenshots/reports without rewriting the committed thumbnail.
 intentional, locally reviewed image regeneration. Browser rendering does not
 prove agreement with the paper's device microscopy.
 
-## Historical Project compatibility
+## Historical project compatibility and heavy-process ownership
 
-The [Legacy project compatibility acceptance](../.github/workflows/legacy-project-compat.yml)
-is a path-gated PR workflow, independent from the ordinary Pages release. It imports the
-SHA-256-verified historical `shared-assets-v1` project in the real v2 Workstation
-and verifies autosave, reload, and Recovery preservation. It remains a release-relevant regression even though the executable Legacy
-editor has already been removed from the active checkout. This gate supplements
-current project-format and controller tests; it does not establish exact parity
-with every historical Legacy UI gesture or scientific browser scenario.
-
-## Heavy Process Geometry job
-
-`npm run test:ui:process` is isolated in its own conditional GitHub Actions job. It no longer adds several minutes to unrelated pull requests.
-
-When process/model geometry changes require it, the job runs in parallel with the normal targeted browser job. This preserves the scientific process-geometry gate while reducing pull-request wall time.
-
-## Full regression events
-
-The complete browser suite, including Process Geometry, runs for:
-
-- the weekly Browser regression schedule (Monday at `02:17 UTC`);
-- manual `workflow_dispatch` runs;
-- pull requests or production-release calls whose changed paths conservatively select the full suite, such as dependency lockfiles or shared browser-test infrastructure.
-
-A production-release call computes changed paths from the previous `main` revision to the candidate and feeds them through the same impact planner as pull requests. Release UI v2 acceptance runs on each product publication, while Browser tests remain impact-selected. Production Pages waits for these suites and the release Quality gate; there is no independent, racing main-push deployment.
-
-This keeps PR and main validation change-aware while leaving the expensive unconditional integration sweep to weekly/manual runs.
+Legacy project compatibility, native Browser smoke, Process geometry, and
+History/Recovery tests remain required **where selected by the Ready
+impact owner, daily integration or exact-SHA release chain**. They do
+not run automatically just because an ordinary Draft PR was pushed.
+Use `npm run test:ui:state`, the smallest matching Node/science
+owner, and local real Chromium diagnostics before an authorized
+remote acceptance run. The original broad weekly Browser schedule and
+Draft-trigger rules were retired by the 2026-10-22 policy.
 
 ## Cost controls
 
 - Quality and release Quality validate local evidence without installing npm or repeating the local Node/lint/format/docs gate.
 - Browser PR jobs do not repeat the locally executed Node gate certified by `Quality`.
-- Node tests run inside independent weekly/manual Browser regression, but are skipped in the Pages release call where the release Quality job already owns them.
+- The daily full integration controller intentionally reruns the full Node suite on its tested SHA. Ready Quality is proof-only; release gates follow their own exact-source verification and selected execution paths.
 - Chromium and npm downloads remain cached.
 - Normal targeted suites share one Chromium job to avoid repeated setup cost.
-- Human-review screenshot galleries are disabled on pull requests and targeted main pushes; they are retained for weekly/manual full runs.
-- Renderer stress cases and the full Process Geometry permutation set are retained for weekly/manual full runs; PRs and targeted main pushes use semantic/core subsets.
-- Process Geometry is split only when selected because its real worker/process path remains materially heavier than ordinary UI checks.
-- Node-test-only changes under `site/tests/` do not trigger Browser regression by themselves.
-- KLayout parser/browser compatibility stays path-filtered on PRs and is reused as a required same-SHA release gate on layout/interop changes.
+- Human-review screenshot galleries are not a Draft default; they are reserved for explicitly selected Ready, daily or manual full runs.
+- Renderer stress cases and the full Process Geometry permutation set belong to the daily/manual full inventory; Ready PRs use risk-selected owners.
+- Process Geometry is invoked only by the selected acceptance owner, daily controller or approved manual/release gate, never as a Draft fallback.
+- Node-test-only changes under `site/tests/` should use their local owning Node suite; browser acceptance still follows the Ready/release risk selector.
+- KLayout parser/browser compatibility is selected by the Ready risk router and reused as a same-SHA release gate on layout/interop changes; it is not an automatic Draft PR job.
 - Main/Mask and Recipe browser acceptances are similarly reusable release gates. They do not run unconditionally for documentation-only changes.
 
 ## Local equivalents
