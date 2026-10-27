@@ -1,5 +1,5 @@
 // Current native-v2 literature review after the Legacy application was retired.
-// Reads the published nine-family provenance register; photographs the actual
+// Reads the published ten-family provenance register; photographs the actual
 // Workstation Section for every family, and selected production 3D renderers.
 // Does not certify the original publication SEM or infer unavailable author masks.
 import assert from 'node:assert/strict';
@@ -8,7 +8,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4173';
-const output = resolve('test-results/literature-figure-cuts/native-v2-nine-family');
+const output = resolve('test-results/literature-figure-cuts/native-v2-ten-family');
 const cuts = Object.freeze({
   'photodetector-literature': { a: [-3400, 0], b: [3400, 0] },
   'perc-point-contact-solar-cell': { a: [-9300, -9000], b: [-8700, -9000] },
@@ -19,13 +19,14 @@ const cuts = Object.freeze({
   'three-tier-silicon-jlfets': { a: [-720, 0], b: [720, 0] },
   'tio2-metalens-four-unit': { a: [-2.3, 0.1875], b: [2.3, 0.1875] },
   'tcmos-ternary-inverter-130nm': { a: [-6, -1.2], b: [6, -1.2] },
+  'suspended-tfln-microrings-10x8': { a: [-545, -1620], b: [-315, -1620] },
 });
 const threeSamples = new Set(['suspended-silica-microdisk', 'm3d-selfpowered-heterogeneous-ic']);
 const hash = (data) => createHash('sha256').update(data).digest('hex');
 
 export function validateNativeLiteratureCases(register) {
   assert.equal(register.schema, 'wafercad-literature-figure-provenance-v1');
-  assert.equal(register.entries.length, 9, 'Expected nine literature source families');
+  assert.equal(register.entries.length, 10, 'Expected ten literature source families');
   assert.deepEqual(
     new Set(register.entries.map((entry) => entry.id)),
     new Set(Object.keys(cuts)),
