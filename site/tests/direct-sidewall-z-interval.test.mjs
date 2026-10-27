@@ -5,7 +5,7 @@ import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 await loadGeometryKernel();
 const { sidewallVisibleHeightIntervals } = await import('../direct-sidewall-aperture.js');
 const { createModel, applyOperation } = await import('../model.js');
-const { rectMulti } = await import('../vector-geometry.js');
+const { pointInMulti, rectMulti } = await import('../vector-geometry.js');
 const { validateProcessModel, validateProjectFile } = await import('../project-schema.js');
 const { prepareProjectForExport, expandProjectStorage } = await import('../project-io.js');
 
@@ -95,24 +95,37 @@ test('native material stack saves and restores partial-height wall with an actua
   );
 });
 
-test('lengthwise occlusion, wall-intersecting resist, and nonrectangular partial mask fail closed', () => {
+test('rectangular lengthwise clipping is physical; invalid upper masks fail closed', () => {
+  const m = model();
+  const clipped = applyOperation(m, {
+    type: 'add', name: 'Al', thickness: 0.04,
+    area: m.boundary, incidence: beam(rectMulti(1.2, 1, 2.8)),
+  });
+  assert.equal(clipped.changed, true, clipped.error);
+  const walls = m.regions.filter((r) =>
+    r.stack.some((segment) => segment.layerId === clipped.layerId && segment.role === 'direct-sidewall')
+  );
+  assert.equal(walls.length, 1);
+  assert.ok(pointInMulti([2.02, 0], walls[0].geom));
+  assert.ok(!pointInMulti([2.02, 0.75], walls[0].geom));
+  validateProcessModel(m);
+
   const triangle = [[[[2.2, -2], [3.4, -2], [2.8, 2], [2.2, -2]]]];
   const cases = [
-    beam(rectMulti(1.2, 1, 2.8)),
     beam(rectMulti(2, 3, 2.8), { apertureStack: [
       aperture(rectMulti(2, 3, 2.8), 5.5, 6.6),
     ] }),
     beam(triangle),
   ];
   for (const incidence of cases) {
-    const m = model();
-    const original = structuredClone(m);
-    const r = applyOperation(m, {
+    const rejected = model();
+    const original = structuredClone(rejected);
+    const result = applyOperation(rejected, {
       type: 'add', name: 'Al', thickness: 0.04,
-      area: m.boundary, incidence,
+      area: rejected.boundary, incidence,
     });
-    assert.equal(r.changed, false);
-    assert.deepEqual(m, original);
+    assert.equal(result.changed, false);
+    assert.deepEqual(rejected, original);
   }
 });
 

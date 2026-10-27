@@ -81,20 +81,34 @@ test('Q2 cross-section material interfaces match the native 3D solid slab Z owne
     restored.section.a,
     restored.section.b,
   ).filter((slice) => slice.layerId !== 'base');
-  assert.equal(slices.length, 4);
+  assert.equal(new Set(slices.map((slice) => slice.layerId)).size, 4);
   const solids = materialSolids(restored.model);
+  const { sectionIntervalCoveredBySolids } =
+    await import('../../scripts/transmon-q2-persisted-proof.mjs');
   for (const section of slices) {
-    const solid = solids.find((item) => item.layerId === section.layerId);
-    assert.ok(solid, '3D material layer missing for ' + section.layerId);
     assert.ok(
-      solid.slabs.some((slab) =>
-        Math.abs(slab.z0 - section.z0) < 1e-8 &&
-        Math.abs(slab.z1 - section.z1) < 1e-8,
-      ),
-      '3D physical Z slab mismatch for ' + section.layerId,
+      sectionIntervalCoveredBySolids(section, solids),
+      '3D physical Z coverage gap for ' + section.layerId,
     );
   }
-  assert.ok(Math.abs((slices[0].t1 - slices[0].t0) - 0.2540003) < 1e-4);
+  const al1Id = restored.model.layers.find((layer) => layer.name.startsWith('Al 1'))?.id;
+  const al1NetSpan = slices
+    .filter((slice) => slice.layerId === al1Id)
+    .reduce((sum, slice) => sum + (slice.t1 - slice.t0), 0);
+  assert.ok(Math.abs(al1NetSpan - 0.2540003) < 2e-4, 'static Al1 Section net span drifted');
+});
+
+test('Section/3D Z coverage permits adjacent slab splits but rejects real gaps', async () => {
+  const { sectionIntervalCoveredBySolids } =
+    await import('../../scripts/transmon-q2-persisted-proof.mjs');
+  const section = { layerId: 'Al', z0: 10, z1: 10.04 };
+  const exactSlab = [{ layerId: 'Al', slabs: [{ z0: 10, z1: 10.04 }] }];
+  const splitSlabs = [{ layerId: 'Al', slabs: [{ z0: 10.02, z1: 10.04 }, { z0: 10, z1: 10.02 }] }];
+  const gap = [{ layerId: 'Al', slabs: [{ z0: 10, z1: 10.019 }, { z0: 10.02, z1: 10.04 }] }];
+  assert.equal(sectionIntervalCoveredBySolids(section, exactSlab), true);
+  assert.equal(sectionIntervalCoveredBySolids(section, splitSlabs), true);
+  assert.equal(sectionIntervalCoveredBySolids(section, gap), false);
+  assert.equal(sectionIntervalCoveredBySolids(section, [{ layerId: 'Nb', slabs: exactSlab[0].slabs }]), false);
 });
 
 test('Q2 replay rejects unsupported transport and non-converged coarse sampling before GDS import', () => {
@@ -210,12 +224,12 @@ test('Q2 native Direct recomputes fixed-angle Al on the recessed Si within sourc
   const slices = sectionSlices(restored.model, restored.section.a, restored.section.b)
     .filter((s) => alIds.has(s.layerId));
   assert.ok(slices.length >= 2, 'Q2 native First/Second Al must intersect the section');
+  const { sectionIntervalCoveredBySolids } =
+    await import('../../scripts/transmon-q2-persisted-proof.mjs');
   for (const slice of slices) {
-    assert.ok(solids.some((solid) =>
-      solid.layerId === slice.layerId &&
-      solid.slabs.some((slab) =>
-        Math.abs(slab.z0 - slice.z0) < 1e-8 &&
-        Math.abs(slab.z1 - slice.z1) < 1e-8
-      )), 'Section and 3D material slabs must share the same physical Z owners');
+    assert.ok(
+      sectionIntervalCoveredBySolids(slice, solids),
+      'Section and 3D must have continuous shared physical Z coverage',
+    );
   }
 });

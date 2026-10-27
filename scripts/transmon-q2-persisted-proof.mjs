@@ -13,6 +13,32 @@ const MAX_AREA_ERROR_UM2 = 2e-8; // Two area cells at 0.1 nm XY grid pitch.
 const Z_ERROR_UM = 1e-8;
 const SOURCE_SHA256 = '6e9db7d506e17f82fd22250db9a380a420b2a1088bac4a33b8c747930e9d5c02';
 
+/** A Section interval may be represented by several adjacent 3D material slabs.
+ * Reject missing Z coverage, not legitimate splits at other material interfaces.
+ */
+export function sectionIntervalCoveredBySolids(section, solids, tolerance = Z_ERROR_UM) {
+  if (
+    !Number.isFinite(section?.z0) ||
+    !Number.isFinite(section?.z1) ||
+    section.z1 <= section.z0 ||
+    !(tolerance >= 0)
+  )
+    return false;
+  const slabs = solids
+    .filter((solid) => solid.layerId === section.layerId)
+    .flatMap((solid) => solid.slabs || [])
+    .filter((slab) => Number.isFinite(slab.z0) && Number.isFinite(slab.z1))
+    .sort((a, b) => a.z0 - b.z0 || a.z1 - b.z1);
+  let coveredTop = section.z0;
+  for (const slab of slabs) {
+    if (slab.z1 <= coveredTop + tolerance) continue;
+    if (slab.z0 > coveredTop + tolerance) return false;
+    coveredTop = Math.max(coveredTop, slab.z1);
+    if (coveredTop >= section.z1 - tolerance) return true;
+  }
+  return false;
+}
+
 function requireInvariant(ok, message) {
   if (!ok) throw new Error('Q2 persisted artifact: ' + message);
 }
@@ -87,21 +113,7 @@ export function verifyPersistedQ2Project(storedJson, report) {
 
   const slices = sectionSlices(model, project.section.a, project.section.b);
   const solids = materialSolids(model);
-  let unmatched = 0;
-  for (const slice of slices) {
-    if (
-      !solids.some(
-        (solid) =>
-          solid.layerId === slice.layerId &&
-          solid.slabs.some(
-            (slab) =>
-              Math.abs(slab.z0 - slice.z0) < Z_ERROR_UM &&
-              Math.abs(slab.z1 - slice.z1) < Z_ERROR_UM,
-          ),
-      )
-    )
-      unmatched++;
-  }
+  const unmatched = slices.filter((slice) => !sectionIntervalCoveredBySolids(slice, solids)).length;
   requireInvariant(unmatched === 0, `${unmatched} Section/3D physical material slabs differ`);
   requireInvariant(
     slices.some((slice) => slice.layerId === alIds[0]) &&

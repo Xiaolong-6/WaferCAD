@@ -127,7 +127,25 @@ async function main() {
       }
     }
 
-    const testOutput = runNode(['--test', ...TESTS], { WAFERCAD_TRANSMON_GDS: args.gds });
+    // Generate the exact author-source ROI fixture, so its science test must
+    // execute instead of becoming an unnoticed environment-driven skip.
+    const roi = join(args.outputDir, 'original-q2-roi.gds');
+    runNode(
+      [
+        'scripts/transmon-gds-q2-roi.mjs',
+        '--input',
+        args.gds,
+        '--output',
+        roi,
+        '--expected-sha256',
+        SOURCE_SHA256,
+      ],
+      {},
+    );
+    const testOutput = runNode(['--test', ...TESTS], {
+      WAFERCAD_TRANSMON_GDS: args.gds,
+      WAFERCAD_TRANSMON_Q2_ROI_GDS: roi,
+    });
     const match = testOutput.match(
       /# tests (\d+)[\s\S]*?# pass (\d+)[\s\S]*?# fail (\d+)[\s\S]*?# skipped (\d+)/,
     );
