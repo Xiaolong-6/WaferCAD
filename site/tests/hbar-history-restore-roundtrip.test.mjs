@@ -29,7 +29,7 @@ test('HBAR author History imports atomically and restores every physical Step wi
   });
   const imported = await manager.importRecordsAsync(project.snapshots, project.snapshotBranches);
   assert.equal(imported, project.snapshots.length);
-  assert.equal(manager.exportBranchState().nodes.length, 12);
+  assert.equal(manager.exportBranchState().nodes.length, project.processRecipe.steps.length);
   const before = manager.exportBranchState();
   const head = before.branches.find((branch) => branch.id === 'main');
   assert.equal(head.headNodeId, before.nodes.at(-1).id);
@@ -39,15 +39,17 @@ test('HBAR author History imports atomically and restores every physical Step wi
     const isolated = manager.readProcessNodeState(node.id);
     assert.deepEqual(isolated.model, node.state.model);
   }
-  assert.equal(manager.restoreProcessNode(before.nodes[9].id), true);
+  const priorRecord = before.nodes.find((node) => node.id === 'hbar-stage-09');
+  assert.ok(priorRecord);
+  assert.equal(manager.restoreProcessNode(priorRecord.id), true);
   const priorEtch = structuredClone(current.model);
-  assert.equal(manager.restoreProcessNode(before.nodes[11].id), true);
+  assert.equal(manager.restoreProcessNode(before.nodes.at(-1).id), true);
   assert.deepEqual(
     current.model,
     project.model,
     'Redo to HBAR release HEAD lost physical geometry',
   );
-  assert.equal(manager.restoreProcessNode(before.nodes[9].id), true);
+  assert.equal(manager.restoreProcessNode(priorRecord.id), true);
   assert.deepEqual(
     current.model,
     priorEtch,
@@ -66,7 +68,7 @@ test('HBAR author History imports atomically and restores every physical Step wi
   );
 });
 
-test('HBAR author Project export/Open preserves all 12 History nodes and physical release owner', async () => {
+test('HBAR author Project export/Open preserves all 11 Recipe History nodes and physical release owner', async () => {
   const project = await readProjectFile(fileLike(originalBytes));
   const encoded = Buffer.from(serializeProject(project));
   const reopened = await readProjectFile(fileLike(encoded));

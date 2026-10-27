@@ -229,13 +229,14 @@ export async function buildHbarTransducer(sourceBytes) {
     return state;
   }
   function append(operation) {
-    const id = `hbar-stage-${String(nodes.length).padStart(2, '0')}`;
+    // Step 0 is displayed synthetically by the Workstation; only Recipe Steps are persisted.
+    const id = `hbar-stage-${String(nodes.length + 1).padStart(2, '0')}`;
     const state = capture();
     const node = {
       id,
       branchId: 'main',
       parentId,
-      createdAt: dateAt(nodes.length),
+      createdAt: dateAt(nodes.length + 1),
       processRevision: model.processRevision,
       operation,
       state,
@@ -360,12 +361,6 @@ export async function buildHbarTransducer(sourceBytes) {
     return result;
   }
 
-  append({
-    kind: 'base',
-    label: 'Silicon handle (36 um local slice; original wafer ~525 um)',
-    geometryChanged: true,
-    replay: { kind: 'base' },
-  });
   record(
     'Damascene preform / reflow',
     'The trench/HTM/reflow process is documented in the authors’ run card; 3D process uses a geometric equivalent core cross-section.',

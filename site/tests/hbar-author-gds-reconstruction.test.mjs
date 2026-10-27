@@ -72,7 +72,8 @@ test('published stack dimensions survive serializing History and recovering anal
   validateProjectFile(project);
   assert.equal(project.model.kernel, 'vector-continuous-etch-v1');
   assert.equal(project.snapshots.length, 6);
-  assert.equal(project.snapshotBranches.nodes.length, 12);
+  assert.equal(project.snapshotBranches.nodes.length, project.processRecipe.steps.length);
+  assert.equal(project.snapshotBranches.nodes[0].parentId, null);
   assert.deepEqual(project.model.layers.map((l) => l.name).slice(1), [
     'SiO2 lower',
     'Si3N4 waveguide',
@@ -346,7 +347,7 @@ test('all eleven HBAR Recipe operations reproduce the saved analytic material ow
     assert.equal(result?.changed, true, `Recipe Step ${index + 1}: ${result?.error}`);
     assert.equal(
       current.regions.length,
-      project.snapshotBranches.nodes[index + 1].state.model.regions.length,
+      project.snapshotBranches.nodes[index].state.model.regions.length,
       `Recipe Step ${index + 1} must preserve the saved History material partition count`,
     );
   }

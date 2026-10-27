@@ -84,7 +84,7 @@ test('production Process Worker thread replays every physical HBAR Recipe Step',
   const assertStageParity = (candidate, index) => {
     assert.deepEqual(
       withoutPresentationColors(candidate),
-      withoutPresentationColors(project.snapshotBranches.nodes[index + 1].state.model),
+      withoutPresentationColors(project.snapshotBranches.nodes[index].state.model),
       `Worker/Record Step ${index + 1} must preserve the entire saved physical History state`,
     );
   };

@@ -16,7 +16,7 @@ const fixturePath = resolve(
 const output = resolve('test-results/hbar-workstation');
 const expected = await readProjectFile(new Blob([await readFile(fixturePath)]));
 assert.equal(expected.processRecipe.steps.length, 11);
-assert.equal(expected.snapshotBranches.nodes.length, 12);
+assert.equal(expected.snapshotBranches.nodes.length, expected.processRecipe.steps.length);
 await mkdir(output, { recursive: true });
 
 const report = {
@@ -64,7 +64,11 @@ const openFixture = async () => {
   const state = await snapshot();
   assert.deepEqual(state.model, expected.model, 'File Open changed HBAR canonical model');
   assert.equal(state.layout.elements.length, expected.layout.elements.length);
-  assert.equal(state.workflow.steps.length, 11, 'HBAR imported History steps were lost');
+  assert.equal(
+    state.workflow.steps.length,
+    expected.snapshotBranches.nodes.length,
+    'HBAR Starting Wafer Step 0 or imported History steps were lost',
+  );
   report.steps.push('file-open');
   return state;
 };
@@ -72,6 +76,24 @@ const original = (owner) => {
   const copy = structuredClone(owner);
   for (const layer of copy.sourceModel.layers) delete layer.color;
   return copy;
+};
+// A fresh Rebuild Base/Worker replay increments bookkeeping revisions more
+// often than loading the exported History. Compare every physical owner field,
+// while asserting the owner revision pointers independently for each model.
+const physicalOwner = (owner) => {
+  const copy = original(owner);
+  delete copy.modelRevision;
+  delete copy.sourceModel.revision;
+  return copy;
+};
+const ownerRevisionLag = (model) => {
+  const owner = model.continuousEtchOwner;
+  assert.equal(owner.sourceModel.revision, owner.modelRevision);
+  assert.ok(
+    model.revision >= owner.modelRevision,
+    'Physical owner revision cannot be newer than the committed model',
+  );
+  return model.revision - owner.modelRevision;
 };
 try {
   await page.goto(base + '/app.html?start=empty', {
@@ -121,12 +143,12 @@ try {
       const current = window.WaferCadV2Workstation.snapshot();
       return !current.workflow.busy && current.model.processRevision === revision;
     },
-    expected.snapshotBranches.nodes[10].state.model.processRevision,
+    expected.snapshotBranches.nodes.find((node) => node.id === 'hbar-stage-10').state.model.processRevision,
     { timeout: 120000 },
   );
   assert.deepEqual(
     (await snapshot()).model,
-    expected.snapshotBranches.nodes[10].state.model,
+    expected.snapshotBranches.nodes.find((node) => node.id === 'hbar-stage-10').state.model,
     'Browser History restoration altered pre-release physical state',
   );
   await page.locator('.snapshot-return-head').click();
@@ -163,7 +185,11 @@ try {
     (await import('/workspace-persistence.js')).loadWorkspaceState(),
   );
   assert.deepEqual(stored.model, expected.model, 'IndexedDB saved physical owner differs');
-  assert.equal(stored.snapshotBranches.nodes.length, 12, 'IndexedDB discarded HBAR History');
+  assert.equal(
+    stored.snapshotBranches.nodes.length,
+    expected.processRecipe.steps.length,
+    'IndexedDB discarded HBAR History',
+  );
   const hbarPoint = (await recoveryPoints()).find((point) => point.project?.name === expected.name);
   assert.ok(hbarPoint, 'Saving HBAR must create a restorable IndexedDB checkpoint');
   assert.deepEqual(hbarPoint.project.model, expected.model);
@@ -290,16 +316,21 @@ try {
   const summary = await page.locator('#recipeRunSummary').innerText();
   assert.match(summary, /^Completed: 11\/11/, 'Real HBAR Recipe did not complete: ' + summary);
   const replayed = await snapshot();
+  assert.equal(
+    ownerRevisionLag(replayed.model),
+    ownerRevisionLag(expected.model),
+    'Record-only History steps must not change the physical owner revision lag',
+  );
   assert.deepEqual(
-    original(replayed.model.continuousEtchOwner),
-    original(expected.model.continuousEtchOwner),
-    'Real browser Worker/Recipe differs from HBAR source physical material owner',
+    physicalOwner(replayed.model.continuousEtchOwner),
+    physicalOwner(expected.model.continuousEtchOwner),
+    'Real browser Worker/Recipe differs from HBAR physical material owner',
   );
   assert.equal(await page.evaluate(() => window.__hbarWorkerCalls), 9);
   assert.equal(
     replayed.workflow.steps.length,
-    11,
-    'Two Record steps were not committed to History',
+    expected.snapshotBranches.nodes.length,
+    'Starting Wafer Step 0 or two Record steps were not committed to History',
   );
   assert.deepEqual(report.pageErrors, [], 'Unexpected real-origin browser page errors');
   report.steps.push('browser-recipe-11-steps-9-workers-2-records');
