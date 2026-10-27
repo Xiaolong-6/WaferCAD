@@ -17,6 +17,7 @@ const TESTS = [
   'site/tests/transmon-shadow-al-preview.test.mjs',
   'site/tests/transmon-q2-integrated-diagnostic.test.mjs',
   'site/tests/direct-fixed-incidence.test.mjs',
+  'site/tests/direct-aperture-from-gds.test.mjs',
   'site/tests/direct-nb-recess-shadow-analytic.test.mjs',
   'site/tests/direct-resist-occluded-target.test.mjs',
   'site/tests/transmon-direct-owner-conservation.test.mjs',

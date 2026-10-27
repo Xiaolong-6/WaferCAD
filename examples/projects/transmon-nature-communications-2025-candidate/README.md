@@ -775,3 +775,24 @@ reported area, third-dose ownership, missing dose, false physics claim,
 and compressed material-owner reference) all failed closed. This is a
 **post-export proof**, not a full exact-HEAD suite, normal-origin Worker
 Open, History/Recovery, or a measured Josephson device validation.
+
+### Explicit GDS-to-physical-aperture mapping
+
+`site/direct-aperture-from-gds.js` now provides a reusable, fail-closed
+conversion from flattened GDS polygon `layer/datatype` selectors into
+absolute-Z `Direct.apertureStack` openings. The Q2 integrated replay calls
+this shared conversion rather than maintaining a separate Boolean datatype
+interpreter. For this candidate, the **assumed** lower 500 nm opening is
+GDS `8/0 ∪ 8/1` and the upper 400 nm opening is `8/1`, both transformed
+through the author's wafer-frame 90° placement. The mapping is an explicit
+scientific hypothesis, **not** something inferred from GDS metadata.
+
+An original-`sample.gds` regression requires the Q2 mask polygons and
+proves that both converter outputs have empty symmetric differences against
+the original hand-built source geometry. Local focused tests: 4/4 passed,
+zero skipped, Node 22. This is an independent *mask geometry bridge*;
+ordinary Workstation Mask/Recipe UI has **not** yet been wired to author
+physical Z-resolved resist openings. A flat 2D mask alone still cannot
+justify oblique resist-shadow physics; the existing fail-closed UI
+restriction remains correct until a separately reviewed UX connects
+physical aperture definitions.

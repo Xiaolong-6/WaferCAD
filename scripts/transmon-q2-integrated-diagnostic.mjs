@@ -10,6 +10,7 @@ const { intersection, unionGeometries, transformMulti, rectMulti, pointInMulti }
 const { validateProcessModel, validateProjectFile } = await import('../site/project-schema.js');
 const { prepareProjectForExport, expandProjectStorage } = await import('../site/project-io.js');
 const { junctionThreeDoseSectionWitness } = await import('../site/junction-section-witness.js');
+const { directApertureStackFromGds } = await import('../site/direct-aperture-from-gds.js');
 
 const EXPECTED = '6e9db7d506e17f82fd22250db9a380a420b2a1088bac4a33b8c747930e9d5c02';
 const center = [1400, 2513];
@@ -94,19 +95,28 @@ export function replayQ2ChipPose(
     throw new Error('Q2 etched Si must be 50 nm below unprocessed Si.');
   const siTopZ = si.z1;
 
-  const rotateCell = (geometry) => transformMulti(geometry, ([x, y]) => [-y, x]);
-  const layerMask = (datatype) =>
-    unionGeometries(
-      junction.elements
-        .filter((e) => e.layer === 8 && e.datatype === datatype)
-        .map((e) => rotateCell(points(e))),
-    );
-  const upper = layerMask(1);
-  const lower = unionGeometries([upper, layerMask(0)]);
-  const apertures = [
-    { bottom: siTopZ, top: siTopZ + 0.5, opening: lower },
-    { bottom: siTopZ + 0.5, top: siTopZ + 0.9, opening: upper },
-  ];
+  // Explicit source-GDS exposure selectors and absolute resist Z placement.
+  // These are literature-derived assumptions, not material solids/undercut.
+  const apertures = directApertureStackFromGds(
+    junction.elements,
+    [
+      {
+        bottomZUm: siTopZ,
+        topZUm: siTopZ + 0.5,
+        selectors: [{ layer: 8, datatype: 0 }, { layer: 8, datatype: 1 }],
+      },
+      {
+        bottomZUm: siTopZ + 0.5,
+        topZUm: siTopZ + 0.9,
+        selectors: [{ layer: 8, datatype: 1 }],
+      },
+    ],
+    { transformPoint: ([x, y]) => [-y, x] },
+  ).map(({ bottomZUm, topZUm, opening }) => ({
+    bottom: bottomZUm,
+    top: topZUm,
+    opening,
+  }));
   const beams = [
     { azimuth: -45, thickness: 0.04 },
     { azimuth: 45, thickness: 0.03 },
