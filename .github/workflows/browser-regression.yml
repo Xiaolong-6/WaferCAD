@@ -279,9 +279,9 @@ jobs:
     # Run 625-site software-WebGL stress at final review, on main or by manual dispatch.
     if: ${{ needs.plan.outputs.renderer == 'true' && (github.event_name != 'pull_request' || !github.event.pull_request.draft || github.event.pull_request.number == 290) }}
     runs-on: ubuntu-latest
-    # Large transparent software-WebGL frames take ~34 s per completed frame.
-    # The full 20-toggle resource-stability contract needs a dedicated watchdog;
-    # cold/warm speed targets remain advisory, correctness and hangs remain hard.
+    # All 20 completed full-quality transparent WebGL toggles remain mandatory.
+    # The reduced desktop framebuffer limits SwiftShader raster cost, not scene
+    # geometry or resource-retention assertions; hangs remain hard failures.
     timeout-minutes: 60
     env:
       WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
@@ -319,8 +319,14 @@ jobs:
           cat /tmp/wafercad-array-http.log
           exit 1
 
+      # The native renderer owner in the same planned Browser workflow already
+      # executes the four-width/touch M3D check and 80x80 array isolation.
+      # Keep the unique full-scene 625-site leak/stability contract here.
+      - name: Check 625-site renderer scientific invariants
+        run: node --test site/tests/transparent-array-lod.test.mjs site/tests/renderer-geometry-cache.test.mjs
+
       - name: Check 625-site array scene and retained resources
-        run: node scripts/array-renderer-regression.mjs --fast-transparent-lod
+        run: node scripts/v2/check-source-sunset-renderer-stress.mjs
 
       - name: Upload array renderer diagnostics
         if: always()

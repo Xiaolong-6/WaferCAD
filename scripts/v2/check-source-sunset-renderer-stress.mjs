@@ -9,10 +9,15 @@ import { selectScientificView } from './desktop-view-selector.mjs';
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4173';
 const output = resolve('test-results/array-renderer');
 await mkdir(output, { recursive: true });
-const report = { result: 'running', stages: [], errors: [] };
+const startedAt = performance.now();
+// Retention and topology are independent of pixel raster size. This remains a
+// desktop view with the complete 625-site Quality scene and real WebGL frames,
+// but avoids the excess SwiftShader fill cost of a 1440x960 framebuffer.
+const viewport = { width: 1024, height: 768 };
+const report = { result: 'running', viewport, stages: [], errors: [] };
 const browser = await launchBrowser();
 try {
-  const { page, context } = await newUiPage(browser, { viewport: { width: 1440, height: 960 } });
+  const { page, context } = await newUiPage(browser, { viewport });
   try {
     // Software WebGL exact transparency can keep the main thread busy for full frames.
     page.setDefaultTimeout(180000);
@@ -32,7 +37,7 @@ try {
       625,
       '625 physical device sites',
     );
-    await selectScientificView(page, 'three', 1440);
+    await selectScientificView(page, 'three', viewport.width);
     const host = page.locator('#threeHost');
     await page.waitForFunction(
       () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
@@ -56,6 +61,7 @@ try {
         return Object.fromEntries(keys.map((key) => [key, node.dataset[key]]));
       });
     async function waitFrame(previous, label) {
+      const frameStartedAt = performance.now();
       await page.waitForFunction(
         (prev) => {
           const node = document.getElementById('threeHost');
@@ -71,7 +77,9 @@ try {
       const status = await measure();
       assert.ok(Number(status.rendererDrawCalls) > 0, label + ': real draw calls');
       assert.ok(Number(status.rendererDrawTriangles) > 0, label + ': real triangles');
-      report.stages.push({ label, ...status });
+      const frameWaitMs = Math.round(performance.now() - frameStartedAt);
+      report.stages.push({ label, frameWaitMs, ...status });
+      console.log(`625-site ${label}: frame-ready + painted in ${frameWaitMs} ms`);
       return status;
     }
     if ((await snap()).threeDisplay.fast) {
@@ -170,5 +178,6 @@ try {
   throw error;
 } finally {
   await browser.close();
+  report.durationMs = Math.round(performance.now() - startedAt);
   await writeFile(resolve(output, 'report.json'), JSON.stringify(report, null, 2) + '\n');
 }
