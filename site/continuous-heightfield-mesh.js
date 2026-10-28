@@ -44,7 +44,7 @@ function indexFootprintDistance(multi, lateralUm, xyStepUm) {
           maxY: Math.max(a[1], b[1]),
         });
       }
-    polygons.push({ minX: pMinX, minY: pMinY, maxX: pMaxX, maxY: pMaxY });
+    polygons.push({ minX: pMinX, minY: pMinY, maxX: pMaxX, maxY: pMaxY, polygon: poly });
     minX = Math.min(minX, pMinX);
     minY = Math.min(minY, pMinY);
     maxX = Math.max(maxX, pMaxX);
@@ -75,8 +75,14 @@ function distanceToFootprint(x, y, index) {
   // A polygon interior may lie further than lateralUm from every edge and
   // must still receive the full release depth (distance = 0).
   if (
-    index.polygons.some((p) => x >= p.minX && x <= p.maxX && y >= p.minY && y <= p.maxY) &&
-    pointInMulti([x, y], index.multi)
+    index.polygons.some(
+      (p) =>
+        x >= p.minX &&
+        x <= p.maxX &&
+        y >= p.minY &&
+        y <= p.maxY &&
+        pointInMulti([x, y], [p.polygon]),
+    )
   )
     return 0;
   const ix = Math.floor((x - index.originX) / index.cell),
