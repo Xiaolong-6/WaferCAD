@@ -4,7 +4,7 @@
 
 ## Welcome example catalog
 
-The current **Welcome** catalog presents **nine editable device/application families** across literature and fabrication examples. Its source of truth is [`site/bundled-examples.js`](https://github.com/Xiaolong-6/WaferCAD/blob/main/site/bundled-examples.js); the cards link to full `.wafercad` projects, including their History, Variants, Mask state and inspection views. Click a project's **title or description** on Welcome to open it. The preview offers Main/Mask/3D/Section inspection of a curated state, not the complete process replay.
+The current **Welcome** catalog presents **ten editable device/application families** across literature and fabrication examples. Its source of truth is [`site/bundled-examples.js`](https://github.com/Xiaolong-6/WaferCAD/blob/main/site/bundled-examples.js); the cards link to full `.wafercad` projects, including their History, Variants, Mask state and inspection views. Click a project's **title or description** on Welcome to open it. The preview offers Main/Mask/3D/Section inspection of a curated state, not the complete process replay.
 
 | Welcome project                                                                                                                                                | What you can inspect                                                                                                                                                                                   | Literature and provenance                                                                                                                                                                                                                                             |
 | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -17,8 +17,9 @@ The current **Welcome** catalog presents **nine editable device/application fami
 | [**Three-tier silicon junctionless transistors**](https://xiaolong-6.github.io/WaferCAD/app.html?start=example&example=three-tier-silicon-jlfets)              | Three stacked transistor tiers, conformal HfO₂ gates, contacts, ILD, transfer and CMP assumptions; 625-site wafer project with 40 saved History Steps                                                  | Lam _et al._, _Nature_ (2026), [DOI](https://doi.org/10.1038/s41586-026-10496-6)                                                                                                                                                                                      |
 | [**TiO₂ achromatic metalens · four meta-atoms**](https://xiaolong-6.github.io/WaferCAD/app.html?start=example&example=tio2-metalens-four-unit)                 | 4,725-site illustrative array with four meta-atom families, matching Mask and nine-step compiled History; cover previews four units                                                                    | Wang _et al._, _Nature Communications_ (2021), [DOI](https://doi.org/10.1038/s41467-021-25797-9). Unit sizes and site placement are illustrative; the article does not publish the optimized 4,725-site GDS.                                                          |
 | [**Tunnelling-based T-CMOS inverter**](https://xiaolong-6.github.io/WaferCAD/app.html?start=example&example=tcmos-ternary-inverter-130nm)                      | Approved 1×1 source-vector Mask (218 CNT), full 23-step Recipe and T-CMOS/conventional History; 4×4 global routing is a separate engineering candidate                                                 | Jeong _et al._, _Nature Electronics_ (2019), [DOI](https://doi.org/10.1038/s41928-019-0272-8)                                                                                                                                                                         |
+| [**Suspended TFLN optomechanical microrings · 10×8**](https://xiaolong-6.github.io/WaferCAD/app.html?start=example&example=suspended-tfln-microrings-10x8)     | 80 suspended LN microrings, editable M1/M2 Mask and six restorable engineering geometry checkpoints; the lightweight interactive preview shows two sites                                               | Yu _et al._, _Light: Science & Applications_ (2026), [DOI](https://doi.org/10.1038/s41377-026-02506-z). Routing, pitch and BOX void are engineering assumptions, not author GDS.                                                                                      |
 
-These nine entries are registered in the shipped Welcome catalog. Other research reconstructions or development fixtures in `examples/projects/` are not necessarily Welcome examples. When a new example is actually added to `BUNDLED_EXAMPLES`, update this catalog and keep the documented title and project ID synchronized. The repository's Welcome example tests validate the promoted project files.
+These ten entries are registered in the shipped Welcome catalog. Other research reconstructions or development fixtures in `examples/projects/` are not necessarily Welcome examples. When a new example is actually added to `BUNDLED_EXAMPLES`, update this catalog and keep the documented title and project ID synchronized. The repository's Welcome example tests validate the promoted project files.
 
 ## 1. Photodetectors with nanopatterns
 
@@ -171,7 +172,7 @@ WaferCAD does not predict ALD/sputter transport, etch rates, implantation dose/e
 
 ## Optional research geometry: not required for Welcome projects
 
-The nine Welcome examples deliberately use **lightweight process geometry**
+The ten Welcome examples deliberately use **lightweight process geometry**
 and display-only Roughness/pyramidal relief where appropriate. Rendering a
 pyramid does not imply that the full 3D facets participated in Boolean Process
 operations; that is an intentional performance trade-off, **not** a defect or
@@ -191,3 +192,11 @@ Neither research path validates unpublished author masks, device-identical SEM,
 full-wafer manufacturing fidelity, or optoelectronic predictive performance.
 Default Examples, Roughness, and normal History/Recovery behavior do not require
 migration to these research structures.
+
+## 10. Suspended TFLN optomechanical microrings
+
+![Actual native Three.js diagnostic render of two suspended TFLN rings](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/suspended-tfln-microrings-three.webp)
+
+_Actual WaferCAD Three.js software-WebGL render of cropped reconstruction geometry; not an SEM or calibrated paper figure._
+
+The reported 40 µm-diameter rim, 300 nm X-cut LN film, 80 nm membrane and four 400 nm-wide supports motivate this structural model. The **10×8 array pitch**, waveguide fanout, finite BOX removal and source Mask polygons are engineering reconstructions, **not** original author GDS or measured HF kinetics. The six restorable process geometry checkpoints preserve Starting Wafer, BOX, LN, both mask etches and the assumed release; the final BOX release record does not run a predictive etch model. Welcome previews two translated/cropped ring sites; **Open** loads the full 80-site, editable Mask-driven project. [Original article: Yu et al., _Light: Science & Applications_ 15, 389 (2026)](https://doi.org/10.1038/s41377-026-02506-z).

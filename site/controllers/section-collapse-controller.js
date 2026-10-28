@@ -43,6 +43,8 @@ export function createSectionCollapseController({
       ...normalizeSectionCollapse(value, bounds()),
       enabled: value?.enabled !== false,
       ...normalizeSectionZScales(value),
+      // A user edit is explicit; the Workstation's implicit default is not.
+      continuousEtchExplicit: true,
     });
     onChanged();
     renderSection();

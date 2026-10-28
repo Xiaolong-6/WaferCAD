@@ -107,14 +107,35 @@ export function buildContinuousRectMeshCaps(THREE, croppedParts, bounds) {
   for (const part of croppedParts) {
     if (part.positions.length % 9) throw new RangeError('Invalid cropped mesh positions');
     const allEdges = new Map();
-    for (let i = 0; i < part.positions.length; i += 9) {
-      const triangle = Array.from({ length: 3 }, (_, j) =>
-        Array.from(part.positions.slice(i + j * 3, i + j * 3 + 3)),
-      );
+    const coordinates = part.positions;
+    // A seam only contributes a cut-face boundary if both vertices lie on
+    // one of the four ROI planes. Scan those candidates rather than all 3N
+    // mesh edges. The wider guard includes every quantized-key twin of a
+    // qualifying edge, so edge multiplicity and first-observed coordinates
+    // remain identical to the unfiltered topology pass.
+    const candidateTolerance = 2 / QUANTUM;
+    for (let i = 0; i < coordinates.length; i += 9) {
       for (let j = 0; j < 3; j++) {
-        const a = triangle[j],
-          b = triangle[(j + 1) % 3];
-        const key = edgeKey(a, b);
+        const ai = i + j * 3,
+          bi = i + ((j + 1) % 3) * 3,
+          ax = coordinates[ai],
+          bx = coordinates[bi],
+          ay = coordinates[ai + 1],
+          by = coordinates[bi + 1];
+        if (!(
+          (Math.abs(ax - bounds.minX) <= candidateTolerance &&
+            Math.abs(bx - bounds.minX) <= candidateTolerance) ||
+          (Math.abs(ax - bounds.maxX) <= candidateTolerance &&
+            Math.abs(bx - bounds.maxX) <= candidateTolerance) ||
+          (Math.abs(ay - bounds.minY) <= candidateTolerance &&
+            Math.abs(by - bounds.minY) <= candidateTolerance) ||
+          (Math.abs(ay - bounds.maxY) <= candidateTolerance &&
+            Math.abs(by - bounds.maxY) <= candidateTolerance)
+        ))
+          continue;
+        const a = [ax, ay, coordinates[ai + 2]],
+          b = [bx, by, coordinates[bi + 2]],
+          key = edgeKey(a, b);
         if (!allEdges.has(key)) allEdges.set(key, { a, b, count: 0 });
         allEdges.get(key).count++;
       }

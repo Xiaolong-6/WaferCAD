@@ -282,6 +282,38 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     ],
     tags: ['Literature', 'T-CMOS', 'Mask', 'Recipe', 'History', 'Variants'],
   },
+  {
+    id: 'suspended-tfln-microrings-10x8',
+    title: 'Suspended TFLN optomechanical microrings · 10×8',
+    figure: 'Yu et al. · Fig. 2a–c · engineering array',
+    kind: 'project',
+    level: 'Literature-inspired photonics',
+    variants: ['M0–M5 · restorable process geometry checkpoints'],
+    path: './examples/suspended-tfln-microrings-10x8.wafercad',
+    filename: 'suspended-tfln-microrings-10x8.wafercad',
+    previewSourcePath: './examples/suspended-tfln-microrings-preview-source.wafercad',
+    previewProject: {
+      path: './examples/previews/suspended-tfln-microrings-10x8.wafercad',
+      filename: 'suspended-tfln-microrings-10x8-preview.wafercad',
+    },
+    preview: {
+      path: './examples/thumbnails/suspended-tfln-microrings-three.webp',
+      view: 'three',
+      alt: 'Actual production Three.js diagnostic render of two TFLN suspended microrings',
+      label: 'Two representative ring sites · full 80-ring array opens in Workstation',
+    },
+    summary:
+      'A mask-driven, editable 10×8 thin-film lithium-niobate suspended microring array. The 40 µm rim, 300/80 nm LN thicknesses and four 0.4 µm anchors follow reported dimensions; the 145×360 µm array pitch, fanout and bounded BOX release are explicitly inferred. The five persisted History checkpoints plus synthetic Starting Wafer are restorable engineering geometry states, not executable deposition/etch or HF release replay.',
+    sources: [
+      {
+        citation:
+          'Y. Yu, R. Yin, I. Anderson et al., “Uncooled low-noise optomechanical sensors on thin-film lithium niobate,” Light: Science & Applications 15, 389 (2026).',
+        doi: '10.1038/s41377-026-02506-z',
+        href: 'https://doi.org/10.1038/s41377-026-02506-z',
+      },
+    ],
+    tags: ['Literature', 'TFLN', 'Optomechanics', 'Mask-driven', 'Array', 'Engineering release'],
+  },
 ]);
 
 export function bundledExampleById(id) {

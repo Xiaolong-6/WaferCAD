@@ -491,6 +491,34 @@ test('3D Border outlines omit internal computational seams and retain exposed ti
   );
 });
 
+test('circular substrate cardinal junctions do not turn sub-femtometre noise into full-depth outlines', () => {
+  // Opposing nearly-tangent rays are two pieces of one curved sidewall.
+  // Real polygon-clipping/array coordinates may contain +/-1e-13 um noise.
+  const top = { p: [0, 38100], q: [-800, 38086.9089], z0: -250, z1: 250 };
+  const bottom = {
+    p: [1.1368683772161603e-13, 38100.00000000001],
+    q: [800, 38086.90890000001],
+    z0: -250,
+    z1: 250,
+  };
+  const atCardinal = (walls) =>
+    exteriorVerticalBordersFromSidewalls(walls).filter(
+      ([a, b]) =>
+        Math.abs(a[0]) < 1e-9 && Math.abs(a[1] - 38100) < 1e-9 && Math.abs(a[2] - b[2]) > 1e-9,
+    );
+  assert.deepEqual(
+    atCardinal([top, bottom]),
+    [],
+    'a circular wafer has no cardinal vertical corner',
+  );
+  const realCorner = { ...bottom, q: [0, 38200] };
+  assert.equal(
+    atCardinal([top, realCorner]).length,
+    1,
+    'a genuine right-angle wafer junction retains its vertical edge',
+  );
+});
+
 test('array exterior crease classifier ignores duplicate straight rays while keeping real 3D steps', () => {
   const incoming = { p: [-2, 0], q: [0, 0], z0: 0, z1: 2 };
   const outgoing = { p: [0, 0], q: [2, 0], z0: 0, z1: 2 };
