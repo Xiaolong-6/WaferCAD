@@ -80,7 +80,6 @@ test('published M08 uses the original inverted seven-shape GDS mask, not Full Fa
   );
 });
 
-
 test('physical photoresist actually patterns, protects and strips during microdisk process', () => {
   const stageModel = (id) => {
     const stage = released.snapshots.find((s) => s.id === `snapshot-microdisk-${id}`);
@@ -135,7 +134,6 @@ test('physical photoresist actually patterns, protects and strips during microdi
   assert.equal(recipe[7].params.target, 'Dicing protection photoresist · 1 µm (assumed)');
 });
 
-
 test('real production Kernel replays physical resist development and stripping through M07', () => {
   const model = createModel({ shape: 'rect', width: 400, height: 400, thickness: 80 });
   model.layers[0].name = 'Silicon substrate';
@@ -149,31 +147,49 @@ test('real production Kernel replays physical resist development and stripping t
   });
   const openings = selection.operationAreaGeometry('invert');
   assert.equal(openings.length, 5);
-  const probes = [[0, 0], [83, 0], [110, 0], [145, 0], [175, 0],
-    [-110, 0], [-175, 0], [180, 180], [-180, -180], [0, 175], [0, -175]];
+  const probes = [
+    [0, 0],
+    [83, 0],
+    [110, 0],
+    [145, 0],
+    [175, 0],
+    [-110, 0],
+    [-175, 0],
+    [180, 180],
+    [-180, -180],
+    [0, 175],
+    [0, -175],
+  ];
   const column = (value, xy) =>
-    value.regions.find((region) => pointInMulti(xy, region.geom))?.stack.map(
-      (segment) => [segment.layerId, segment.z0, segment.z1],
-    ) || [];
+    value.regions
+      .find((region) => pointInMulti(xy, region.geom))
+      ?.stack.map((segment) => [segment.layerId, segment.z0, segment.z1]) || [];
   const check = (id) => {
     const saved = released.snapshots.find((item) => item.id === 'snapshot-microdisk-' + id);
     assert.ok(saved);
     assert.equal(model.processRevision, saved.state.model.processRevision);
     for (const xy of probes) {
-      assert.deepEqual(column(model, xy), column(saved.state.model, xy),
-        'Real Kernel mismatch after M' + id + ' at ' + xy);
+      assert.deepEqual(
+        column(model, xy),
+        column(saved.state.model, xy),
+        'Real Kernel mismatch after M' + id + ' at ' + xy,
+      );
     }
   };
   const apply = (id, operation, masked = false) => {
     const result = applyOperation(model, {
-      ...operation, face: 'front', area: masked ? openings : model.boundary,
+      ...operation,
+      face: 'front',
+      area: masked ? openings : model.boundary,
     });
     assert.equal(result.changed, true, result.error || 'Failed process M' + id);
     check(id);
   };
   const add = (name, thickness) => ({ type: 'add', name, thickness, growth: 'direct' });
   const etch = (layerId, thickness) => ({
-    type: 'etch', thickness, etchProfile: 'directional',
+    type: 'etch',
+    thickness,
+    etchProfile: 'directional',
     etchTargetLayerIds: [layerId],
   });
   apply('02', add('Thermal SiO₂ · 1.8 µm', 1.8));
@@ -186,8 +202,10 @@ test('real production Kernel replays physical resist development and stripping t
   model.processRevision++;
   check('07b');
   apply('07', etch('layer-3', 1));
-  assert.deepEqual(model.layers.map((layer) => layer.id),
-    ['base', 'layer-1', 'layer-2', 'layer-3']);
+  assert.deepEqual(
+    model.layers.map((layer) => layer.id),
+    ['base', 'layer-1', 'layer-2', 'layer-3'],
+  );
   for (const region of model.regions) {
     assert.ok(region.stack.every((part) => part.layerId !== 'layer-2' && part.layerId !== 'layer-3'));
   }
