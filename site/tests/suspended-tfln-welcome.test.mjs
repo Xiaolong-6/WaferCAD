@@ -25,11 +25,14 @@ test('TFLN Welcome opens the full native 80-ring editable, restorable model', as
     ['11|0', '12|0'],
   );
   const nodes = project.snapshotBranches.nodes;
-  assert.equal(nodes.length, 6);
-  assert.equal(nodes[0].operation.kind, 'base');
-  assert.equal(nodes[0].state.model.array.templates[0].model.regions.length, 1);
-  assert.equal(nodes[5].operation.kind, 'record');
-  assert.deepEqual(nodes[5].state.model, project.model);
+  assert.equal(nodes.length, 5, 'Step 0 is synthetic, not persisted');
+  assert.ok(nodes.every((node) => node.operation.kind !== 'base'));
+  assert.equal(nodes[0].operation.kind, 'add');
+  assert.equal(nodes[0].parentId, null);
+  assert.equal(project.snapshotBranches.branches[0].rootNodeId, nodes[0].id);
+  assert.equal(nodes[0].state.model.array.templates[0].model.layers.length, 2);
+  assert.equal(nodes[4].operation.kind, 'record');
+  assert.deepEqual(nodes[4].state.model, project.model);
   assert.equal(project.processRecipe.steps.length, 5);
   assert.deepEqual(
     validateRecipeExecution(project.processRecipe.steps, {

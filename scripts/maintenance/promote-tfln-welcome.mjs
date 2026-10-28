@@ -212,24 +212,24 @@ const core = (model) => {
   return { ...base, model };
 };
 const ids = stages.map((_, i) => `tfln-stage-${String(i).padStart(2, '0')}`);
-const nodes = states.map((leaf, i) => ({
-  id: ids[i],
-  branchId: 'main',
-  parentId: i ? ids[i - 1] : null,
-  createdAt: new Date(Date.parse(createdAt) + i * 60000).toISOString(),
-  processRevision: i,
-  operation: {
-    kind: ['base', 'add', 'add', 'etch', 'etch', 'record'][i],
-    label: stages[i],
-    geometryChanged: i !== 0,
-    ...(i === 0
-      ? { replay: { kind: 'base' } }
-      : {
-          note: 'Restorable engineering geometry checkpoint; not a replayable fabrication recipe.',
-        }),
-  },
-  state: core(i === states.length - 1 ? reference.model : arrayModel(leaf)),
-}));
+// Workstation owns Starting Wafer as synthetic Step 0; persist operations only.
+const nodes = states.slice(1).map((leaf, offset) => {
+  const i = offset + 1;
+  return {
+    id: ids[i],
+    branchId: 'main',
+    parentId: offset ? ids[i - 1] : null,
+    createdAt: new Date(Date.parse(createdAt) + i * 60000).toISOString(),
+    processRevision: i,
+    operation: {
+      kind: ['base', 'add', 'add', 'etch', 'etch', 'record'][i],
+      label: stages[i],
+      geometryChanged: true,
+      note: 'Restorable engineering geometry checkpoint; not a replayable fabrication recipe.',
+    },
+    state: core(i === states.length - 1 ? reference.model : arrayModel(leaf)),
+  };
+});
 project.snapshots = [];
 project.snapshotBranches = {
   version: 3,
@@ -242,7 +242,7 @@ project.snapshotBranches = {
       id: 'main',
       name: 'Yu et al. · TFLN engineering model',
       parentBranchId: null,
-      rootNodeId: ids[0],
+      rootNodeId: ids[1],
       headNodeId: ids.at(-1),
       rootSnapshotId: null,
       headSnapshotId: null,
@@ -260,7 +260,7 @@ const fullRead = await readProjectFile({
 });
 assert.deepEqual(fullRead.model, project.model, 'full native model preservation');
 assert.deepEqual(fullRead.layout, project.layout, 'full native masks');
-assert.equal(fullRead.snapshotBranches.nodes.length, states.length);
+assert.equal(fullRead.snapshotBranches.nodes.length, states.length - 1);
 assert.deepEqual(
   fullRead.snapshotBranches.nodes[0].state.model.array.templates[0].model.regions.length,
   1,
