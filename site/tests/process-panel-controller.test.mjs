@@ -86,7 +86,13 @@ function fakeRoot() {
 function controllerForTask(
   taskResult,
   events,
-  { mode = 'add', recorded = [], areaGeometry = () => [], initialModel = null, historicalEdit = false } = {},
+  {
+    mode = 'add',
+    recorded = [],
+    areaGeometry = () => [],
+    initialModel = null,
+    historicalEdit = false,
+  } = {},
 ) {
   let model = initialModel || createModel();
   const maskState = {
