@@ -290,6 +290,28 @@ test('Sahli pyramid SEM remains outside the canonical 2.5D facet contract', asyn
   }
 });
 
+test('Published photodetector Rough v2 migration covers all saved model and replay identities', async () => {
+  const assets = [
+    '../examples/photodetector-literature-examples.wafercad',
+    '../examples/previews/photodetector-literature.wafercad',
+    '../../examples/projects/black-si-photodiode-acs-photonics-2023.wafercad',
+  ];
+  for (const asset of assets) {
+    const project = JSON.parse(await readFile(new URL(asset, import.meta.url), 'utf8'));
+    let migrated = 0;
+    const visit = (value) => {
+      if (!value || typeof value !== 'object') return;
+      if (value.kind === 'rough' && value.morphology) {
+        assert.equal(value.morphology, 'stochastic-v2', `${asset}: stale rough profile`);
+        migrated += 1;
+      }
+      for (const child of Object.values(value)) visit(child);
+    };
+    visit(project);
+    assert.ok(migrated > 0, `${asset}: no published Rough surfaces found`);
+  }
+});
+
 test('Photodetector variants distinguish Implant from Electrical Region', async () => {
   const project = await example('photodetector-literature-examples');
   const branches = new Map(project.snapshotBranches.branches.map((b) => [b.id, b]));
