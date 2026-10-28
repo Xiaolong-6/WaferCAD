@@ -202,6 +202,32 @@ test('History edit preserves legacy rough and exposes modern Rough without two p
   }
 });
 
+test('Manual Rough writes v2, while an explicit Legacy history selection preserves v1', async () => {
+  const morphologies = [];
+  const controller = controllerForTask(
+    (_model, params) => {
+      morphologies.push(params.surface?.morphology);
+      return { result: { changed: false } };
+    },
+    [],
+    { mode: 'etch' },
+  );
+  const root = controller.__root;
+  root.getElementById('operationThickness').value = '1';
+  root.getElementById('etchProfile').value = 'directional';
+  root.getElementById('etchSurfaceMode').value = 'rough';
+  root.getElementById('roughFeatureSize').value = '0.3';
+  root.getElementById('roughAmplitude').value = '0.4';
+  root.getElementById('roughFeatureCv').value = '25';
+  root.getElementById('roughHeightCv').value = '30';
+  root.getElementById('roughSeed').value = '123';
+  await controller.applyOperation();
+  controller.allowLegacyRough(true);
+  root.getElementById('etchSurfaceMode').value = 'rough-legacy';
+  await controller.applyOperation();
+  assert.deepEqual(morphologies, ['stochastic-v2', 'stochastic']);
+});
+
 test('historical Apply commits the variant only after a successful changed worker result', async () => {
   const events = [];
   const controller = controllerForTask(
