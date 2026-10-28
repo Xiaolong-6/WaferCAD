@@ -242,7 +242,7 @@ test('Legacy option stays available through v2 selection until a History edit is
 test('Manual Rough writes v2, while an explicit Legacy history selection preserves v1', async () => {
   const morphologies = [];
   const controller = controllerForTask(
-    (_model, params) => {
+    (_model, _workerModel, params) => {
       morphologies.push(params.surface?.morphology);
       return { result: { changed: false } };
     },
