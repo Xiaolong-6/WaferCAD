@@ -4,7 +4,7 @@ import test from 'node:test';
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 import { validateNativeLiteratureCases } from '../../scripts/v2/capture-literature-native-v2.mjs';
 
-test('nine native-v2 literature Sections intersect published canonical material, including array-only models', async () => {
+test('ten native-v2 literature Sections intersect published canonical material, including array-only models', async () => {
   const registry = JSON.parse(
     await readFile(
       new URL('../../docs/evidence/LITERATURE_FIGURE_MATRIX_2026-10-16.json', import.meta.url),
@@ -16,7 +16,7 @@ test('nine native-v2 literature Sections intersect published canonical material,
     import('../project-io.js'),
     import('../model-view-geometry.js'),
   ]);
-  assert.equal(cases.length, 9);
+  assert.equal(cases.length, 10);
   for (const source of cases) {
     const filename = new URL('../' + source.projectPath.slice(2), import.meta.url);
     const file = await readFile(filename);

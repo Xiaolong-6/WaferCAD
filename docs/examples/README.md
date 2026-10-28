@@ -1,10 +1,10 @@
 # Literature reconstructions and provenance
 
-## Current published catalog (nine families)
+## Current published catalog (ten families)
 
 `site/bundled-examples.js` and the
 [figure evidence matrix](../evidence/LITERATURE_FIGURE_MATRIX_2026-10-16.json)
-are the versioned source of truth for **nine** promoted Welcome
+are the versioned source of truth for **ten** promoted Welcome
 projects and their publication citations. The
 [research figure evidence register](../evidence/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md)
 records source panels, model assumptions and explicit
@@ -16,8 +16,9 @@ describe the current shipped project geometry. In particular,
 the full Microdisk is Continuous-release M08, not the
 historical eight- or 72-band experimental state. The
 36 µm reach is an assumption, and the cited SEM is from
-a similar disk. The ninth family is T-CMOS; source
-paper/mask claims must remain scoped to available evidence.
+a similar disk. The ninth family is T-CMOS; the tenth is the suspended TFLN microring array. Both retain explicit engineering Mask/geometry assumptions and open paper-figure correspondence.
+
+- [TFLN ring reconstruction source](../../examples/projects/tfln-10x8-recovery/README.md) — source Mask, 80-site process model and reproducibility checks; author GDS unavailable.
 
 ## Research reconstruction work and open experiments
 

@@ -90,6 +90,16 @@
       "bytes": 8648,
       "sourceSha256": "e0eea1c8b9cec3991c025947b9a52ca0dd9caa5991b2f5d577859a50781b5554",
       "sha256": "74d24b6919b1e7dbc2c5092420c7028c9e4eb982e480f19eeccd68548743bc20"
+    },
+    {
+      "id": "suspended-tfln-microrings-10x8",
+      "path": "./examples/thumbnails/suspended-tfln-microrings-three.webp",
+      "view": "three",
+      "width": 960,
+      "height": 540,
+      "bytes": 28898,
+      "sourceSha256": "fd93a4120f2c4e7735f3f0f436890b8a6ba4cad2aadaa14a7cbb24ab8056ec2e",
+      "sha256": "9581bd65146acd8746432e36968b7a8ac0c99862544a8f59af657411c17f3b80"
     }
   ]
 }

@@ -201,7 +201,14 @@ test('bundled examples remain valid renderer-ready regression fixtures', async (
     for (const node of project.snapshotBranches?.nodes || []) {
       assert.notEqual(node.restorable, false, `${node.id}: production Step must remain restorable`);
       assert.ok(node.state?.model, `${node.id}: restorable Step lost its model`);
-      if (node.operation?.kind === 'base') {
+      if (node.operation?.geometryCheckpoint === true) {
+        assert.equal(node.operation.kind, 'record');
+        assert.equal(
+          node.operation.replay,
+          undefined,
+          `${node.id}: restored engineering geometry must not claim executable replay`,
+        );
+      } else if (node.operation?.kind === 'base') {
         assert.notEqual(
           node.operation?.replay?.version,
           1,
