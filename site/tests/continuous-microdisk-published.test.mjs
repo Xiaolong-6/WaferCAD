@@ -79,6 +79,61 @@ test('published M08 uses the original inverted seven-shape GDS mask, not Full Fa
   );
 });
 
+
+test('physical photoresist actually patterns, protects and strips during microdisk process', () => {
+  const stageModel = (id) => {
+    const stage = released.snapshots.find((s) => s.id === `snapshot-microdisk-${id}`);
+    assert.ok(stage, `Missing History stage ${id}`);
+    return stage.state.model;
+  };
+  const materialAt = (id, xy) => {
+    const region = stageModel(id).regions.find((r) => pointInMulti(xy, r.geom));
+    assert.ok(region, `Missing physical region at ${xy} in ${id}`);
+    return region.stack.map((segment) => segment.layerId);
+  };
+  const has = (id, xy, layer) => materialAt(id, xy).includes(layer);
+  const annulus = [110, 0], field = [175, 0];
+
+  // The resist is deposited physically, then developed using the inverse
+  // GDS 1/0 mask. Before the oxide etch, the exposed field still has SiO2.
+  assert.ok(has('03', annulus, 'layer-2'));
+  assert.ok(has('03', field, 'layer-2'));
+  assert.ok(has('04', annulus, 'layer-2'));
+  assert.ok(!has('04', field, 'layer-2'));
+  assert.ok(has('04', field, 'layer-1'));
+  assert.ok(has('05', annulus, 'layer-2'));
+  assert.ok(!has('05', field, 'layer-1'));
+  assert.ok(!has('06', annulus, 'layer-2'));
+
+  // The protective recoat and dicing stage retain real PR in the geometry.
+  for (const id of ['07a', '07b']) {
+    assert.ok(has(id, annulus, 'layer-3'));
+    assert.ok(has(id, field, 'layer-3'));
+  }
+  for (const id of ['07', '08', '09']) {
+    for (const xy of [annulus, field]) {
+      assert.ok(!has(id, xy, 'layer-2'));
+      assert.ok(!has(id, xy, 'layer-3'));
+    }
+  }
+
+  const recipe = released.processRecipe.steps;
+  assert.equal(recipe.length, 10);
+  assert.deepEqual(
+    recipe.map((step) => step.id),
+    ['02', '03', '04', '05', '06', '07a', '07b', '07', '08', '09'].map(
+      (id) => `recipe-process-microdisk-${id}`,
+    ),
+  );
+  assert.equal(recipe[2].command, 'etch');
+  assert.equal(recipe[2].params.area, 'invert');
+  assert.deepEqual(recipe[2].params.mask.layerKeys, ['1|0']);
+  assert.equal(recipe[3].params.area, 'full');
+  assert.equal(recipe[3].params.target, 'Thermal SiO₂ · 1.8 µm');
+  assert.equal(recipe[5].command, 'deposit');
+  assert.equal(recipe[7].params.target, 'Dicing protection photoresist · 1 µm (assumed)');
+});
+
 test('published continuous material conserves silica and retains pedestal with exact occupancy', () => {
   const owner = validateContinuousEtchModel(released.model);
   const sampled = [];
