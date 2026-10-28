@@ -3,6 +3,7 @@
 // persisted as material or used by Process, History, or scientific replay.
 import { difference, unionGeometries, pointInMulti } from './vector-geometry.js';
 import { geometryArea } from './model.js';
+import { planAdaptiveContinuousTop } from './continuous-heightfield-adaptive.js';
 
 // Build a bounded XY index for the *display-only* distance queries. Every
 // segment whose Euclidean distance can be < lateralUm is indexed in all
@@ -163,9 +164,18 @@ export function continuousSiDisplayStepUm(owner, { fineTriangleBudget = 200000 }
   return Number.isSafeInteger(fineTriangles) && fineTriangles <= fineTriangleBudget ? 0.5 : 1;
 }
 
+// Only steep, large-area releases need local shoulder refinement. Fine small
+// grids already resolve these edges without a second tessellation pass.
+export function continuousSiAdaptiveChordErrorUm(owner) {
+  return continuousSiDisplayStepUm(owner) >= 1 &&
+    owner?.fronts?.some((front) => front.lateralUm > 0 && front.verticalUm / front.lateralUm >= 0.5)
+    ? 0.5
+    : null;
+}
+
 export function buildContinuousSiHeightfieldMesh(
   owner,
-  { xyStepUm = 1, maxTriangles = 1200000 } = {},
+  { xyStepUm = 1, maxTriangles = 1200000, adaptiveChordErrorUm = null } = {},
 ) {
   if (!canBuildContinuousSiHeightfield(owner))
     throw new RangeError(
@@ -194,7 +204,7 @@ export function buildContinuousSiHeightfieldMesh(
     throw new RangeError('Heightfield substrate must be an axis-aligned physical rectangle');
   const nx = Math.ceil(model.width / xyStepUm),
     ny = Math.ceil(model.height / xyStepUm);
-  const expectedTriangles = 2 * nx * ny + 6 * (nx + ny);
+  let expectedTriangles = 2 * nx * ny + 6 * (nx + ny);
   if (!Number.isSafeInteger(expectedTriangles) || expectedTriangles > maxTriangles)
     throw new RangeError('Continuous heightfield exceeds triangle budget');
   const zBottom = Math.min(
@@ -219,6 +229,25 @@ export function buildContinuousSiHeightfieldMesh(
         minY + dy * j,
         originalTop,
       );
+  const adaptive =
+    adaptiveChordErrorUm == null
+      ? null
+      : planAdaptiveContinuousTop({
+          nx,
+          ny,
+          minX,
+          minY,
+          dx,
+          dy,
+          top,
+          originalTop,
+          releaseDepthUm: Math.max(...owner.fronts.map((front) => front.verticalUm)),
+          maxChordErrorUm: adaptiveChordErrorUm,
+          sampleZ: (x, y) => physicalTopAt(owner, distanceIndices, x, y, originalTop),
+        });
+  if (adaptive) expectedTriangles = adaptive.triangles + 6 * (nx + ny);
+  if (expectedTriangles > maxTriangles)
+    throw new RangeError('Adaptive continuous heightfield exceeds triangle budget');
   const pos = new Float32Array(expectedTriangles * 9);
   const normal = new Float32Array(expectedTriangles * 9);
   let write = 0;
@@ -244,19 +273,21 @@ export function buildContinuousSiHeightfieldMesh(
     const length = Math.hypot(gx, gy, 1);
     return [-gx / length, -gy / length, 1 / length];
   };
-  for (let j = 0; j < ny; j++)
-    for (let i = 0; i < nx; i++) {
-      const a = surface(i, j),
-        b = surface(i + 1, j),
-        c = surface(i + 1, j + 1),
-        d = surface(i, j + 1);
-      const na = unitNormal(i, j),
-        nb = unitNormal(i + 1, j),
-        nc = unitNormal(i + 1, j + 1),
-        nd = unitNormal(i, j + 1);
-      pushTri(a, b, c, [na, nb, nc]);
-      pushTri(a, c, d, [na, nc, nd]);
-    }
+  if (adaptive) adaptive.emit(pushTri, surface, unitNormal);
+  else
+    for (let j = 0; j < ny; j++)
+      for (let i = 0; i < nx; i++) {
+        const a = surface(i, j),
+          b = surface(i + 1, j),
+          c = surface(i + 1, j + 1),
+          d = surface(i, j + 1);
+        const na = unitNormal(i, j),
+          nb = unitNormal(i + 1, j),
+          nc = unitNormal(i + 1, j + 1),
+          nd = unitNormal(i, j + 1);
+        pushTri(a, b, c, [na, nb, nc]);
+        pushTri(a, c, d, [na, nc, nd]);
+      }
   // The underside is planar; one center-to-perimeter fan replaces a full
   // raster, retaining top/side/bottom watertight perimeter ownership.
   const ring = [];
@@ -298,7 +329,12 @@ export function buildContinuousSiHeightfieldMesh(
     normals: normal,
     triangles: write / 9,
     kind: 'continuous-silicon-heightfield-display-v1',
-    grid: { nx, ny, xyStepUm },
+    grid: {
+      nx,
+      ny,
+      xyStepUm,
+      ...(adaptive ? { adaptiveRefinedCells: adaptive.refinedCells } : {}),
+    },
     sourceRevision: model.revision,
   };
 }
