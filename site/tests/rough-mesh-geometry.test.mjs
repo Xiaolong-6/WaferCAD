@@ -1010,6 +1010,66 @@ test('far-field rough Border budget is independent of Fast and Quality tessellat
   assert.equal(fast.positions.length / 9, 2, 'distant Fast cap retains its minimum mesh');
 });
 
+test('80-site fitted rough array preserves Fast/Quality Border parity without boundary mesh amplification', () => {
+  const appearance = {
+    kind: 'rough',
+    morphology: 'pyramid',
+    polarity: 'normal',
+    featureSize: 0.1,
+    meanHeight: 0.2,
+    etchDepth: 0.3,
+    seed: 21,
+  };
+  const sidewallBoundaryIntervals = [];
+  const zones = [];
+  for (let index = 0; index < 80; index++) {
+    const x = (index % 10) * 12,
+      y = Math.floor(index / 10) * 12;
+    const baseTriangles = [
+      [
+        [x, y, 0],
+        [x + 5, y, 0],
+        [x + 5, y + 5, 0],
+      ],
+      [
+        [x, y, 0],
+        [x + 5, y + 5, 0],
+        [x, y + 5, 0],
+      ],
+    ];
+    const edges = roughBoundaryEdgesFromTriangles(baseTriangles);
+    sidewallBoundaryIntervals.push(
+      ...edges.map(({ key, line }) => ({ key, t0: line.t0, t1: line.t1 })),
+    );
+    zones.push({ baseTriangles, edges, maxEdge: 8 });
+  }
+  const render = (maxDepth, triangleBudget) =>
+    roughMeshDataFromPreparedCap({
+      z: 0,
+      normal: 1,
+      appearance,
+      sidewallBoundaryIntervals,
+      lodZones: zones.map((zone) => ({
+        ...zone,
+        triangleBudget,
+        lodContext: {
+          distance: 900,
+          viewportHeight: 600,
+          pixelRatio: maxDepth === 1 ? 1 : 2,
+          maxDepth,
+        },
+      })),
+    });
+  const fast = render(1, 8),
+    quality = render(3, 128);
+  assert.deepEqual(fast.roughBorderPositions, quality.roughBorderPositions);
+  assert.equal(fast.roughBorderPositions.length / 6, 80 * 8);
+  assert.equal(fast.positions.length / 9, 80 * 8);
+  assert.equal(quality.positions.length / 9, 80 * 128);
+  assert.equal(fast.metadata.roughConformingExtraTriangles, 0);
+  assert.equal(quality.metadata.roughConformingExtraTriangles, 0);
+});
+
 test('unequal LOD caps conform their common edge without vertical seam sheets', () => {
   const appearance = {
     kind: 'rough',
