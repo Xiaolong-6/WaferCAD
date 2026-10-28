@@ -7,9 +7,11 @@
       "view": "three",
       "width": 640,
       "height": 560,
-      "bytes": 8268,
-      "sourceSha256": "700642aafce276d67731ea5afcccfa86a430d5ac63a102fabcaad01b3958948e",
-      "sha256": "b2ab36b89ff9e9383fcbadb7aa5d5e518be5b5fd55aff6f2c08af30c1023ec4d"
+      "bytes": 5458,
+      "sourceSha256": "7917121c5e6bfd8c048f546fae8be28fcdfa23fd08383a5c12066575d21c902b",
+      "sha256": "6f379a31dec03afa00bfb9f86529fba994316390b05695c9a61bb08d81478593",
+      "captureMethod": "native-three-offline-swiftshader-null-origin",
+      "captureChromiumVersion": "144.0.7559.96"
     },
     {
       "id": "perc-point-contact-solar-cell",
