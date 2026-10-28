@@ -11,6 +11,7 @@ self.onmessage = async ({ data }) => {
     const mesh = buildContinuousSiHeightfieldMesh(data.owner, {
       xyStepUm: data.xyStepUm,
       maxTriangles: data.maxTriangles,
+      adaptiveChordErrorUm: data.adaptiveChordErrorUm,
     });
     self.postMessage({ id: data.id, type: 'done', mesh }, [
       mesh.positions.buffer,
