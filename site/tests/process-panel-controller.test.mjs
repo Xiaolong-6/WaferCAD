@@ -164,11 +164,11 @@ test('historical Apply does not commit a variant when the worker does not change
   }
 });
 
-test('History edit restores the explicit rough algorithm instead of downgrading stable scale', () => {
+test('History edit preserves legacy rough and exposes modern Rough without two permanent UI entries', () => {
   const controller = controllerForTask(() => ({ result: { changed: false } }), []);
   for (const [morphology, mode] of [
-    ['stochastic', 'rough'],
-    ['stochastic-v2', 'rough-stable'],
+    ['stochastic', 'rough-legacy'],
+    ['stochastic-v2', 'rough'],
     ['pyramid', 'pyramid'],
   ]) {
     controller.loadOperationForEdit({
@@ -192,7 +192,12 @@ test('History edit restores the explicit rough algorithm instead of downgrading 
         },
       },
     });
-    assert.equal(controller.__root.getElementById('etchSurfaceMode').value, mode);
+    const surfaceSelect = controller.__root.getElementById('etchSurfaceMode');
+    assert.equal(surfaceSelect.value, mode);
+    assert.equal(
+      surfaceSelect.options.find((option) => option.value === 'rough-legacy').disabled,
+      morphology !== 'stochastic',
+    );
     assert.equal(controller.__root.getElementById('roughSeed').value, '123');
   }
 });
