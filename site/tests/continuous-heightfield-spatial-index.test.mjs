@@ -14,6 +14,7 @@ const { expandProjectStorage } = await import('../project-io.js');
 const { attachContinuousEtchModel, validateContinuousEtchModel } =
   await import('../continuous-etch-model.js');
 const { continuousOwnerColumnAtXY } = await import('../continuous-material-owner.js');
+const { continuousMaterialColumn } = await import('../continuous-etch-geometry.js');
 const { buildContinuousSiHeightfieldMesh } = await import('../continuous-heightfield-mesh.js');
 
 const project = expandProjectStorage(
@@ -100,3 +101,64 @@ for (const { shape, lateralUm, verticalUm } of [
     console.log(JSON.stringify({ shape, witnessCount: count, maxGridErrorUm: maximumError }));
   });
 }
+
+// The XY bounding-box shortcut must retain all mask-polygons AND holes. A
+// bounding box alone cannot classify an interior cut-out as material seed.
+test('indexed footprint preserves disjoint seed islands and polygon holes', () => {
+  const model = attachContinuousEtchModel(m07, {
+    face: 'front',
+    targetLayerIds: ['base'],
+    shape: 'circular',
+    lateralUm: 36,
+    verticalUm: 36,
+  });
+  const owner = structuredClone(validateContinuousEtchModel(model));
+  owner.fronts[0].seedGeom = [
+    [
+      [
+        [-40, -40],
+        [40, -40],
+        [40, 40],
+        [-40, 40],
+        [-40, -40],
+      ],
+      [
+        [-10, -10],
+        [-10, 10],
+        [10, 10],
+        [10, -10],
+        [-10, -10],
+      ],
+    ],
+    [
+      [
+        [55, -15],
+        [75, -15],
+        [75, 15],
+        [55, 15],
+        [55, -15],
+      ],
+    ],
+  ];
+  const mesh = buildContinuousSiHeightfieldMesh(owner, { xyStepUm: 1 });
+  const { nx, ny } = mesh.grid;
+  for (const [x, y] of [
+    [0, 0],
+    [0, 9],
+    [20, 0],
+    [39, 0],
+    [60, 0],
+    [70, 10],
+    [50, 30],
+    [110, 0],
+    [-70, -10],
+  ]) {
+    const actual = mesh.positions[2 * ((y + m07.height / 2) * nx + x + m07.width / 2) * 9 + 2];
+    const expected = Math.max(
+      ...continuousMaterialColumn(owner.sourceModel, owner.fronts, [x, y])
+        .filter((part) => part.layerId === 'base')
+        .map((part) => part.z1),
+    );
+    assert.ok(Math.abs(actual - expected) < 1e-5, `Indexed hole or island changed at ${x},${y}`);
+  }
+});
