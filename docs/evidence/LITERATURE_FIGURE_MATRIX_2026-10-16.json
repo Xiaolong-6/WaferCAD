@@ -373,6 +373,22 @@
       "browserEvidenceURL": null,
       "evidenceType": "figure cut still missing: independent calibrated paper-to-model overlay; real Chromium geometry screenshots do not establish paper match",
       "captureEvidence": null
+    },
+    {
+      "id": "suspended-tfln-microrings-10x8",
+      "projectPath": "./examples/suspended-tfln-microrings-10x8.wafercad",
+      "sourceURL": "https://doi.org/10.1038/s41377-026-02506-z",
+      "paperPanel": "Fig. 2a–c suspended 40 µm TFLN microring schematic and cross-section; 10×8 routing is inferred",
+      "classification": "assumed",
+      "claim": "Published ring geometry 40 µm diameter, 300 nm LN, 80 nm slab and four 400 nm anchors; 10×8 pitch, fanout waveguides, BOX void and wafer size are unreported engineering assumptions; not author GDS or original SEM match",
+      "acceptance": {
+        "status": "open-paper-match",
+        "calibratedScale": false,
+        "quantitativeOverlay": false
+      },
+      "browserEvidenceURL": null,
+      "evidenceType": "figure cut still missing: device-matched original paper Fig. 2 measured XY and A-B overlay; native 3D/Section proof is model-only",
+      "captureEvidence": null
     }
   ]
 }

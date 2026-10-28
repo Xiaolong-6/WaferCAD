@@ -9,8 +9,8 @@ Catalog ID, source URI and shipped project path must remain synchronized with
 ## Published catalog and historical evidence boundary
 
 The live `site/bundled-examples.js` catalog and its machine-readable
-provenance matrix currently enumerate **nine** Welcome families, including
-T-CMOS. All nine remain `open-paper-match`. No stored project screenshot,
+provenance matrix currently enumerate **ten** Welcome families, including
+T-CMOS and suspended TFLN microrings. All ten remain `open-paper-match`. No stored project screenshot,
 material-probe result or matching film thickness alone constitutes
 acceptance of an original paper's SEM or device cross-section. A verified
 paper-figure match requires the exact device, scale calibration, XY cut,
@@ -19,7 +19,7 @@ material stack, comparison protocol and quantitative deviations.
 **Historical #242 checkpoint:** The first **eight** families had actual
 Chromium captures and saved-material probes at their recorded older
 project SHA(s). Those results remain valid only for their original sources,
-not as current ninth-family or Continuous-release acceptance.
+not as current ten-family or Continuous-release acceptance.
 
 - **Microdisk:** Basiri-Esfahani Fig. 2a depicts a similar sample. The
   earlier eight-band and subsequently saved 72-band models are historical.
@@ -29,6 +29,7 @@ not as current ninth-family or Continuous-release acceptance.
   72-band model**; the new Continuous project has separate native 3D
   diagnostic evidence, but full normal-origin, exact published-blob and
   original-paper overlay acceptance remain open.
+- **TFLN:** Yu et al. (2026) report a suspended 40 µm microring with 300/80 nm LN and four 400 nm supports. The 10×8 array, fanout and engineering BOX release are assumptions, and there is no independently calibrated source-paper Fig. 2 overlay or author Mask equivalence. Preview screenshots validate only WaferCAD model presentation.
 - **T-CMOS:** The ninth family has paper-derived vector Mask/structural
   geometry; there is no independent calibrated paper Fig. 1a/1b overlay
   establishing an accepted source-figure match.
@@ -55,7 +56,7 @@ independent interpretation of any mismatch.
 
 ## Acceptance escalation: independently reproducible paper match
 
-The `accepted-paper-match` state is deliberately unused for all nine
+The `accepted-paper-match` state is deliberately unused for all ten
 currently bundled families. The fail-closed metadata contract requires, _before_ this status
 can be assigned:
 

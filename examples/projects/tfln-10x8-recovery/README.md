@@ -1,6 +1,6 @@
 # TFLN 10×8 round-resonator reconstruction — clean native mask-driven source
 
-**Status:** reproducible engineering candidate; **not** the authors' original photomask or a published/Welcome Example. This package replaces the archived 30-template recovery, which was heavier and did not faithfully carry the later clean Mask source.
+**Status:** reproducible source package for the independently promoted Welcome engineering example (`site/examples/suspended-tfln-microrings-10x8.wafercad`); **not** the authors' original photomask. This package replaces the archived 30-template recovery, which was heavier and did not faithfully carry the later clean Mask source. Publishing the example does not certify a quantitative source-paper geometry match.
 
 ## Complete original deliverables
 
@@ -51,6 +51,17 @@ and GEOS 3.13.1, the regenerated `mask_input.json` and `routes.json` were
 byte-identical to the original inputs, and the resulting masks passed the native
 project and GDS/OAS rebuild comparisons.
 
+## History semantics of the promoted Welcome project
+
+The Welcome project stores five **restorable engineering-geometry checkpoints**
+for the BOX/LN/etch/release reconstruction, plus the Workstation's synthetic
+Starting Wafer Step 0. The five persisted History operations are non-replayable `record`
+geometry checkpoints intentionally: the observed geometry is restorable, but these inferred
+mask-driven states are **not** guaranteed to be regenerable by editing a
+fabrication Process Step. The separate five-step Recipe documents the proposed
+deposition/etch stages and engineering BOX-void assumption. Do not present
+these checkpoints as deterministic Add/Etch replay operations.
+
 ## Visual / CI evidence
 
 The rebuilt project was opened in the real Workstation on a local HTTP origin,
@@ -65,5 +76,6 @@ underlying model. These software-rendered checks are not a GPU or browser
 first-frame performance guarantee.
 
 Full-array borders are dense; do not delete physical M1 fanout trenches as if
-they were false array seams. Ready risk-targeted CI and merge approval are
-required before merge.
+they were false array seams. The original PR #369 was merged; the separate
+Welcome-promotion PR requires its own source-bound Quality and interactive
+preview, Open, History and Recovery acceptance before being merged.

@@ -77,3 +77,45 @@ test('ROI plane owns a coincident material sidewall exactly once', () => {
   assert.deepEqual(Array.from(wall.positions), original, 'Display cropping is read-only');
   assert.equal(clipContinuousSurfaceToRect(wall, null), wall);
 });
+
+test('ROI fast-path preserves interior normals and excludes outside cells without creating phantom walls', () => {
+  const mesh = {
+    layerId: 'base',
+    positions: Float32Array.from([
+      0,
+      0,
+      2,
+      1,
+      0,
+      2,
+      0,
+      1,
+      2, // wholly inside
+      3,
+      3,
+      2,
+      4,
+      3,
+      2,
+      3,
+      4,
+      2, // wholly outside
+      2,
+      0,
+      0,
+      2,
+      1,
+      0,
+      2,
+      0,
+      1, // coincident ROI plane: cap owns it
+    ]),
+    normals: Float32Array.from(Array.from({ length: 9 }, () => [0, 0, 5]).flat()),
+  };
+  const original = mesh.positions.slice();
+  const crop = clipContinuousSurfaceToRect(mesh, { minX: -2, maxX: 2, minY: -2, maxY: 2 });
+  assert.equal(crop.triangles, 1);
+  assert.deepEqual(crop.positions, original.slice(0, 9));
+  assert.deepEqual(crop.normals, Float32Array.from([0, 0, 1, 0, 0, 1, 0, 0, 1]));
+  assert.deepEqual(mesh.positions, original, 'ROI speedup must not alter input geometry');
+});
