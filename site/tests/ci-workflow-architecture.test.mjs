@@ -150,6 +150,53 @@ test('browser and v2 owners are reusable without racing main-push jobs', () => {
   assert.match(browser, /!inputs\.skip_node_gate/);
 });
 
+test('opt-in 625-site dispatch runs its scientific owner only, never the full matrix', () => {
+  const browser = workflow('browser-regression');
+  assert.match(browser, /  workflow_dispatch:\n    inputs:\n      run_scope:/);
+  assert.match(
+    browser,
+    /default: full\n        options:\n          - full\n          - renderer-array/,
+  );
+  const plan = browser.split('  plan:\n')[1]?.split('  browser:\n')[0];
+  assert.ok(plan, 'browser plan job must exist');
+  assert.ok(
+    plan.includes(
+      '"${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.run_scope }}" == "renderer-array"',
+    ),
+  );
+  assert.match(
+    plan,
+    /for suite in full smoke workstation resilience history persistence interaction examples product_layout process extended; do/,
+  );
+  assert.ok(plan.includes('echo \'renderer=true\' >> "$GITHUB_OUTPUT"'));
+  assert.ok(plan.includes('echo \'extended_matrix=["none"]\' >> "$GITHUB_OUTPUT"'));
+  assert.ok(
+    plan.indexOf('inputs.run_scope') < plan.indexOf('inputs.force_full'),
+    'manual-only branch precedes full fallback',
+  );
+  const smoke = browser.split('  browser:\n')[1]?.split('  release-ui-owners:\n')[0];
+  const stress = browser.split('  renderer-array:\n')[1]?.split('  process-geometry:\n')[0];
+  const edge = browser.split('  renderer-array-edge-on:\n')[1];
+  assert.ok(
+    smoke?.includes(
+      "if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_scope != 'renderer-array' }}",
+    ),
+  );
+  assert.ok(stress?.includes("needs.plan.outputs.renderer == 'true'"));
+  assert.ok(stress?.includes('node scripts/v2/check-source-sunset-renderer-stress.mjs'));
+  assert.ok(
+    stress?.includes(
+      'site/tests/transparent-array-lod.test.mjs site/tests/renderer-geometry-cache.test.mjs',
+    ),
+  );
+  assert.ok(
+    edge?.includes(
+      "github.event_name != 'workflow_dispatch' || inputs.run_scope != 'renderer-array'",
+    ),
+  );
+  assert.doesNotMatch(browser, /^  pull_request:/m, 'no new automatic Browser workflow event');
+});
+
 test('retired preview cannot publish from the obsolete branch', () => {
   assert.equal(
     existsSync(new URL('../../.github/workflows/ui-v2-preview.yml', import.meta.url)),

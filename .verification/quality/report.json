@@ -4,10 +4,10 @@
   "scope": "full",
   "status": "pass",
   "source": {
-    "digest": "e0bf606899df084cc54a5a1521ce4403668ea829dc90fee1a8c1eb8c8e249ff4",
+    "digest": "04133c99da27af28428e0f567ad57ff88a71fff2fd49619b3fe986eb29f21214",
     "fileCount": 1212
   },
-  "sourceRevision": "9e950b539e5f682dd9a26adf982c77b8b638a18f",
+  "sourceRevision": "153a9df28c62918d2b1211731a7834f8983047e7",
   "planDigest": "9e40e14c41649069d23911dc155328f17e554f0307619aef8493378a2f26b4b3",
   "environment": {
     "node": "v22.16.0",
@@ -19,7 +19,7 @@
       "three": "0.179.1"
     }
   },
-  "startedAt": "2026-10-28T07:41:19.900Z",
+  "startedAt": "2026-10-28T10:28:28.351Z",
   "checks": [
     {
       "id": "lint",
@@ -31,7 +31,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 5853,
+      "durationMs": 17560,
       "logDigest": "7e083cff9d323606d09accd3389828279cc52091b6c62b45c8100c1ced589c7c"
     },
     {
@@ -44,7 +44,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 16057,
+      "durationMs": 33899,
       "logDigest": "1230617af071df8c1efeb12bcd6d41c3aa159e1cd0841cc546fbae4c8c56f867"
     },
     {
@@ -57,7 +57,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 423,
+      "durationMs": 1106,
       "logDigest": "25f4d71c0029d405133e2b5d0bb9c1d15dc02c4313f607b550e043d1a6dcf9c0"
     },
     {
@@ -69,10 +69,10 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 237166,
-      "logDigest": "21d94d951bab9f3cad520ec0aaf6d65e22864f9d5ac21354ab2d4e29a569672f"
+      "durationMs": 411717,
+      "logDigest": "019bcfebd46de5d7898d431619c764adeaafd635362a7fe2be9873c6eacb6bb0"
     }
   ],
-  "finishedAt": "2026-10-28T07:45:39.403Z",
-  "transcriptDigest": "f964d22bdcc10ebe46323abee99e349a74847636842cc5abeea4adf07348889a"
+  "finishedAt": "2026-10-28T10:36:12.640Z",
+  "transcriptDigest": "37dbf6b7e7008770c690c2e9a3ad091775cedccbbf0880fe4958858480eae385"
 }
