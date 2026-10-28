@@ -2,6 +2,7 @@ import {
   canonicalLineInterval,
   lineIntervalKey,
   localParameterAtLineT,
+  pointAtLineT,
   partitionLineIntervals,
 } from './line-intervals.js';
 import { adaptiveRoughMeshLod, roughDisplayProfileOffsetAtPoint } from './surface-rendering.js';
@@ -345,6 +346,49 @@ export function roughMeshDataFromPreparedCap({
       }
     }
   }
+  // Border is a physical sidewall contour, not a by-product of the rough
+  // cap's Fast/Quality/Interactive tessellation budget. Sample four times
+  // per feature, capped at 256 segments per owned span, independent of LOD.
+  // Constrain the cap to those same samples to avoid floating contours.
+  const stableBorderSamples = [];
+  if (closeToIdeal && sidewallBoundaryIntervals?.length) {
+    const spansByKey = new Map();
+    for (const span of sidewallBoundaryIntervals) {
+      if (!edgeOwners.has(span?.key)) continue;
+      const start = Math.min(Number(span.t0), Number(span.t1));
+      const end = Math.max(Number(span.t0), Number(span.t1));
+      if (!(end > start) || !Number.isFinite(start) || !Number.isFinite(end)) continue;
+      if (!spansByKey.has(span.key)) spansByKey.set(span.key, []);
+      spansByKey.get(span.key).push([start, end]);
+    }
+    const featureSize = Math.max(1e-6, Number(appearance?.featureSize) || 1);
+    for (const [key, spans] of spansByKey) {
+      spans.sort((a, b) => a[0] - b[0]);
+      const merged = [];
+      for (const [start, end] of spans) {
+        const previous = merged.at(-1);
+        if (previous && start <= previous[1] + 1e-10) {
+          previous[1] = Math.max(previous[1], end);
+        } else merged.push([start, end]);
+      }
+      const { line } = edgeOwners.get(key)[0];
+      for (const [start, end] of merged) {
+        const depth = Math.max(
+          0,
+          Math.min(8, Math.ceil(Math.log2((4 * (end - start)) / featureSize))),
+        );
+        const divisions = 2 ** depth;
+        const points = [];
+        for (let i = 0; i <= divisions; i++) {
+          const t = start + ((end - start) * i) / divisions;
+          const point = [...pointAtLineT(line, t), z];
+          points.push(point);
+          samplesByKey.get(key)?.set(t, point);
+        }
+        stableBorderSamples.push(points);
+      }
+    }
+  }
   const orderedSamples = new Map(
     [...samplesByKey].map(([key, samples]) => [key, [...samples].sort((a, b) => a[0] - b[0])]),
   );
@@ -434,12 +478,14 @@ export function roughMeshDataFromPreparedCap({
           // It is not a physical material boundary and must not be outlined.
           pushTriangle(point0, point1, top1);
           pushTriangle(point0, top1, top0);
-        } else {
-          // Only a real, owned material sidewall is a visible rough cap border.
-          // LOD joins and rough/flat patch boundaries remain mesh-only.
-          roughBorderPositions.push(...top0, ...top1);
         }
       }
+    }
+  }
+
+  for (const points of stableBorderSamples) {
+    for (let i = 1; i < points.length; i++) {
+      roughBorderPositions.push(...roughSample(points[i - 1]), ...roughSample(points[i]));
     }
   }
 
