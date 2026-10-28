@@ -66,12 +66,14 @@ test('published M07 Microdisk selectively releases Si under the 148/82 um mask',
   }
 
   const preRelease = inflateSourceModel(project, 'snapshot-microdisk-07');
-  assert.deepEqual(preRelease.layers.map((layer) => layer.id), [
-    'base', 'layer-1', 'layer-2', 'layer-3',
-  ]);
+  assert.deepEqual(
+    preRelease.layers.map((layer) => layer.id),
+    ['base', 'layer-1', 'layer-2', 'layer-3'],
+  );
   assert.ok(
     preRelease.regions.every((region) =>
-      region.stack.every((segment) => segment.layerId === 'base' || segment.layerId === 'layer-1')),
+      region.stack.every((segment) => segment.layerId === 'base' || segment.layerId === 'layer-1'),
+    ),
     'Both temporary photoresists must be fully stripped before Si release',
   );
   assert.ok(stackAt(preRelease, [110, 0]).some((s) => s.layerId === 'layer-1'));
