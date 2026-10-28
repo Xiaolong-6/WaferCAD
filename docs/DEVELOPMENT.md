@@ -257,9 +257,9 @@ Existing saved `stochastic` profiles and Recipe source aliases `rough` / `stocha
 retain the legacy algorithm without automatic conversion. The Process UI and
 new Recipe form selections create explicit `stochastic-v2` records; users writing
 Recipe code should specify `stochastic-v2` to obtain the modern field. This
-preserves old code-based Recipes without guessing their creation date. Manual Process, Recipe editing,
-History replay, inherited films/annotations and file/Recovery storage must
-preserve the selected morphology. A legacy reader rejects the unfamiliar enum
+preserves old code-based Recipes without guessing their creation date.
+Manual Process, Recipe editing, History replay, inherited films/annotations,
+and file/Recovery storage must preserve the selected morphology. A legacy reader rejects the unfamiliar enum
 rather than silently displaying v2 as v1; unknown future values also reject.
 No bundled example or saved History state is implicitly upgraded.
 

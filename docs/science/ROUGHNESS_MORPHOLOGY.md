@@ -7,7 +7,7 @@ WaferCAD keeps etched-surface morphology as an appearance layer on top of the id
 The Etch surface selector currently supports:
 
 - `smooth`: no surface appearance metadata.
-- `rough`: stochastic correlated roughness; new UI and Recipe operations default to `stochastic-v2` (stable-scale field). Saved `stochastic` v1 projects are not rewritten.
+- `rough`: stochastic correlated roughness. New Process and graphical Recipe selections store `stochastic-v2` (stable-scale field), while existing Recipe source aliases remain legacy. Saved `stochastic` v1 projects are not rewritten.
 - `pyramid`: deterministic square-pyramid array.
 
 Both non-smooth modes use the same appearance contract:
