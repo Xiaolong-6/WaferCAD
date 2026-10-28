@@ -53,12 +53,12 @@ for (const adaptiveChordErrorUm of [null, 0.5])
         });
       });
       worker.postMessage({
-      id: 1,
-      owner,
-      xyStepUm: 1,
-      maxTriangles: 1200000,
-      adaptiveChordErrorUm,
-    });
+        id: 1,
+        owner,
+        xyStepUm: 1,
+        maxTriangles: 1200000,
+        adaptiveChordErrorUm,
+      });
       const result = await response;
       assert.equal(result.type, 'done', result.message || 'Worker must build actual mesh');
       assert.equal(result.mesh.triangles, expected.triangles);
