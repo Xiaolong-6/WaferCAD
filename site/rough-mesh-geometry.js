@@ -5,7 +5,11 @@ import {
   pointAtLineT,
   partitionLineIntervals,
 } from './line-intervals.js';
-import { adaptiveRoughMeshLod, roughDisplayProfileOffsetAtPoint } from './surface-rendering.js';
+import {
+  adaptiveRoughMeshLod,
+  projectedPixelsPerUnit,
+  roughDisplayProfileOffsetAtPoint,
+} from './surface-rendering.js';
 import { triangulatePolygon } from './polygon-triangulation.js';
 
 function triangleNormal(a, b, c) {
@@ -346,20 +350,37 @@ export function roughMeshDataFromPreparedCap({
       }
     }
   }
-  // Border is a physical sidewall contour, not a by-product of the rough
-  // cap's Fast/Quality/Interactive tessellation budget. Sample four times
-  // per feature, capped at 256 segments per owned span, independent of LOD.
-  // Constrain the cap to those same samples to avoid floating contours.
+  // Sidewall ownership is physical; render fidelity must not change the
+  // resulting contour at a fixed camera. Budget samples in CSS pixels (not
+  // device pixels or Fast/Quality triangle budgets), and clip them to the
+  // *actual cap edges*. A remote or malformed collinear interval must never
+  // create a floating Border outside the surface.
   const stableBorderSamples = [];
   if (closeToIdeal && sidewallBoundaryIntervals?.length) {
+    const screenPixelsPerUnit = zoneResults.reduce(
+      (max, zone) =>
+        Math.max(
+          max,
+          projectedPixelsPerUnit({
+            ...(zone.lodContext || lodContext),
+            pixelRatio: 1,
+          }),
+        ),
+      0,
+    );
     const spansByKey = new Map();
     for (const span of sidewallBoundaryIntervals) {
-      if (!edgeOwners.has(span?.key)) continue;
+      const owners = edgeOwners.get(span?.key) || [];
       const start = Math.min(Number(span.t0), Number(span.t1));
       const end = Math.max(Number(span.t0), Number(span.t1));
       if (!(end > start) || !Number.isFinite(start) || !Number.isFinite(end)) continue;
-      if (!spansByKey.has(span.key)) spansByKey.set(span.key, []);
-      spansByKey.get(span.key).push([start, end]);
+      for (const { line } of owners) {
+        const clippedStart = Math.max(start, line.t0),
+          clippedEnd = Math.min(end, line.t1);
+        if (!(clippedEnd > clippedStart)) continue;
+        if (!spansByKey.has(span.key)) spansByKey.set(span.key, []);
+        spansByKey.get(span.key).push([clippedStart, clippedEnd]);
+      }
     }
     const featureSize = Math.max(1e-6, Number(appearance?.featureSize) || 1);
     for (const [key, spans] of spansByKey) {
@@ -373,14 +394,20 @@ export function roughMeshDataFromPreparedCap({
       }
       const { line } = edgeOwners.get(key)[0];
       for (const [start, end] of merged) {
-        const depth = Math.max(
-          0,
-          Math.min(8, Math.ceil(Math.log2((4 * (end - start)) / featureSize))),
+        const spanLength = end - start;
+        const requested = Math.min(
+          64,
+          Math.max(
+            1,
+            Math.ceil(
+              Math.min((2 * spanLength) / featureSize, (spanLength * screenPixelsPerUnit) / 3),
+            ),
+          ),
         );
-        const divisions = 2 ** depth;
+        const divisions = 2 ** Math.ceil(Math.log2(requested));
         const points = [];
         for (let i = 0; i <= divisions; i++) {
-          const t = start + ((end - start) * i) / divisions;
+          const t = start + (spanLength * i) / divisions;
           const point = [...pointAtLineT(line, t), z];
           points.push(point);
           samplesByKey.get(key)?.set(t, point);

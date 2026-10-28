@@ -892,6 +892,124 @@ test('collinear owned rough Border spans retain their full extent across LODs', 
   }
 });
 
+test('physical rough Borders cannot extend beyond actual cap edges or bridge a gap', () => {
+  const appearance = {
+    kind: 'rough',
+    morphology: 'pyramid',
+    polarity: 'normal',
+    featureSize: 0.2,
+    meanHeight: 0.15,
+    etchDepth: 0.2,
+    seed: 23,
+  };
+  // Two separate rectangles share an infinite straight line, not a physical
+  // perimeter through the empty interval between them.
+  const triangles = [
+    [
+      [0, 0, 0],
+      [2, 0, 0],
+      [2, 1, 0],
+    ],
+    [
+      [0, 0, 0],
+      [2, 1, 0],
+      [0, 1, 0],
+    ],
+    [
+      [4, 0, 0],
+      [6, 0, 0],
+      [6, 1, 0],
+    ],
+    [
+      [4, 0, 0],
+      [6, 1, 0],
+      [4, 1, 0],
+    ],
+  ];
+  const edges = roughBoundaryEdgesFromTriangles(triangles);
+  const bottom = edges.find(({ p, q }) => p[1] === 0 && q[1] === 0);
+  const mesh = roughMeshDataFromPreparedCap({
+    z: 0,
+    normal: 1,
+    appearance,
+    // Deliberately oversize this interval to exercise the renderer's own
+    // ownership guard instead of assuming perfect upstream metadata.
+    sidewallBoundaryIntervals: [{ key: bottom.key, t0: -5, t1: 12 }],
+    lodZones: [
+      {
+        baseTriangles: triangles,
+        edges,
+        maxEdge: 3,
+        triangleBudget: 4,
+        lodContext: { distance: 5, viewportHeight: 600, maxDepth: 0 },
+      },
+    ],
+  });
+  assert.ok(mesh.roughBorderPositions.length > 0);
+  for (let i = 0; i < mesh.roughBorderPositions.length; i += 6) {
+    const x0 = mesh.roughBorderPositions[i],
+      x1 = mesh.roughBorderPositions[i + 3];
+    assert.ok(x0 >= 0 && x1 <= 6);
+    assert.ok(x1 <= 2 || x0 >= 4, 'no false Border may cross the physical gap');
+  }
+});
+
+test('far-field rough Border budget is independent of Fast and Quality tessellation', () => {
+  const appearance = {
+    kind: 'rough',
+    morphology: 'pyramid',
+    polarity: 'normal',
+    featureSize: 0.1,
+    meanHeight: 0.2,
+    etchDepth: 0.3,
+    seed: 21,
+  };
+  const triangles = [
+    [
+      [0, 0, 0],
+      [5, 0, 0],
+      [5, 5, 0],
+    ],
+    [
+      [0, 0, 0],
+      [5, 5, 0],
+      [0, 5, 0],
+    ],
+  ];
+  const edges = roughBoundaryEdgesFromTriangles(triangles);
+  const make = (pixelRatio, triangleBudget, maxDepth) =>
+    roughMeshDataFromPreparedCap({
+      z: 0,
+      normal: 1,
+      appearance,
+      sidewallBoundaryIntervals: edges.map(({ key, line }) => ({
+        key,
+        t0: line.t0,
+        t1: line.t1,
+      })),
+      lodZones: [
+        {
+          baseTriangles: triangles,
+          edges,
+          maxEdge: 8,
+          triangleBudget,
+          lodContext: {
+            distance: 1000,
+            viewportHeight: 100,
+            pixelRatio,
+            roughnessDetail: pixelRatio === 1 ? 0.25 : 1,
+            maxDepth,
+          },
+        },
+      ],
+    });
+  const fast = make(1, 2, 0),
+    quality = make(2, 8192, 7);
+  assert.deepEqual(fast.roughBorderPositions, quality.roughBorderPositions);
+  assert.equal(fast.roughBorderPositions.length / 6, 4, 'distant Border keeps just four sides');
+  assert.equal(fast.positions.length / 9, 2, 'distant Fast cap retains its minimum mesh');
+});
+
 test('unequal LOD caps conform their common edge without vertical seam sheets', () => {
   const appearance = {
     kind: 'rough',
