@@ -14,12 +14,11 @@ import { join, dirname } from 'node:path';
 import { loadGeometryKernel } from '../process-benchmarks.mjs';
 await loadGeometryKernel();
 const { createModel, applyOperation } = await import('../../site/model.js');
-const { difference, intersection, rectMulti, robustIntersection } =
-  await import('../../site/vector-geometry.js');
+const { difference, intersection, rectMulti } = await import('../../site/vector-geometry.js');
 const { resolveArrayModel, translateGeometry } = await import('../../site/model-array.js');
 const { validateProjectFile } = await import('../../site/project-schema.js');
 const { normalizeProcessRecipe } = await import('../../site/process-recipe.js');
-const { readProjectFile, prepareProjectForWorkspaceStorage, expandProjectStorage } =
+const { readProjectFile, prepareProjectForWorkspaceStorage } =
   await import('../../site/project-io.js');
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '../..');
