@@ -280,6 +280,11 @@ export function createProjectStateController({
               top: Number(project.display.sectionCollapse.top),
               bottom: Number(project.display.sectionCollapse.bottom),
               enabled: project.display.sectionCollapse.enabled !== false,
+              // View-only opt-in must survive Save/Recovery; otherwise a user
+              // requested Continuous Z Break silently resets on reload.
+              ...(project.display.sectionCollapse.continuousEtchExplicit === true
+                ? { continuousEtchExplicit: true }
+                : {}),
               ...normalizeSectionZScales(project.display.sectionCollapse),
             }
           : null;

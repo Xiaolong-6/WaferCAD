@@ -22,6 +22,23 @@ Transparent interior contour lines are drawn in a dedicated no-depth-test inspec
 
 The settings are currently local to the running Workstation (except the existing persisted `threeShowBorders` master switch). Persisting the detailed style choices across browser reloads needs a separate explicit display-state storage contract and should not silently create History or Recovery mutations.
 
+## Dense-array overview and exact ROI
+
+When an uncut array has at least 64 physical instances, full-scene internal
+interface and buried Border overlays are intentionally omitted. The previous
+eight-instance central sampling generated nonphysical isolated interface
+rectangles visible through the opposite substrate face and concentrated
+black contours over multi-tier arrays. The **full, exact exterior contours**
+remain. Clean, Structure and X-Ray do not change this overview policy.
+Selecting a genuine 3D inspection ROI restores the exact cap/sidewall
+interfaces within the ROI. This is presentation-only and leaves canonical
+material, Mask, History, GLB and project storage untouched.
+
+Circular wafer exterior crease keys normalize coordinates within 1e-9 µm
+of zero. This prevents four cardinal floating-point joins from generating
+full-height substrate sidewall lines while retaining true material corners
+and height steps.
+
 ## Focused acceptance
 
 1. For each class, test Off, Auto, Solid, Dashed and master Border OFF with 100%, 70%, 45%, and 15% material opacity on the same camera/ROI.

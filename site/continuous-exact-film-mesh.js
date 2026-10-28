@@ -2,6 +2,7 @@
 // Shared-edge-connected cap triangles become separate watertight solids: point
 // contacts stay coincident, without modifying physical vertices or materials.
 import { triangulatePolygon } from './polygon-triangulation.js';
+import { unionGeometries } from './vector-geometry.js';
 
 const key = (p) => `${Math.round(p[0] * 1e7)},${Math.round(p[1] * 1e7)}`;
 const edgeKey = (a, b) => {
@@ -19,8 +20,26 @@ export function exactUnetchedFilmCandidates(owner) {
       if (!candidate.has(part.layerId)) candidate.set(part.layerId, []);
       candidate.get(part.layerId).push({ geom: region.geom, z0: part.z0, z1: part.z1 });
     }
+  // Source regions split at other materials' edges even when this film is
+  // unchanged, perfectly coplanar and physically connected. Their common
+  // footprint can be merged for exact cap/sidewall extrusion. Never coalesce
+  // different Z intervals: that would erase an actual height step.
+  const sameZ = (a, b) => Math.abs(a - b) <= 1e-9;
   return new Map(
-    [...candidate].filter(([, items]) => items.length === 1).map(([id, items]) => [id, items[0]]),
+    [...candidate].flatMap(([id, items]) => {
+      const first = items[0];
+      if (!items.every((item) => sameZ(item.z0, first.z0) && sameZ(item.z1, first.z1))) return [];
+      return [
+        [
+          id,
+          {
+            geom: items.length === 1 ? first.geom : unionGeometries(items.map((item) => item.geom)),
+            z0: first.z0,
+            z1: first.z1,
+          },
+        ],
+      ];
+    }),
   );
 }
 

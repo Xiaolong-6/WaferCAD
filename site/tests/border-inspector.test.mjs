@@ -9,7 +9,7 @@ import {
   borderNeedsInternalGeometry,
   borderPresentationState,
   borderContourPresentationPlan,
-  DENSE_ARRAY_BORDER_PREVIEW_SITES,
+  DENSE_ARRAY_BORDER_OVERVIEW_THRESHOLD,
 } from '../border-inspector.js';
 import {
   buriedInterfaceContours,
@@ -273,33 +273,67 @@ test('Border Inspector uses native v2 pressed buttons rather than a small checkb
   assert.match(css, /min-height: 44px/);
 });
 
-test('dense array contour LOD retains canonical ownership and exact ROI', () => {
+test('dense array overview never paints sampled buried caps through substrate', () => {
   const translations = Array.from({ length: 625 }, (_, i) => [
     ((i % 25) - 12) * 1600,
     (Math.floor(i / 25) - 12) * 1600,
   ]);
-  const cap = { buried: true, interfaceLayerId: 'oxide', instanceTranslations: translations };
+  const cap = {
+    buried: true,
+    layerId: 'oxide',
+    interfaceLayerId: 'base',
+    z: 1,
+    polys: [
+      [
+        [
+          [0, 0],
+          [2, 0],
+          [2, 2],
+          [0, 2],
+          [0, 0],
+        ],
+      ],
+    ],
+    instanceTranslations: translations,
+  };
   const wall = { buried: true, instanceTranslations: translations };
-  const original = { arrayInstances: 625, caps: [cap], sidewalls: [wall], borderLines: [] };
+  const trueExterior = [
+    [
+      [0, 0, 0],
+      [1, 0, 0],
+    ],
+  ];
+  const original = {
+    arrayInstances: 625,
+    caps: [cap],
+    sidewalls: [wall],
+    borderLines: trueExterior,
+  };
   const view = borderContourPresentationPlan(original);
-  assert.equal(view.mode, 'array-overview-preview');
+  assert.equal(view.mode, 'array-overview-exterior-only');
   assert.notEqual(view.plan, original);
-  assert.equal(view.plan.caps.length, original.caps.length, 'keep canonical cap indices');
-  assert.equal(view.plan.caps[0].instanceTranslations.length, DENSE_ARRAY_BORDER_PREVIEW_SITES);
-  assert.equal(
-    view.plan.sidewalls[0].instanceTranslations.length,
-    DENSE_ARRAY_BORDER_PREVIEW_SITES,
-  );
-  assert.ok(
-    view.plan.caps[0].instanceTranslations.some(([x, y]) => x === 0 && y === 0),
-    'center cell must be represented by overview LOD',
-  );
+  assert.equal(view.plan.borderLines, trueExterior, 'keep full exterior physical ownership');
+  assert.deepEqual(view.plan.caps, [], 'never draw isolated sampled internal interfaces');
+  assert.deepEqual(view.plan.sidewalls, [], 'never draw an unrepresentative central wall cluster');
+  assert.deepEqual(borderInspectorContours(view.plan), {
+    exterior: trueExterior,
+    interface: [],
+    buried: [],
+  });
   assert.equal(cap.instanceTranslations.length, 625, 'do not mutate physical cap replicas');
   assert.equal(wall.instanceTranslations.length, 625, 'do not mutate physical wall replicas');
   const exact = borderContourPresentationPlan(original, { hasRoi: true });
   assert.equal(exact.mode, 'exact');
-  assert.equal(exact.plan, original, 'an inspection ROI always uses exact physical geometry');
+  assert.equal(exact.plan, original, 'inspection ROI uses the complete physical plan');
+  assert.equal(borderInspectorContours(exact.plan).interface.length, 4 * 625);
   assert.equal(borderContourPresentationPlan({ ...original, arrayInstances: 1 }).mode, 'exact');
+  assert.equal(
+    borderContourPresentationPlan({
+      ...original,
+      arrayInstances: DENSE_ARRAY_BORDER_OVERVIEW_THRESHOLD - 1,
+    }).mode,
+    'exact',
+  );
 });
 
 test('Border Inspector stays functional without retired Cutaway behavior', async () => {
