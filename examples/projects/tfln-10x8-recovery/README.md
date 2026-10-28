@@ -51,6 +51,17 @@ and GEOS 3.13.1, the regenerated `mask_input.json` and `routes.json` were
 byte-identical to the original inputs, and the resulting masks passed the native
 project and GDS/OAS rebuild comparisons.
 
+## History semantics of the promoted Welcome project
+
+The Welcome project stores five **restorable engineering-geometry checkpoints**
+for the BOX/LN/etch/release reconstruction, plus the Workstation's synthetic
+Starting Wafer Step 0. The five persisted History operations are non-replayable `record`
+geometry checkpoints intentionally: the observed geometry is restorable, but these inferred
+mask-driven states are **not** guaranteed to be regenerable by editing a
+fabrication Process Step. The separate five-step Recipe documents the proposed
+deposition/etch stages and engineering BOX-void assumption. Do not present
+these checkpoints as deterministic Add/Etch replay operations.
+
 ## Visual / CI evidence
 
 The rebuilt project was opened in the real Workstation on a local HTTP origin,

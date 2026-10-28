@@ -303,7 +303,7 @@ export const BUNDLED_EXAMPLES = Object.freeze([
       label: 'Two representative ring sites · full 80-ring array opens in Workstation',
     },
     summary:
-      'A mask-driven, editable 10×8 thin-film lithium-niobate suspended microring array. The 40 µm rim, 300/80 nm LN thicknesses and four 0.4 µm anchors follow reported dimensions; the 145×360 µm array pitch, fanout and bounded BOX release are explicitly inferred. The six History checkpoints are restorable engineering geometry states, not a replayable HF release recipe.',
+      'A mask-driven, editable 10×8 thin-film lithium-niobate suspended microring array. The 40 µm rim, 300/80 nm LN thicknesses and four 0.4 µm anchors follow reported dimensions; the 145×360 µm array pitch, fanout and bounded BOX release are explicitly inferred. The five persisted History checkpoints plus synthetic Starting Wafer are restorable engineering geometry states, not executable deposition/etch or HF release replay.',
     sources: [
       {
         citation:

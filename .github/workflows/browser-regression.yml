@@ -14,6 +14,15 @@ on:
         type: boolean
         default: false
   workflow_dispatch:
+    inputs:
+      run_scope:
+        description: Run the complete Browser matrix or only 625-site renderer stress
+        required: false
+        type: choice
+        default: full
+        options:
+          - full
+          - renderer-array
 
 concurrency:
   group: browser-regression-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref || github.run_id }}
@@ -51,7 +60,16 @@ jobs:
         id: plan
         shell: bash
         run: |
-          if [[ "${{ inputs.force_full }}" == "true" ]]; then
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.run_scope }}" == "renderer-array" ]]; then
+            # Isolate the single expensive 625-site real-browser owner. This
+            # opt-in diagnostic does not replace any Ready/release suite.
+            for suite in full smoke workstation resilience history persistence interaction examples product_layout process extended; do
+              echo "$suite=false" >> "$GITHUB_OUTPUT"
+            done
+            echo 'renderer=true' >> "$GITHUB_OUTPUT"
+            echo 'extended_matrix=["none"]' >> "$GITHUB_OUTPUT"
+            echo 'Manual 625-site renderer-only acceptance (all 20 toggles)'
+          elif [[ "${{ inputs.force_full }}" == "true" ]]; then
             node scripts/ci-test-plan.mjs --full
           elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
             git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}" \
@@ -77,6 +95,7 @@ jobs:
   browser:
     name: ${{ github.event_name == 'push' && 'Main targeted regression' || 'Chromium targeted regression' }}
     needs: plan
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_scope != 'renderer-array' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -279,9 +298,9 @@ jobs:
     # Run 625-site software-WebGL stress at final review, on main or by manual dispatch.
     if: ${{ needs.plan.outputs.renderer == 'true' && (github.event_name != 'pull_request' || !github.event.pull_request.draft || github.event.pull_request.number == 290) }}
     runs-on: ubuntu-latest
-    # Large transparent software-WebGL frames take ~34 s per completed frame.
-    # The full 20-toggle resource-stability contract needs a dedicated watchdog;
-    # cold/warm speed targets remain advisory, correctness and hangs remain hard.
+    # All 20 completed full-quality transparent WebGL toggles remain mandatory.
+    # Preserve the established 1440x960 framebuffer and scientific invariants;
+    # hangs and retained-resource failures remain hard failures.
     timeout-minutes: 60
     env:
       WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
@@ -319,8 +338,14 @@ jobs:
           cat /tmp/wafercad-array-http.log
           exit 1
 
+      # The native renderer owner in the same planned Browser workflow already
+      # executes the four-width/touch M3D check and 80x80 array isolation.
+      # Keep the unique full-scene 625-site leak/stability contract here.
+      - name: Check 625-site renderer scientific invariants
+        run: node --test site/tests/transparent-array-lod.test.mjs site/tests/renderer-geometry-cache.test.mjs
+
       - name: Check 625-site array scene and retained resources
-        run: node scripts/array-renderer-regression.mjs --fast-transparent-lod
+        run: node scripts/v2/check-source-sunset-renderer-stress.mjs
 
       - name: Upload array renderer diagnostics
         if: always()
@@ -400,7 +425,7 @@ jobs:
   renderer-array-edge-on:
     name: 625-site edge-on exact-wall restoration
     needs: plan
-    if: ${{ needs.plan.outputs.renderer == 'true' && (github.event_name != 'pull_request' || !github.event.pull_request.draft || github.event.pull_request.number == 290) }}
+    if: ${{ needs.plan.outputs.renderer == 'true' && (github.event_name != 'workflow_dispatch' || inputs.run_scope != 'renderer-array') && (github.event_name != 'pull_request' || !github.event.pull_request.draft || github.event.pull_request.number == 290) }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:

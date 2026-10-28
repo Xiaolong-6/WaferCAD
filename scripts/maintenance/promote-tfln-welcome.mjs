@@ -221,10 +221,14 @@ const nodes = states.slice(1).map((leaf, offset) => {
     createdAt: new Date(Date.parse(createdAt) + i * 60000).toISOString(),
     processRevision: i,
     operation: {
-      kind: ['base', 'add', 'add', 'etch', 'etch', 'record'][i],
+      // Mask-driven stage states are reconstructed geometric checkpoints.
+      // Do not invent executable Add/Etch replay parameters for inferred steps.
+      kind: 'record',
       label: stages[i],
       geometryChanged: true,
-      note: 'Restorable engineering geometry checkpoint; not a replayable fabrication recipe.',
+      processType: 'custom',
+      geometryCheckpoint: true,
+      note: 'Restorable engineering geometry checkpoint; not an executable fabrication step.',
     },
     state: core(i === states.length - 1 ? reference.model : arrayModel(leaf)),
   };
@@ -340,12 +344,13 @@ preview.snapshotBranches = {
       id: 'tfln-preview-final',
       branchId: 'main',
       parentId: 'tfln-preview-base',
-      createdAt: new Date(Date.parse(createdAt) + 60000).toISOString(),
+      createdAt,
       processRevision: 1,
       operation: {
         kind: 'record',
         label: 'Two-device engineering geometry snapshot (not a fabrication replay)',
         geometryChanged: true,
+        geometryCheckpoint: true,
       },
       state: structuredClone(previewCore),
     },

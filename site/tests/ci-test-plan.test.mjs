@@ -66,6 +66,39 @@ test('shared product orchestrator changes run both product review scopes', () =>
   assert.equal(plan.suites.process, false);
 });
 
+test('opt-in 625-site stress script does not schedule unrelated Ready browser and Main/Mask gates', () => {
+  const paths = [
+    'scripts/v2/check-source-sunset-renderer-stress.mjs',
+    '.github/workflows/browser-regression.yml',
+    'site/tests/ci-workflow-architecture.test.mjs',
+  ];
+  const plan = buildCiTestPlan(paths);
+  assert.equal(plan.full, false);
+  assert.deepEqual(
+    Object.entries(plan.suites)
+      .filter(([, selected]) => selected)
+      .map(([name]) => name),
+    ['smoke'],
+  );
+  assert.equal(plan.release.main_mask, false);
+  const realV2 = buildCiTestPlan([...paths, 'scripts/v2/check-main-view.mjs']);
+  assert.equal(realV2.suites.workstation, true, 'real UI checks retain Workstation owner');
+  assert.equal(realV2.release.main_mask, true, 'real UI checks retain Main/Mask owner');
+  const realThree = buildCiTestPlan([...paths, 'site/three-view.js']);
+  assert.equal(
+    realThree.suites.renderer,
+    true,
+    'product renderer changes retain real browser owner',
+  );
+  const manualFull = buildCiTestPlan(paths, { full: true });
+  assert.equal(
+    manualFull.suites.renderer,
+    true,
+    'explicit full still runs renderer scientific owner',
+  );
+  assert.equal(manualFull.release.main_mask, true, 'explicit full still runs Main/Mask');
+});
+
 test('workflow-only changes stay on the lightweight fast baseline', () => {
   const plan = buildCiTestPlan(['.github/workflows/browser-regression.yml']);
   assert.equal(plan.full, false);

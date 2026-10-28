@@ -141,6 +141,10 @@ export function upgradeBundledExampleHistory(project) {
   for (const node of nodes) {
     const operation = node?.operation;
     if (!operation || operation.replay?.version === 1) continue;
+    // Explicit engineering checkpoints restore their stored material state.
+    // Never upgrade them to a fake replayable Record process operation: a
+    // replay would preserve the predecessor instead of this reconstructed geometry.
+    if (operation.kind === 'record' && operation.geometryCheckpoint === true) continue;
 
     const replay = legacyReplayDescriptor(node, operation);
     if (replay) {

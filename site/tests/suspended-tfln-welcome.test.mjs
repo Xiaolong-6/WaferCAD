@@ -26,8 +26,12 @@ test('TFLN Welcome opens the full native 80-ring editable, restorable model', as
   );
   const nodes = project.snapshotBranches.nodes;
   assert.equal(nodes.length, 5, 'Step 0 is synthetic, not persisted');
-  assert.ok(nodes.every((node) => node.operation.kind !== 'base'));
-  assert.equal(nodes[0].operation.kind, 'add');
+  assert.ok(nodes.every((node) => node.operation.kind === 'record'));
+  assert.ok(nodes.every((node) => node.operation.geometryCheckpoint === true));
+  assert.ok(nodes.every((node) => node.operation.replay == null));
+  // These are restorable engineering checkpoints, not fabricated Add/Etch replay steps.
+  const { upgradeBundledExampleHistory } = await import('../bundled-example-history.js');
+  assert.deepEqual(upgradeBundledExampleHistory(project), { upgraded: 0, unsupported: [] });
   assert.equal(nodes[0].parentId, null);
   assert.equal(project.snapshotBranches.branches[0].rootNodeId, nodes[0].id);
   assert.equal(nodes[0].state.model.array.templates[0].model.layers.length, 2);
