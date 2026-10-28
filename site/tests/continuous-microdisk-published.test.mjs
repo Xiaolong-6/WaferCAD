@@ -22,6 +22,7 @@ const { continuousOwnerColumnAtXY } = await import('../continuous-material-owner
 const { createSelectionGeometry } = await import('../selection-geometry.js');
 const { maskLocalToWorld } = await import('../mask-roi-geometry.js');
 const { pointInMulti } = await import('../vector-geometry.js');
+const { createModel, applyOperation } = await import('../model.js');
 
 const originalBytes = await readFileAsync(
   new URL('../examples/suspended-silica-microdisks.wafercad', import.meta.url),
@@ -132,6 +133,64 @@ test('physical photoresist actually patterns, protects and strips during microdi
   assert.equal(recipe[3].params.target, 'Thermal SiO₂ · 1.8 µm');
   assert.equal(recipe[5].command, 'deposit');
   assert.equal(recipe[7].params.target, 'Dicing protection photoresist · 1 µm (assumed)');
+});
+
+
+test('real production Kernel replays physical resist development and stripping through M07', () => {
+  const model = createModel({ shape: 'rect', width: 400, height: 400, thickness: 80 });
+  model.layers[0].name = 'Silicon substrate';
+  model.revision = 1;
+  model.processRevision = 1;
+  const selection = createSelectionGeometry({
+    getState: () => ({ ...released, model }),
+    selectedElement: (element) =>
+      released.selectedLayerKeys.includes(element.layer + '|' + element.datatype),
+    maskPoint: (point) => maskLocalToWorld(point, released.maskTransform),
+  });
+  const openings = selection.operationAreaGeometry('invert');
+  assert.equal(openings.length, 5);
+  const probes = [[0, 0], [83, 0], [110, 0], [145, 0], [175, 0],
+    [-110, 0], [-175, 0], [180, 180], [-180, -180], [0, 175], [0, -175]];
+  const column = (value, xy) =>
+    value.regions.find((region) => pointInMulti(xy, region.geom))?.stack.map(
+      (segment) => [segment.layerId, segment.z0, segment.z1],
+    ) || [];
+  const check = (id) => {
+    const saved = released.snapshots.find((item) => item.id === 'snapshot-microdisk-' + id);
+    assert.ok(saved);
+    assert.equal(model.processRevision, saved.state.model.processRevision);
+    for (const xy of probes) {
+      assert.deepEqual(column(model, xy), column(saved.state.model, xy),
+        'Real Kernel mismatch after M' + id + ' at ' + xy);
+    }
+  };
+  const apply = (id, operation, masked = false) => {
+    const result = applyOperation(model, {
+      ...operation, face: 'front', area: masked ? openings : model.boundary,
+    });
+    assert.equal(result.changed, true, result.error || 'Failed process M' + id);
+    check(id);
+  };
+  const add = (name, thickness) => ({ type: 'add', name, thickness, growth: 'direct' });
+  const etch = (layerId, thickness) => ({
+    type: 'etch', thickness, etchProfile: 'directional',
+    etchTargetLayerIds: [layerId],
+  });
+  apply('02', add('Thermal SiO₂ · 1.8 µm', 1.8));
+  apply('03', add('Patterning photoresist · 1 µm (assumed)', 1));
+  apply('04', etch('layer-2', 1), true);
+  apply('05', etch('layer-1', 2));
+  apply('06', etch('layer-2', 1));
+  apply('07a', add('Dicing protection photoresist · 1 µm (assumed)', 1));
+  model.revision++;
+  model.processRevision++;
+  check('07b');
+  apply('07', etch('layer-3', 1));
+  assert.deepEqual(model.layers.map((layer) => layer.id),
+    ['base', 'layer-1', 'layer-2', 'layer-3']);
+  for (const region of model.regions) {
+    assert.ok(region.stack.every((part) => part.layerId !== 'layer-2' && part.layerId !== 'layer-3'));
+  }
 });
 
 test('published continuous material conserves silica and retains pedestal with exact occupancy', () => {
