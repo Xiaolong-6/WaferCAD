@@ -866,3 +866,41 @@ test('Lift-off requires an explicit sacrificial selection before Apply is enable
   assert.equal(root.getElementById('applyOperationBtn').disabled, false);
   assert.match(root.getElementById('liftoffTargetHint').textContent, /supported deposits/);
 });
+
+test('Direct UI forwards fixed θ/φ through existing Worker and History contracts', async () => {
+  const events = [],
+    recorded = [];
+  let applied;
+  const controller = controllerForTask(
+    (model, _source, params) => {
+      applied = params;
+      return {
+        result: { changed: true, layerId: 'layer-1' },
+        model: {
+          ...model,
+          revision: model.revision + 1,
+          processRevision: model.processRevision + 1,
+        },
+      };
+    },
+    events,
+    { recorded },
+  );
+  const root = controller.__root;
+  root.getElementById('directTilt').value = '45';
+  root.getElementById('directAzimuth').value = '-135';
+  await controller.applyOperation();
+  assert.deepEqual(applied.incidence, { tiltDeg: 45, azimuthDeg: -135 });
+  assert.deepEqual(recorded[0].replay.params.incidence, { tiltDeg: 45, azimuthDeg: -135 });
+});
+
+test('invalid fixed Direct input is rejected before Worker and History', async () => {
+  const events = [];
+  const controller = controllerForTask(() => {
+    throw Error('Worker should not start');
+  }, events);
+  controller.__root.getElementById('directTilt').value = '90';
+  await controller.applyOperation();
+  assert.equal(events.includes('run-worker'), false);
+  assert.equal(events.includes('record-operation'), false);
+});

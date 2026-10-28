@@ -840,6 +840,13 @@ export function createProcessRecipeController({
           { value: 'conformal', label: 'Conformal' },
           { value: 'transfer', label: 'Transfer / Laminate' },
         ]);
+        if (p.coverage === 'direct') {
+          bindText('Tilt θ (°)', 'tiltDeg', p.tiltDeg ?? 0, { type: 'number', step: 'any' });
+          bindText('Azimuth φ (°)', 'azimuthDeg', p.azimuthDeg ?? 0, {
+            type: 'number',
+            step: 'any',
+          });
+        }
         if (p.coverage === 'transfer') {
           bindSelect('Placement', 'placement', [
             { value: 'follow', label: 'Follow surface' },
@@ -1407,6 +1414,8 @@ export function createProcessRecipeController({
       if (step.command === 'deposit') {
         $('operationType').value = 'add';
         $('growthMode').value = p.coverage || 'direct';
+        if ($('directTilt')) $('directTilt').value = String(p.tiltDeg ?? 0);
+        if ($('directAzimuth')) $('directAzimuth').value = String(p.azimuthDeg ?? 0);
         $('layerName').value = p.material;
         setThickness(p.thicknessUm);
         updateOperationUI();
@@ -1728,6 +1737,9 @@ export function createProcessRecipeController({
           material: p.name || operation.name,
           thickness: Number(p.thickness),
           coverage: p.growth || 'direct',
+          ...(p.incidence
+            ? { tiltDeg: p.incidence.tiltDeg, azimuthDeg: p.incidence.azimuthDeg }
+            : {}),
           placement: p.transferMode || operation.transferMode || 'follow',
           ...common,
         },
