@@ -82,9 +82,9 @@ function normalizeEtchSurface(value, etchDepthUm) {
     morphology =
       requested === 'pyramid'
         ? 'pyramid'
-        : ['rough', 'stochastic-v2'].includes(requested)
+        : requested === 'stochastic-v2'
           ? 'stochastic-v2'
-          : requested === 'stochastic'
+          : ['rough', 'stochastic'].includes(requested)
             ? 'stochastic'
             : '';
   if (!morphology) throw new Error(`Unsupported etch.surface morphology "${requested}".`);

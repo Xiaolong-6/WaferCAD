@@ -253,9 +253,11 @@ a distinct deterministic morphology, not a measured SEM reconstruction or a
 band-limited signal. Section, CPU mesh, GLSL, sidewall/border sampling and
 physical GLB export consume that same explicit field.
 
-Existing saved `stochastic` profiles and explicit Recipe `stochastic` values retain
-the legacy algorithm without automatic conversion. New Recipe `rough` values
-select the stable-scale v2 model. Manual Process, Recipe editing,
+Existing saved `stochastic` profiles and Recipe source aliases `rough` / `stochastic`
+retain the legacy algorithm without automatic conversion. The Process UI and
+new Recipe form selections create explicit `stochastic-v2` records; users writing
+Recipe code should specify `stochastic-v2` to obtain the modern field. This
+preserves old code-based Recipes without guessing their creation date. Manual Process, Recipe editing,
 History replay, inherited films/annotations and file/Recovery storage must
 preserve the selected morphology. A legacy reader rejects the unfamiliar enum
 rather than silently displaying v2 as v1; unknown future values also reject.
