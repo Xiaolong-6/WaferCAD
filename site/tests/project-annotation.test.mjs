@@ -269,6 +269,15 @@ test('Project schema and annotation contracts', () => {
     backScale: 0.75,
   };
   assert.equal(validateProjectFile(collapseProject), collapseProject);
+  const explicitBreak = structuredClone(collapseProject);
+  explicitBreak.display.sectionCollapse.continuousEtchExplicit = true;
+  assert.equal(validateProjectFile(explicitBreak), explicitBreak);
+  const invalidExplicitBreak = structuredClone(collapseProject);
+  invalidExplicitBreak.display.sectionCollapse.continuousEtchExplicit = 'yes';
+  assert.throws(
+    () => validateProjectFile(invalidExplicitBreak),
+    /sectionCollapse.continuousEtchExplicit/,
+  );
   const invalidCollapseEnabledProject = structuredClone(validProject);
   invalidCollapseEnabledProject.display.sectionCollapse = {
     top: -0.5,

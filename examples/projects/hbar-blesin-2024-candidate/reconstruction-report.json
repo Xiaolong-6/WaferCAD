@@ -1,0 +1,110 @@
+{
+  "doi": "10.1038/s41467-024-49467-8",
+  "originalGdsSha256": "f76cc5217b1024dcd0f68b168f2fb67d6c57560bba3a604652d84257d10e3423",
+  "sourceGdsLayout": "Chip2",
+  "sourceGdsPolygons": 9646,
+  "sourceGdsUnits": "1 nm database units",
+  "sourceRoi": {
+    "cx": -4367.57,
+    "cy": 5393.4,
+    "width": 130,
+    "height": 150
+  },
+  "sourceCrossingPolygonsClipped": 18,
+  "originalGdsBBoxUm": [
+    -4432.57,
+    5318.4,
+    -4302.57,
+    5468.4
+  ],
+  "roiSourcePolygonCount": 92,
+  "roiPolygonsByLayer": {
+    "2": 6,
+    "3": 4,
+    "8": 44,
+    "9": 4,
+    "11": 8,
+    "12": 22,
+    "13": 2,
+    "14": 2
+  },
+  "maskPurposeProvenance": "INFERRED by Fig. 2/FIB and GDS shape; no author purpose legend",
+  "dimensionsUm": {
+    "buriedOxide": 2.8,
+    "siNCore": 0.85,
+    "oxideTotal": 5.9,
+    "bottomMo": 0.095,
+    "alN": 1,
+    "topMo": 0.095
+  },
+  "siHandleVisualSurrogateUm": 36,
+  "stages": 11,
+  "recipeSteps": 11,
+  "bookmarks": 6,
+  "finalMaterialKernel": "vector-continuous-etch-v1",
+  "materialLayerCount": 7,
+  "postSaveGdsPolygons": 92,
+  "exactContinuousEtch": {
+    "shape": "elliptical",
+    "verticalUm": 19,
+    "lateralUm": 24,
+    "notes": "Illustrative local release geometry; not a measured lateral etch distance."
+  },
+  "validations": [
+    {
+      "label": "Thermal oxide undercladding 2.8 um",
+      "processRevision": 2,
+      "regions": 1,
+      "layers": 2
+    },
+    {
+      "label": "LPCVD Si3N4 850 nm (GDS layer 8, provisional purpose)",
+      "processRevision": 3,
+      "regions": 2,
+      "layers": 3
+    },
+    {
+      "label": "TEOS/LTO top oxide: cover SiN and fill cladding",
+      "processRevision": 4,
+      "regions": 2,
+      "layers": 4
+    },
+    {
+      "label": "CMP to reported total oxide 5.9 um",
+      "processRevision": 5,
+      "regions": 2,
+      "layers": 4
+    },
+    {
+      "label": "Sputter Mo lower electrode 95 nm (GDS layer 11, provisional)",
+      "processRevision": 6,
+      "regions": 4,
+      "layers": 5
+    },
+    {
+      "label": "Sputter piezoelectric AlN 1 um (provisional electrode footprint)",
+      "processRevision": 7,
+      "regions": 4,
+      "layers": 6
+    },
+    {
+      "label": "Sputter Mo top electrode 95 nm (provisional electrode footprint)",
+      "processRevision": 8,
+      "regions": 4,
+      "layers": 7
+    },
+    {
+      "label": "DRIE holes through 5.9 um oxide (GDS layer 9, provisional)",
+      "processRevision": 10,
+      "regions": 5,
+      "layers": 7
+    }
+  ],
+  "limitations": [
+    "Published wafer was 525 um; local visual slice is 36 um. Actual 250 um DRIE is not modeled.",
+    "Author GDS does not contain a verified layer-purpose table; all layer roles are provisional.",
+    "The full Damascene preform, Mo XeF2 isolation, Al lift-off and facets are process records pending verified mask mapping.",
+    "The exact continuous-release geometry is a 2D/3D material reconstruction; no optical/acoustic FEM or transduction efficiency claims.",
+    "Recipe Run All is supported on PR352 and must be independently validated against History in the full Workstation."
+  ]
+}

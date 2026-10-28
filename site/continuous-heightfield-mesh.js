@@ -141,6 +141,28 @@ function physicalTopAt(owner, indices, x, y, originalTop) {
   return top;
 }
 
+// Keep fine display sampling bounded by a predictable triangle budget. A steep
+// elliptical release shoulder benefits from sub-micrometre sampling, while
+// large full-wafer surfaces retain the 1 um fast path. This is strictly a
+// presentation choice; it does not alter the analytic material owner.
+export function continuousSiDisplayStepUm(owner, { fineTriangleBudget = 200000 } = {}) {
+  const model = owner?.sourceModel;
+  const width = Number(model?.width),
+    height = Number(model?.height);
+  if (!(width > 0 && height > 0) || !Array.isArray(owner?.fronts)) return 1;
+  const steepRelease = owner.fronts.some(
+    (front) =>
+      Number(front.verticalUm) > 0 &&
+      Number(front.lateralUm) > 0 &&
+      front.verticalUm / front.lateralUm >= 0.5,
+  );
+  if (!steepRelease) return 1;
+  const nx = Math.ceil(width / 0.5),
+    ny = Math.ceil(height / 0.5),
+    fineTriangles = 2 * nx * ny + 6 * (nx + ny);
+  return Number.isSafeInteger(fineTriangles) && fineTriangles <= fineTriangleBudget ? 0.5 : 1;
+}
+
 export function buildContinuousSiHeightfieldMesh(
   owner,
   { xyStepUm = 1, maxTriangles = 1200000 } = {},
