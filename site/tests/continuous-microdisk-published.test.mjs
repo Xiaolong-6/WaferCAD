@@ -92,7 +92,8 @@ test('physical photoresist actually patterns, protects and strips during microdi
     return region.stack.map((segment) => segment.layerId);
   };
   const has = (id, xy, layer) => materialAt(id, xy).includes(layer);
-  const annulus = [110, 0], field = [175, 0];
+  const annulus = [110, 0],
+    field = [175, 0];
 
   // The resist is deposited physically, then developed using the inverse
   // GDS 1/0 mask. Before the oxide etch, the exposed field still has SiO2.
@@ -207,7 +208,9 @@ test('real production Kernel replays physical resist development and stripping t
     ['base', 'layer-1', 'layer-2', 'layer-3'],
   );
   for (const region of model.regions) {
-    assert.ok(region.stack.every((part) => part.layerId !== 'layer-2' && part.layerId !== 'layer-3'));
+    assert.ok(
+      region.stack.every((part) => part.layerId !== 'layer-2' && part.layerId !== 'layer-3'),
+    );
   }
 });
 
