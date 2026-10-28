@@ -69,6 +69,10 @@ test('Pages includes product assets but excludes previews and developer-only fix
     'workstation.css',
     'style.css',
     'isotropic-release-topology.js',
+    'direct-aperture-from-gds.js',
+    'junction-section-witness.js',
+    'shadow-deposition-preview.js',
+    'shadow-exposure-geometry.js',
     'experimental/physical-facets/physical-facet-coating.js',
     'experimental/physical-facets/physical-facet-coating-section.js',
     'workstation-ui.js',
@@ -144,6 +148,10 @@ test('staging copies production files without altering source or shipping tests'
   await assert.rejects(access(join(destination, 'app.js')));
   for (const sourceFile of [
     'isotropic-release-topology.js',
+    'direct-aperture-from-gds.js',
+    'junction-section-witness.js',
+    'shadow-deposition-preview.js',
+    'shadow-exposure-geometry.js',
     'experimental/physical-facets/physical-facet-coating.js',
     'experimental/physical-facets/physical-facet-coating-section.js',
   ]) {

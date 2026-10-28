@@ -16,6 +16,9 @@ import {
   validateMaterialThicknessUm,
 } from './process-numerical-contract.js';
 import { applyProcessFaces } from './process-face-execution.js';
+import { isFixedDirectGridSeam } from './direct-grid-seam.js';
+import { directIncidenceArea } from './direct-incidence-geometry.js';
+import { isolatedDirectSidewallPlan } from './direct-sidewall-geometry.js';
 import { localGeometry } from './model-array-context.js';
 import { applyArrayOperation } from './model-array-process.js';
 import {
@@ -485,6 +488,8 @@ export function normalizeStack(stack) {
       else delete prev.frontSurface;
       if (prev.role === 'conformal-sidewall' || seg.role === 'conformal-sidewall')
         prev.role = 'conformal-sidewall';
+      else if (prev.role === 'direct-sidewall' || seg.role === 'direct-sidewall')
+        prev.role = 'direct-sidewall';
     } else out.push(seg);
   }
   return out;
@@ -689,6 +694,73 @@ function canonicalizeProcessPartition(model, regions, operation = 'Isotropic rel
       geom: dropPersistenceDegeneratePolygons(region.geom),
     }))
     .filter((region) => !isEmpty(region.geom));
+}
+
+// A bounded 0.1 nm process-grid seam can appear when a diagonal incidence
+// footprint is independently Boolean-clipped against adjacent owners.
+// A total-area tolerance cannot distinguish a long one-grid seam from a real
+// small junction. Require each component to be physically narrow instead.
+function fixedIncidenceGridSeam(geometry) {
+  return isFixedDirectGridSeam(geometry, PROCESS_GEOMETRY_GRID_UM, processGeometryArea);
+}
+
+function reconcileFixedAngleOwnerSeams(model, inputCoverage) {
+  // An incidence deposit changes vertical material Z ownership, not the
+  // existing XY support. Reject genuine overlaps; repair only grid-thin
+  // splits created by the Boolean process along pre-existing owner edges.
+  for (let i = 0; i < model.regions.length; i++) {
+    for (let j = i + 1; j < model.regions.length; j++) {
+      const overlap = intersection(model.regions[i].geom, model.regions[j].geom);
+      if (!isEmpty(overlap) && !fixedIncidenceGridSeam(overlap)) {
+        throw new Error('Fixed-angle Direct generated non-grid-width material overlap.');
+      }
+    }
+  }
+  // The tallest deposited surface owns any grid-thin ambiguity, not a
+  // lower uncoated base sliver. This changes no intentional XY domain.
+  model.regions = partitionProcessRegions(
+    [...model.regions].sort((a, b) => surfaceZ(b.stack, 'front') - surfaceZ(a.stack, 'front')),
+  );
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const coverage = unionGeometries(model.regions.map((region) => region.geom));
+    const overgrown = difference(coverage, inputCoverage);
+    if (!isEmpty(overgrown) && !fixedIncidenceGridSeam(overgrown))
+      throw new Error('Fixed-angle Direct changed XY support beyond the process grid.');
+    let missing = difference(inputCoverage, coverage);
+    // A Boolean difference against a big union may report spurious pixels.
+    // Confirm that no *individual* region actually owns the candidate.
+    for (const region of model.regions) {
+      missing = difference(missing, region.geom);
+      if (isEmpty(missing)) break;
+    }
+    if (isEmpty(missing)) return;
+    if (!fixedIncidenceGridSeam(missing))
+      throw new Error('Fixed-angle Direct removed non-grid-width XY material support.');
+    for (const polygon of missing) {
+      const crack = [polygon],
+        halo = bufferMulti(crack, PROCESS_GEOMETRY_GRID_UM * 4, 12);
+      let owner = null,
+        bestContact = 0;
+      for (const region of model.regions) {
+        const contact = geometryArea(intersection(region.geom, halo));
+        if (contact > bestContact) {
+          owner = region;
+          bestContact = contact;
+        }
+      }
+      if (!owner || !(bestContact > 0))
+        throw new Error('Fixed-angle Direct cannot assign a numerical XY seam.');
+      owner.geom = unionGeometries([owner.geom, crack]);
+    }
+    // Do not snap repaired owners again before validating exact Boolean
+    // partition: repeated independent snapping reopens diagonal seams.
+    model.regions = partitionProcessRegions(
+      model.regions,
+      PROCESS_GEOMETRY_GRID_UM ** 2 * 2,
+      'Fixed-angle Direct seam repair',
+    );
+  }
+  throw new Error('Fixed-angle Direct left XY coverage cracks after grid-seam repair.');
 }
 
 function stackKey(stack) {
@@ -1390,6 +1462,7 @@ function applyOperationImpl(
     face = 'front',
     area,
     growth = 'direct',
+    incidence = null,
     surface,
     color,
     tilt = 0,
@@ -1494,8 +1567,44 @@ function applyOperationImpl(
     type === 'etch'
       ? normalizedRoughSurface(surface, (model.processRevision || 0) + 1, amount)
       : null;
+  // Preserve legacy Direct exactly unless fixed incidence was requested.
+  if (incidence != null && (type !== 'add' || growth !== 'direct'))
+    return { changed: false, error: 'Fixed incidence is available only for Direct Deposit.' };
+  // The prior XY support is an immutable conservation reference: ordinary
+  // Direct deposition must neither punch through-Si holes nor add material
+  // outside existing horizontal columns.
+  const beforeIncidenceCoverage =
+    incidence?.tiltDeg > 0 && incidence?.sidewallGeometry == null
+      ? unionGeometries(model.regions.map((region) => region.geom))
+      : null;
+  if (beforeIncidenceCoverage) {
+    // Pre-existing real overlaps are never reclassified as new Boolean seams.
+    const tolerance = Math.max(
+      PROCESS_GEOMETRY_GRID_UM ** 2 * 2,
+      model.width * model.height * 1e-15,
+    );
+    partitionProcessRegions(model.regions, tolerance, 'Fixed-angle Direct input');
+  }
+  const sidewallPlans =
+    incidence?.sidewallGeometry != null
+      ? isolatedDirectSidewallPlan(model, intersection(area, model.boundary), incidence, amount)
+      : [];
   let active = intersection(area, model.boundary);
-  if (isEmpty(active)) return { changed: false };
+  if (incidence != null) {
+    const exposure = directIncidenceArea(model, active, incidence, {
+      face,
+      depositedThicknessUm: amount,
+    });
+    // Align only opt-in oblique/height-resolved visibility to the existing
+    // 0.1 nm process grid before material partitioning, preserving old Direct.
+    const requiresShadowPartition =
+      incidence.tiltDeg !== 0 || (incidence.apertureStack?.length ?? 0) > 0;
+    active = requiresShadowPartition
+      ? sanitizeProcessGeometry(snapProcessGeometry(exposure.area))
+      : exposure.area;
+  }
+  // A ray may miss every horizontal surface but still illuminate a wall.
+  if (isEmpty(active) && !sidewallPlans.length) return { changed: false };
   if (!hasMaterial(model)) {
     return {
       changed: false,
@@ -1505,7 +1614,7 @@ function applyOperationImpl(
   const touchesMaterial = model.regions.some(
     (region) => !isEmpty(intersection(active, region.geom)),
   );
-  if (!touchesMaterial) {
+  if (!touchesMaterial && !sidewallPlans.length) {
     return { changed: false, error: 'The selected area contains no material.' };
   }
   if (type === 'implant' || type === 'electrical') {
@@ -1682,12 +1791,12 @@ function applyOperationImpl(
       const exposed = surfaceSegment(region.stack, face);
       return (
         exposed &&
-        exposed.role !== 'conformal-sidewall' &&
+        !['conformal-sidewall', 'direct-sidewall'].includes(exposed.role) &&
         (type !== 'grow' || exposed.layerId === targetLayerId) &&
         !isEmpty(intersection(active, region.geom))
       );
     });
-    if (!eligible) {
+    if (!eligible && !(type === 'add' && sidewallPlans.length)) {
       return {
         changed: false,
         error: 'The selected area has no eligible horizontal surface for directional deposition.',
@@ -1761,9 +1870,31 @@ function applyOperationImpl(
       // A conformal-sidewall segment is a finite-width surrogate for a vertical
       // film. Its outward Z cap is not a physical horizontal process surface, so
       // directional Deposit/Extend must not grow another layer from that cap.
-      if (!exposed || exposed.role === 'conformal-sidewall') return stack;
+      if (!exposed || ['conformal-sidewall', 'direct-sidewall'].includes(exposed.role))
+        return stack;
       return mutateStack(stack, { type, layerId: layer?.id, targetLayerId, amount, face });
     });
+  }
+  for (const wall of sidewallPlans) {
+    splitByArea(
+      model,
+      wall.area,
+      (stack) => {
+        const z = surfaceZ(stack, face);
+        if (z == null || z < wall.lowZ - 1e-6 || z >= wall.highZ - 1e-9) return stack;
+        const bands = wall.visibleHeightIntervals || [[wall.lowZ, wall.highZ]];
+        const segments = bands
+          .map(([bottom, top]) => ({
+            layerId: layer.id,
+            z0: Math.max(z, bottom),
+            z1: top,
+            role: 'direct-sidewall',
+          }))
+          .filter((segment) => segment.z1 > segment.z0 + 1e-9);
+        return normalizeStack([...stack, ...segments]);
+      },
+      false,
+    );
   }
   model.regions = mergeRegions(model, model.regions);
   if (growth === 'conformal') {
@@ -1810,6 +1941,12 @@ function applyOperationImpl(
     healConformalCoverageCracks(model, protectedVoids);
   }
 
+  // Fix only process-grid-width Boolean seams with a prior-coverage witness.
+  // Never relax the existing strict physical-overlap gate.
+  if (beforeIncidenceCoverage) reconcileFixedAngleOwnerSeams(model, beforeIncidenceCoverage);
+  if (incidence != null && incidence.tiltDeg > 0)
+    model.regions = canonicalizeProcessPartition(model, model.regions, 'Fixed-angle Direct');
+  if (beforeIncidenceCoverage) reconcileFixedAngleOwnerSeams(model, beforeIncidenceCoverage);
   model.revision++;
   model.processRevision = (model.processRevision || 0) + 1;
   return { changed: true, layerId: layer?.id || targetLayerId || null };
@@ -1839,9 +1976,12 @@ export function applyOperation(model, params) {
       error: 'Opt-in adaptive isotropic release does not yet support array Model topology.',
     };
   }
+  if (isArrayModel(model) && params?.incidence != null)
+    return { changed: false, error: 'Angled Direct does not yet support array model topology.' };
   if (isArrayModel(model)) return applyArrayOperation(model, params, applyOperation);
   const safeGeometryOperation =
       params?.growth === 'conformal' ||
+      params?.incidence != null ||
       (params?.type === 'etch' && params?.etchProfile === 'isotropic'),
     rollback = safeGeometryOperation ? cloneModel(model) : null;
   try {
@@ -1853,7 +1993,9 @@ export function applyOperation(model, params) {
     const prefix =
       params?.growth === 'conformal'
         ? 'Conformal geometry failed safely'
-        : 'Isotropic etch geometry failed safely';
+        : params?.incidence != null
+          ? 'Fixed-angle Direct geometry failed safely'
+          : 'Isotropic etch geometry failed safely';
     return {
       changed: false,
       error: `${prefix}: ${error?.message || 'unknown geometry error'}`,
