@@ -97,47 +97,21 @@ export function borderPresentationState(descriptor, settings, opacity, enabled) 
   };
 }
 
-export const DENSE_ARRAY_BORDER_PREVIEW_SITES = 8;
+export const DENSE_ARRAY_BORDER_OVERVIEW_THRESHOLD = 64;
 
-// Scale-dependent presentation LOD only: retain each canonical cap and wall,
-// but bound replica expansion in full-wafer overviews. An inspection ROI
-// always uses the complete physical surface plan, without this preview.
-export function borderContourPresentationPlan(
-  plan,
-  { hasRoi = false, maxSites = DENSE_ARRAY_BORDER_PREVIEW_SITES } = {},
-) {
-  if (!plan || hasRoi || Number(plan.arrayInstances || 0) < 64) {
+// An arbitrary handful of translated internal caps is NOT a faithful LOD of a
+// connected interface. Its unmatched edges appear as isolated boxes through
+// the substrate (internal borders deliberately render without depth testing),
+// and dense multi-tier sites pile up as black blocks near the array center.
+// In an uncut full-array overview show only complete owned exterior borders;
+// a physical inspection ROI restores all exact interface/sidewall contours.
+// Presentation only: never change the canonical plan, Process or exports.
+export function borderContourPresentationPlan(plan, { hasRoi = false } = {}) {
+  if (!plan || hasRoi || Number(plan.arrayInstances || 0) < DENSE_ARRAY_BORDER_OVERVIEW_THRESHOLD) {
     return { plan, mode: 'exact' };
   }
-  const cache = new WeakMap();
-  const sample = (translations) => {
-    if (!Array.isArray(translations) || translations.length <= maxSites) return translations;
-    if (cache.has(translations)) return cache.get(translations);
-    const selected = translations
-      .map((point, index) => ({
-        point,
-        index,
-        distance: Number(point[0]) ** 2 + Number(point[1]) ** 2,
-      }))
-      .sort((a, b) => a.distance - b.distance || a.index - b.index)
-      .slice(0, maxSites)
-      .sort((a, b) => a.index - b.index)
-      .map(({ point }) => point);
-    cache.set(translations, selected);
-    return selected;
-  };
-  const project = (items = []) =>
-    items.map((item) =>
-      item?.instanceTranslations?.length > maxSites
-        ? { ...item, instanceTranslations: sample(item.instanceTranslations) }
-        : item,
-    );
   return {
-    plan: {
-      ...plan,
-      caps: project(plan.caps),
-      sidewalls: project(plan.sidewalls),
-    },
-    mode: 'array-overview-preview',
+    plan: { ...plan, caps: [], sidewalls: [] },
+    mode: 'array-overview-exterior-only',
   };
 }

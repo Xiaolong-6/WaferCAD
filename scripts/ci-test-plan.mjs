@@ -21,6 +21,10 @@ const COMMON_TEST_INFRA = [
   /^scripts\/test-helpers\/product-scientific\.mjs$/,
 ];
 const DEPENDENCY_FILES = new Set(['package-lock.json']);
+// This script is an explicitly opt-in renderer stress diagnostic, not a Workstation
+// or Main/Mask product source owner. Its owning Node regression and manually
+// dispatched renderer stress remain available without starting unrelated UI CI.
+const CI_ONLY_V2_SCRIPTS = new Set(['scripts/v2/check-source-sunset-renderer-stress.mjs']);
 const V2_WORKSPACE_PATHS = [/^site\/ui-v2\//, /^scripts\/v2\//];
 const V2_CROSS_UI_PATHS = [
   /^site\/ui-v2\/(?:workstation-(?:entry|runtime|workflow)|project-mask-panels)\.js$/,
@@ -166,7 +170,11 @@ const RECIPE_RELEASE_PATHS = [
 
 function buildReleaseGates(paths, full = false) {
   return {
-    main_mask: full || paths.some((path) => matchesAny(path, MAIN_MASK_RELEASE_PATHS)),
+    main_mask:
+      full ||
+      paths.some(
+        (path) => !CI_ONLY_V2_SCRIPTS.has(path) && matchesAny(path, MAIN_MASK_RELEASE_PATHS),
+      ),
     klayout: full || paths.some((path) => matchesAny(path, KLAYOUT_RELEASE_PATHS)),
     recipe: full || paths.some((path) => matchesAny(path, RECIPE_RELEASE_PATHS)),
   };
@@ -238,7 +246,8 @@ export function buildCiTestPlan(
   for (const path of paths) {
     // The dedicated Stage C/M4 job owns real v2 behavior on main and PRs.
     // Legacy cross-interface owners still guard shared recovery and History.
-    if (matchesAny(path, V2_WORKSPACE_PATHS)) enable(plan, 'workstation');
+    if (!CI_ONLY_V2_SCRIPTS.has(path) && matchesAny(path, V2_WORKSPACE_PATHS))
+      enable(plan, 'workstation');
     if (matchesAny(path, V2_CROSS_UI_PATHS))
       enable(plan, 'workstation', 'history', 'persistence', 'interaction');
     if (matchesAny(path, WORKSTATION_PATHS)) enable(plan, 'workstation');

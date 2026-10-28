@@ -2323,6 +2323,14 @@ diffuseColor.a *= waferCadAlphaScale;`,
     });
     // Explicitly expose overview LOD; selected ROIs retain exact internal lines.
     host.dataset.internalBorderDetail = scoped.mode;
+    // Full-array internal sampling produces misleading isolated contours and
+    // expensive dense overlaps. Only a real inspection ROI owns exact internals.
+    if (scoped.mode === 'array-overview-exterior-only') {
+      group.userData.waferCadInternalContoursPrepared = true;
+      host.dataset.internalInterfaceBorderCount = '0';
+      host.dataset.internalBuriedBorderCount = '0';
+      return false;
+    }
     const contours = borderInspectorContours(scoped.plan, {
       boundaryProfiles: profiles,
     });
