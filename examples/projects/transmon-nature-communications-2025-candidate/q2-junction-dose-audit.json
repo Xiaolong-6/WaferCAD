@@ -1,0 +1,31 @@
+{
+  "sourceSha256": "6e9db7d506e17f82fd22250db9a380a420b2a1088bac4a33b8c747930e9d5c02",
+  "sourceCells": 79,
+  "chipCell": "chip2",
+  "junctionCell": "jj_width0p18",
+  "junctionReferenceXYUm": [1400, 2513],
+  "junctionReferenceRotationDeg": 90,
+  "gdsDatabaseUnitNm": 1,
+  "localJunctionPolygons": 17,
+  "selectedAbsoluteChipPolygons": 17,
+  "layer8Datatype0": {
+    "layer": 8,
+    "polygons": 8,
+    "sourceCells": ["boolean_8ca1a9a9"],
+    "areaUm2": 11.2
+  },
+  "layer8Datatype1": {
+    "layer": 8,
+    "polygons": 9,
+    "sourceCells": ["extrude_65dc3da6", "union_0419126f"],
+    "areaUm2": 11.201288
+  },
+  "datatypesOverlapAreaUm2": 0,
+  "maskWidthFromPaperNm": 180,
+  "interpretation": {
+    "layer8Datatype1": "Likely high-dose 1000 µC/cm² junction strips; not author-confirmed",
+    "layer8Datatype0": "Likely lower-dose 400 µC/cm² end undercuts; not author-confirmed",
+    "confidence": "geometry and Supplementary Fig. 1 support hypothesis; exposure layer map unverified"
+  },
+  "scientificScope": "Source GDS geometry and transform only; no resist relief, evaporation or lift-off simulated"
+}

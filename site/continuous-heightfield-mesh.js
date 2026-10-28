@@ -251,9 +251,14 @@ export function buildContinuousSiHeightfieldMesh(
           maxChordErrorUm: adaptiveChordErrorUm,
           sampleZ: (x, y) => physicalTopAt(owner, distanceIndices, x, y, originalTop),
         });
-  if (adaptive) expectedTriangles = adaptive.triangles + 6 * (nx + ny);
-  if (expectedTriangles > maxTriangles)
-    throw new RangeError('Adaptive continuous heightfield exceeds triangle budget');
+  // Refinement is an optional presentation improvement, never a reason to
+  // reject a model whose original uniform display fits the budget. Preserve
+  // the exact pre-refinement byte stream on boundary-risk and budget fallback.
+  const useAdaptive =
+    adaptive !== null &&
+    Number.isSafeInteger(adaptive.triangles + 6 * (nx + ny)) &&
+    adaptive.triangles + 6 * (nx + ny) <= maxTriangles;
+  if (useAdaptive) expectedTriangles = adaptive.triangles + 6 * (nx + ny);
   const pos = new Float32Array(expectedTriangles * 9);
   const normal = new Float32Array(expectedTriangles * 9);
   let write = 0;
@@ -279,7 +284,7 @@ export function buildContinuousSiHeightfieldMesh(
     const length = Math.hypot(gx, gy, 1);
     return [-gx / length, -gy / length, 1 / length];
   };
-  if (adaptive) adaptive.emit(pushTri, surface, unitNormal);
+  if (useAdaptive) adaptive.emit(pushTri, surface, unitNormal);
   else
     for (let j = 0; j < ny; j++)
       for (let i = 0; i < nx; i++) {
@@ -339,7 +344,7 @@ export function buildContinuousSiHeightfieldMesh(
       nx,
       ny,
       xyStepUm,
-      ...(adaptive ? { adaptiveRefinedCells: adaptive.refinedCells } : {}),
+      ...(useAdaptive ? { adaptiveRefinedCells: adaptive.refinedCells } : {}),
     },
     sourceRevision: model.revision,
   };

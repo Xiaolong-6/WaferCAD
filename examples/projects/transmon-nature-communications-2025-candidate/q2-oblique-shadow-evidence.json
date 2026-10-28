@@ -1,0 +1,73 @@
+{
+  "source": "Tuokkola et al., Nature Communications 16, 5421 (2025), Zenodo sample.gds",
+  "authorGdsSha256": "6e9db7d506e17f82fd22250db9a380a420b2a1088bac4a33b8c747930e9d5c02",
+  "authorCell": "jj_width0p18",
+  "localPolygons": 17,
+  "hypothesis": "GDS 8/1 PMMA high dose, GDS 8/0 additional MMA undercut; not independently verified",
+  "resist": [
+    {
+      "material": "MMA",
+      "bottomUm": 0,
+      "topUm": 0.5
+    },
+    {
+      "material": "PMMA",
+      "bottomUm": 0.5,
+      "topUm": 0.9
+    }
+  ],
+  "arrivals": [
+    {
+      "thetaDeg": 45,
+      "azimuthDeg": -45,
+      "nominalAlThicknessNm": 40
+    },
+    {
+      "thetaDeg": 45,
+      "azimuthDeg": 45,
+      "nominalAlThicknessNm": 30
+    },
+    {
+      "thetaDeg": 45,
+      "azimuthDeg": -135,
+      "nominalAlThicknessNm": 30
+    }
+  ],
+  "algorithm": "Piecewise constant opening; intersection of Z-sampled reverse ray projection onto the substrate. Nonconvex apertures approximated, not exact continuum.",
+  "convergence": [
+    {
+      "heightStepUm": 0.15,
+      "firstVisibilityAreaUm2": 2.5562692283654584,
+      "secondVisibilityAreaUm2": 1.9982121448277903,
+      "overlapUm2": 0.03227630460535824
+    },
+    {
+      "heightStepUm": 0.075,
+      "firstVisibilityAreaUm2": 2.55623730808058,
+      "secondVisibilityAreaUm2": 1.998173788730975,
+      "overlapUm2": 0.032267817877477956
+    },
+    {
+      "heightStepUm": 0.0375,
+      "firstVisibilityAreaUm2": 2.5562181539081563,
+      "secondVisibilityAreaUm2": 1.9981521692450015,
+      "overlapUm2": 0.03226249030201542
+    },
+    {
+      "heightStepUm": 0.01875,
+      "firstVisibilityAreaUm2": 2.5562105470415206,
+      "secondVisibilityAreaUm2": 1.9980705517256623,
+      "overlapUm2": 0.0322591828118961
+    }
+  ],
+  "literatureMaskDesignAreaUm2": 0.0324,
+  "testedLocally": "WAFERCAD_TRANSMON_GDS=... node --test site/tests/shadow-exposure-geometry.test.mjs: 5/5 passed; Prettier 3.9.9 check passed",
+  "sourceBaseline": "source-only Artifact 9d8b7a98d4338e2d894ec3fb3c54e8ffa9499d9b, manifest 1118/1118 SHA-256 verified; imported GDS/vector geometry/process-benchmarks modules identical by Git blob to target branch",
+  "acceptanceLimits": [
+    "Not coupled to production Process UI or worker yet",
+    "No metal film volume, oxide, sidewall deposition, Ar milling or lift-off",
+    "No normal-origin Chromium Workstation test",
+    "Not exact continuum for nonconvex apertures",
+    "Provisional author dose map and azimuth mapping"
+  ]
+}

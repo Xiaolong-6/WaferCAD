@@ -25,6 +25,29 @@ export function planAdaptiveContinuousTop({
     if (!zCache.has(key)) zCache.set(key, sampleZ(x, y));
     return zCache.get(key);
   };
+  // The perimeter sidewalls retain one coarse segment per grid edge. When
+  // a release shoulder crosses the outermost XY cells, refining only the
+  // interior would leave a visually misleading unrefined shoulder. Until
+  // boundary sidewall subdivisions are supported, keep the exact legacy
+  // uniform display for the *entire* mesh rather than partially refining it.
+  for (let j = 0; j < ny; j++)
+    for (let i = 0; i < nx; i++) {
+      if (i !== 0 && j !== 0 && i !== nx - 1 && j !== ny - 1) continue;
+      const a = top[vertex(i, j)],
+        b = top[vertex(i + 1, j)],
+        c = top[vertex(i + 1, j + 1)],
+        d = top[vertex(i, j + 1)];
+      const x = minX + i * dx,
+        y = minY + j * dy;
+      const error = Math.max(
+        Math.abs(at(x + dx / 2, y + dy / 2) - (a + c) / 2),
+        Math.abs(at(x + dx / 2, y) - (a + b) / 2),
+        Math.abs(at(x + dx, y + dy / 2) - (b + c) / 2),
+        Math.abs(at(x + dx / 2, y + dy) - (c + d) / 2),
+        Math.abs(at(x, y + dy / 2) - (d + a) / 2),
+      );
+      if (error > maxChordErrorUm / 2) return null;
+    }
   for (let j = 1; j < ny - 1; j++)
     for (let i = 1; i < nx - 1; i++) {
       const a = top[vertex(i, j)],
