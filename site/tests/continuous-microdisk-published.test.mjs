@@ -54,12 +54,12 @@ test('published M08 uses the original inverted seven-shape GDS mask, not Full Fa
   assert.equal(owner.fronts[0].verticalUm, 36);
   assert.equal(released.layout.elements.length, 7);
   const recipe = released.processRecipe.steps;
-  assert.deepEqual(recipe.slice(0, 6), original.processRecipe.steps.slice(0, 6));
-  assert.equal(recipe[6].params.area, 'invert');
-  assert.deepEqual(recipe[6].params.mask, original.processRecipe.steps[6].params.mask);
-  assert.equal(recipe[6].params.profile, 'continuous');
-  assert.equal(recipe[6].params.continuousShape, 'circular');
-  assert.equal(recipe[7].command, 'record');
+  assert.deepEqual(recipe.slice(0, -2), original.processRecipe.steps.slice(0, -2));
+  assert.equal(recipe.at(-2).params.area, 'invert');
+  assert.deepEqual(recipe.at(-2).params.mask, original.processRecipe.steps.at(-2).params.mask);
+  assert.equal(recipe.at(-2).params.profile, 'continuous');
+  assert.equal(recipe.at(-2).params.continuousShape, 'circular');
+  assert.equal(recipe.at(-1).command, 'record');
   const historyM08 = released.snapshotBranches.nodes.find(
     (node) => node.id === 'process-microdisk-08',
   );
@@ -117,7 +117,7 @@ test('published continuous material conserves silica and retains pedestal with e
 });
 
 test('published M08/M09 Bookmarks, process nodes, branch head, Recipe and Export all agree', async () => {
-  assert.equal(released.snapshots.length, 9);
+  assert.equal(released.snapshots.length, 11);
   const nodes = new Map(released.snapshotBranches.nodes.map((n) => [n.id, n]));
   for (const suffix of ['08', '09']) {
     const snapshot = released.snapshots.find((s) => s.id === `snapshot-microdisk-${suffix}`);
@@ -141,7 +141,7 @@ test('published M08/M09 Bookmarks, process nodes, branch head, Recipe and Export
     capture: () => structuredClone(headState),
     restore: () => {},
   });
-  assert.equal(manager.importRecords(released.snapshots, released.snapshotBranches), 9);
+  assert.equal(manager.importRecords(released.snapshots, released.snapshotBranches), 11);
   assert.equal(manager.syncActiveHeadState(), true, 'Published HEAD must allow safe navigation');
   assert.deepEqual(
     released.snapshotBranches.branches[0].headState.processRecipe,
