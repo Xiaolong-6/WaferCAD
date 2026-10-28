@@ -86,7 +86,7 @@ function fakeRoot() {
 function controllerForTask(
   taskResult,
   events,
-  { mode = 'add', recorded = [], areaGeometry = () => [], initialModel = null } = {},
+  { mode = 'add', recorded = [], areaGeometry = () => [], initialModel = null, historicalEdit = false } = {},
 ) {
   let model = initialModel || createModel();
   const maskState = {
@@ -121,6 +121,7 @@ function controllerForTask(
       },
     },
     saveHistory: () => events.push('save-history'),
+    getHistoricalStepEdit: () => (historicalEdit ? { stepId: 'legacy-step' } : null),
     beforeApply: async () => {
       events.push('prepare-variant');
       return { createVariant: true };
@@ -202,6 +203,42 @@ test('History edit preserves legacy rough and exposes modern Rough without two p
   }
 });
 
+test('Legacy option stays available through v2 selection until a History edit is saved', () => {
+  const controller = controllerForTask(() => ({ result: { changed: false } }), [], {
+    mode: 'etch',
+    historicalEdit: true,
+  });
+  controller.loadOperationForEdit({
+    kind: 'etch',
+    replay: {
+      version: 1,
+      params: {
+        type: 'etch',
+        thickness: 0.75,
+        face: 'front',
+        surface: {
+          kind: 'rough',
+          morphology: 'stochastic',
+          featureSize: 0.3,
+          meanHeight: 0.4,
+          featureCv: 0.25,
+          heightCv: 0.3,
+          seed: 123,
+        },
+      },
+    },
+  });
+  const selector = controller.__root.getElementById('etchSurfaceMode');
+  assert.equal(selector.value, 'rough-legacy');
+  selector.value = 'rough';
+  controller.updateUi();
+  assert.equal(
+    selector.options.find((option) => option.value === 'rough-legacy').disabled,
+    false,
+    'History edit must permit reverting to original v1 before save',
+  );
+});
+
 test('Manual Rough writes v2, while an explicit Legacy history selection preserves v1', async () => {
   const morphologies = [];
   const controller = controllerForTask(
@@ -222,10 +259,13 @@ test('Manual Rough writes v2, while an explicit Legacy history selection preserv
   root.getElementById('roughHeightCv').value = '30';
   root.getElementById('roughSeed').value = '123';
   await controller.applyOperation();
+  await controller.applyOperation({
+    canonicalSurface: { morphology: 'stochastic', featureSize: 0.3, meanHeight: 0.4 },
+  });
   controller.allowLegacyRough(true);
   root.getElementById('etchSurfaceMode').value = 'rough-legacy';
   await controller.applyOperation();
-  assert.deepEqual(morphologies, ['stochastic-v2', 'stochastic']);
+  assert.deepEqual(morphologies, ['stochastic-v2', 'stochastic-v2', 'stochastic']);
 });
 
 test('historical Apply commits the variant only after a successful changed worker result', async () => {

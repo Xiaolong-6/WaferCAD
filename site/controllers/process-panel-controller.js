@@ -267,7 +267,10 @@ export function createProcessPanelController({
       texturedEtch = t === 'etch' && !advancedEtch && surfaceMode !== 'smooth',
       stochasticEtch = texturedEtch && ['rough', 'rough-legacy'].includes(surfaceMode),
       pyramidEtch = texturedEtch && surfaceMode === 'pyramid';
-    if (t !== 'etch' || surfaceMode !== 'rough-legacy') allowLegacyRough(false);
+    // Keep Legacy available during a History edit even after the user previews v2.
+    // Otherwise selecting Rough once prevents reverting to v1 before Save.
+    if (!getHistoricalStepEdit() && (t !== 'etch' || surfaceMode !== 'rough-legacy'))
+      allowLegacyRough(false);
     $('roughPolarityRow').classList.toggle('hidden', !texturedEtch);
     $('roughSeedRow').classList.toggle('hidden', !texturedEtch);
     $('roughFeatureRow').classList.toggle('hidden', !texturedEtch);
@@ -1042,7 +1045,7 @@ export function createProcessPanelController({
         kind: 'rough',
         morphology: pyramid
           ? 'pyramid'
-          : etchSurfaceMode === 'rough-legacy' || canonicalSurface?.morphology === 'stochastic'
+          : etchSurfaceMode === 'rough-legacy'
             ? 'stochastic'
             : 'stochastic-v2',
         polarity: $('roughPolarity').value === 'normal' ? 'normal' : 'inverted',
