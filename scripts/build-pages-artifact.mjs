@@ -21,6 +21,12 @@ const excludedFiles = new Set([
   'isotropic-release-topology.js',
   // Development-only ROI cap oracle, imported only by scientific unit tests.
   'continuous-etch-roi-cap.js',
+  // Transmon source-only GDS reconstruction, shadow exposure, and junction
+  // diagnostics are not reachable from the published Workstation.
+  'direct-aperture-from-gds.js',
+  'junction-section-witness.js',
+  'shadow-deposition-preview.js',
+  'shadow-exposure-geometry.js',
   'experimental/physical-facets/physical-facet-coating.js',
   'experimental/physical-facets/physical-facet-coating-section.js',
   // Retired browser-only modules retained in Git, not imported by the v2 product.

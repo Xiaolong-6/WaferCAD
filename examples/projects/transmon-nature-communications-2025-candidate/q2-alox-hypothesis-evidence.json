@@ -1,0 +1,108 @@
+{
+  "status": "research-only: physical 2.5D AlOx spacer geometry, NOT experimentally validated Josephson-junction process",
+  "originalAuthorGdsSha256": "6e9db7d506e17f82fd22250db9a380a420b2a1088bac4a33b8c747930e9d5c02",
+  "sourceCell": "jj_width0p18",
+  "sourcePolygons": 17,
+  "beamAngles": [
+    {
+      "tiltDeg": 45,
+      "azimuthDeg": -45,
+      "nominalAlUm": 0.04
+    },
+    {
+      "tiltDeg": 45,
+      "azimuthDeg": 45,
+      "nominalAlUm": 0.03
+    },
+    {
+      "tiltDeg": 45,
+      "azimuthDeg": -135,
+      "nominalAlUm": 0.03
+    }
+  ],
+  "resistAssumption": [
+    {
+      "material": "MMA",
+      "bottomUm": 0,
+      "topUm": 0.5
+    },
+    {
+      "material": "PMMA",
+      "bottomUm": 0.5,
+      "topUm": 0.9
+    }
+  ],
+  "alOx": {
+    "thicknessUm": 0.002,
+    "provenance": "hypothesis",
+    "source": "Illustrative numerical thickness (2 nm), not published or measured in the cited paper",
+    "actualOxidationKinetics": "not modeled",
+    "tunnelBarrierValidated": false
+  },
+  "firstTwoFootprintOverlapAreaUm2": 0.0322624903020155,
+  "finalModel": {
+    "layers": 5,
+    "regions": 8,
+    "processRevision": 4,
+    "restoredRegions": 8,
+    "junctionRegionStack": [
+      {
+        "material": "Si",
+        "thicknessUm": 675
+      },
+      {
+        "material": "Al first exposure",
+        "thicknessUm": 0.040000000000020464
+      },
+      {
+        "material": "AlOx illustrative spacer",
+        "thicknessUm": 0.0020000000000095497
+      },
+      {
+        "material": "Al second exposure",
+        "thicknessUm": 0.029999999999972715
+      },
+      {
+        "material": "Al third exposure",
+        "thicknessUm": 0.029999999999972715
+      }
+    ]
+  },
+  "generatedProjectSha256": "7c409f64675d0e561de6f93c6104a1bdc92dd1577f722a52312879831cba02bf",
+  "tests": {
+    "localTargeted": {
+      "passed": 103,
+      "failed": 0,
+      "scope": [
+        "Shadow AlOx opt-in science contract",
+        "GDS",
+        "Process benchmark",
+        "Project I/O",
+        "History/Project"
+      ],
+      "environment": "local old PR352 source ZIP with Git-blob-identical model.js/vector-geometry.js/process-worker.js/project-io.js",
+      "limitation": "This is not an exact checkout of the new Transmon merge HEAD."
+    },
+    "pinnedThreeVersion": "0.179.1",
+    "localPrototypePrettier": "pass after local formatting; exact remote branch lint/full Quality not run"
+  },
+  "browser": {
+    "tool": "scripts/offline-native-app-capture.py",
+    "software": "Chromium 144 + SwiftShader via headed Xvfb",
+    "origin": "about:blank-null-origin",
+    "nativeThreeRendered": true,
+    "pageErrors": 0,
+    "unhandledRejections": 0,
+    "visualAcceptance": "NOT PASSED: interface at nanometre scale remains obscured / appears as thin vertical walls and top face",
+    "workerHistoryRecovery": "not verified",
+    "screenshotFileNotCommitted": "/mnt/data/transmon-alox-native-macro/isolated-native-model.png"
+  },
+  "reproduce": "node scripts/transmon-shadow-al-preview.mjs --gds sample.gds --output AlOx-hypothesis.wafercad --oxide-thickness-um 0.002 --oxide-source 'Illustrative numerical value; not measured in the source paper'",
+  "knownLimitations": [
+    "Actual shadow evaporation is not solved as 3D sidewall/deposition physics",
+    "Oxide can only be an explicitly sourced hypothetical spacer, not calibrated tunnel-barrier thickness",
+    "No quantum electrical simulation",
+    "Local Chromium null-origin does not validate Worker/project Open/History/Recovery",
+    "Final exact-HEAD testing and readable native 3D/Section comparison pending"
+  ]
+}
