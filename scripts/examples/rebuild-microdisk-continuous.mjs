@@ -170,7 +170,10 @@ assert.deepEqual(
   opened.model,
   opened.snapshotBranches.branches.find((b) => b.id === 'main').headState.model,
 );
-assert.deepEqual(opened.processRecipe.steps.slice(0, -2), baseline.processRecipe.steps.slice(0, -2));
+assert.deepEqual(
+  opened.processRecipe.steps.slice(0, -2),
+  baseline.processRecipe.steps.slice(0, -2),
+);
 assert.equal(opened.processRecipe.steps.at(-2).params.area, 'invert');
 assert.equal(opened.processRecipe.steps.at(-2).params.profile, 'continuous');
 assert.equal(opened.snapshots.length, 11);
