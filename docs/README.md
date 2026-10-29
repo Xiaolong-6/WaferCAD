@@ -42,7 +42,7 @@ respective **current owner** below before relying on old PR handoffs.
 
 - [Workstation](ui-v2/README.md) — shell, mobile interaction, tooltips and Z Break; canonical [Workstation contract](ui-v2/WORKSTATION_CONTRACT.md).
 - [Renderer and Section](renderer/README.md) — exact geometry versus preview/LOD, cache, export and resource lifetime; canonical [Renderer contract](renderer/RENDERER_CONTRACT.md).
-- [Process geometry and science](science/README.md) — 2.5D material ownership, Both-face operations, rough/pyramid *appearance*, Lift-off, numerical precision and History.
+- [Process geometry and science](science/README.md) — 2.5D material ownership, shipped bounded Geometry Diagnostics, Both-face operations, rough/pyramid *appearance*, Lift-off, numerical precision and History.
 - [Continuous release contract](science/CONTINUOUS_RELEASE_CONTRACT.md) — selectable **experimental** geometric release, with unsupported follow-on operations explicitly documented.
 - [Import/export and reports](io/README.md) — GDS/OAS masks, project schema, read-only report and historical keyframes.
 - [Published example provenance](examples/README.md) and [figure evidence](evidence/README.md) — distinguish Welcome publication, source GDS, inferred geometry, saved History, fresh replay and paper matching.

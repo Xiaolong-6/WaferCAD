@@ -20,7 +20,10 @@ When moving documentation, keep exactly one canonical file in the owning directo
 
 Every domain README distinguishes **current implementation contracts**,
 **open experimental/forward plans**, and **historical evidence tied to a
-revision**. Technical descriptions of a shipped feature live in one
+revision**. A roadmap must actively reclassify a capability once a shipped
+UI/controller/Worker implementation exists: do not continue calling
+Process Geometry Diagnostics a proposed feature merely because its original
+roadmap was written before release. Technical descriptions of a shipped feature live in one
 current owner file, not scattered across merged-PR acceptance records.
 Revision-specific test results, older DOM inventories, authoring
 checkpoints and completed Draft/merge instructions belong in the
@@ -45,7 +48,7 @@ Generated Process operations and SVGs must never be edited by hand.
 | -------------------------- | --------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Product manual             | `docs/wiki/`: tasks, controls, Recipe syntax, examples and modeling limits                          | Authored pages describe shipped behavior; `Process-Operations.md` is generated. The Recipe tutorial and AI-assisted guide document the same parser contract in English. |
 | Engineering contracts      | Architecture, Development, Testing, CI and the scientific/interchange documents linked from the map | Own module boundaries, invariants and acceptance. Update the owning contract when behavior changes.                                                                     |
-| Forward plans              | Renderer transparency roadmap                                                                       | Label measured evidence, proposals and open acceptance separately; a proposed feature is not a current contract.                                                        |
+| Forward plans              | `docs/science/PROCESS_GEOMETRY_ROADMAP_2026-10-09.md`, `docs/science/MATERIAL_TARGET_SEMANTICS_2026-10-13.md`, Physical Facet research and Renderer transparency roadmap | Keep proposal, experimental prototype, shipped feature and historical evidence explicitly distinct; update this status when functionality becomes available. |
 | Revision-specific evidence | [Archive index](archive/README.md)                                                                  | Preserve dates, SHAs, environments and original results. Add a status/provenance banner rather than rewriting old measurements as current.                              |
 
 PR descriptions own **current per-change status** (scope, validation and remaining work); PR comments own **dated diagnostic and review evidence**. Keep routine red/green CI reports, screenshots and handoffs there, not as new tracked Markdown. A repository file is justified for a cross-PR contract, scientific source/assumption, fixture reproduction, release/runbook obligation or reusable engineering decision. Before closing a PR, promote durable conclusions into its existing owning document and leave the supporting PR/CI link there when useful.
