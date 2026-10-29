@@ -9,7 +9,7 @@
 
 ## Focused implementation and open design constraints
 
-- [Mobile Workstation layout](MOBILE_WORKSTATION_LAYOUT_2026-10-13.md).
+- [Mobile Workstation layout](MOBILE_WORKSTATION_LAYOUT_2026-10-13.md) — current native-scroll and gesture ownership; original rollout checks are revision-scoped, not a pending release instruction.
 - [Mobile CSS ownership audit](MOBILE_CSS_OWNERSHIP_AUDIT_2026-10-16.md).
 - Contextual help is owned by the [current Workstation contract](WORKSTATION_CONTRACT.md); [original Tooltip rollout](../archive/ui-v2/TOOLTIP_ARCHITECTURE_2026-10-13.md) retains dated coverage and acceptance evidence.
 - [Z Break editor](Z_BREAK_EDITOR_2026-10-13.md) — current presentation rules with clearly bounded 2026-10-13 implementation evidence.
