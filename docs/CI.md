@@ -79,17 +79,21 @@ with CI contracts rather than silently claiming previous proof covers modified
 CI code. The output of the GitHub Quality job is tied to the exact PR merge SHA;
 no developer-supplied incremental transcript is trusted.
 
-**Cross-commit 3D browser reuse:** the Ready Browser planner can reuse an actual
-successful native-3D/Workstation job from a prior completed Ready run of the
-**same PR**, only when the base main SHA, branch, job result, Git ancestry and
-cumulative changed-file inventory are independently verified. The only allowed
-intervening changes are a closed set of CI-routing code/contracts and this CI
-documentation. Product source, test harnesses, fixtures, dependencies, scientific
-code and unknown files are forbidden. The previous accepted 3D job must exist
-and have passed; a generic green PR check is insufficient. The proof is retrieved
-read-only from GitHub Actions using the workflow token, not from developer input.
-On API/provenance/ancestry failure the real native Chromium 3D test runs.
-Daily/full and Pages paths do not reuse this PR-only browser proof.
+**Cross-commit Ready owner reuse:** before starting browser and scientific
+jobs, the Ready impact planner checks whether **all currently selected owner
+jobs** already passed in a completed Ready run of the same PR and unchanged
+main base. It validates the original GitHub Actions run, each selected named
+nested job (including Interaction, Main/Mask, real Chromium smoke and 3D),
+Git ancestry and the cumulative changed-file inventory. Only an explicit
+allowlist of CI-routing code/contracts and this CI documentation may differ;
+application source, test harnesses, scientific fixtures, dependencies, unknown
+changes and new main baselines always invalidate this shortcut. Only if every
+selected gate is proved are those gates suppressed together; the Ready verdict
+still runs and the exact new merge tree's Quality and Release contracts are
+checked independently. An API/provenance/owner failure runs the selected real
+browser tests, with no unverified skip. The original narrower 3D-only reuse
+remains as a fallback when a full Ready proof is unavailable. Daily/full,
+manual and Pages release still execute their own unchanged full acceptance.
 
 **Ready browser owner de-duplication:** the exact standalone
 `scripts/v2/check-three-view.mjs` acceptance script uses a dedicated `three`

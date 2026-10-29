@@ -16,14 +16,18 @@ concurrency:
 jobs:
   impact:
     if: ${{ !github.event.pull_request.draft }}
+    permissions:
+      contents: read
+      actions: read
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
-      browser: ${{ steps.plan.outputs.browser }}
-      main_mask: ${{ steps.plan.outputs.main_mask }}
-      klayout: ${{ steps.plan.outputs.klayout }}
-      recipe: ${{ steps.plan.outputs.recipe }}
-      history: ${{ steps.plan.outputs.history_required }}
+      browser: ${{ steps.reuse.outputs.browser || steps.plan.outputs.browser }}
+      main_mask: ${{ steps.reuse.outputs.main_mask || steps.plan.outputs.main_mask }}
+      klayout: ${{ steps.reuse.outputs.klayout || steps.plan.outputs.klayout }}
+      recipe: ${{ steps.reuse.outputs.recipe || steps.plan.outputs.recipe }}
+      history: ${{ steps.reuse.outputs.history || steps.plan.outputs.history_required }}
+      reused: ${{ steps.reuse.outputs.reused }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -49,6 +53,23 @@ jobs:
           else
             echo 'history_required=false' >> "$GITHUB_OUTPUT"
           fi
+      - name: Reuse already passed source-identical Ready owner gates
+        id: reuse
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          READY_BROWSER_SELECTED: ${{ steps.plan.outputs.browser }}
+          READY_MAIN_MASK_SELECTED: ${{ steps.plan.outputs.main_mask }}
+          READY_RECIPE_SELECTED: ${{ steps.plan.outputs.recipe }}
+          READY_KLAYOUT_SELECTED: ${{ steps.plan.outputs.klayout }}
+          READY_HISTORY_SELECTED: ${{ steps.plan.outputs.history_required }}
+          READY_RENDERER_SELECTED: ${{ steps.plan.outputs.renderer }}
+          READY_PROCESS_SELECTED: ${{ steps.plan.outputs.process }}
+          READY_EXTENDED_MATRIX: ${{ steps.plan.outputs.extended_matrix }}
+        run: node scripts/ci-three-evidence.mjs --ready
   browser:
     needs: impact
     if: ${{ needs.impact.outputs.browser == 'true' }}
@@ -101,6 +122,7 @@ jobs:
       - name: Require every selected owner gate
         env:
           PLAN: ${{ needs.impact.result }}
+          REUSED: ${{ needs.impact.outputs.reused }}
           BROWSER_SELECTED: ${{ needs.impact.outputs.browser }}
           BROWSER_RESULT: ${{ needs.browser.result }}
           MAIN_MASK_SELECTED: ${{ needs.impact.outputs.main_mask }}
@@ -123,4 +145,8 @@ jobs:
               test "${!result}" = skipped || { echo "::error::Unexpected ${type} result=${!result}"; exit 1; }
             fi
           done
-          echo 'All selected Ready owner gates passed on the PR merge tree.'
+          if [[ "$REUSED" == true ]]; then
+            echo 'All selected owner gates proved by a previously passed source-identical Ready run.'
+          else
+            echo 'All selected Ready owner gates passed on the PR merge tree.'
+          fi

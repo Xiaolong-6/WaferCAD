@@ -182,3 +182,183 @@ test('Ready browser matrix only removes three with a successful authenticated pr
   assert.match(browser, /three\) node scripts\/v2\/check-three-view\.mjs ;;/);
   assert.match(browser, /workstation\) npm run test:ui:workstation ;;/);
 });
+
+test('Ready owner reuse requires every selected named job to have passed', async () => {
+  const { acceptedReadyEvidence } = await import('../../scripts/ci-three-evidence.mjs');
+  const selected = {
+    browser: true,
+    main_mask: true,
+    recipe: false,
+    klayout: false,
+    history: false,
+    renderer: false,
+    process: false,
+    extendedMatrix: ['interaction', 'three'],
+  };
+  const jobs = [
+    'browser / Plan browser suites',
+    'browser / Chromium targeted regression',
+    'browser / Native v2 Release interaction',
+    'browser / Native v2 Release three',
+    'main-mask / Main and Mask browser gates',
+  ].map((name) => ({ name, status: 'completed', conclusion: 'success' }));
+  const evidence = { run, jobs, current, changedPaths: ciDelta, selected };
+  assert.equal(acceptedReadyEvidence(evidence), true);
+  for (const job of jobs) {
+    assert.equal(
+      acceptedReadyEvidence({ ...evidence, jobs: jobs.filter((item) => item !== job) }),
+      false,
+    );
+    assert.equal(
+      acceptedReadyEvidence({
+        ...evidence,
+        jobs: jobs.map((item) => (item === job ? { ...item, conclusion: 'skipped' } : item)),
+      }),
+      false,
+    );
+  }
+  for (const changes of [
+    ['site/model.js'],
+    ['scripts/v2/check-three-view.mjs'],
+    ['package.json'],
+  ]) {
+    assert.equal(acceptedReadyEvidence({ ...evidence, changedPaths: changes }), false);
+  }
+  for (const invalid of [
+    { ...selected, renderer: true },
+    { ...selected, process: true },
+    { ...selected, recipe: true },
+    { ...selected, klayout: true },
+    { ...selected, history: true },
+    { ...selected, extendedMatrix: ['missing-suite'] },
+  ]) {
+    assert.equal(acceptedReadyEvidence({ ...evidence, selected: invalid }), false);
+  }
+  assert.equal(
+    acceptedReadyEvidence({ ...evidence, run: { ...run, conclusion: 'failure' } }),
+    false,
+  );
+  assert.equal(
+    acceptedReadyEvidence({ ...evidence, run: { ...run, pull_requests: [] } }),
+    false,
+  );
+});
+
+test('Ready history lookup rejects changed main, source, missing token or changed owner commands', async () => {
+  const { findAcceptedReady } = await import('../../scripts/ci-three-evidence.mjs');
+  const selected = {
+    browser: true,
+    main_mask: true,
+    recipe: false,
+    klayout: false,
+    history: false,
+    renderer: false,
+    process: false,
+    extendedMatrix: ['interaction', 'three'],
+  };
+  const jobs = [
+    'browser / Plan browser suites',
+    'browser / Chromium targeted regression',
+    'browser / Native v2 Release interaction',
+    'browser / Native v2 Release three',
+    'main-mask / Main and Mask browser gates',
+  ].map((name) => ({ name, status: 'completed', conclusion: 'success' }));
+  const gitOps = {
+    isAncestor: () => true,
+    changedPaths: () => ciDelta,
+    sameOwnerCommands: () => true,
+  };
+  const readApi = async (path) =>
+    path.includes('/jobs?') ? { jobs } : { workflow_runs: [run] };
+  const args = { current, token: 'test', selected, gitOps, readApi };
+  assert.equal((await findAcceptedReady(args)).runId, run.id);
+  assert.equal(await findAcceptedReady({ ...args, token: '' }), null);
+  assert.equal(
+    await findAcceptedReady({ ...args, gitOps: { ...gitOps, isAncestor: () => false } }),
+    null,
+  );
+  assert.equal(
+    await findAcceptedReady({
+      ...args,
+      gitOps: { ...gitOps, changedPaths: () => ['site/ui-v2/section-view.js'] },
+    }),
+    null,
+  );
+  assert.equal(
+    await findAcceptedReady({
+      ...args,
+      gitOps: { ...gitOps, sameOwnerCommands: () => false },
+    }),
+    null,
+  );
+});
+
+test('owner execution command changes invalidate a previous Ready proof', async () => {
+  const { unchangedReadyOwnerCommands, ownerJobSection } =
+    await import('../../scripts/ci-three-evidence.mjs');
+  const browser = readFileSync(
+    new URL('../../.github/workflows/browser-regression.yml', import.meta.url),
+    'utf8',
+  );
+  const ready = readFileSync(
+    new URL('../../.github/workflows/ready-impact.yml', import.meta.url),
+    'utf8',
+  );
+  const selected = {
+    browser: true,
+    main_mask: true,
+    recipe: false,
+    klayout: false,
+    history: false,
+  };
+  assert.ok(ownerJobSection(browser, 'release-ui-owners'));
+  assert.ok(ownerJobSection(ready, 'main-mask'));
+  const accepted = { browser, ready };
+  assert.equal(unchangedReadyOwnerCommands({ accepted, current: accepted, selected }), true);
+  assert.equal(
+    unchangedReadyOwnerCommands({
+      accepted,
+      current: {
+        browser: browser.replace('run: npm run test:ui:smoke', 'run: echo fake-pass'),
+        ready,
+      },
+      selected,
+    }),
+    false,
+  );
+  assert.equal(
+    unchangedReadyOwnerCommands({
+      accepted,
+      current: {
+        browser,
+        ready: ready.replace(
+          'uses: ./.github/workflows/ui-v2-main-mask.yml',
+          'uses: ./fake.yml',
+        ),
+      },
+      selected,
+    }),
+    false,
+  );
+  assert.equal(
+    unchangedReadyOwnerCommands({
+      accepted: { browser, ready: ready.replace('      actions: read\n', '') },
+      current: accepted,
+      selected,
+    }),
+    true,
+  );
+});
+
+test('Ready workflow connects proof routing to the fail-closed verdict', () => {
+  const ready = readFileSync(
+    new URL('../../.github/workflows/ready-impact.yml', import.meta.url),
+    'utf8',
+  );
+  assert.match(ready, /node scripts\/ci-three-evidence\.mjs --ready/);
+  for (const key of ['browser', 'main_mask', 'recipe', 'klayout']) {
+    assert.ok(ready.includes('steps.reuse.outputs.' + key + ' || steps.plan.outputs.' + key));
+  }
+  assert.ok(ready.includes('steps.reuse.outputs.history || steps.plan.outputs.history_required'));
+  assert.match(ready, /needs\.impact\.result/);
+});
