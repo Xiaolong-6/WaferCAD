@@ -1,14 +1,14 @@
 {
   "version": 2,
   "provenance": "developer-reported",
-  "scope": "draft",
+  "scope": "full",
   "status": "pass",
   "source": {
-    "digest": "b592b3026d711c3f66cf11ba04d33c78f0c49f029f5ad99381d0d58d9a4074dc",
+    "digest": "2be6f3bccafc17daf1bd4f20148d1a8f61ac6034fb9d89329ee72f12e3de928c",
     "fileCount": 1289
   },
-  "sourceRevision": "354da8a74c58f36c68c0d1f49d3460f8bdeb7534",
-  "planDigest": "a45061373e4a9c9e6f414d7b3b2e48cab7e2bd0feb4378633d0ff24a1a396899",
+  "sourceRevision": "b779f18050077c9af002dfc42263461f63884516",
+  "planDigest": "9e40e14c41649069d23911dc155328f17e554f0307619aef8493378a2f26b4b3",
   "environment": {
     "node": "v22.16.0",
     "platform": "linux",
@@ -19,7 +19,7 @@
       "three": "0.179.1"
     }
   },
-  "startedAt": "2026-10-29T08:34:32.358Z",
+  "startedAt": "2026-10-29T08:48:45.726Z",
   "checks": [
     {
       "id": "lint",
@@ -31,7 +31,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 5746,
+      "durationMs": 6711,
       "logDigest": "7e083cff9d323606d09accd3389828279cc52091b6c62b45c8100c1ced589c7c"
     },
     {
@@ -44,7 +44,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 17361,
+      "durationMs": 18092,
       "logDigest": "1230617af071df8c1efeb12bcd6d41c3aa159e1cd0841cc546fbae4c8c56f867"
     },
     {
@@ -57,27 +57,22 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 413,
+      "durationMs": 367,
       "logDigest": "60d8e5351af88ce7b7b0acb8b3ac39a66ae96c4444f3ad9834b6b61092aa9d75"
     },
     {
       "id": "node",
-      "command": "node",
+      "command": "npm",
       "args": [
-        "--test",
-        "site/tests/ci-test-plan.test.mjs",
-        "site/tests/ci-development-gates.test.mjs",
-        "site/tests/ci-workflow-architecture.test.mjs",
-        "site/tests/local-verification.test.mjs",
-        "site/tests/documentation-suite.test.mjs"
+        "test"
       ],
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 1427,
-      "logDigest": "5fa6e2997dd0a78a6d3065a00177928631aba8b0a2622d20251ff8385f4348e4"
+      "durationMs": 241626,
+      "logDigest": "00a4bdb9fbdffa95f3bb11e5b9998040621a0528341ebba9429f1b8472a59139"
     }
   ],
-  "finishedAt": "2026-10-29T08:34:57.310Z",
-  "transcriptDigest": "ef238596a80e0d3200ea2d66b8e80ce5ba57a6d934fd70c53e61bf1a3db8dfa5"
+  "finishedAt": "2026-10-29T08:53:12.527Z",
+  "transcriptDigest": "aa2b2281bc27295fa9d97eafccce775244721d9c746f40765f4330e21aed6083"
 }
