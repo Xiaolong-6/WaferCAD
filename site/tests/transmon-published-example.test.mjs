@@ -80,30 +80,22 @@ test('Q2 inspection shows the real three-Al crossing without changing material o
     'Retain physical 40/30/30 nm material thicknesses',
   );
   const expectedCollapse = { top: 337.3, bottom: -337.3, enabled: true };
-  for (const project of [published, preview]) {
-    assert.deepEqual(project.display.sectionCollapse, expectedCollapse);
-    if (project === published) {
-      assert.deepEqual(project.display.threeCamera.target, [-5, 0, 1.55]);
-      assert.ok(
-        project.display.threeCamera.position[2] > project.display.threeCamera.target[2],
-        'Inspect the junction from above, not through the bulk substrate',
-      );
-    } else {
-      assert.equal(
-        project.display.threeCamera,
-        undefined,
-        'The Welcome preview intentionally fits the whole structure',
-      );
-    }
-    for (const state of [
-      project.snapshotBranches.nodes[0].state,
-      project.snapshotBranches.branches[0].headState,
-    ]) {
-      assert.deepEqual(
-        state.display,
-        project.display,
-        'History restoration must retain the saved physical Section/3D inspection',
-      );
-    }
+  assert.deepEqual(published.display.sectionCollapse, expectedCollapse);
+  assert.deepEqual(published.display.threeCamera.target, [-5, 0, 1.55]);
+  assert.ok(
+    published.display.threeCamera.position[2] > published.display.threeCamera.target[2],
+    'Inspect the junction from above, not through the bulk substrate',
+  );
+  for (const state of [
+    published.snapshotBranches.nodes[0].state,
+    published.snapshotBranches.branches[0].headState,
+  ]) {
+    assert.deepEqual(
+      state.display,
+      published.display,
+      'History restoration must retain the saved Section/3D inspection',
+    );
   }
+  assert.equal(preview.display.sectionCollapse, undefined);
+  assert.equal(preview.display.threeCamera, undefined);
 });
