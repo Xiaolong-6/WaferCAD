@@ -177,7 +177,9 @@ try {
         const b = await canvas.boundingBox();
         await page.mouse.move(b.x + b.width * 0.5, b.y + b.height * 0.5);
         await page.mouse.down();
-        await page.mouse.move(b.x + b.width * 0.5 + dx, b.y + b.height * 0.5 + dy, { steps: 6 });
+        // One real pointermove suffices for OrbitControls; six intermediate
+        // moves forced extra software-WebGL frames without asserting them.
+        await page.mouse.move(b.x + b.width * 0.5 + dx, b.y + b.height * 0.5 + dy);
         await page.mouse.up();
         await page.waitForTimeout(400);
       };
