@@ -189,7 +189,7 @@ test('categorized documents have no forwarding files or obsolete root aliases', 
   const archived = (await readdir(archiveRoot, { recursive: true }))
     .map((entry) => String(entry).replaceAll('\\', '/'))
     .filter((entry) => entry.endsWith('.md') && entry !== 'README.md');
-  assert.equal(archived.length, 98, 'archive inventory must be reviewed deliberately');
+  assert.equal(archived.length, 102, 'archive inventory must be reviewed deliberately');
   for (const entry of archived) {
     assert.ok(archiveIndex.includes(`](${entry})`), `archive index must link to ${entry}`);
     await assert.rejects(
