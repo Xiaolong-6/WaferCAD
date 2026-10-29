@@ -55,23 +55,39 @@ test('Basiri-Esfahani microdisk preserves process chronology and a real void', a
   const steps = project.processRecipe.steps;
   assert.deepEqual(
     steps.map((step) => step.command),
-    ['deposit', 'record', 'record', 'etch', 'record', 'record', 'etch', 'record'],
+    ['deposit', 'deposit', 'etch', 'etch', 'etch', 'deposit', 'record', 'etch', 'etch', 'record'],
   );
-  const prep = steps[5];
-  assert.match(prep.params.label, /protective resist recoat.*dicing.*resist strip/i);
-  assert.match(prep.params.note, /before XeF2 release/i);
-  assert.match(project.snapshotBranches.nodes[6].operation.note, /mechanically separate/i);
-  assert.ok(
-    project.snapshots.some(
-      (snapshot) =>
-        snapshot.historyNodeId === 'process-microdisk-07' && snapshot.name === prep.params.label,
+  assert.deepEqual(
+    steps.map((step) => step.id),
+    ['02', '03', '04', '05', '06', '07a', '07b', '07', '08', '09'].map(
+      (id) => `recipe-process-microdisk-${id}`,
     ),
   );
-  assert.equal(steps[3].params.area, 'invert');
-  assert.deepEqual(steps[3].params.mask.layerKeys, ['1|0']);
+  assert.equal(steps[1].params.material, 'Patterning photoresist · 1 µm (assumed)');
+  assert.equal(steps[1].params.thicknessUm, 1);
+  assert.equal(steps[2].params.area, 'invert');
+  assert.deepEqual(steps[2].params.mask.layerKeys, ['1|0']);
+  assert.equal(steps[2].params.target, steps[1].params.material);
+  assert.equal(steps[3].params.area, 'full');
+  assert.equal(steps[3].params.target, 'Thermal SiO₂ · 1.8 µm');
   assert.equal(steps[3].params.thicknessUm, 2);
-  assert.equal(steps[6].params.profile, 'isotropic');
-  assert.equal(steps[6].params.thicknessUm, 36);
+  assert.equal(steps[4].params.target, steps[1].params.material);
+  assert.equal(steps[5].params.material, 'Dicing protection photoresist · 1 µm (assumed)');
+  assert.equal(steps[6].command, 'record');
+  assert.match(steps[6].params.note, /dicing changes the chip boundary/i);
+  assert.equal(steps[7].params.target, steps[5].params.material);
+  assert.equal(steps[8].params.profile, 'isotropic');
+  assert.equal(steps[8].params.thicknessUm, 36);
+  assert.match(
+    project.snapshotBranches.nodes.find((node) => node.id === 'process-microdisk-07b')?.operation
+      ?.note || '',
+    /local model crop is unchanged/i,
+  );
+  for (const id of ['07a', '07b', '07']) {
+    assert.ok(
+      project.snapshots.some((snapshot) => snapshot.historyNodeId === `process-microdisk-${id}`),
+    );
+  }
   assert.equal(project.layout.elements.length, 7);
   // Basiri-Esfahani et al., Nature Communications 10, 132 (2019),
   // Results / Fig. 2a: 148 µm outer radius and 82 µm inner radius.
@@ -645,7 +661,7 @@ test('Reconciled Tandem History explicitly uses a geometric precursor surrogate'
   }
 });
 
-test('Microdisk History records preserve etched oxide geometry', async () => {
+test('Microdisk physical lithography preserves patterned oxide through resist and dicing', async () => {
   const project = await example('suspended-silica-microdisks');
   const nodes = new Map(project.snapshotBranches.nodes.map((node) => [node.id, node]));
   const modelAt = (stepNumber) => {
@@ -654,22 +670,35 @@ test('Microdisk History records preserve etched oxide geometry', async () => {
     assert.ok(ref !== undefined, 'Missing Microdisk step ' + stepNumber);
     return ref === 'project' ? project.model : project.sharedModels[ref];
   };
-  const patterned = modelAt(4);
+  const patterned = modelAt(4); // M05: oxide etch with real resist mask.
   const oxide = patterned.layers.find((layer) => layer.name.startsWith('Thermal SiO₂'));
   assert.ok(oxide, 'Missing SiO₂ immediately after patterned etch');
-  const containsOxide = (point) =>
-    patterned.regions.some(
-      (region) =>
-        region.stack.some((segment) => segment.layerId === oxide.id) &&
-        pointInMulti(point, project.sharedGeometries[region.geomRef]),
+  const intervals = (model, layerId, point) =>
+    model.regions.flatMap((region) =>
+      pointInMulti(point, project.sharedGeometries[region.geomRef])
+        ? region.stack
+            .filter((segment) => segment.layerId === layerId)
+            .map(({ z0, z1 }) => [z0, z1])
+        : [],
     );
-  assert.equal(containsOxide([0, 0]), true, 'Center hub oxide must remain');
-  assert.equal(containsOxide([170, 0]), false, 'Outside radius must be stripped');
-  for (const stepNumber of [5, 6]) {
-    assert.deepEqual(
-      modelAt(stepNumber).regions,
-      patterned.regions,
-      'Record must preserve patterned oxide before XeF2 release',
-    );
+  assert.deepEqual(intervals(patterned, oxide.id, [0, 0]), [[40, 41.8]]);
+  assert.deepEqual(intervals(patterned, oxide.id, [170, 0]), []);
+  for (const stepNumber of [5, 6, 7, 8]) {
+    const model = modelAt(stepNumber);
+    for (let x = -170; x <= 170; x += 10) {
+      for (let y = -170; y <= 170; y += 10) {
+        assert.deepEqual(
+          intervals(model, oxide.id, [x, y]),
+          intervals(patterned, oxide.id, [x, y]),
+          `M${project.processRecipe.steps[stepNumber - 1].id.split('-').at(-1)} changed SiO₂ at ${x},${y}`,
+        );
+      }
+    }
   }
+  assert.deepEqual(modelAt(7).regions, modelAt(6).regions, 'Dicing record must preserve solids');
+  assert.deepEqual(intervals(patterned, 'layer-2', [110, 0]), [[41.8, 42.8]]);
+  assert.deepEqual(intervals(modelAt(5), 'layer-2', [110, 0]), []);
+  assert.deepEqual(intervals(modelAt(6), 'layer-3', [170, 0]), [[40, 41]]);
+  assert.deepEqual(intervals(modelAt(7), 'layer-3', [170, 0]), [[40, 41]]);
+  assert.deepEqual(intervals(modelAt(8), 'layer-3', [170, 0]), []);
 });
