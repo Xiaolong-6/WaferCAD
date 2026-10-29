@@ -84,7 +84,7 @@ Audited public `main` at `1e34da5d23f8fd9db8db13b249a7e4816cdb7ced`, then opened
 
 ## Documentation freshness follow-up
 
-- [PR #194](https://github.com/Xiaolong-6/WaferCAD/pull/194) merged the Both-face bundled-example consolidation. The dated [reconstruction record](../examples/PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md) remains historical; the [consolidation record](../examples/EXAMPLE_BOTH_FACE_CONSOLIDATION_2026-10-13.md) owns the later Front/Back changes.
+- [PR #194](https://github.com/Xiaolong-6/WaferCAD/pull/194) merged the Both-face bundled-example consolidation. The dated [reconstruction record](../examples/PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md) remains historical; the [consolidation record](examples/EXAMPLE_BOTH_FACE_CONSOLIDATION_2026-10-13.md) owns the later Front/Back changes.
 - [PR #190](https://github.com/Xiaolong-6/WaferCAD/pull/190) and [PR #196](https://github.com/Xiaolong-6/WaferCAD/pull/196) merged Report Export and historical Section keyframes. Their [report contract](../io/REPORT_EXPORT.md) and [keyframe contract](../io/REPORT_KEYFRAMES.md) are indexed from the current documentation map. Report ZIP is read-only; only a separate `.wafercad` is a restorable engineering backup.
 - The earlier [PR #191](https://github.com/Xiaolong-6/WaferCAD/pull/191) documentation Quality run passed with 144 Markdown files and 708 internal links at its tested head. This is **not** a claim that a fresh documentation gate on this follow-up commit has passed.
 

@@ -9,8 +9,9 @@ Catalog ID, source URI and shipped project path must remain synchronized with
 ## Published catalog and historical evidence boundary
 
 The live `site/bundled-examples.js` catalog and its machine-readable
-provenance matrix currently enumerate **ten** Welcome families, including
-T-CMOS and suspended TFLN microrings. All ten remain `open-paper-match`. No stored project screenshot,
+provenance matrix must enumerate the **same published Welcome families**.
+The current matrix includes T-CMOS, suspended TFLN microrings, HBAR and
+Transmon Q2; every published family remains `open-paper-match`. No stored project screenshot,
 material-probe result or matching film thickness alone constitutes
 acceptance of an original paper's SEM or device cross-section. A verified
 paper-figure match requires the exact device, scale calibration, XY cut,
@@ -19,7 +20,7 @@ material stack, comparison protocol and quantitative deviations.
 **Historical #242 checkpoint:** The first **eight** families had actual
 Chromium captures and saved-material probes at their recorded older
 project SHA(s). Those results remain valid only for their original sources,
-not as current ten-family or Continuous-release acceptance.
+not as acceptance of the expanded current catalog or Continuous-release model.
 
 - **Microdisk:** Basiri-Esfahani Fig. 2a depicts a similar sample. The
   earlier eight-band and subsequently saved 72-band models are historical.
@@ -56,7 +57,7 @@ independent interpretation of any mismatch.
 
 ## Acceptance escalation: independently reproducible paper match
 
-The `accepted-paper-match` state is deliberately unused for all ten
+The `accepted-paper-match` state is deliberately unused for all
 currently bundled families. The fail-closed metadata contract requires, _before_ this status
 can be assigned:
 

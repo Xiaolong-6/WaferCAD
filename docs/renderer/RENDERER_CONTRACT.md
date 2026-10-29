@@ -119,6 +119,26 @@ and isolates the temporary capture renderer/camera state. On failure,
 restore interactive pixel ratio, aspect and scene, and report any
 cleanup failure rather than corrupting the live viewport.
 
+## Capture and resource ownership
+
+`site/renderer-capture-transaction.js` owns temporary PNG capture
+setup/encoding, rough-mesh preparation and restoration of the active renderer's
+pixel ratio, camera aspect and redraw state. An exception during capture must
+not strand the interactive viewport in a temporary high-resolution state;
+cleanup continues after a failure, with the original error preserved.
+
+`site/renderer-v4-resource-lifetime.js` owns recursive retirement of
+scene-owned geometries, materials, textures and retained flat templates.
+Shared resources must not be disposed more than once, and a failed cleanup
+must not prevent safe retirement of other resources. This is **resource
+management**, not evidence that the current scene or all hardware remains
+within an independent frame-time or GPU-memory budget.
+
+The original separated-backport rationale and the RTX 3060 MSAA diagnostic
+remain [dated archival evidence](../archive/renderer/RENDERER_LIFECYCLE_CORRECTNESS_2026-10-12.md).
+They do not authorize silent changes to production MSAA, approved screenshots
+or Renderer v3/v4 defaults.
+
 ## Evidence, tests and open work
 
 - Progressive preview, stream and Worker isolation:

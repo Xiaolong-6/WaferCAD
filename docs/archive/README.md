@@ -12,10 +12,42 @@ Draft/merge history. They are not current product contracts.
 - [Merged PR #188 progressive startup evidence](ui-v2/PROGRESSIVE_STARTUP_2026-10-13.md).
 
 - [Merged PR #250 Renderer audit](renderer/PR250_RENDERER_AUDIT_2026-10-15.md) and [revision-scoped acceptance](renderer/PR250_RENDERER_ACCEPTANCE_2026-10-15.md).
-- [2026-10-14 eight-family literature comparison](examples/EXAMPLE_LITERATURE_FIDELITY_2026-10-14.md) — original eight-family evidence, not a nine-family paper match.
+- [2026-10-14 eight-family literature comparison](examples/EXAMPLE_LITERATURE_FIDELITY_2026-10-14.md) — original eight-family evidence, not current-catalog paper-match acceptance.
 
 For current contracts see [Workstation](../ui-v2/WORKSTATION_CONTRACT.md)
 and [Architecture](../ARCHITECTURE.md).
+
+## Continuous-release mathematical development (revision-scoped)
+
+- [Microdisk isotropic oracle and banded/Continuous development history](science/ISOTROPIC_RELEASE_ORACLE_2026-10-16.md) — preserves mathematical bounds, source experiments, original eight-/72-band attempts and #332-era integration notes. This is **not** the current published material contract; see [Continuous selective release](../science/CONTINUOUS_RELEASE_CONTRACT.md) for the shipped experimental single-release envelope and explicit follow-on limits.
+
+## Scientific implementations and measurements reclassified after business review
+
+These records have finished their original merge/measurement purpose. Their
+scientific assumptions, source SHAs and numbers remain available, but their
+old instructions and observed runtimes must not be interpreted as the latest
+product contract or performance promise.
+
+- [Lift-off v1 original implementation and acceptance](science/LIFTOFF_V1_2026-10-09.md) — merged PR #167. The current ideal geometric support definition lives in [Process Geometry Kernel v2](../science/PROCESS_GEOMETRY_KERNEL_V2.md).
+- [Both-face bundled-example consolidation](examples/EXAMPLE_BOTH_FACE_CONSOLIDATION_2026-10-13.md) — merged PR #194; original Photodetector/PERC/Tandem migration and face-specific surface assumptions. The present Kernel contract is [Process Both-face](../science/PROCESS_BOTH_FACE_2026-10-11.md).
+- [TiO₂ full-array loading measurement](examples/TIO2_METALENS_PERFORMANCE_2026-10-10.md) — controlled Linux/Chromium measurements on the recorded 2026-10-10 SHA, not a cross-device latency target. The current [Metalens reconstruction source](../examples/TIO2_METALENS_RECONSTRUCTION_2026-10-09.md) retains the author's versus illustrative-grid boundaries.
+
+- [Renderer capture/resource lifetime backport](renderer/RENDERER_LIFECYCLE_CORRECTNESS_2026-10-12.md) — revision-scoped backport and MSAA comparison; current capture and disposal rules live in [Renderer/Section](../renderer/RENDERER_CONTRACT.md).
+
+- [Tooltip rollout and original interaction acceptance](ui-v2/TOOLTIP_ARCHITECTURE_2026-10-13.md) — implementation-branch record. Current single-overlay/keyboard semantics are maintained in [Workstation](../ui-v2/WORKSTATION_CONTRACT.md).
+
+## Completed implementation and renderer evidence — 2026-10-29 classification
+
+These records document merged work or a prior reviewed revision. They are not
+active implementation requests; current behavior belongs to the Workstation,
+Renderer and scientific contracts. The open Mobile CSS cleanup audit remains
+in `docs/ui-v2/` until its deferred work is resolved.
+
+- [Manual Both integration checkpoint](ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md) — original PR #179 acceptance and historical test paths.
+- [Desktop docking implementation](ui-v2/DESKTOP_DOCKING_PLAN_2026-10-15.md) — merged PR #267's original implementation stages.
+- [Edge-to-edge Workstation implementation](ui-v2/EDGE_TO_EDGE_WORKSTATION_2026-10-15.md) — merged PRs #249/#256.
+- [Renderer outline-depth ownership audit](renderer/THREE_OUTLINE_DEPTH_AUDIT_2026-10-15.md) — PR #250's original diagnosed geometry defects.
+- [Renderer rough-boundary audit](renderer/THREE_ROUGH_BOUNDARY_AUDIT_2026-10-15.md) — PR #250's original seam/LOD evidence.
 
 ## Dated audits relocated on 2026-10-16
 
@@ -74,7 +106,7 @@ The following are previously committed, revision-specific records preserved in f
 - [Example storage optimization — 2026-10-06](EXAMPLE_STORAGE_OPTIMIZATION_2026-10-06.md)
 - [Native Conformal follow-up - 2026-10-06](NATIVE_CONFORMAL_FOLLOWUP_2026-10-06.md)
 - [Native three-tier Fig3 Welcome example - 2026-10-06](NATIVE_FIG3_EXAMPLE_2026-10-06.md)
-- [Photodetector production example · Process Geometry Kernel rebuild (2026-10-08)](../examples/PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md)
+- [Photodetector reconstruction source and scientific assumptions (2026-10-08)](../examples/PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md)
 - [Photodetector border and 3D Z follow-up — 2026-10-05](PHOTODETECTOR_RENDER_FOLLOWUP_2026-10-05.md)
 
 ### Project storage, loading and presentation

@@ -2,8 +2,10 @@
 
 This is a **performance measurement**, not a geometry/physics/Recovery gate or
 an authorization to tune scientific tolerances. The source catalog is
-`site/bundled-examples.js`; all released Welcome full-project files (currently
-nine) are measured, rather than just the small preview documents shown on cards.
+`site/bundled-examples.js`. The benchmark enumerates **every full Welcome
+project at the tested source revision**, not a frozen list or the smaller
+read-only previews displayed on cards. The output must record the source SHA,
+catalog IDs and full project artifact hashes.
 
 ## Reproduce
 
@@ -20,9 +22,13 @@ node scripts/summarize-welcome-loading.mjs test-results/welcome-load-baseline
 ```
 
 The benchmark leaves the original T-CMOS-compatible no-argument mode intact.
-The expensive full 27-browser workflow is **manual-only**: open GitHub Actions →
-**All Welcome Examples loading baseline** → **Run workflow**. It is not part of
-routine PR Quality, because its three headed-Chromium shards can be costly.
+The expensive complete benchmark is **manual-only**: open GitHub Actions →
+**All Welcome Examples loading baseline** → **Run workflow**. The number of
+independent Chromium samples is **catalog length × repetitions** (the current
+12-item catalog at three repetitions requests 36 samples), not a permanently
+fixed 27-browser run. It is not part of routine PR Quality, because three
+headed-Chromium shards can be costly. This statement does not claim that
+those 36 samples have been executed or accepted.
 
 For an explicitly requested parallel baseline, set `WAFERCAD_PERF_SHARD_INDEX` to 0, 1, or 2 and
 `WAFERCAD_PERF_SHARD_COUNT=3`; merge the resulting shard JSON files in one
@@ -61,9 +67,9 @@ source SHAs or different Welcome catalogs.
 Raw data store each sample, byte count, input SHA-256, Chromium version, visible
 objects and completion/failure state. Report medians, minima, maxima and the raw
 numbers (not an unqualified single fastest sample). The first sample of each
-project also captures genuine production 3D and Section screenshots. All nine
-projects and all repetitions must pass the completeness checker; missing or
-failed data cannot be reported as a green baseline. A missing renderer metric
+project also captures genuine production 3D and Section screenshots. **Every ID in the exact exported catalog** and every repetition must pass the
+completeness checker; missing or failed data cannot be reported as a green
+baseline. The catalog and source SHA must match across all shards. A missing renderer metric
 is reported as **not instrumented**, never zero.
 
 The dedicated benchmark workflow is manual-only (`workflow_dispatch`),

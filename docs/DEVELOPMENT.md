@@ -374,13 +374,23 @@ The formatter ignores `site/vendor/`. Vendored code must not be reformatted loca
 
 ## CI gates
 
-Pull requests run the fast **Quality** gate (`npm run check:ci`, ESLint, documentation checks and Node tests) and the path-filtered **Browser regression** workflow, which selects owning suites with `scripts/ci-test-plan.mjs`. Process Geometry and 625-site rendering have separate conditional jobs; weekly/manual full runs cover the complete inventory. Draft PRs defer designated heavy replay jobs until ready for review. See [CI routing](CI.md) for exact triggers and exceptions. The complete local `npm run check` additionally runs `format:check`; formatting is intentionally not duplicated in the fast CI gate. Parser/import/export changes additionally trigger the pinned KLayout GDS/OASIS compatibility workflow. Keep parser-only corpus work scoped so ordinary UI changes do not pay the full corpus cost.
+The [CI routing contract](CI.md) is authoritative. Ordinary Draft pushes
+use **proof-only or verified-base incremental Quality** and a small release
+policy contract; they do not automatically launch the heavy Browser or
+scientific matrix. After a PR is marked Ready, `ready-impact.yml` selects
+risk-owning browser/Process/Example gates from the cumulative source diff;
+the complete integration inventory runs on the daily controller, and Main
+Pages has its own exact-release-tree gate. Changed-file Quality is not a
+replacement for that full release proof. The pinned KLayout corpus and
+source-specific research/large-array benchmarks have separate owning
+execution policies rather than being launched for every ordinary UI change.
+See [Testing](testing.md) for owner and visual acceptance boundaries.
 
 Surface/Implant changes should add both pure geometry/profile assertions and at least one real UI-path assertion. Changes to adaptive 3D must preserve the scene-wide subdivision budget and prove that camera-only LOD updates do not rebuild the static surface plan, spatial rough zones, or cached base triangulation. Rough triangulation belongs in `rough-mesh-geometry.js`; physical cap/sidewall/border ownership belongs in `process-topology.js`; `three-view.js` should remain scene/camera/material orchestration. A browser pass is required when changing 3D displacement, transparency, cached LOD-zone boundaries, compact Process layout, or legend interaction because syntax/unit tests alone cannot establish visual correctness.
 
 ## Product and process regression
 
-See [Testing](testing.md) for current product layout/renderer commands and [Product review](archive/PRODUCT_REVIEW.md) for the historical Chromium gallery and interaction evidence. Current CI selects semantic coverage by ownership; full screenshot galleries belong to weekly/manual full runs with pinned Three.js. See [Testing](testing.md) for suite ownership and [Development handoff](COLLABORATION.md) for ChatGPT/Codex coordination.
+See [Testing](testing.md) for current product layout/renderer commands and [Product review](archive/PRODUCT_REVIEW.md) for the historical Chromium gallery and interaction evidence. Current CI selects semantic coverage by ownership; full screenshot galleries belong to the appropriate daily/full or explicitly requested manual runs with pinned Three.js. See [Testing](testing.md) for suite ownership and [Development handoff](COLLABORATION.md) for ChatGPT/Codex coordination.
 
 See [Process benchmarks](science/PROCESS_BENCHMARKS.md) for analytic step/trench/island geometry, both faces, Direct/Conformal/Grow/Etch checks, and explicit approximation boundaries. These tests run under `npm test`.
 

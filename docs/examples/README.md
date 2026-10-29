@@ -1,43 +1,47 @@
 # Literature reconstructions and provenance
 
-## Current published catalog (twelve families)
+## Published Welcome projects: product status versus scientific evidence
 
-`site/bundled-examples.js` and the
-[figure evidence matrix](../evidence/LITERATURE_FIGURE_MATRIX_2026-10-16.json)
-are the versioned source of truth for **twelve** promoted Welcome
-projects and their publication citations. The
-[research figure evidence register](../evidence/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md)
-records source panels, model assumptions and explicit
-**open-paper-match** states; no family is certified as an
-original-paper micrograph match.
+The authoritative **published project list and titles** are defined in
+[`site/bundled-examples.js`](../../site/bundled-examples.js). The
+[user-facing catalog](../wiki/Examples-and-Modeling-Limits.md) explains
+what each project shows, while the
+[machine-readable figure matrix](../evidence/LITERATURE_FIGURE_MATRIX_2026-10-16.json)
+and [figure evidence register](../evidence/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md)
+record paper sources and the acceptance boundary. The current register does not
+record an accepted original-paper figure match.
 
-[User-facing examples and modeling limits](../wiki/Examples-and-Modeling-Limits.md)
-describe the current shipped project geometry. In particular,
-the full Microdisk is Continuous-release M08, not the
-historical eight- or 72-band experimental state. The
-36 µm reach is an assumption, and the cited SEM is from
-a similar disk. The ninth family is T-CMOS; the tenth is the suspended TFLN microring array. Both retain explicit engineering Mask/geometry assumptions and open paper-figure correspondence.
+**Do not conflate these independently scoped claims:**
 
-- [TFLN ring reconstruction source](../../examples/projects/tfln-10x8-recovery/README.md) — source Mask, 80-site process model and reproducibility checks; author GDS unavailable.
+| Claim                  | What it establishes                                                           | What it does not establish                                                          |
+| ---------------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Published on Welcome   | An editable `.wafercad` project can be opened from the current catalog        | Process fidelity, full-Recipe replay or calibrated device performance               |
+| Original/author GDS    | Geometric mask polygons came from a source package                            | Correct layer-purpose mapping, resist/undercut physics or fabricated cross-sections |
+| Reconstructed mask     | WaferCAD geometry follows stated or explicitly inferred design dimensions     | Possession of the author's original GDS or paper-image equivalence                  |
+| Saved History / Recipe | The project contains inspectable states or executable operation text          | A fresh full-project replay on the current commit                                   |
+| Figure match           | Independently measured registration/tolerances and reviewed reference figures | No match is accepted until the evidence register explicitly records acceptance      |
 
-## Research reconstruction work and open experiments
+## Source and modeling assumptions for published projects
 
-- [Photodetector reconstruction](PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md) — device process and paper inputs.
-- [TiO₂ metalens reconstruction](TIO2_METALENS_RECONSTRUCTION_2026-10-09.md) — mask assumptions, 4,725-site final array.
-- [TiO₂ metalens performance](TIO2_METALENS_PERFORMANCE_2026-10-10.md) — dated hardware/fixture evidence.
-- [Both-face example consolidation](EXAMPLE_BOTH_FACE_CONSOLIDATION_2026-10-13.md) — revision-scoped process migration.
-- [Current Continuous release contract](../science/CONTINUOUS_RELEASE_CONTRACT.md) — source-derived material semantics.
-- [Candidate/authoring projects](../../examples/projects/README.md) — nonpromoted experimental fixtures and source inputs.
+- [Photodetector reconstruction](PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md) — Black-Si / Ge research sources, implanted versus electrical annotations and inferred process assumptions. Later Front/Back consolidation is [historical evidence](../archive/examples/EXAMPLE_BOTH_FACE_CONSOLIDATION_2026-10-13.md).
+- [TiO₂ metalens reconstruction](TIO2_METALENS_RECONSTRUCTION_2026-10-09.md) — four-unit process, 4,725 active sites in the illustrative GRID array, and explicit separation from unavailable author-mask data and optical design.
+- [TFLN ring source reconstruction](../../examples/projects/tfln-10x8-recovery/README.md) — source/assumption boundaries for the 10×8 reconstruction; author GDS is unavailable.
+- [HBAR author-GDS reconstruction](../../examples/projects/hbar-blesin-2024-candidate/README.md) — officially published project with saved operations; layer roles and release geometry remain provisional.
+- [Transmon Q2 author-GDS geometry](../../examples/projects/transmon-nature-communications-2025-candidate/README.md) — published research geometry with one final native material checkpoint; bilayer resist/development and Josephson junction flow are **not** replayable in the standard editor (see [#382](https://github.com/Xiaolong-6/WaferCAD/issues/382)).
+- [Other source packages and authoring fixtures](../../examples/projects/README.md) — additional family-specific materials, scripts and assumptions. A `candidate` folder name does not imply that its derived Welcome project remains unpublished.
 
-## Historical accepted/bounded evidence
+The published Microdisk uses the **Continuous** M08 geometric release,
+not an earlier eight-/72-band experiment. Its 36 µm reach is assumed, and
+the reference SEM shows a similar disk, not an accepted quantitative match.
+See [current release contract](../science/CONTINUOUS_RELEASE_CONTRACT.md).
 
-- [Eight-family literature audit, 2026-10-14](../archive/examples/EXAMPLE_LITERATURE_FIDELITY_2026-10-14.md) — preserved original eight-project source inspection and limitations, **not** a nine-family current acceptance.
+## Open research and dated evidence
 
-Historical screenshot and regression records identify their own
-project SHA, browser environment and authoring assumptions. They
-cannot be reused to certify a different saved asset or promote an
-inferred GDS layout to original manufacturer evidence.
+- [Physical Facet opt-in research](../science/PHYSICAL_FACET_MODELING_2026-10-16.md) — not a requirement for normal Welcome projects.
+- [Merged Both-face example migration](../archive/examples/EXAMPLE_BOTH_FACE_CONSOLIDATION_2026-10-13.md) — dated PR #194 decisions and regeneration commands; not a fresh replay certificate.
+- [TiO₂ full-array loading measurement](../archive/examples/TIO2_METALENS_PERFORMANCE_2026-10-10.md) — controlled measurements at their original product SHA, not general performance.
+- [Earlier eight-family literature inspection](../archive/examples/EXAMPLE_LITERATURE_FIDELITY_2026-10-14.md) — historical 2026-10-14 evidence, not current-catalog acceptance.
 
-- [HBAR local source-GDS reconstruction](../../examples/projects/hbar-blesin-2024-candidate/README.md) — promoted Welcome Example preserving the 11-step editable HBAR recipe, with explicitly provisional layer roles, local Si thickness and illustrative release geometry.
-
-- [Transmon Q2 author-GDS geometry](../../examples/projects/transmon-nature-communications-2025-candidate/README.md) — native Nb/Si and three Al doses, separate from unfinished generic physical MMA/PMMA/lift-off (#382).
+Historical screenshots, performance measurements and regression results
+apply only to the named project, revision and environment. They cannot
+certify changed assets or promote inferred geometry into original paper data.

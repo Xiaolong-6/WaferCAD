@@ -44,8 +44,7 @@ Section SVG figures** in an isolated Worker, with explicit per-node failures and
 omissions. It does not infer missing historical states or images. Hidden current
 views are omitted with explicit warnings.
 
-The report is read-only: the historical Section SVGs are inspection figures,
-not restorable or editable project geometry. **Export a separate `.wafercad`**
+The report is read-only: historical Section SVGs are **best-effort figures of restorable source nodes**, not one image per History step. The default Compact policy attempts up to 24 Section figures; the Standard Main+Section mode described in the planner API is **not** a shipped multi-view report feature. Every missing/failed figure is reported in `keyframe-plan.json` rather than silently replaced with the current view. The historical SVGs are not restorable or editable project geometry. **Export a separate `.wafercad`**
 to preserve the engineering backup. See [Process Report Export](https://github.com/Xiaolong-6/WaferCAD/blob/main/docs/io/REPORT_EXPORT.md)
 and [Report Keyframes](https://github.com/Xiaolong-6/WaferCAD/blob/main/docs/io/REPORT_KEYFRAMES.md) for provenance, export limits,
 and acceptance coverage.

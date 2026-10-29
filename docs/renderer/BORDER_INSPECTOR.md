@@ -39,14 +39,14 @@ of zero. This prevents four cardinal floating-point joins from generating
 full-height substrate sidewall lines while retaining true material corners
 and height steps.
 
-## Focused acceptance
+## Focused acceptance for future Border changes
 
 1. For each class, test Off, Auto, Solid, Dashed and master Border OFF with 100%, 70%, 45%, and 15% material opacity on the same camera/ROI.
 2. Verify true buried interfaces and Via edges without introducing computational seams, duplicate depth contours, mesh triangle edges, floating lines or artificial cracks. Verify cut-only outlines against rough/pyramid mesh boundaries and Section A–B.
 3. Re-run native-v2 Chromium on small stacked films, photodetector, M3D, PERC and an array, inspecting screenshots at multiple zooms and edge-on angles. Measure frame time and memory for repeated preset changes.
-4. Before merging, execute renderer/geometry targeted tests, Quality, and risk-relevant scientific/History/Recovery gates. Never silently relax tolerances or approve screenshots from a mocked UI.
+4. For a new Border change, use source-bound renderer/geometry checks and the risk-relevant scientific/History/Recovery gates **after** implementation. No previous test result or screenshot automatically certifies a changed Renderer revision; never silently relax tolerances or accept mocked-UI screenshots as product evidence.
 
-**Local Chromium diagnostic evidence (2026-10-18):** The existing
+**Historical, non-production-origin diagnostic (2026-10-18 only):** The existing
 `offline-native-app-capture.py --inmemory-demo --border-audit` rendered
 actual WaferCAD/Three.js under Xvfb + Chromium 144 + SwiftShader with
 zero page errors. The diagnostic stacked-material model has four real buried
@@ -59,4 +59,8 @@ the production `site/ui-v2/workstation-views.css`. This establishes
 Administrator policy still blocks normal-origin navigation, so Worker-backed
 Example Open, live synchronized four-view state, IndexedDB, History/Recovery,
 mobile interactions, hardware GPU and complete release/Quality acceptance
-remain **unverified**. No screenshot baseline is approved or changed.
+were **not verified by this 2026-10-18 diagnostic**. Its evidence is not
+current-HEAD acceptance. Consult the [current Renderer contract](RENDERER_CONTRACT.md)
+and the exact-revision review record rather than treating this dated
+sandbox limitation as the present product status. No screenshot baseline was
+approved or changed by that diagnostic.

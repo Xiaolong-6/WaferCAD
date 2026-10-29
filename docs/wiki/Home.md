@@ -52,12 +52,13 @@ WaferCAD calculates **idealized geometric material stacks**, not physically cali
 - [Process and Recipes](Process-and-Recipes) — individual operations, guided recipes and execution safety.
 - [History, Variants and Recovery](History-Variants-and-Recovery) — previous states, alternate branches and browser checkpoints.
 - [Import and Export](Import-and-Export) — project, mask and 3D interchange.
-- [Examples and Modeling Limits](Examples-and-Modeling-Limits) — the nine Welcome example families and scientific caveats.
+- [Examples and Modeling Limits](Examples-and-Modeling-Limits) — the published Welcome examples and scientific caveats.
 - [Using WaferCAD with AI](AI-Assisted-Workflows) — practical paper-to-mask and mask-to-Recipe prompts, inputs, outputs and validation.
-- [Develop WaferCAD with AI](Develop-WaferCAD-with-AI) — a contributor's acceptance playbook based on PR #225.
 - [Process Recipe Code Tutorial](Recipe-Code-Tutorial) — eight supported commands, mask capture and replay.
 
-## For documentation maintainers
+## For contributors and documentation maintainers
+
+If you are **changing WaferCAD's source code**, use [Develop WaferCAD with AI](Develop-WaferCAD-with-AI) for scientific provenance, component ownership and source-specific acceptance (T-CMOS #225 is an example, not a generic device requirement). Product users should instead follow [Using WaferCAD with AI](AI-Assisted-Workflows) for editing Masks and Recipes.
 
 This wiki is generated from reviewed Markdown under `docs/wiki/` on the repository's `main` branch. Each main push checks and synchronizes managed pages. The [Process Operations](Process-Operations) illustrations share their source with the in-app Process guide. For authoring and publication rules, read the [Wiki sync contract](https://github.com/Xiaolong-6/WaferCAD/blob/main/docs/WIKI_SYNC.md) and [source documentation](https://github.com/Xiaolong-6/WaferCAD/tree/main/docs).
 

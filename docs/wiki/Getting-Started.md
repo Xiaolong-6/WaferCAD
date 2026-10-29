@@ -6,7 +6,7 @@
 
 **Never used a mask-based process editor?** Follow [First 10 Minutes](First-10-Minutes). It gives **exact values and the expected result after every Apply**: a 100 × 100 µm Base rectangle (treated as Si in this exercise), a 200 nm layer named SiO2 and a single etched window. You can draw the mask in the browser without importing any files.
 
-**Prefer to explore first?** Open [WaferCAD](https://xiaolong-6.github.io/WaferCAD/), then select one of the nine example projects by clicking its **title or description** on the Welcome page. The preview shows a curated state; opening the project exposes History, Variants, Mask and process data. **The preview can appear before the full project finishes opening**: wait for the project to load and for 3D to finish rendering before editing. Avoid rerunning a Recipe until you have exported a personal backup.
+**Prefer to explore first?** Open [WaferCAD](https://xiaolong-6.github.io/WaferCAD/), then select one of the bundled example projects by clicking its **title or description** on the Welcome page. The preview shows a curated state; opening the project exposes History, Variants, Mask and process data. **The preview can appear before the full project finishes opening**: wait for the project to load and for 3D to finish rendering before editing. Avoid rerunning a Recipe until you have exported a personal backup.
 
 ## How the workspace fits together
 
@@ -37,7 +37,7 @@ _Illustration of a directional film on a flat face; the geometry and scaling dep
 
 ## Four choices that change the outcome
 
-- **Front, Back or Both:** the v2 Manual Surface selector and Recipe Code support **Both** for compatible operations. Both applies **Front → Back** atomically, with two distinct paired Layer IDs for a dual-face Deposit. Paired Extend/targeted Etch needs an exposed matching material on both faces; Both Lift-off and absolute-Z Planarize/CMP are unsupported. Both is an operation target, never a third Main/Mask inspection face. [Acceptance and limitations](https://github.com/Xiaolong-6/WaferCAD/blob/main/docs/ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md).
+- **Front, Back or Both:** the v2 Manual Surface selector and Recipe Code support **Both** for compatible operations. Both applies **Front → Back** atomically, with two distinct paired Layer IDs for a dual-face Deposit. Paired Extend/targeted Etch needs an exposed matching material on both faces; Both Lift-off and absolute-Z Planarize/CMP are unsupported. Both is an operation target, never a third Main/Mask inspection face. [Acceptance and limitations](https://github.com/Xiaolong-6/WaferCAD/blob/main/docs/archive/ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md).
 - **Area:** **Whole face** applies without a mask; **Selected mask** acts within the current File/Draw mask; **Invert mask** acts in its complement.
 - **Coverage / Profile:** **Directional** grows/etches along Z; **Conformal** deposition follows true exposed sidewalls; isotropic/undercut release removes material laterally.
 - **Thickness and units:** Choose **XYZ display unit** first. `0.2` with unit **µm** means **200 nm**; it differs from `0.2` in **nm**. Base Thickness is physical substrate height; manual Process Thickness/depth represents film thickness or etch depth as applicable.

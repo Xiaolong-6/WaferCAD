@@ -9,7 +9,7 @@
 - `docs/wiki/assets/process/*.svg`: generated, version-controlled Before → After diagrams embedded directly in the Process wiki chapter.
 - `site/guide/index.html`: compatibility redirect only; old fragment bookmarks resolve into Wiki headings.
 - `docs/wiki/Process-Operations.md`: **generated** by `npm run docs:build`. Do not edit it manually; edits will be overwritten.
-- All actively maintained product documentation is in **English**. Legacy localized URLs may be retained as short English pointers so existing links still resolve.
+- All actively maintained product documentation is in **English**. Retired localized pages are removed from the managed Wiki source rather than preserved as placeholder aliases; old external URLs may cease to resolve.
 
 To change an operation description, update the catalog and diagram, then run `npm run docs:build` and `npm run docs:check`. Commit the catalog, regenerated Markdown and any changed SVG assets together. `docs:check` checks images byte-for-byte against the in-app renderer. The tests check every defined operation ID and the exact operation-document snapshot. The [documentation architecture](DOCUMENTATION.md) owns navigation, authority and authored-versus-generated boundaries.
 
@@ -17,7 +17,7 @@ GitHub Wiki copies each `docs/wiki/*.md` page to the Wiki root. Link between pag
 
 ## Figure and screenshot policy
 
-Wiki illustrations must be **relevant to the adjacent procedure**. Prefer exact, shipped WaferCAD example screenshots tied to the named example, or Before → After SVGs generated from the same `site/process-guide.js` catalog as the Process UI. When explaining ROI selection, workflows or History rather than a particular screen state, use a narrowly scoped Mermaid flowchart instead of unrelated imagery. Do not add stock, random microscopy, speculative AI renderings or publication figures without provenance and rights. Every manually inserted image needs descriptive alt text, an immediate caption identifying **actual app output / saved capture / conceptual guide schematic**, and a limitation where warranted. A green link check proves only that the asset path exists. Before adding any raster screenshot, inspect the **actual image content**, native dimensions, text/geometry legibility at the intended display width, correctness of the depicted UI version, and relevance to the adjacent task. Old 480 × 300 blurred `site/example-previews/` JPEGs and catalog-sized 3D covers are **not** instructional screenshots. Prefer a precisely matched Process SVG or Mermaid diagram when no readable current capture exists. Older UI captures belong in dated audit records; never label one as the current workstation. See the [content/pixel audit](archive/WIKI_CONTENT_VISUAL_AUDIT_2026-10-12.md).
+Wiki illustrations must be **relevant to the adjacent procedure**. Prefer exact, shipped WaferCAD example screenshots tied to the named example, or Before → After SVGs generated from the same `site/process-guide.js` catalog as the Process UI. When explaining ROI selection, workflows or History rather than a particular screen state, use a narrowly scoped Mermaid flowchart instead of unrelated imagery. Do not add stock, random microscopy, speculative AI renderings or publication figures without provenance and rights. Every manually inserted image needs descriptive alt text, an immediate caption identifying **actual app output / saved capture / conceptual guide schematic**, and a limitation where warranted. A green link check proves only that the asset path exists. Before adding any raster screenshot, inspect the **actual image content**, native dimensions, text/geometry legibility at the intended display width, correctness of the depicted UI version, and relevance to the adjacent task. Old 480 × 300 blurred `docs/archive/example-previews/` JPEGs and catalog-sized 3D covers are **not** instructional screenshots. Prefer a precisely matched Process SVG or Mermaid diagram when no readable current capture exists. Older UI captures belong in dated audit records; never label one as the current workstation. See the [content/pixel audit](archive/WIKI_CONTENT_VISUAL_AUDIT_2026-10-12.md).
 
 See [Wiki content and visual audit](archive/WIKI_CONTENT_VISUAL_AUDIT_2026-10-12.md) for the page-level inventory and decisions.
 
@@ -70,7 +70,20 @@ real image is ready.
 
 ## Pre-publication PR verification
 
-Documentation changes are checked locally through `node scripts/local-verification.mjs run draft` (or a current `full` receipt), including the focused documentation contracts. The [Documentation and Wiki targeted checks](../.github/workflows/documentation-wiki-targeted.yml) workflow is **manual-dispatch only** under the 2026-10-22 CI policy; it has read-only repository permissions and cannot publish Wiki or Pages. Automatic Draft `Quality` verifies exact-source-bound local evidence **without rerunning lint, formatting, or `docs:check` remotely**. Ready and Main release use their separately governed gates; see [CI routing](CI.md).
+Document changes follow the [current PR Quality policy](CI.md#incremental-quality-baseline--exact-diff):
+a source-bound Draft/Full local receipt is acceptable, **or** PR Quality may
+verify the cumulative changed documentation files and owning contracts using
+the strict incremental route, provided the exact Main parent has valid full
+evidence. This latter route performs actual changed-file formatting/lint and
+appropriate documentation Node checks on the PR merge tree; it is **not**
+a proof-only pass. Do not describe an untested Draft as locally verified.
+
+The [Documentation and Wiki targeted checks](../.github/workflows/documentation-wiki-targeted.yml)
+workflow remains **manual-dispatch only**; it cannot publish Wiki or Pages.
+Ready browser acceptance and Main publication have separate, more restrictive
+eligibility. The GitHub Wiki itself is published **after Main integration**;
+a green PR Docs result is not a claim that the remote Wiki already contains
+the changes.
 
 ## Deploy workflow
 

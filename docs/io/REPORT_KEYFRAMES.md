@@ -1,4 +1,4 @@
-# Process Report: historical keyframes and Section SVG (P2)
+# Process Report: bounded historical Section keyframes (P2)
 
 P2 selects deterministic, capped keyframes and attempts a **genuine physical
 Section SVG** from each selected restorable Process node in an isolated Worker.
@@ -13,10 +13,15 @@ a claim that the corresponding image or scientific geometry exists.
 
 ## Presets
 
-| Preset            | Candidate views  | Maximum planned images | Maximum keyframes |
-| ----------------- | ---------------- | ---------------------: | ----------------: |
-| Compact (default) | Section          |                     24 |                24 |
-| Standard (API)    | Main and Section |                     96 |                48 |
+| Preset                 | Candidate views  | Maximum planned images | Maximum keyframes |
+| ---------------------- | ---------------- | ---------------------: | ----------------: |
+| Compact (default)      | Section          |                     24 |                24 |
+| Standard (planner API) | Main and Section |                     96 |                48 |
+
+The Standard row documents the **planner API budget**, not an additional
+published report mode: Main historical SVG generation is not shipped. The
+user-facing Compact ZIP attempts up to 24 Section figures and never promises
+an image for every selected node.
 
 Each selected node consumes one slot per requested view. Deduplication is
 per stable History node ID; a Process operation with Both faces is still one
@@ -42,9 +47,11 @@ satisfy extra Bookmarks or Variants.
    every unknown/deleted History reference, with its stable node ID and reason.
 
 Operation type provides a cheap sampling hint. It is **not** a measure of
-actual structural or visual difference. Future image generation will require
-a distinct historical-state viewer, consistent camera and ROI controls,
-geometry provenance, and validation against the stored node state.
+actual structural or visual difference. The _current_ saved-state reader and independent physical Section SVG
+renderer described below establish bounded, validated state provenance.
+Future **visual-difference ranking**, multi-view historical presentation,
+and before/after comparisons would require additional reference-frame,
+ROI and camera policies; selection priority alone is not image evidence.
 
 The report records `plannedImages`, the actual `generatedImages`,
 selected nodes and reasons, plus `unavailableAnchors`, `omittedAnchors`,
@@ -66,7 +73,7 @@ Read **one selected state at a time** to keep allocation bounded for large
 Mask/Array projects. The API alone performs no rendering and deliberately
 does not expose internal mutable model references.
 
-## Independent physical Section SVG (prototype)
+## Independent physical Section SVG (integrated, bounded)
 
 `renderHistoricalSectionSvg({ state, nodeId })` in
 `site/report-section-svg.js` uses the canonical Kernel

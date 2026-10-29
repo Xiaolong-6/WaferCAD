@@ -1,9 +1,12 @@
 # Mobile Workstation layout & gesture contract — revised 2026-10-14
 
-This document supersedes the 2026-10-13 bounded mobile-pane scrolling contract.
-The canonical production entry is `site/app.html`. The change is presentation
-only: it must not rewrite Project, Recipe, History, scientific geometry, snapshots,
-persistent camera coordinates, or the scientific DOM hosts.
+**Current product contract:** The compact Workstation uses the native-document
+scrolling and gesture ownership described below. This supersedes the original
+2026-10-13 bounded-pane implementation; the date in the filename records the
+first work, **not** an unmerged mobile rollout. The canonical production entry
+is `site/app.html`. Compact layout changes must remain presentation-only:
+Project, Recipe, History, scientific geometry, saved camera coordinates and
+persistent scientific host identity are not rewritten by navigation.
 
 ## Architectural ownership
 
@@ -53,10 +56,11 @@ persistent camera coordinates, or the scientific DOM hosts.
 Desktop, wide-screen split views and their independently scrolling inspector
 remain unchanged.
 
-## Acceptance and gate migration
+## Current verification ownership and remaining device coverage
 
-`scripts/v2/check-mobile-workstation.mjs` is the production compact-viewport
-acceptance gate (360x640, 390x844, 430x932). It now checks:
+`scripts/v2/check-mobile-workstation.mjs` is the **targeted** production
+compact-viewport acceptance owner (360×640, 390×844 and 430×932). Its
+original release checkpoint covered:
 
 1. Default View and one-click Edit, with persistent live canvas identity.
 2. A long Process editor expands the document, without inspector internal scroll.
@@ -67,8 +71,11 @@ acceptance gate (360x640, 390x844, 430x932). It now checks:
 7. No horizontal overflow, no browser exceptions, and accessible 44px targets.
 8. Initial Main/Mask/Section Pan+Zoom and 3D Orbit+Zoom state.
 
-CI's Chromium touch stream is not a replacement for real iOS Safari or Android
-Chrome tests. Before rollout, inspect long imported History, multiple Recipe
-steps, keyboard/visualViewport changes, scientific touch Pan/pinch/orbit,
-expanded Section legend, 3D GPU context recovery and Preview mode. No visual
-baseline is implicitly accepted by a green behavioral test.
+These are acceptance **scenarios**, not claims that the named browser run
+passed on the current HEAD. For any change to compact layout or gestures,
+inspect long imported History, multiple Recipe steps, keyboard/visualViewport
+changes, real touch Pan/pinch/orbit, expanded Section legends, GPU context
+recovery and Welcome Preview isolation. Automated Chromium touch emulation
+is not equivalent to real iOS Safari or Android Chrome; preserve an explicit
+physical-device evidence gap when that check was not performed. A green
+behavioral gate does not by itself approve visual layout.

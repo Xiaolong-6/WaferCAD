@@ -6,7 +6,7 @@ process kinetics or predictive TCAD.
 
 ## Current implementation and numerical contracts
 
-- [Process Geometry Kernel v2](PROCESS_GEOMETRY_KERNEL_V2.md) — exposed surfaces, physical sidewalls and owned material.
+- [Process Geometry Kernel v2](PROCESS_GEOMETRY_KERNEL_V2.md) — exposed surfaces, physical sidewalls and owned material; includes the [shipped but bounded read-only Geometry Diagnostics contract](PROCESS_GEOMETRY_KERNEL_V2.md#read-only-geometry-diagnostics).
 - [Process benchmarks](PROCESS_BENCHMARKS.md) — independent analytic geometry invariants.
 - [Continuous release](CONTINUOUS_RELEASE_CONTRACT.md) — **experimental but selectable** single-release analytic material owner and its unsupported follow-on operations.
 - [Numerical and physical interpretation](PROCESS_NUMERICAL_CONTRACT_2026-10-14.md) — physical precision, compact versus lossless semantics.
@@ -20,13 +20,13 @@ process kinetics or predictive TCAD.
 ## Open proposals and experimental work
 
 - [Material/Target semantics proposal](MATERIAL_TARGET_SEMANTICS_2026-10-13.md) — non-activated review matrix.
-- [Geometry/Process roadmap](PROCESS_GEOMETRY_ROADMAP_2026-10-09.md) — proposals are not automatically product features.
+- [Geometry/Process roadmap](PROCESS_GEOMETRY_ROADMAP_2026-10-09.md) — distinguishes delivered bounded Diagnostics from the remaining six unshipped proposals.
 - [Physical Facet modeling](PHYSICAL_FACET_MODELING_2026-10-16.md) — opt-in research, **not** normal Process parity; see [experimental ownership](../../site/experimental/README.md).
 
 ## Dated research and implementation evidence
 
-- [Isotropic release oracle and historical 8-/72-band work](ISOTROPIC_RELEASE_ORACLE_2026-10-16.md) — original proofs, experiments, revision-scoped M07 screenshots; the currently bundled Continuous M08 is described separately above.
-- [Lift-off v1 implementation record](LIFTOFF_V1_2026-10-09.md) — original 2026-10-09 regression evidence, not a replacement for current tests.
+- [Isotropic release oracle and historical 8-/72-band work](../archive/science/ISOTROPIC_RELEASE_ORACLE_2026-10-16.md) — original proofs, experiments, revision-scoped M07 screenshots; the currently bundled Continuous M08 is described separately above.
+- [Lift-off v1 implementation and acceptance](../archive/science/LIFTOFF_V1_2026-10-09.md) — historical PR #167 evidence; current ideal support semantics belong to [Kernel v2](PROCESS_GEOMETRY_KERNEL_V2.md).
 
 See [Documentation map](../README.md) for interchange,
 [Renderer and Section](../renderer/RENDERER_CONTRACT.md) for

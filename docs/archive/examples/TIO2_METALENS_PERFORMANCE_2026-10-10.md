@@ -22,7 +22,7 @@ Linux, Node 24.19.0, Playwright 1.55.1, Chromium 140.0.7339.186, local pinned Th
 | Correct-revision 3D ready | 8.502 s | 5.975 s |     29.7% |
 | Strict import worker      | 1.391 s | 1.217 s |     12.5% |
 
-Raw runs: [metalens-loading-linux-chromium.json](../../tests/fixtures/project-io/metalens-loading-linux-chromium.json). Worker code is unchanged; its timing difference reflects run variation, not a worker optimization. These are local loading measurements, not universal latency or full-wafer FPS guarantees. `renderState=ready` is a renderer readiness signal; screenshot acceptance remains a separate check. Earlier 45–97 second measurements under heavy concurrent test load are not comparable to this controlled baseline.
+Raw runs: [metalens-loading-linux-chromium.json](../../../tests/fixtures/project-io/metalens-loading-linux-chromium.json). Worker code is unchanged; its timing difference reflects run variation, not a worker optimization. These are local loading measurements, not universal latency or full-wafer FPS guarantees. `renderState=ready` is a renderer readiness signal; screenshot acceptance remains a separate check. Earlier 45–97 second measurements under heavy concurrent test load are not comparable to this controlled baseline.
 
 ## Validation
 
@@ -31,7 +31,7 @@ Raw runs: [metalens-loading-linux-chromium.json](../../tests/fixtures/project-io
 - `node scripts/history-regression.mjs` and `node scripts/persistence-regression.mjs`: passed, including normal History navigation and browser storage/Recovery behavior.
 - Focused ESLint, changed-file Prettier, `npm run docs:check` and `git diff --check`.
 
-No new approved visual baselines were generated. Full-array Recipe Run All and physical wafer-scale FPS remain outside this loading optimization's acceptance, as in the [reconstruction handoff](TIO2_METALENS_RECONSTRUCTION_2026-10-09.md).
+No new approved visual baselines were generated. Full-array Recipe Run All and physical wafer-scale FPS remain outside this loading optimization's acceptance, as in the [reconstruction handoff](../../examples/TIO2_METALENS_RECONSTRUCTION_2026-10-09.md).
 
 ## Reproduce
 

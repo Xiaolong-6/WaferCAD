@@ -1,6 +1,6 @@
 # Desktop View Docking reconstruction — implementation contract (2026-10-15)
 
-> **Status verified 2026-10-16:** [PR #267](https://github.com/Xiaolong-6/WaferCAD/pull/267) merged into Main on 2026-10-16 (`76a98b5`). The stages and acceptance language below are retained as implementation history, not as a currently pending Draft or merge request. For current controls and ownership, consult [Architecture](../ARCHITECTURE.md) and [Usage](../USAGE.md).
+> **Status verified 2026-10-16:** [PR #267](https://github.com/Xiaolong-6/WaferCAD/pull/267) merged into Main on 2026-10-16 (`76a98b5`). The stages and acceptance language below are retained as implementation history, not as a currently pending Draft or merge request. For current controls and ownership, consult [Architecture](../../ARCHITECTURE.md) and [Usage](../../USAGE.md).
 
 **Initial base:** `integrate/legacy-retirement-20261015` at `45bc459c`. Once #256 merged and the integration branch was deleted, GitHub automatically closed #261. Its feature work continued through PR #267, which has since merged into Main.
 

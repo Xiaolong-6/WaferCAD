@@ -1,6 +1,12 @@
 # UI v2 — Z Break editor integration
 
-Date: 2026-10-13. Base: production UI v2 on `main`. Branch: `feat/ui-v2-z-break-editor-20261013`.
+**Current contract:** The Section Z Break editor's presentation-only geometry,
+units and interaction requirements below belong to the production v2 Section
+view. The original implementation was prepared on 2026-10-13 from
+`feat/ui-v2-z-break-editor-20261013`; that branch name is historical, not a
+current integration instruction. See the
+[Workstation contract](WORKSTATION_CONTRACT.md) and
+[Section/Renderer contract](../renderer/RENDERER_CONTRACT.md) for active ownership.
 
 ## Scope and ownership
 
@@ -25,9 +31,11 @@ The contextual tooltip service is now present in `main` (formerly PR #189). This
 
 The editor uses the parallel branch's existing `data-help` keys (`section.zbreak`, `section.scale`) and `data-help-detail` descriptions on the original, keyboard-focusable controls. When the central catalog is present, the editor does not set duplicate native titles. Only isolated previews without the service use a native `title` fallback. Help copy stays in `data-help-detail` or the central catalog; **never** add local tooltip DOM or listeners.
 
-## Verification
+## Original acceptance work (historical, 2026-10-13)
 
-Existing v2 browser acceptance `scripts/v2/check-section-view.mjs` checks the real Section compositor across 1440/1024/768/390 and verifies Z toggle, Front scale and model preservation. This branch updates that gate for the collapsed Advanced UI and new dialog title. Run:
+The command list below belongs to the **original implementation checkpoint**;
+it is not a current release decision or evidence about a later Main SHA.
+The existing v2 browser acceptance `scripts/v2/check-section-view.mjs` checks the real Section compositor across 1440/1024/768/390 and verifies Z toggle, Front scale and model preservation. This branch updates that gate for the collapsed Advanced UI and new dialog title. Run:
 
 ```bash
 npm run check:ci
@@ -35,4 +43,9 @@ node scripts/v2/serve-v2.mjs
 node scripts/v2/check-section-view.mjs
 ```
 
-The server command runs in a separate terminal. Human acceptance remains required for visual matching, 360/390px spacing and hover after the tooltip branch is rebased/merged. Do not change approved screenshot baselines during this task.
+At that checkpoint the browser server was run in a separate terminal and
+narrow-width (360/390 px) spacing, hover and visual matching still needed human
+review after integration. Those historical pending gates must **not** be
+mistaken for today's branch or merge status. Current release checks are owned
+by [testing](../testing.md) and [CI](../CI.md); never adjust accepted visual
+baselines only to conceal a real discrepancy.

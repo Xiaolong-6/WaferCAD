@@ -1,11 +1,13 @@
 # Suspended silica microdisk example candidate
 
-**Status reviewed 2026-10-18:** A separate, published Microdisk project now
-exists at `site/examples/suspended-silica-microdisks.wafercad` and is listed
-on Welcome as `suspended-silica-microdisk`. This directory retains the
-original candidate package and its independent source/geometry evidence;
-it is not the runtime asset. Publication does not establish a quantitative
-SEM match or remove the experimental continuous-release limitations.
+**Publication update (current Welcome catalog):** The complete editable Microdisk
+is `site/examples/suspended-silica-microdisks-continuous.wafercad`
+(Welcome ID `suspended-silica-microdisk`). The older
+`site/examples/suspended-silica-microdisks.wafercad` remains a lightweight
+preview source, **not** the project users open. This directory retains the
+original candidate package and scientific assumptions; neither the candidate
+nor the promoted Continuous project establishes a quantitative SEM match or
+calibrated XeF₂ release kinetics.
 
 Original candidate baseline: Main with PR #89 (isotropic release / undercut etch).
 

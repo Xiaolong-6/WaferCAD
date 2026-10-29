@@ -75,6 +75,22 @@ Equal-height computational partitions are neither type and cannot generate Confo
 
 The model layer receives those wall targets and performs the actual stack mutation.
 
+### Lift-off: ideal geometric support, not a solvent model
+
+Lift-off removes the selected sacrificial material interval and the outward
+material that is **directly supported by it** in each affected XY column.
+Material deposited into an open resist window may remain when it has a
+separate underlying support. Ambiguous continuous bridges across the resist
+boundary fail rather than assuming a physical film fracture. Partial-area
+operations must account for supporting material outside the ROI; an apparent
+local cut is not proof that the film is detachable.
+
+This operation is neither resist development nor a dissolution, adhesion,
+fracture or film-transport prediction. It produces geometric material changes;
+use the [Recipe reference](../wiki/Recipe-Code-Tutorial.md) for current syntax.
+The original implementation and revision-specific acceptance are preserved
+in the [Lift-off archive record](../archive/science/LIFTOFF_V1_2026-10-09.md).
+
 ### Owned material surfaces
 
 `ownedMaterialSurfacesFromTopology()` is the single source for 3D physical ownership. It splits caps by surface appearance, chooses one deterministic owner for coincident horizontal material interfaces, reconciles collinear partial-height sidewalls, and derives physical border lines. `renderer-geometry.js` is intentionally only an adapter to this result.
@@ -125,6 +141,33 @@ The permanent test suite protects these properties:
 - internal material caps do not appear across computational partitions;
 - rough Etch followed by Conformal cannot create sidewall material below the etched floor;
 - front/back Step/Trench/Island and through-void Conformal benchmarks remain unchanged.
+
+## Read-only geometry diagnostics
+
+The shipped **Process → Diagnostics → Analyze geometry** action delegates to
+`site/controllers/process-diagnostics-controller.js`, which invokes
+`site/process-diagnostics-worker.js` to analyze a snapshot of the canonical
+model through `site/process-diagnostics.js`. The analysis **does not write**
+material stacks, History, Recipe or saved geometry; findings are inspection
+results associated with the model revision and must be marked stale after
+the model changes.
+
+The implementation reports measured material volumes and segment thickness
+extrema, nonpositive Z segments, missing Layer IDs, material overlaps, actual
+Z gaps, XY region overlaps, uncovered voids and potentially numerical
+sub-grid cracks. Each finding has explicit severity and representative
+spatial context where available. **An intentional cavity is not itself an
+error**: the tool cannot infer etch intent or device manufacturability.
+
+For translation-array projects, volumes and region counts are instance-
+weighted, while the XY overlap scan is scoped to each referenced template.
+Cross-instance boundaries are **not certified**. Bounded pair, polygon and
+finding limits can omit or skip checks; incomplete coverage must be disclosed
+rather than presented as no defects. A clean result does not validate full
+3D manufacturability, mask correctness, chemical selectivity, film
+continuity, electrical properties or physical Rough/Pyramid texture.
+See the [user-facing Diagnostics workflow](../wiki/Process-and-Recipes.md#geometry-diagnostics)
+and [open extensions](PROCESS_GEOMETRY_ROADMAP_2026-10-09.md).
 
 ## Annotation clipping contract
 

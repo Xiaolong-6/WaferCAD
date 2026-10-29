@@ -121,7 +121,7 @@ const md = [
   '',
   `- Source revision: \`${source}\``,
   `- Projects: ${summary.length}; independent Chromium samples: ${samples.length} (${expectedSamples} per example)`,
-  '- Statistics: median, min and max of raw recorded milliseconds; all nine input SHA-256 values pinned.',
+  `- Statistics: median, min and max of raw recorded milliseconds; all ${summary.length} input SHA-256 values pinned.`,
   '- This is **process-cold**, not OS-cache-cold; browser startup is excluded from navigation-to-3D.',
   '- Main/Mask/Section are **warm inspection timings after completed 3D**; do not compare them to cold 3D.',
   '- Browser workers report module loading, JSON parsing, expansion, and migration/validation from inside the real project Worker.',

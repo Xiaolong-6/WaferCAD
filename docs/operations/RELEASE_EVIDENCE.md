@@ -12,12 +12,17 @@ The fast path requires:
 - The reviewed PR head as the second parent and the final Main base as
   an ancestor of that PR head.
 - The deterministic merge tree equal to the actual Main tree.
-- A completed **full Ready-for-Review Quality** job for the exact PR SHA.
-  Draft-only Quality never authorizes publication. The Quality job first
-  validates full local evidence; if that is missing or stale, it executes the
-  entire full Quality plan on the exact PR integration tree. Release selection revalidates source-bound local proof before the fast
-  route, or recognizes a successful, independently executed full Quality step.
-  The tolerated proof probe alone is never a release attestation.
+- A completed **full Ready-for-Review Quality** job for the exact reviewed
+  PR SHA. Draft-only Quality does **not** authorize fast publication. The
+  newer [incremental PR Quality route](../CI.md#incremental-quality-baseline--exact-diff)
+  may establish a review-time changed-file Quality verdict, but it is **not**
+  a substitute for the full Quality evidence required by the existing
+  fast-Pages release verifier (`scripts/release/verified-pr-release.mjs`).
+  The fast release route recognizes a valid full source-bound local receipt
+  or a successful independently executed **full** Quality step on the exact
+  PR integration tree. A tolerated, skipped or merely attempted proof probe
+  is not release authorization. An eligible PR without full fast-path proof
+  follows the existing complete Main verification fallback.
 - Every discovered GitHub Actions check completed successfully or an allowed
   optional skip. Failed, cancelled, timed-out or in-progress checks never
   authorize deployment.
@@ -76,7 +81,11 @@ a deployment of the latest version.
 - `node --test site/tests/release-evidence.test.mjs`
 - `node --test site/tests/ci-workflow-architecture.test.mjs site/tests/ci-development-gates.test.mjs`
 - Existing `site/tests/ci-test-plan.test.mjs` science and owner-route contracts.
-- `node scripts/local-verification.mjs run full` on staged final source and commit both evidence files, **or** require a successful exact-tree full CI fallback when the local environment cannot provide them. Neither route may skip or weaken checks.
+- For the **fast release path**, supply valid full source-bound evidence for
+  the exact reviewed revision, or an independently completed full Quality
+  step. Otherwise use the complete Main verification fallback. The separate
+  incremental Draft/Ready Quality optimization cannot be relabeled full.
+  Neither route may skip or weaken required scientific/History/browser checks.
 - Before approval, audit a normal UI change, a Renderer change and an
   integrity-sensitive Project IO/History change against the same planner.
   Missing/failed/stale checks, unreviewed Draft Quality and incorrect
@@ -84,4 +93,6 @@ a deployment of the latest version.
 
 Actual PR → Merge → Deploy latency must be measured on a future owner-approved
 merge. These contracts do not themselves prove a five-minute deployment.
-Do not merge the CI policy PR without explicit owner approval.
+This is a durable release admission contract, not an instruction about an
+old, still-open CI-policy PR. An individual merge requires its own current
+approval and exact-revision evidence.

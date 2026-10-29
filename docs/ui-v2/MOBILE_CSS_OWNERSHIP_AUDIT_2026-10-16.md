@@ -1,8 +1,13 @@
 # Mobile CSS ownership audit — 2026-10-16
 
-**Status:** Audit complete; CSS cleanup deferred until P2/P3 combined browser acceptance.
-No mobile visual changes are authorized beyond the approved bottom navigation. The matching
-desktop Restore/Collapse panel glyph is separately approved.
+**Current lifecycle:** This 2026-10-16 ownership audit identified **unresolved CSS
+cleanup**, not a new mobile feature to implement. The original P2/P3 acceptance
+sequence and design approvals below were revision-specific. Existing production
+mobile navigation/layout remains owned by the
+[Workstation contract](WORKSTATION_CONTRACT.md) and
+[mobile gesture rules](MOBILE_WORKSTATION_LAYOUT_2026-10-13.md).
+Do **not** treat dated restrictions on unrelated visual changes as permanent
+authorization policy; any new change requires its own review.
 
 ## Ownership
 
@@ -45,9 +50,12 @@ desktop Restore/Collapse panel glyph is separately approved.
 ## Sequence
 
 - **P4-A:** Complete this audit without modifying production mobile CSS.
-- **P4-B:** After P2/P3 acceptance, remove only selectors proven redundant by computed-style
-  and screenshot comparison.
+- **P4-B:** When CSS cleanup is actually scheduled, remove only selectors
+  proven redundant in the current product/standalone prototypes by computed-style
+  and screenshot comparison. This is still open—not automatically approved by
+  an older P2/P3 browser result.
 - **P4-C:** Compare real Chromium 360/390/430 and 820/821 screenshots; run mobile, docking,
   and Preview regression gates before final Quality/scientific acceptance.
 
-No scientific tolerance changes, project format changes, or Main merge without approval.
+This audit does not authorize scientific tolerance changes, project schema
+modifications or merging unrelated branches.

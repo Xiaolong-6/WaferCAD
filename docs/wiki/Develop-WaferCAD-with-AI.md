@@ -1,6 +1,15 @@
 # Develop WaferCAD with AI
 
-**A contributor playbook from PR #225 — T-CMOS structure reconstruction (18 October 2026).** This page is written for researchers, maintainers and AI coding agents who want **correct reusable WaferCAD functionality**, not simply a convincing screenshot. End users looking for Recipe prompts should first read [Using WaferCAD with AI](AI-Assisted-Workflows); product follow-up tasks are in [Issue #333](https://github.com/Xiaolong-6/WaferCAD/issues/333).
+This contributor guide separates **changes to WaferCAD itself** from using its
+Recipe editor to model a device. It applies to AI coding agents, reviewers,
+and researchers who need reproducible source, process, geometry and visual
+evidence—not just a persuasive screenshot. End users asking for Recipe and
+mask prompts should read [Using WaferCAD with AI](AI-Assisted-Workflows).
+
+The repeated **T-CMOS PR #225** details below are a _worked engineering case_;
+its polygon counts, metallization tiers and validation commands are **not**
+universal requirements for unrelated devices. Its uncompleted follow-ups are
+tracked in [Issue #333](https://github.com/Xiaolong-6/WaferCAD/issues/333).
 
 ## 1. Define the deliverables before opening an editor
 
@@ -12,9 +21,9 @@ An AI agent should write a short, auditable _acceptance manifest_:
 
 **Process** — **Minimum evidence:** Base, captured Mask, step-by-step Recipe outputs, real saved History and Recovery; **Insufficient proof:** Saved final geometry with invented replay log.
 
-**Array** — **Minimum evidence:** Cell template, instance transforms, local/world coordinate mapping, mask/physical parity; **Insufficient proof:** 16 visual clones.
+**Array (if the model uses instances)** — **Minimum evidence:** Cell template, instance transforms, local/world coordinate mapping and mask/physical parity; **Insufficient proof:** Visual clones without actual process or physical coverage.
 
-**Interconnect** — **Minimum evidence:** Ports, actual complete M1–Via–M2–Via–M3–Via–M4 material, short/open/spacing checks; **Insufficient proof:** “19 named nets” with outputs still ending as local stubs.
+**Interconnect (if the model claims connectivity)** — **Minimum evidence:** Explicit terminal positions, continuous conductor/via material, relevant short/open/spacing checks; **Insufficient proof:** A netlist graph without matching geometric material. The four-metal-tier / 19-net T-CMOS example is case-specific.
 
 **Visual** — **Minimum evidence:** Real WaferCAD Main/Mask/3D/Section in Chromium, right stage/camera/layers, opacity/Border variations; **Insufficient proof:** Simulated HTML, standalone SVG or uninspected thumbnail.
 
@@ -26,7 +35,7 @@ Keep **reported**, **source-extracted**, **model-assumed** and **display-only** 
 
 ### 1. Inspect the real source first.
 
-Collect vector SVG, GDS/OAS, image figure and supplement files. Record their provenance and available/missing fields. Never derive mask coordinates from a low-resolution image after an original source vector is available. T-CMOS replaced the earlier approximate screenshot-derived Mask with an approved eight-layer SVG carrying 232 polygons, including 218 CNT footprints.
+Collect vector SVG, GDS/OAS, image figure and supplement files. Record their provenance and available/missing fields. Never derive mask coordinates from a low-resolution image after an original source vector is available. In the **T-CMOS case**, the earlier approximate screenshot-derived Mask was replaced by a sourced eight-layer SVG carrying 232 polygons, including 218 CNT footprints.
 
 ### 2. Solve one cell structurally.
 
@@ -34,7 +43,7 @@ Establish substrate, region ownership, contact/via stack, actual Z interfaces an
 
 ### 3. Replay the smallest Recipe from Base.
 
-Compare _intermediate_ states, not just final surface appearance. Validate Process parameters, the exact 23-step count where applicable, History/Variants, Undo/Redo and separate Recovery/Export contracts. Retain the original model as the independent baseline.
+Compare _intermediate_ states, not just final surface appearance. Validate Process parameters and the **source-specific** operation count (23 in the T-CMOS case), History/Variants, Undo/Redo and separate Recovery/Export contracts. Retain the original model as the independent baseline.
 
 ### 4. Scale to array only after the unit passes.
 
@@ -82,9 +91,9 @@ Run relevant science, history/recovery and targeted UI tests locally. Do not rep
 
 The original approved SVG and post-process M1 material are different data products: the model's **0.1 nm process-coordinate grid** can create small raw-coordinate differences even when the grid-normalized material is identical. Report these differences, preserve source vertices, and do not increase geometric error thresholds to conceal them.
 
-## 4. What #225 changed in the product, and what remains a prototype
+## 4. T-CMOS case study: released capabilities versus prototype artifacts
 
-The PR developed reusable code for instance-aware process Mask queries, repeated Draw Mask processing, optional File Mask grid semantics, material-clipped qualitative Dopant Regions, buried Implant start depth, File Mask palette presentation and 3D ROI inspection. Preserve data/History transaction invariants. The boolean geometry Kernel ultimately handled the final multilayer material; the main architecture bottleneck is **native process continuation across array instances**.
+PR #225 developed reusable code for instance-aware process Mask queries, repeated Draw Mask processing, optional File Mask grid semantics, material-clipped qualitative Dopant Regions, buried Implant start depth, File Mask palette presentation and 3D ROI inspection. These are **historical change descriptions**, not current branch acceptance. Preserve data/History transaction invariants. The boolean geometry Kernel ultimately handled the final multilayer material; the main architecture bottleneck is **native process continuation across array instances**.
 
 There are **three distinct outputs**, never conflate them:
 
@@ -106,9 +115,9 @@ Document intermediate differences. A scientifically correct mask/region count al
 - **Isolated page sets `Worker` unavailable to trigger an existing equivalent synchronous
   renderer** — **Permitted scope:** Debug a Worker-startup sandbox limit; **Must never be
   inferred:** Automatic retry of an already-started Process task.
-  **Xvfb + headed Chromium + offline pinned Three.js** — **Permitted scope:** Actual WebGL screenshot reproducibility; **Must never be inferred:** A green CI job or mock is a visual inspection.
+- **Xvfb + headed Chromium + offline pinned Three.js** — **Permitted scope:** Actual WebGL screenshot reproducibility; **Must never be inferred:** A green CI job or mock is a visual inspection.
 
-**Independent Shapely polygon audits over ** exported** project** — **Permitted scope:** Falsify wrong metal owners, voids and shorted nets; **Must never be inferred:** Electrical simulation, PDK DRC or fabrication proof.
+**Independent polygon audits of the exported project** — **Permitted scope:** Identify incorrect metal ownership, voids and geometric short/open errors; **Must never be inferred:** Electrical simulation, PDK DRC or fabrication proof.
 
 **Global-array flattening to construct M2–M4** — **Permitted scope:** Clearly isolated engineering prototype; **Must never be inferred:** Native global Process/History feature.
 
@@ -118,7 +127,7 @@ Normal-Origin Open, Storage and Recovery must be independently verified before r
 
 An agent should ship: (1) source SHA and model provenance; (2) one-cell geometry/Section; (3) every significant intermediate Recipe state; (4) true array/replay state; (5) actual material Via/net/terminal audit with negative tests; (6) screenshots with camera, ROI, Layer and Border/Opacity settings; (7) exported project readback and recovery; (8) exact-HEAD CI and Main merge status.
 
-Typical _targeted_, not blanket, commands:
+**T-CMOS case-study commands only** (do not assume these apply to every project). Run tests only after the corresponding business change is complete and before acceptance:
 
 ```bash
 node --test site/tests/tcmos-svg-metal-connectivity.test.mjs site/tests/tcmos-array-interconnect.test.mjs

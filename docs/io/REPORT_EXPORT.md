@@ -1,4 +1,4 @@
-# Process Report Export (P1)
+# Process Report Export — read-only History and bounded Section figures
 
 In the native v2 Workstation, open **Project → Export** and choose
 **Process report · .zip**. The same menu offers **Project file · .wafercad**,
@@ -67,12 +67,15 @@ The archive is for reading and reviewing. **Always export a separate
 `.wafercad` file** if you need History restoration, true source geometry,
 Array models, or editable fabrication structures.
 
-## Planned P2/P3
+## Delivered P2 boundary versus future report features
 
-- P2: budgeted Keyframe selection and independent physical Section SVGs are
-  implemented (see [Report Keyframes](REPORT_KEYFRAMES.md)).
-  Visual-difference ranking, before/after pairs and historical vector
-  Main/Mask views remain future work.
+- **Available (bounded P2):** deterministic saved-state keyframe selection
+  and independent physical Section SVG rendering are integrated into the
+  default Compact report (see [Report Keyframes](REPORT_KEYFRAMES.md)).
+  Only successfully generated figures appear in the ZIP; missing historical
+  states, unsupported geometry and worker failures remain explicit omissions.
+- **Not yet shipped:** visual-difference ranking, paired before/after
+  historical figures, and historical vector Main/Mask views.
 - P3: Full Evidence mode, per-step imagery when requested, content-addressed
   image deduplication, progress and package-size estimates, split archives,
   and large-model performance/hardware validation.

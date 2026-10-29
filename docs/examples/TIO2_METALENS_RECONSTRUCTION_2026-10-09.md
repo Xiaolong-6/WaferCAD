@@ -50,7 +50,7 @@ illustrative; neither the authors' full original mask nor numerical
 achromatic optical performance was reconstructed. This is a Kernel
 geometry/Recipe acceptance only.
 
-The subsequent full-array loading optimization and controlled measurements are recorded in [performance follow-up](TIO2_METALENS_PERFORMANCE_2026-10-10.md).
+The subsequent full-array loading optimization and controlled measurements are recorded in [performance follow-up](../archive/examples/TIO2_METALENS_PERFORMANCE_2026-10-10.md).
 
 Primary source: Wang et al., _Nature Communications_ **12**, 5560 (2021), DOI [10.1038/s41467-021-25797-9](https://doi.org/10.1038/s41467-021-25797-9). Source of process details: Supplementary Note 4 in the published supporting information.
 
@@ -220,5 +220,5 @@ approval review because explicit publication authorization was missing. On
 loading optimization were published to
 `feat/tio2-metalens-full-array-example-20261009`, product commit
 `e35a8c8df268d9a58446fcd1875968a64fc0e2a8`, with an exact file-tree match to the
-tested local product. See the [performance publication record](TIO2_METALENS_PERFORMANCE_2026-10-10.md).
+tested local product. See the [performance publication record](../archive/examples/TIO2_METALENS_PERFORMANCE_2026-10-10.md).
 No PR, merge or deployment was made by this follow-up.

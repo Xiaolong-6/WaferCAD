@@ -1,7 +1,8 @@
 # WaferCAD geometry/process capabilities roadmap
 
-> Planning contract · 2026-10-09 baseline. Status reviewed on 2026-10-18;
-> implementation milestones below are **not** claims of shipped features.
+> Forward-plan baseline 2026-10-09; business status reconciled 2026-10-29.
+> **Read-only Geometry Diagnostics is already shipped.** The six remaining
+> ranked proposals below are not production features.
 
 ## Product boundary
 
@@ -9,31 +10,51 @@ WaferCAD is a browser-based **Visual Process CAD**: an evolving, mask-aware **ve
 
 Preserve **vector-2.5d-v1**, canonical material ownership, units in µm, native Recipe/History/Variants replay and array templates unless a versioned migration is separately reviewed. Appearance-only Rough/Pyramid, empirical Implant, Electrical and Record annotations must remain clearly distinct from physically computed geometry.
 
+## Delivered foundation: read-only Process Geometry Diagnostics
+
+The production **Process → Diagnostics → Analyze geometry** action invokes
+`site/controllers/process-diagnostics-controller.js` and the read-only
+`site/process-diagnostics-worker.js` against the current canonical model.
+It reports material volumes, minimum/maximum Z-segment thickness, region
+ownership issues, gaps/cavities, and bounded XY overlap and void/crack checks
+without adding a Process or History Step.
+
+Its claims are **scope-limited**: cavities and through-voids may be intentional
+rather than defects; array measurements weight the instances but XY overlap
+checks inspect _within_ referenced templates, not across adjacent instance
+seams; polygon complexity limits can leave coverage incomplete. A zero-findings
+result is not a proof of fabrication, chemistry, PDK DRC or physical Rough
+microstructure. Reports become stale if the model changes. The
+[Kernel diagnostics contract](PROCESS_GEOMETRY_KERNEL_V2.md#read-only-geometry-diagnostics)
+and [user workflow](../wiki/Process-and-Recipes.md#geometry-diagnostics)
+are the current authorities.
+
 ## Capability proposals and sequencing
 
-| Rank | Capability                                  | Deliverable / minimum viable scope                                                                                                                                                                               | Explicit limits / acceptance                                                                                                                                                                                                                                          |
-| ---- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| P0   | **Process Geometry Diagnostics**            | Read-only analysis of current canonical structure: material volumes, Z ranges, per-layer thickness extrema, actual Z gaps, geometry overlap, stable XY/Z issue location, severity and explicit analysis coverage | Invalid overlaps are **errors**; intentional Z gaps are **observations**, not automatically defects. A clean result only covers implemented checks. Array templates need weighted summaries and honest per-instance scope. Analysis must not mutate History or model. |
-| P1   | **Etch profile and sidewall angles**        | Parameterized taper / sidewall angle and explicit etch profile, with the geometry surviving in material topology and both views                                                                                  | Must not be only 3D cosmetics; no etch chemistry, measured rate, anisotropy calibration; signed front/back, mask edge and conformal regression fixtures                                                                                                               |
-| P1   | **Parameterized Recipe / procedural masks** | Typed dimensions/variables and bounded mask primitives, named mask references, deterministic parameter sweeps                                                                                                    | Restricted declarative interpreter, no arbitrary JS/eval; quotas, units, exported masks, reproducible replay; safe recipe replacement and snapshots                                                                                                                   |
-| P1   | **Step Coverage / Gap Fill**                | Explicit top/bottom/sidewall coverage ratios, geometric shadow/closure and trapped void modeling                                                                                                                 | Idealized user-specified geometry, not ALD/PVD transport or kinetics; material ownership and high-aspect-ratio voids verified                                                                                                                                         |
-| P2   | **Local true Rough/Pyramid geometry**       | Opt-in ROI-local canonical fine geometry, boundary adapters and a deterministic resolution budget                                                                                                                | Current Rough/Pyramid remains render-only unless explicitly converted; do not voxelize the whole wafer; shared buried profiles and later conformal/etch consistency required                                                                                          |
-| P2   | **Material transformation / oxidation**     | Mass/volume-constrained geometric consumption/replacement (e.g. Si -> SiO2), including layer provenance                                                                                                          | Temperature/time/ambient do not predict reaction kinetics; validated volume ratio, material-host ownership, masks and front/back                                                                                                                                      |
-| P2   | **Simulation-ready export**                 | Physical geometry with explicit material domains/units, watertight interfaces and documented target format                                                                                                       | GLB imagery alone is not simulation-ready; roundtrip mesh/material verification before claiming FEM/FDTD interoperability                                                                                                                                             |
+| Rank | Capability                                  | Deliverable / minimum viable scope                                                                                              | Explicit limits / acceptance                                                                                                                                                 |
+| ---- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P1   | **Etch profile and sidewall angles**        | Parameterized taper / sidewall angle and explicit etch profile, with the geometry surviving in material topology and both views | Must not be only 3D cosmetics; no etch chemistry, measured rate, anisotropy calibration; signed front/back, mask edge and conformal regression fixtures                      |
+| P1   | **Parameterized Recipe / procedural masks** | Typed dimensions/variables and bounded mask primitives, named mask references, deterministic parameter sweeps                   | Restricted declarative interpreter, no arbitrary JS/eval; quotas, units, exported masks, reproducible replay; safe recipe replacement and snapshots                          |
+| P1   | **Step Coverage / Gap Fill**                | Explicit top/bottom/sidewall coverage ratios, geometric shadow/closure and trapped void modeling                                | Idealized user-specified geometry, not ALD/PVD transport or kinetics; material ownership and high-aspect-ratio voids verified                                                |
+| P2   | **Local true Rough/Pyramid geometry**       | Opt-in ROI-local canonical fine geometry, boundary adapters and a deterministic resolution budget                               | Current Rough/Pyramid remains render-only unless explicitly converted; do not voxelize the whole wafer; shared buried profiles and later conformal/etch consistency required |
+| P2   | **Material transformation / oxidation**     | Mass/volume-constrained geometric consumption/replacement (e.g. Si -> SiO2), including layer provenance                         | Temperature/time/ambient do not predict reaction kinetics; validated volume ratio, material-host ownership, masks and front/back                                             |
+| P2   | **Simulation-ready export**                 | Physical geometry with explicit material domains/units, watertight interfaces and documented target format                      | GLB imagery alone is not simulation-ready; roundtrip mesh/material verification before claiming FEM/FDTD interoperability                                                    |
 
 ## Current scope versus proposed capabilities (reviewed 2026-10-18)
 
-The seven ranked items above are planning scopes, not a release checklist. The
-existing Process/Recipe interpreter, History and display controls are implemented
-within their documented limits. Typed procedural dimensions, bounded parameter
-sweeps and generalized geometry diagnostics must not be labeled complete merely
-because the current parser and diagnostic scripts exist.
+The **six remaining ranked items** are proposals, not a release checklist.
+The shipped read-only Geometry Diagnostics feature is bounded as described
+above; its existence does **not** imply full geometric verification, complete
+cross-instance array checks or predictive process diagnostics. The existing
+Process/Recipe interpreter, History and display controls are implemented within
+their documented limits. Typed procedural dimensions and bounded parameter
+sweeps remain unshipped.
 
 True production etch-profile taper, arbitrary step coverage/gap fill and
 mass-conserving oxidation require separate Kernel and replay acceptance. Rough and
 pyramid appearance currently does not constitute physical microgeometry. The
 [experimental facet model](PHYSICAL_FACET_MODELING_2026-10-16.md) and
-[isotropic release oracle](ISOTROPIC_RELEASE_ORACLE_2026-10-16.md) are bounded
+[isotropic release oracle](../archive/science/ISOTROPIC_RELEASE_ORACLE_2026-10-16.md) are bounded
 research owners, not enabled general-purpose production Process operations.
 GLB rendering/export also does not establish watertight, unit-verified
 FEM/FDTD interoperability.
@@ -45,7 +66,7 @@ as a proposal or experimental research, with the unverified gate visible.
 
 ## Delivery plan
 
-1. **Diagnostics first:** read-only, explicit Analyze action, geometry-quantified measurements with checked provenance, error/observation separation, bounded array behavior and permanent automated fixtures. Show results in the workstation Process tab; never block processing solely for a diagnostic warning.
+1. **Diagnostics: delivered baseline, bounded follow-up:** preserve the existing read-only Analyze action, material measurements, cavity-versus-error separation and limited array coverage. Future extensions may add more complete cross-instance seam checks and deeper provenance, but must never silently relabel an incomplete report as clean or block processing solely for an observation.
 2. **Geometric process fidelity:** etch sidewall profiles, then non-ideal step coverage/gap fill, then controlled material transformation. Each mode requires a clear analytical fixture, replay and Section/3D parity.
 3. **Hybrid Kernel research:** preserve global vector domains and add local high-fidelity microgeometry only where needed. Define conversion, Z/XY interface ownership, sidewalls, cell/array consistency, memory bounds and preservation/export prior to coding.
 4. **Design workflows:** Recipe parameters and sweeps can start in parallel once diagnostic metrics are stable; use diagnostics as the objective functions. Simulation handoff follows a verified material-domain export.

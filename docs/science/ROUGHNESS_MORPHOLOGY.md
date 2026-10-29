@@ -15,7 +15,7 @@ Both non-smooth modes use the same appearance contract:
 ```js
 {
   kind: "rough",
-  morphology: "stochastic" | "pyramid",
+  morphology: "stochastic" | "stochastic-v2" | "pyramid",
   polarity: "normal" | "inverted",
   featureSize,
   meanHeight,
@@ -32,7 +32,7 @@ The `kind: "rough"` field remains the compatibility marker used by the existing 
 
 ## Stochastic morphology
 
-For `morphology: "stochastic"` (legacy v1; `stochastic-v2` is the new default):
+Two stochastic profiles are supported. **`stochastic-v2`** is the stable-scale field selected by new Manual and graphical Recipe Rough steps. **`stochastic`** is the original v1 field retained by imported projects and historical Recipe aliases; old states and saved operations are not silently upgraded. Both use the parameters below:
 
 - `featureSize`: mean lateral feature scale.
 - `featureCv`: coefficient of variation of the lateral scale.
@@ -41,7 +41,12 @@ For `morphology: "stochastic"` (legacy v1; `stochastic-v2` is the new default):
 - `etchDepth`: maximum roughness envelope / etch depth.
 - `seed` and `profileId`: deterministic profile identity.
 
-This is the legacy roughness generator.
+The two algorithms are distinct even at identical parameters and seed: the
+legacy variable-frequency field can change its apparent spatial scale far
+from the origin, while `stochastic-v2` uses the stable-scale generator. This is
+a morphology _appearance_ difference, not a change to canonical material
+geometry. A reproducible migration must explicitly choose the new profile;
+it cannot claim pixel or field equality to the old one.
 
 ## Pyramid morphology
 
@@ -69,7 +74,10 @@ For a fixed morphology and parameters:
 offsetNormal(x, y) + offsetInverted(x, y) = etchDepth
 ```
 
-For stochastic roughness this preserves the existing algorithm exactly when `polarity: "inverted"`. For pyramids it produces an exact analytic vertical mirror.
+For a **fixed profile version**, stochastic inverted/normal polarity
+preserves the stored field while mirroring its height. This does not imply
+`stochastic` and `stochastic-v2` have the same field. Pyramid uses an exact
+analytic vertical mirror; its generator does not become stochastic-v2.
 
 Projects from versions <= 11 migrate to:
 
@@ -86,7 +94,7 @@ Pyramid morphology is introduced with project format v13. v12 stochastic project
 
 ## Renderer contract
 
-All views consume the same deterministic `roughProfileOffsetAtPoint(x, y, appearance)` field, regardless of whether the morphology is stochastic or pyramid.
+The **geometry-bearing displays** (Section A–B, 3D rough relief and exported GLB inspection surfaces) derive their displacement from the same deterministic `roughProfileOffsetAtPoint(x, y, appearance)` morphology field. Main and Mask only indicate rough/pyramid regions with schematic tinting; they do **not** resolve or measure that field. These displays may sample or tessellate at different resolutions, but their field identity is stable for a given stored profile.
 
 - **Section A–B** samples that field along the section line and remains the visual reference for surface relief.
 - **3D** uses screen-space adaptive tessellation. Camera distance, projected feature size, viewport dimensions/DPR, ROI extent, and the current camera-focus region feed one LOD estimator. The expanded focus region receives the detail required by the projected rough feature size, while geometry outside that region is kept at a lower LOD. Every rough cap/zone draws from one scene-wide subdivision budget, preventing multiple visible rough patches from each claiming the former per-cap maximum. LOD is rebuilt only when a quantized camera/view signature changes, and that update replaces only rough meshes rather than reconstructing smooth geometry or Kernel-v2 ownership. Physical rough skirts are generated only on true cap boundaries; internal high/low-LOD boundaries are reconciled as collinear intervals before a stitch strip connects the fine heightfield to the coarse piecewise-linear edge. This handles long edges split into shorter clipping segments while preventing T-junction cracks and ideal-plane curtains. The displaced vertices still sample the same deterministic morphology field and use profile-derived normals. No synthetic noise is used for geometry displacement or scientific normal reconstruction.

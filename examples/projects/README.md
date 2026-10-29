@@ -16,10 +16,10 @@ For a completed example, prefer links to its PR/CI acceptance for transient stat
 These source directories retain masks, repair scripts and paper-derived
 assumptions even when the corresponding project has been promoted. The word
 `candidate` in a source folder's name describes its origin, **not** the
-current availability of the corresponding Welcome entry. As of 2026-10-18:
+current availability of the corresponding Welcome entry. At the original source-package checkpoint (current publication is determined by the [Welcome catalog](../../site/bundled-examples.js)):
 
 - [Microdisk source package](microdisk-release-candidate/README.md) →
-  `site/examples/suspended-silica-microdisks.wafercad`.
+  `site/examples/suspended-silica-microdisks-continuous.wafercad` (complete published project); the older `site/examples/suspended-silica-microdisks.wafercad` remains a lightweight preview source.
 - [PERC source and implant repair](perc-blakers-1989-candidate/README.md) →
   `site/examples/perc-solar-cells-point-contacts.wafercad`.
 - [MAGIC-1000 source reconstruction](magic-1000-2026-candidate/README.md) →
@@ -41,7 +41,7 @@ tests expect them. No duplicate runtime resource is introduced here.
 
 The Welcome page is driven by `site/bundled-examples.js`. Public, editable bundled examples live under `site/examples/` and should be grouped by **device/application family**, not one card per paper.
 
-The current production literature families are:
+Selected production-project reconstruction notes follow. **This is not an exhaustive Welcome catalog**: the authoritative set and titles live in [`site/bundled-examples.js`](../../site/bundled-examples.js), with the [user-facing examples guide](../../docs/wiki/Examples-and-Modeling-Limits.md) and independent [research evidence register](../../docs/evidence/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md).
 
 - **Photodetectors with nanopatterns** — `site/examples/photodetector-literature-examples.wafercad`
   - Rebuilt from the current Process Geometry Kernel using `scripts/maintenance/rebuild-photodetectors.mjs`; see `docs/examples/PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md`.
@@ -60,7 +60,7 @@ The current production literature families are:
   - SHJ bottom cell plus nc-Si:H record-device / ITO control branches;
   - conformal top-cell stack, ALD SnO₂, IZO, and surrogate Ag grid;
   - Ag-finger inspection bookmarks preserve Section and 3D camera state.
-- **Suspended silica microdisks** — `site/examples/suspended-silica-microdisks.wafercad`
+- **Suspended silica microdisks** — `site/examples/suspended-silica-microdisks-continuous.wafercad`
   - released annular air gap is canonical geometry;
   - the central silicon support remains physically connected to the silica disk.
 - **Self-powered heterogeneous M3D circuits** — `site/examples/m3d-selfpowered-full-replay.wafercad`
@@ -68,7 +68,7 @@ The current production literature families are:
   - 36 History nodes (35 operations plus initial Base), 35 recovered Recipe Steps and 27 stage bookmarks;
   - paper-inferred Draw Masks are captured per operation; the project requires lossless storage;
   - the Welcome thumbnail uses the real M3D WebP supplied by the resynced replay branch;
-  - clean-`Run All` equivalence remains a release gate until the browser acceptance completes.
+  - clean-`Run All` equivalence is a release-scoped gate: historical source-project results alone do not certify future published revisions.
 - **Three-tier silicon junctionless transistors** — `site/examples/three-tier-silicon-jlfets-full-wafer.wafercad`
   - 625-site canonical wafer array and all 40 History/Recipe steps;
   - verify complete array kernel replay rather than treating the single-site preview as evidence.

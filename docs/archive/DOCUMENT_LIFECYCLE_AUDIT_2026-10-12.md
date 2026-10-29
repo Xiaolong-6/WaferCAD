@@ -29,7 +29,7 @@ The following retained documents remain in their existing locations. **Classific
 - [`docs/DOCUMENTATION.md`](../DOCUMENTATION.md) — Current owner or supporting fixture
 - [`docs/science/IMPLANT.md`](../science/IMPLANT.md) — Scientific/technical reference or supporting fixture
 - [`docs/io/KLAYOUT_LAYOUT_COMPATIBILITY.md`](../io/KLAYOUT_LAYOUT_COMPATIBILITY.md) — Scientific/technical reference or supporting fixture
-- [`docs/science/LIFTOFF_V1_2026-10-09.md`](../science/LIFTOFF_V1_2026-10-09.md) — Scientific/technical reference or supporting fixture
+- [`docs/science/LIFTOFF_V1_2026-10-09.md`](science/LIFTOFF_V1_2026-10-09.md) — Scientific/technical reference or supporting fixture
 - [`docs/science/MASK_DRAW.md`](../science/MASK_DRAW.md) — Scientific/technical reference or supporting fixture
 - [`docs/examples/PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md`](../examples/PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md) — Scientific/technical reference or supporting fixture
 - [`docs/PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md`](PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md) — Scientific/technical reference or supporting fixture
@@ -39,7 +39,7 @@ The following retained documents remain in their existing locations. **Classific
 - [`docs/science/PROCESS_GEOMETRY_ROADMAP_2026-10-09.md`](../science/PROCESS_GEOMETRY_ROADMAP_2026-10-09.md) — Scientific/technical reference or supporting fixture
 - [`docs/renderer/RENDERER_TRANSPARENCY_ROADMAP.md`](../renderer/RENDERER_TRANSPARENCY_ROADMAP.md) — Scientific/technical reference or supporting fixture
 - [`docs/science/ROUGHNESS_MORPHOLOGY.md`](../science/ROUGHNESS_MORPHOLOGY.md) — Scientific/technical reference or supporting fixture
-- [`docs/examples/TIO2_METALENS_PERFORMANCE_2026-10-10.md`](../examples/TIO2_METALENS_PERFORMANCE_2026-10-10.md) — Scientific/technical reference or supporting fixture
+- [`docs/examples/TIO2_METALENS_PERFORMANCE_2026-10-10.md`](examples/TIO2_METALENS_PERFORMANCE_2026-10-10.md) — Scientific/technical reference or supporting fixture
 - [`docs/examples/TIO2_METALENS_RECONSTRUCTION_2026-10-09.md`](../examples/TIO2_METALENS_RECONSTRUCTION_2026-10-09.md) — Scientific/technical reference or supporting fixture
 - [`docs/USAGE.md`](../USAGE.md) — Current owner or supporting fixture
 - [`docs/archive/WIKI_CONTENT_VISUAL_AUDIT_2026-10-12.md`](WIKI_CONTENT_VISUAL_AUDIT_2026-10-12.md) — Scientific/technical reference or supporting fixture
@@ -71,7 +71,7 @@ The following retained documents remain in their existing locations. **Classific
 - [`docs/wiki/Masks-and-ROI.md`](../wiki/Masks-and-ROI.md) — Active manual/legacy compatibility
 - [`docs/wiki/Process-Operations.md`](../wiki/Process-Operations.md) — Active manual/legacy compatibility
 - [`docs/wiki/Process-and-Recipes.md`](../wiki/Process-and-Recipes.md) — Active manual/legacy compatibility
-- [`docs/wiki/Recipe-Code-Tutorial-zh-CN.md`](../wiki/Recipe-Code-Tutorial-zh-CN.md) — Active manual/legacy compatibility
+- `docs/wiki/Recipe-Code-Tutorial-zh-CN.md` — present in the original 2026-10-12 inventory; retired on 2026-10-29 with no forwarding page. The [English Recipe Code Tutorial](../wiki/Recipe-Code-Tutorial.md) remains canonical.
 - [`docs/wiki/Recipe-Code-Tutorial.md`](../wiki/Recipe-Code-Tutorial.md) — Active manual/legacy compatibility
 - [`docs/wiki/Troubleshooting.md`](../wiki/Troubleshooting.md) — Active manual/legacy compatibility
 - [`docs/wiki/Workspace-and-Views.md`](../wiki/Workspace-and-Views.md) — Active manual/legacy compatibility

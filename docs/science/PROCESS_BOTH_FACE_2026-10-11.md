@@ -1,8 +1,23 @@
-# Process Face: Both — Kernel contract and handoff (2026-10-11)
+# Process Face: Both — current Kernel contract and historical handoff
 
-## Scope
+## Current product boundary
 
-Adds `face: 'both'` as a single logical Process operation executed by the Kernel in a deterministic order: **Front → Back**. This is a Kernel/Recipe integration feature isolated from the in-progress Workstation UI v2 redesign. The active Main/Mask inspection face and persisted `project.activeFace` remain `front | back`. The current v2 Manual Process Surface selector supports **Front / Back / Both** (integrated in [Manual Both acceptance](../ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md)); **Both must not change the global inspection face to `both`**. The original Kernel work preceded this UI integration.
+**Shipped:** One logical Front → Back operation for supported Manual/Recipe
+modes, two independent material Layer IDs for dual Deposit, atomic failure
+handling and a single History Step. **Not shipped:** Both Lift-off or absolute-Z
+Planarize/CMP. Historical implementation-branch and acceptance instructions
+below describe their original 2026-10-11/12 checkpoints, not today's merge
+requirements. For an end-user explanation, see
+[Process and Recipes](../wiki/Process-and-Recipes.md).
+
+The `face: 'both'` option runs one logical Process operation in the
+Kernel's deterministic **Front → Back** order. The original Kernel work
+predated the Workstation v2 integration. The active Main/Mask inspection face
+and persisted `project.activeFace` remain `front | back`; the Manual Process
+Surface selector supports **Front / Back / Both** (see the
+[Manual Both acceptance](../archive/ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md)).
+Selecting **Both** does not change the global inspection face to a synthetic
+`both` state.
 
 A current Recipe code example:
 
@@ -34,19 +49,25 @@ The same syntax is available for directional deposition, Extend, directional/iso
 ## UI v2 integration (implemented 2026-10-12) and remaining presentation work
 
 - Process Surface options: Front / Back / Both. `Both` is an **operation target** only.
-- The released v2 Manual Surface selector accepts `Both` and the Recipe editor preserves/restores `params.face === 'both'`; the retired Legacy editor's historical Front/Back-only controls are preserved at the `legacy-frozen` tag. See the [dated integration and test report](../ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md).
+- The released v2 Manual Surface selector accepts `Both` and the Recipe editor preserves/restores `params.face === 'both'`; the retired Legacy editor's historical Front/Back-only controls are preserved at the `legacy-frozen` tag. See the [dated integration and test report](../archive/ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md).
 - Send a _single_ worker operation with `params.face: 'both'`; do not call Apply twice in the UI.
 - One Both application creates one restorable History Step with two distinct, paired material Layer IDs. The v2 Manual form exposes valid paired material targets and rejects unsupported Both combinations; a more explicit two-child layer/legend presentation remains a **future UX enhancement**.
 - For a symmetric oxidation/ALD-like step, material thickness is measured from each local exposed face into the outward direction (one full thickness on each side). Any future diffusion/chemical/transport model should be a separate physical process implementation.
 
 ## 2026-10-13: Face-specific texture profiles in Both Etch
 
-The bundled Perovskite–Si Tandem now uses one atomic Both Etch for symmetric substrate depth while preserving front/back pyramid appearance seeds and profile identities. In declarative Recipe Code, a directional `etch({ face: 'both' })` can specify `faceSurfaces: { front, back }` with one rough/pyramid appearance profile per face. Both model passes still share the same physical etch depth, area and target material. Individual `seed` and `profileId` values are preserved during Recipe serialization, Process worker dispatch, History replay and migration backfill. The face-specific surface is **display-only morphology**, not a physical random etch solver. See [example consolidation](../examples/EXAMPLE_BOTH_FACE_CONSOLIDATION_2026-10-13.md).
+The bundled Perovskite–Si Tandem now uses one atomic Both Etch for symmetric substrate depth while preserving front/back pyramid appearance seeds and profile identities. In declarative Recipe Code, a directional `etch({ face: 'both' })` can specify `faceSurfaces: { front, back }` with one rough/pyramid appearance profile per face. Both model passes still share the same physical etch depth, area and target material. Individual `seed` and `profileId` values are preserved during Recipe serialization, Process worker dispatch, History replay and migration backfill. The face-specific surface is **display-only morphology**, not a physical random etch solver. See [merged example consolidation evidence](../archive/examples/EXAMPLE_BOTH_FACE_CONSOLIDATION_2026-10-13.md).
 
 ## Regression / reproducibility
 
-Owned Node coverage: `site/tests/process-both-face.test.mjs` (two distinct linked material IDs, Mask footprint, paired Extend/Etch, independent single-face Etch, atomic rejection, Transfer, annotations, canonical arrays, Recipe round trip, unsupported methods) plus History replay ID-mapping regression. The v2 Manual selector has an additional browser owner, `scripts/v2/check-manual-both.mjs`; its dated [acceptance report](../ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md) describes the tested commit and remaining CI gates.
+Owned Node coverage: `site/tests/process-both-face.test.mjs` (two distinct linked material IDs, Mask footprint, paired Extend/Etch, independent single-face Etch, atomic rejection, Transfer, annotations, canonical arrays, Recipe round trip, unsupported methods) plus History replay ID-mapping regression. The v2 Manual selector has an additional browser owner, `scripts/v2/check-manual-both.mjs`; its dated [acceptance report](../archive/ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md) describes the tested commit and remaining CI gates.
 
-Repository: `Xiaolong-6/WaferCAD`. Branch: `feat/kernel-process-face-both-20261011` based on main, without merge. Implemented using the GitHub-connected repository interface. **Local `npm ci`, `npm run check`, and browser tests were not executed in this environment** because a checked-out workspace was unavailable. PR CI provides executable evidence; preserve Draft until green. PR CI is the initial executable verification and must be reviewed before merge; do not claim a product pass from source inspection alone.
+**Historical delivery checkpoint (2026-10-11):** The original Kernel branch
+`feat/kernel-process-face-both-20261011` had not yet merged at that time and
+that environment did not run local npm or browser checks. This paragraph
+preserves the initial evidence limit; it is **not** a current Draft/CI
+instruction. Later v2 Manual Both integration is recorded in the
+[archived acceptance note](../archive/ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md).
+Current release approval is owned by [testing](../testing.md) and [CI](../CI.md).
 
 Original delivery scope was Kernel, Process Recipe plumbing, regression tests, and this document. **Update (2026-10-12):** the new Workstation has since integrated Manual Both without changing the global inspection-face contract; its acceptance is recorded separately, and this earlier Kernel report remains revision-specific.

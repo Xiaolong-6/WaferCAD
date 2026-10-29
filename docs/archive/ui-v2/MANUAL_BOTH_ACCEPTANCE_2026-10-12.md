@@ -1,5 +1,9 @@
 # UI v2 Manual Both — integration handoff (2026-10-12)
 
+> **Historical evidence only.** This records PR #179 at its tested revision,
+> not the current Workstation implementation, test inventory or merge gate.
+> See the [current Workstation contract](../../ui-v2/WORKSTATION_CONTRACT.md).
+
 Repository: `Xiaolong-6/WaferCAD`.
 
 Branch: `feat/ui-v2-manual-both-20261012`; PR #179.
@@ -20,7 +24,7 @@ Recipe restoration preserves Both in v2, without altering the Legacy UI.
 - `site/ui-v2/workstation-workflow.js`: Manual face selector.
 - `site/controllers/process-panel-controller.js`: valid paired targets and guards.
 - `site/controllers/process-recipe-controller.js`: v2 Recipe face restoration.
-- `site/tests/function-panel-feedback.test.mjs`: target exposure assertions.
+- `site/tests/function-panel-feedback.test.mjs`: historical test path (removed from current main); current ownership is in `site/tests/process-both-face.test.mjs` and Process panel controller tests.
 - `scripts/v2/check-manual-both.mjs`: real Chromium end-to-end test.
 - `.github/workflows/ui-v2-stage-c-m4.yml`: main push coverage and the Both test.
 
