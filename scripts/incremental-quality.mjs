@@ -14,6 +14,7 @@ const SAFE = [
   /^scripts\/ci-three-evidence\.mjs$/,
   /^scripts\/v2\/check-three-view\.mjs$/,
   /^\.github\/workflows\/daily-full\.yml$/,
+  /^\.github\/workflows\/pages\.yml$/,
   /^\.github\/workflows\/browser-regression\.yml$/,
   /^\.github\/workflows\/ready-impact\.yml$/,
   /^site\/ui-v2\/(?:section-legend|section-view)\.js$/,
@@ -21,6 +22,20 @@ const SAFE = [
 ];
 const SOURCE_TYPES = /\.(?:js|mjs)$/;
 const FORMAT_TYPES = /\.(?:js|mjs|md)$/;
+
+// One-off fail-closed exception for the post-merge Pages startup blocker.
+// This NEVER permits arbitrary Pages workflow edits through incremental Quality.
+export function isPagesBrowserPermissionHotfix(before, after) {
+  if (typeof before !== 'string' || typeof after !== 'string') return false;
+  const start = before.indexOf('  release-browser:\n');
+  const end = before.indexOf('\n  release-ui-v2:', start);
+  if (start < 0 || end < 0) return false;
+  const caller = before.slice(start, end);
+  const oldPermissions = '    permissions:\n      contents: read\n';
+  if (!caller.includes(oldPermissions) || caller.includes('      actions: read')) return false;
+  const patched = caller.replace(oldPermissions, oldPermissions + '      actions: read\n');
+  return after === before.slice(0, start) + patched + before.slice(end);
+}
 
 export function incrementalPlan(changes) {
   if (!Array.isArray(changes) || !changes.length) throw new Error('Empty or missing diff');
@@ -141,6 +156,14 @@ function main() {
   const changes = parseNameStatus(
     execFileSync('git', ['diff', '--name-status', '-z', base, head], { encoding: 'utf8' }),
   );
+  if (changes.some(({ path }) => path === '.github/workflows/pages.yml')) {
+    const pagePath = '.github/workflows/pages.yml';
+    const before = git(['show', `${base}:${pagePath}`]);
+    const after = git(['show', `${head}:${pagePath}`]);
+    if (!isPagesBrowserPermissionHotfix(before, after)) {
+      throw new Error('Only the exact Pages reusable Browser permissions fix is incremental');
+    }
+  }
   const plan = incrementalPlan(changes);
   console.log(
     JSON.stringify({ baseline: base, candidate: head, merge: parents[0], ...plan }, null, 2),
