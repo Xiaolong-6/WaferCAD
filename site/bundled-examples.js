@@ -118,7 +118,7 @@ export const BUNDLED_EXAMPLES = Object.freeze([
       label: 'Continuous circular 3D · interactive preview is historical 2.5D geometry',
     },
     summary:
-      'Paper-derived 148/82 µm spoked silica disk with 1.8 µm oxide. The saved M08 uses a continuous circular XeF₂ release (36 µm lateral/vertical reach assumed) through the original inverted mask; M09 remains record-only. Opens all nine History steps. The small interactive Welcome preview retains historical lightweight 2.5D geometry.',
+      'Paper-derived 148/82 µm spoked silica disk with 1.8 µm oxide. The saved M08 uses a continuous circular XeF₂ release (36 µm lateral/vertical reach assumed) through the original inverted mask; M09 remains record-only. Opens all eleven History steps, including physical photoresist patterning and protective recoat/strip. The small interactive Welcome preview retains the same final 2.5D geometry with a compact single-step History.',
     sources: [
       {
         citation:

@@ -14,12 +14,14 @@
 
 1. Create local Si validation substrate, 400 × 400 × 80 µm.
 2. Deposit 1.8 µm thermal SiO₂ on Front, Directional.
-3. Record photoresist coating.
-4. Record UV lithography using GDS 1/0 retained region.
-5. Etch exposed thermal SiO₂, Directional and material-selective, with a 2 µm clearing budget.
-6. Record acetone resist strip.
-7. Record protective resist / dicing / protection removal.
-8. Etch Base Si using Isotropic release, Front, Whole face, Radius 36 µm.
-9. Record the final suspended spoked silica microdisk.
+3. Deposit a temporary 1 µm photoresist film on Front (modeling assumption; not a reported thickness).
+4. Model UV lithography and ideal positive-tone development by selectively removing PR from the inverted GDS 1/0 footprint. The retained spoked disk region remains physically coated with PR; exposure chemistry is not simulated.
+5. Directionally etch only exposed thermal SiO₂ across the Full face with a 2 µm clearing budget. Remaining PR physically masks the oxide below it; the GDS mask is **not** applied again to the oxide.
+6. Remove the first PR with a full-face material-selective etch (ideal acetone-strip geometry).
+7. Deposit a second, temporary 1 µm protective PR coating over the patterned surface.
+8. Record dicing as a non-geometric operation on the local 400 × 400 µm crop.
+9. Strip the second protective PR before release.
+10. Etch Base Si using the published Continuous circular release mode with the original inverted GDS 1/0 footprint and 36 µm assumed lateral/vertical reach; the historical baseline retains the older isotropic mode.
+11. Record the final suspended spoked silica microdisk.
 
-Paper-derived inputs are Si substrate, 1.8 µm thermal SiO₂, UV lithography, BHF oxide removal, acetone strip, dicing, XeF₂ selective release, and 148/82 µm outer/inner radii. The local model bounds and 36 µm release radius are reconstruction parameters.
+Paper-derived inputs are Si substrate, 1.8 µm thermal SiO₂, UV lithography, BHF oxide removal, acetone strip, dicing, XeF₂ selective release, and 148/82 µm outer/inner radii. The local model bounds, both 1 µm PR coating thicknesses, and the 36 µm release radius are reconstruction parameters. Photoresist layers remain addressable historical material entities after strip, but there is no surviving polymer solid in the final model.

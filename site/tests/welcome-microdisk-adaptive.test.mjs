@@ -35,8 +35,8 @@ test('archived Microdisk 72-band adaptive release retains its unchanged scientif
   const adaptive = await readProjectFile(new Blob([bytes]));
   assert.deepEqual(adaptive.layout, original.layout);
   assert.deepEqual(
-    adaptive.processRecipe.steps.slice(0, 6),
-    original.processRecipe.steps.slice(0, 6),
+    adaptive.processRecipe.steps.slice(0, 1),
+    original.processRecipe.steps.slice(0, 1),
   );
   assert.equal(adaptive.processRecipe.steps.length, 7);
   assert.equal(adaptive.processRecipe.steps.at(-1).params.isotropicLateralErrorUm, 0.25);
@@ -73,15 +73,18 @@ test('Welcome opens exact Continuous M08/M09 with historical lightweight preview
     continuous.processRecipe.steps.slice(0, 6),
     original.processRecipe.steps.slice(0, 6),
   );
-  assert.equal(continuous.processRecipe.steps.length, 8);
-  assert.equal(continuous.processRecipe.steps[6].params.profile, 'continuous');
-  assert.equal(continuous.processRecipe.steps[6].params.area, 'invert');
-  assert.equal(continuous.processRecipe.steps[6].params.continuousShape, 'circular');
-  assert.equal(continuous.processRecipe.steps[7].command, 'record');
-  assert.equal(continuous.snapshotBranches.nodes.length, 9);
+  assert.equal(continuous.processRecipe.steps.length, 10);
+  assert.equal(continuous.processRecipe.steps.at(-2).params.profile, 'continuous');
+  assert.equal(continuous.processRecipe.steps.at(-2).params.area, 'invert');
+  assert.equal(continuous.processRecipe.steps.at(-2).params.continuousShape, 'circular');
+  assert.equal(continuous.processRecipe.steps.at(-1).command, 'record');
+  assert.equal(continuous.snapshotBranches.nodes.length, 11);
   assert.equal(continuous.snapshotBranches.branches.length, 1);
   assert.equal(continuous.snapshotBranches.activeBranchId, 'main');
-  assert.deepEqual(preview.model, original.model);
+  // The lightweight preview preserves final solids and layer metadata exactly;
+  // only the full project retains the physical PR stages in its History.
+  assert.deepEqual(preview.model.regions, original.model.regions);
+  assert.deepEqual(preview.model.layers, original.model.layers);
   assert.deepEqual(preview.layout, original.layout);
   assert.equal(preview.snapshotBranches.nodes.length, 1);
   assert.ok(original.snapshotBranches.nodes.length > 1);

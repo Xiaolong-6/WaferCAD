@@ -4,10 +4,10 @@
   "scope": "full",
   "status": "pass",
   "source": {
-    "digest": "2187ecec09ca1c3645ca543150f9d1a4238734197ea7a227be4bcdf38ee28ffc",
+    "digest": "2be6f3bccafc17daf1bd4f20148d1a8f61ac6034fb9d89329ee72f12e3de928c",
     "fileCount": 1289
   },
-  "sourceRevision": "9a2c76253662c97e9c64d18892ac861200348770",
+  "sourceRevision": "b779f18050077c9af002dfc42263461f63884516",
   "planDigest": "9e40e14c41649069d23911dc155328f17e554f0307619aef8493378a2f26b4b3",
   "environment": {
     "node": "v22.16.0",
@@ -19,7 +19,7 @@
       "three": "0.179.1"
     }
   },
-  "startedAt": "2026-10-28T16:03:35.771Z",
+  "startedAt": "2026-10-29T08:48:45.726Z",
   "checks": [
     {
       "id": "lint",
@@ -31,7 +31,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 6066,
+      "durationMs": 6711,
       "logDigest": "7e083cff9d323606d09accd3389828279cc52091b6c62b45c8100c1ced589c7c"
     },
     {
@@ -44,7 +44,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 17477,
+      "durationMs": 18092,
       "logDigest": "1230617af071df8c1efeb12bcd6d41c3aa159e1cd0841cc546fbae4c8c56f867"
     },
     {
@@ -57,7 +57,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 403,
+      "durationMs": 367,
       "logDigest": "60d8e5351af88ce7b7b0acb8b3ac39a66ae96c4444f3ad9834b6b61092aa9d75"
     },
     {
@@ -69,10 +69,10 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 248727,
-      "logDigest": "53d4acdd78c031a309f53d2c0134c428bbcf4a9e855a6ab4fe3d12fab4b2ad78"
+      "durationMs": 241626,
+      "logDigest": "00a4bdb9fbdffa95f3bb11e5b9998040621a0528341ebba9429f1b8472a59139"
     }
   ],
-  "finishedAt": "2026-10-28T16:08:08.449Z",
-  "transcriptDigest": "fd95d9dc0752ef214070c3f9286f322eb62923273aab093a904f3048596e73ad"
+  "finishedAt": "2026-10-29T08:53:12.527Z",
+  "transcriptDigest": "aa2b2281bc27295fa9d97eafccce775244721d9c746f40765f4330e21aed6083"
 }

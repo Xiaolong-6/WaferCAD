@@ -22,6 +22,7 @@ const { continuousOwnerColumnAtXY } = await import('../continuous-material-owner
 const { createSelectionGeometry } = await import('../selection-geometry.js');
 const { maskLocalToWorld } = await import('../mask-roi-geometry.js');
 const { pointInMulti } = await import('../vector-geometry.js');
+const { createModel, applyOperation } = await import('../model.js');
 
 const originalBytes = await readFileAsync(
   new URL('../examples/suspended-silica-microdisks.wafercad', import.meta.url),
@@ -54,12 +55,12 @@ test('published M08 uses the original inverted seven-shape GDS mask, not Full Fa
   assert.equal(owner.fronts[0].verticalUm, 36);
   assert.equal(released.layout.elements.length, 7);
   const recipe = released.processRecipe.steps;
-  assert.deepEqual(recipe.slice(0, 6), original.processRecipe.steps.slice(0, 6));
-  assert.equal(recipe[6].params.area, 'invert');
-  assert.deepEqual(recipe[6].params.mask, original.processRecipe.steps[6].params.mask);
-  assert.equal(recipe[6].params.profile, 'continuous');
-  assert.equal(recipe[6].params.continuousShape, 'circular');
-  assert.equal(recipe[7].command, 'record');
+  assert.deepEqual(recipe.slice(0, -2), original.processRecipe.steps.slice(0, -2));
+  assert.equal(recipe.at(-2).params.area, 'invert');
+  assert.deepEqual(recipe.at(-2).params.mask, original.processRecipe.steps.at(-2).params.mask);
+  assert.equal(recipe.at(-2).params.profile, 'continuous');
+  assert.equal(recipe.at(-2).params.continuousShape, 'circular');
+  assert.equal(recipe.at(-1).command, 'record');
   const historyM08 = released.snapshotBranches.nodes.find(
     (node) => node.id === 'process-microdisk-08',
   );
@@ -77,6 +78,140 @@ test('published M08 uses the original inverted seven-shape GDS mask, not Full Fa
     released.snapshotBranches.nodes.find((n) => n.id === 'process-microdisk-08').operation.note,
     /not a measured value/,
   );
+});
+
+test('physical photoresist actually patterns, protects and strips during microdisk process', () => {
+  const stageModel = (id) => {
+    const stage = released.snapshots.find((s) => s.id === `snapshot-microdisk-${id}`);
+    assert.ok(stage, `Missing History stage ${id}`);
+    return stage.state.model;
+  };
+  const materialAt = (id, xy) => {
+    const region = stageModel(id).regions.find((r) => pointInMulti(xy, r.geom));
+    assert.ok(region, `Missing physical region at ${xy} in ${id}`);
+    return region.stack.map((segment) => segment.layerId);
+  };
+  const has = (id, xy, layer) => materialAt(id, xy).includes(layer);
+  const annulus = [110, 0],
+    field = [175, 0];
+
+  // The resist is deposited physically, then developed using the inverse
+  // GDS 1/0 mask. Before the oxide etch, the exposed field still has SiO2.
+  assert.ok(has('03', annulus, 'layer-2'));
+  assert.ok(has('03', field, 'layer-2'));
+  assert.ok(has('04', annulus, 'layer-2'));
+  assert.ok(!has('04', field, 'layer-2'));
+  assert.ok(has('04', field, 'layer-1'));
+  assert.ok(has('05', annulus, 'layer-2'));
+  assert.ok(!has('05', field, 'layer-1'));
+  assert.ok(!has('06', annulus, 'layer-2'));
+
+  // The protective recoat and dicing stage retain real PR in the geometry.
+  for (const id of ['07a', '07b']) {
+    assert.ok(has(id, annulus, 'layer-3'));
+    assert.ok(has(id, field, 'layer-3'));
+  }
+  for (const id of ['07', '08', '09']) {
+    for (const xy of [annulus, field]) {
+      assert.ok(!has(id, xy, 'layer-2'));
+      assert.ok(!has(id, xy, 'layer-3'));
+    }
+  }
+
+  const recipe = released.processRecipe.steps;
+  assert.equal(recipe.length, 10);
+  assert.deepEqual(
+    recipe.map((step) => step.id),
+    ['02', '03', '04', '05', '06', '07a', '07b', '07', '08', '09'].map(
+      (id) => `recipe-process-microdisk-${id}`,
+    ),
+  );
+  assert.equal(recipe[2].command, 'etch');
+  assert.equal(recipe[2].params.area, 'invert');
+  assert.deepEqual(recipe[2].params.mask.layerKeys, ['1|0']);
+  assert.equal(recipe[3].params.area, 'full');
+  assert.equal(recipe[3].params.target, 'Thermal SiO₂ · 1.8 µm');
+  assert.equal(recipe[5].command, 'deposit');
+  assert.equal(recipe[7].params.target, 'Dicing protection photoresist · 1 µm (assumed)');
+});
+
+test('real production Kernel replays physical resist development and stripping through M07', () => {
+  const model = createModel({ shape: 'rect', width: 400, height: 400, thickness: 80 });
+  model.layers[0].name = 'Silicon substrate';
+  model.revision = 1;
+  model.processRevision = 1;
+  const selection = createSelectionGeometry({
+    getState: () => ({ ...released, model }),
+    selectedElement: (element) =>
+      released.selectedLayerKeys.includes(element.layer + '|' + element.datatype),
+    maskPoint: (point) => maskLocalToWorld(point, released.maskTransform),
+  });
+  const openings = selection.operationAreaGeometry('invert');
+  assert.equal(openings.length, 5);
+  const probes = [
+    [0, 0],
+    [83, 0],
+    [110, 0],
+    [145, 0],
+    [175, 0],
+    [-110, 0],
+    [-175, 0],
+    [180, 180],
+    [-180, -180],
+    [0, 175],
+    [0, -175],
+  ];
+  const column = (value, xy) =>
+    value.regions
+      .find((region) => pointInMulti(xy, region.geom))
+      ?.stack.map((segment) => [segment.layerId, segment.z0, segment.z1]) || [];
+  const check = (id) => {
+    const saved = released.snapshots.find((item) => item.id === 'snapshot-microdisk-' + id);
+    assert.ok(saved);
+    assert.equal(model.processRevision, saved.state.model.processRevision);
+    for (const xy of probes) {
+      assert.deepEqual(
+        column(model, xy),
+        column(saved.state.model, xy),
+        'Real Kernel mismatch after M' + id + ' at ' + xy,
+      );
+    }
+  };
+  const apply = (id, operation, masked = false) => {
+    const result = applyOperation(model, {
+      ...operation,
+      face: 'front',
+      area: masked ? openings : model.boundary,
+    });
+    assert.equal(result.changed, true, result.error || 'Failed process M' + id);
+    check(id);
+  };
+  const add = (name, thickness) => ({ type: 'add', name, thickness, growth: 'direct' });
+  const etch = (layerId, thickness) => ({
+    type: 'etch',
+    thickness,
+    etchProfile: 'directional',
+    etchTargetLayerIds: [layerId],
+  });
+  apply('02', add('Thermal SiO₂ · 1.8 µm', 1.8));
+  apply('03', add('Patterning photoresist · 1 µm (assumed)', 1));
+  apply('04', etch('layer-2', 1), true);
+  apply('05', etch('layer-1', 2));
+  apply('06', etch('layer-2', 1));
+  apply('07a', add('Dicing protection photoresist · 1 µm (assumed)', 1));
+  model.revision++;
+  model.processRevision++;
+  check('07b');
+  apply('07', etch('layer-3', 1));
+  assert.deepEqual(
+    model.layers.map((layer) => layer.id),
+    ['base', 'layer-1', 'layer-2', 'layer-3'],
+  );
+  for (const region of model.regions) {
+    assert.ok(
+      region.stack.every((part) => part.layerId !== 'layer-2' && part.layerId !== 'layer-3'),
+    );
+  }
 });
 
 test('published continuous material conserves silica and retains pedestal with exact occupancy', () => {
@@ -117,7 +252,7 @@ test('published continuous material conserves silica and retains pedestal with e
 });
 
 test('published M08/M09 Bookmarks, process nodes, branch head, Recipe and Export all agree', async () => {
-  assert.equal(released.snapshots.length, 9);
+  assert.equal(released.snapshots.length, 11);
   const nodes = new Map(released.snapshotBranches.nodes.map((n) => [n.id, n]));
   for (const suffix of ['08', '09']) {
     const snapshot = released.snapshots.find((s) => s.id === `snapshot-microdisk-${suffix}`);
@@ -141,7 +276,7 @@ test('published M08/M09 Bookmarks, process nodes, branch head, Recipe and Export
     capture: () => structuredClone(headState),
     restore: () => {},
   });
-  assert.equal(manager.importRecords(released.snapshots, released.snapshotBranches), 9);
+  assert.equal(manager.importRecords(released.snapshots, released.snapshotBranches), 11);
   assert.equal(manager.syncActiveHeadState(), true, 'Published HEAD must allow safe navigation');
   assert.deepEqual(
     released.snapshotBranches.branches[0].headState.processRecipe,
