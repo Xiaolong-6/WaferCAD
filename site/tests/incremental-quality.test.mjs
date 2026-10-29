@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   incrementalPlan,
+  isPagesBrowserPermissionHotfix,
   parseNameStatus,
   runIncremental,
 } from '../../scripts/incremental-quality.mjs';
@@ -114,4 +115,34 @@ test('accepted 3D interaction harness has explicit lint and source-retirement ow
   assert.ok(plan.tests.includes('site/tests/source-sunset-view-ux-owners.test.mjs'));
   assert.ok(plan.tests.includes('site/tests/ci-test-plan.test.mjs'));
   assert.equal(plan.infrastructure, false);
+});
+
+test('Pages release workflow is incremental only for the exact reusable Browser permission fix', () => {
+  const before = `name: Pages
+jobs:
+  release-browser:
+    uses: ./.github/workflows/browser-regression.yml
+    permissions:
+      contents: read
+
+  release-ui-v2:
+    run: echo okay
+`;
+  const after = before.replace(
+    '    permissions:\n      contents: read\n',
+    '    permissions:\n      contents: read\n      actions: read\n',
+  );
+  assert.equal(isPagesBrowserPermissionHotfix(before, after), true);
+  for (const mutation of [
+    after.replace('echo okay', 'echo bypass'),
+    before,
+    after.replace('      actions: read', '      actions: write'),
+    after.replace('contents: read', 'contents: write'),
+  ]) {
+    assert.equal(isPagesBrowserPermissionHotfix(before, mutation), false);
+  }
+  assert.equal(
+    incrementalPlan([{ status: 'M', path: '.github/workflows/pages.yml' }]).workflow,
+    true,
+  );
 });
