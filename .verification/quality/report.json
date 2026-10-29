@@ -4,10 +4,10 @@
   "scope": "draft",
   "status": "pass",
   "source": {
-    "digest": "3f841f57fad8746ec43d4eef6c1a617500b50c957e513f66cd8c4de176ef8d37",
-    "fileCount": 1286
+    "digest": "b592b3026d711c3f66cf11ba04d33c78f0c49f029f5ad99381d0d58d9a4074dc",
+    "fileCount": 1289
   },
-  "sourceRevision": "98148a90a5919b79203f56ba79fe9882237e143c",
+  "sourceRevision": "354da8a74c58f36c68c0d1f49d3460f8bdeb7534",
   "planDigest": "a45061373e4a9c9e6f414d7b3b2e48cab7e2bd0feb4378633d0ff24a1a396899",
   "environment": {
     "node": "v22.16.0",
@@ -19,7 +19,7 @@
       "three": "0.179.1"
     }
   },
-  "startedAt": "2026-10-29T08:26:08.134Z",
+  "startedAt": "2026-10-29T08:34:32.358Z",
   "checks": [
     {
       "id": "lint",
@@ -31,7 +31,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 5260,
+      "durationMs": 5746,
       "logDigest": "7e083cff9d323606d09accd3389828279cc52091b6c62b45c8100c1ced589c7c"
     },
     {
@@ -44,7 +44,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 15178,
+      "durationMs": 17361,
       "logDigest": "1230617af071df8c1efeb12bcd6d41c3aa159e1cd0841cc546fbae4c8c56f867"
     },
     {
@@ -57,7 +57,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 357,
+      "durationMs": 413,
       "logDigest": "60d8e5351af88ce7b7b0acb8b3ac39a66ae96c4444f3ad9834b6b61092aa9d75"
     },
     {
@@ -74,10 +74,10 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 1379,
-      "logDigest": "3a28bc3dc23cc9a8c351596c6e1cdf040339122dd93ec5a05fe5c78eb13b3121"
+      "durationMs": 1427,
+      "logDigest": "5fa6e2997dd0a78a6d3065a00177928631aba8b0a2622d20251ff8385f4348e4"
     }
   ],
-  "finishedAt": "2026-10-29T08:26:30.310Z",
-  "transcriptDigest": "8d07188318e7c6b4ca6abf2374d05fb16d69f1373ae025283231c320243444b7"
+  "finishedAt": "2026-10-29T08:34:57.310Z",
+  "transcriptDigest": "ef238596a80e0d3200ea2d66b8e80ce5ba57a6d934fd70c53e61bf1a3db8dfa5"
 }
