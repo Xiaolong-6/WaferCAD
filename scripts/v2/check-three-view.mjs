@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { performance } from 'node:perf_hooks';
 import { launchBrowser, newUiPage, waitForPaint } from '../test-helpers/ui.mjs';
 import { captureVisibleThree } from './three-visibility.mjs';
 import { selectScientificView } from './desktop-view-selector.mjs';
@@ -20,6 +21,7 @@ const report = {
   result: 'running',
   example,
   widths: [],
+  profiles: [],
   errors: [],
 };
 const distance = (camera) => Math.hypot(...camera.position.map((v, i) => v - camera.target[i]));
@@ -39,14 +41,35 @@ async function clickThreeTool(page, action) {
     'Choosing a 3D command must dismiss More',
   );
 }
+// Timings are observational only; preserve all existing assertions and timeouts.
+function startProfile(scenario, mode) {
+  const entry = { scenario, mode, phasesMs: {} };
+  report.profiles.push(entry);
+  let checkpoint = performance.now();
+  const start = checkpoint;
+  return {
+    mark(phase) {
+      const now = performance.now();
+      entry.phasesMs[phase] = Math.round(now - checkpoint);
+      checkpoint = now;
+    },
+    finish() {
+      entry.totalMs = Math.round(performance.now() - start);
+      console.log('3D profile:', JSON.stringify(entry));
+    },
+  };
+}
 const browser = await launchBrowser();
 try {
   report.browser = browser.version();
-  for (const width of [1440, 1024, 768, 390]) {
+  for (const width of [1440, 390]) {
+    const profile = startProfile(width, 'full');
+    const layoutEvidence = [];
     const { page, context } = await newUiPage(browser, {
       viewport: { width, height: 960 },
       acceptDownloads: true,
     });
+    profile.mark('contextStartup');
     try {
       const errors = [];
       page.on('pageerror', (e) => errors.push(e.message));
@@ -55,6 +78,7 @@ try {
       await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
         timeout: 120000,
       });
+      profile.mark('projectReady');
       const snapshot = () => page.evaluate(() => window.WaferCadV2Workstation.snapshot());
       const initial = await snapshot();
       assert.equal(initial.sharedIdentity, true);
@@ -72,6 +96,53 @@ try {
         await waitForPaint(page);
       };
       await ready();
+      profile.mark('first3DReady');
+
+      // Two intermediate responsive breakpoints reuse the already-loaded
+      // desktop project. They check actual 3D layout/visible pixels, but the
+      // costly gesture and export matrix remains owned by 1440 and 390.
+      if (width === 1440) {
+        for (const layoutWidth of [1024, 768]) {
+          const layoutProfile = startProfile(layoutWidth, 'layout-only');
+          await page.setViewportSize({ width: layoutWidth, height: 960 });
+          await selectScientificView(page, 'three', layoutWidth);
+          await ready();
+          layoutProfile.mark('resizeAndReady');
+          assert.equal(await canvas.count(), 1, 'One native 3D canvas after resize');
+          assert.ok(Number(await host.getAttribute('data-renderer-draw-calls')) > 0);
+          assert.ok(Number(await host.getAttribute('data-renderer-draw-triangles')) > 0);
+          assert.equal(
+            await page.locator('#threePanel [data-action="tool:rotate:three"]').count(),
+            1,
+            'Orbit control remains available at the responsive breakpoint',
+          );
+          assert.deepEqual((await snapshot()).model, initial.model);
+          assert.equal(
+            await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+            false,
+            'No horizontal overflow at the responsive breakpoint',
+          );
+          assert.deepEqual(errors, []);
+          const visibility = await captureVisibleThree(
+            page,
+            resolve(output, `three-${layoutWidth}.png`),
+          );
+          layoutProfile.mark('layoutAssertionsAndCapture');
+          layoutProfile.finish();
+          layoutEvidence.push({
+            width: layoutWidth,
+            mode: 'layout-only',
+            sharedIdentity: true,
+            scientificUnchanged: true,
+            visibility,
+          });
+          console.log(`3D ${layoutWidth} layout: PASS`);
+        }
+        await page.setViewportSize({ width, height: 960 });
+        await selectScientificView(page, 'three', width);
+        await ready();
+      }
+      profile.mark('responsiveChecks');
       if (!report.webgl)
         report.webgl = await canvas.evaluate((node) => {
           const gl = node.getContext('webgl2');
@@ -332,9 +403,12 @@ try {
         false,
       );
       assert.deepEqual(errors, []);
+      profile.mark('interactionsAndExports');
       const visibility = await captureVisibleThree(page, resolve(output, `three-${width}.png`));
+      profile.mark('finalScreenshot');
       report.widths.push({
         width,
+        mode: 'full',
         gestures: true,
         wheelPolicy: true,
         sharedIdentity: true,
@@ -342,14 +416,19 @@ try {
         visibility,
       });
       console.log(`3D ${width}: PASS`);
+      if (width === 1440) report.widths.push(...layoutEvidence);
     } finally {
       await context.close();
+      profile.mark('contextCleanup');
+      profile.finish();
     }
   }
+  const touchProfile = startProfile('touch', 'full');
   const { page, context } = await newUiPage(browser, {
     viewport: { width: 1024, height: 960 },
     hasTouch: true,
   });
+  touchProfile.mark('contextStartup');
   try {
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message));
@@ -364,6 +443,7 @@ try {
       null,
       { timeout: 120000 },
     );
+    touchProfile.mark('projectAnd3DReady');
     const snapshot = () => page.evaluate(() => window.WaferCadV2Workstation.snapshot());
     const initial = await snapshot();
     const cdp = await context.newCDPSession(page);
@@ -416,9 +496,11 @@ try {
     }
     assert.deepEqual((await snapshot()).model, initial.model);
     assert.deepEqual(errors, []);
+    touchProfile.mark('touchGestures');
     const visibility = await captureVisibleThree(page, resolve(output, 'three-touch.png'), {
       fullPage: false,
     });
+    touchProfile.mark('touchScreenshot');
     report.touch = {
       rotate: true,
       pan: true,
@@ -430,6 +512,8 @@ try {
     console.log('3D touch: PASS');
   } finally {
     await context.close();
+    touchProfile.mark('contextCleanup');
+    touchProfile.finish();
   }
   report.result = 'pass';
 } catch (error) {

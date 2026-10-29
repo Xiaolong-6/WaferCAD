@@ -251,7 +251,7 @@
     ],
     'process.surface': [
       'Surface morphology',
-      'Select Smooth, Rough, Rough (stable scale) or Pyramid. Stable scale creates a different seeded shape with bounded spacing variation; existing Rough profiles keep their original shape.',
+      'Select Smooth, Rough or Pyramid. New Rough uses stable spatial feature scaling; historical Rough steps preserve their original algorithm and can be explicitly upgraded.',
     ],
     'process.implant.tilt': [
       'Implant tilt',

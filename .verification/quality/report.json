@@ -4,10 +4,10 @@
   "scope": "full",
   "status": "pass",
   "source": {
-    "digest": "2be6f3bccafc17daf1bd4f20148d1a8f61ac6034fb9d89329ee72f12e3de928c",
+    "digest": "9c054db2e922909c8e02d0d4bdedbda07b8bfcf6cdb6ca714a7d3b6162d016bd",
     "fileCount": 1289
   },
-  "sourceRevision": "b779f18050077c9af002dfc42263461f63884516",
+  "sourceRevision": "ef548b965c57922b534c7d053eab436951370902",
   "planDigest": "9e40e14c41649069d23911dc155328f17e554f0307619aef8493378a2f26b4b3",
   "environment": {
     "node": "v22.16.0",
@@ -19,7 +19,7 @@
       "three": "0.179.1"
     }
   },
-  "startedAt": "2026-10-29T08:48:45.726Z",
+  "startedAt": "2026-10-29T09:31:03.750Z",
   "checks": [
     {
       "id": "lint",
@@ -31,7 +31,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 6711,
+      "durationMs": 13907,
       "logDigest": "7e083cff9d323606d09accd3389828279cc52091b6c62b45c8100c1ced589c7c"
     },
     {
@@ -44,7 +44,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 18092,
+      "durationMs": 51447,
       "logDigest": "1230617af071df8c1efeb12bcd6d41c3aa159e1cd0841cc546fbae4c8c56f867"
     },
     {
@@ -57,7 +57,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 367,
+      "durationMs": 850,
       "logDigest": "60d8e5351af88ce7b7b0acb8b3ac39a66ae96c4444f3ad9834b6b61092aa9d75"
     },
     {
@@ -69,10 +69,10 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 241626,
-      "logDigest": "00a4bdb9fbdffa95f3bb11e5b9998040621a0528341ebba9429f1b8472a59139"
+      "durationMs": 449462,
+      "logDigest": "aeaf77e5cd47429a3dfd1965c04eaafd806eb0d29f9d1bae57162d680146aeb2"
     }
   ],
-  "finishedAt": "2026-10-29T08:53:12.527Z",
-  "transcriptDigest": "aa2b2281bc27295fa9d97eafccce775244721d9c746f40765f4330e21aed6083"
+  "finishedAt": "2026-10-29T09:39:39.421Z",
+  "transcriptDigest": "ba81fe9d925daed5f1917e0b8745b3cdf3276046038b29815f185495e2dcc184"
 }

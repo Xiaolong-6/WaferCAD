@@ -247,7 +247,9 @@ test('rectangular GRID Base normalizes without changing circular wafer contracts
   assert.deepEqual(normalizeRecipeBase(wafer), wafer);
 });
 
-test('Stable-scale rough Recipe opt-in round-trips while old Rough retains its algorithm', () => {
+test('Existing Recipe rough aliases remain v1 while explicit v2 survives code round-trips', () => {
+  const legacy = parseProcessRecipeSource("etch({ depth: '1 um', surface: 'rough' });");
+  assert.equal(legacy.steps[0].params.surface.morphology, 'stochastic');
   for (const morphology of ['stochastic', 'stochastic-v2']) {
     const recipe = parseProcessRecipeSource(
       `etch({ depth: '1 um', surface: { morphology: '${morphology}', featureSize: '300 nm', meanHeight: '400 nm', featureCv: 25, heightCv: 30, seed: 123 } });`,
