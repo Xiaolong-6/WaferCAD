@@ -9,7 +9,7 @@
 - `docs/wiki/assets/process/*.svg`: generated, version-controlled Before → After diagrams embedded directly in the Process wiki chapter.
 - `site/guide/index.html`: compatibility redirect only; old fragment bookmarks resolve into Wiki headings.
 - `docs/wiki/Process-Operations.md`: **generated** by `npm run docs:build`. Do not edit it manually; edits will be overwritten.
-- All actively maintained product documentation is in **English**. Legacy localized URLs may be retained as short English pointers so existing links still resolve.
+- All actively maintained product documentation is in **English**. Retired localized pages are removed from the managed Wiki source rather than preserved as placeholder aliases; old external URLs may cease to resolve.
 
 To change an operation description, update the catalog and diagram, then run `npm run docs:build` and `npm run docs:check`. Commit the catalog, regenerated Markdown and any changed SVG assets together. `docs:check` checks images byte-for-byte against the in-app renderer. The tests check every defined operation ID and the exact operation-document snapshot. The [documentation architecture](DOCUMENTATION.md) owns navigation, authority and authored-versus-generated boundaries.
 

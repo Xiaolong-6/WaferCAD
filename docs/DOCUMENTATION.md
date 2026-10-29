@@ -14,7 +14,7 @@
 - `docs/operations/` owns repository release/retirement administration.
 - `docs/evidence/` owns research figure provenance and reproducibility registers.
 
-When moving documentation, keep exactly one canonical file in the owning directory and update every tracked Markdown link, source reference and workflow path to that location. **Do not add forwarding Markdown stubs or compatibility ledgers for moved repository documents.** Exception: a pre-existing public **GitHub Wiki** URL may retain a minimal English compatibility pointer (for example `docs/wiki/Recipe-Code-Tutorial-zh-CN.md`) so external bookmarks continue to resolve. The old GitHub _repository file_ URL may cease to work; current links must point to the canonical file. Run the documentation link graph check and keep scientific provenance intact.
+When moving documentation, keep exactly one canonical file in the owning directory and update every tracked Markdown link, source reference and workflow path to that location. **Do not add forwarding Markdown stubs or compatibility ledgers for moved repository documents.** Retired localized Wiki pages are deleted instead of replaced with placeholder aliases; existing external bookmarks to deleted slugs may stop resolving. Current links must point to the canonical English page. Run the documentation link graph check and keep scientific provenance intact.
 
 ## Contract lifecycle
 
@@ -40,7 +40,7 @@ Generated Process operations and SVGs must never be edited by hand.
 
 ## Authority and readers
 
-**Documentation language:** English is required for new and actively maintained WaferCAD documentation, release notes, code comments, UI text, prompts and development handoffs. Existing historical audits, plans and archived handoffs may remain in their original language; do not translate them solely to standardize language. When retiring localized Wiki content, update tracked navigation to the English page; retain only already-published Wiki aliases needed for external bookmark compatibility as short English pointer pages.
+**Documentation language:** English is required for new and actively maintained WaferCAD documentation, release notes, code comments, UI text, prompts and development handoffs. Existing historical audits, plans and archived handoffs may remain in their original language; do not translate them solely to standardize language. When retiring localized Wiki content, delete the obsolete page and point tracked navigation to its canonical English counterpart. Do not retain alias/stub pages solely for old bookmarks.
 
 [The documentation map](README.md) is the repository navigation root. [The root README](../README.md) introduces the product and links here; it should summarize rather than duplicate implementation details.
 
