@@ -31,41 +31,48 @@ const workerBootstrap = `
     .catch((error) => parentPort.postMessage({ id: 1, type: 'error', message: String(error) }));
 `;
 
-test('published M08 Si Worker output is byte-identical to canonical sampled display mesh', async () => {
-  const project = await readProjectFile(
-    new Blob([
-      await readFile(
-        new URL('../examples/suspended-silica-microdisks-continuous.wafercad', import.meta.url),
-      ),
-    ]),
-  );
-  const owner = project.model.continuousEtchOwner;
-  assert.ok(owner, 'published M08 must have exact analytical Continuous material');
-  const expected = buildContinuousSiHeightfieldMesh(owner, { xyStepUm: 1 });
-  const worker = new Worker(workerBootstrap, { eval: true });
-  try {
-    const response = new Promise((resolve, reject) => {
-      worker.once('message', resolve);
-      worker.once('error', reject);
-      worker.once('exit', (code) => {
-        if (code !== 0) reject(new Error('Display Worker exited before completion: ' + code));
+for (const adaptiveChordErrorUm of [null, 0.5])
+  test(`published M08 Si Worker parity (${adaptiveChordErrorUm ?? 'uniform'})`, async () => {
+    const project = await readProjectFile(
+      new Blob([
+        await readFile(
+          new URL('../examples/suspended-silica-microdisks-continuous.wafercad', import.meta.url),
+        ),
+      ]),
+    );
+    const owner = project.model.continuousEtchOwner;
+    assert.ok(owner, 'published M08 must have exact analytical Continuous material');
+    const expected = buildContinuousSiHeightfieldMesh(owner, { xyStepUm: 1, adaptiveChordErrorUm });
+    const worker = new Worker(workerBootstrap, { eval: true });
+    try {
+      const response = new Promise((resolve, reject) => {
+        worker.once('message', resolve);
+        worker.once('error', reject);
+        worker.once('exit', (code) => {
+          if (code !== 0) reject(new Error('Display Worker exited before completion: ' + code));
+        });
       });
-    });
-    worker.postMessage({ id: 1, owner, xyStepUm: 1, maxTriangles: 1200000 });
-    const result = await response;
-    assert.equal(result.type, 'done', result.message || 'Worker must build actual mesh');
-    assert.equal(result.mesh.triangles, expected.triangles);
-    assert.deepEqual(
-      Buffer.from(result.mesh.positions.buffer),
-      Buffer.from(expected.positions.buffer),
-      'Worker transferred exact position bytes',
-    );
-    assert.deepEqual(
-      Buffer.from(result.mesh.normals.buffer),
-      Buffer.from(expected.normals.buffer),
-      'Worker transferred exact normal bytes',
-    );
-  } finally {
-    await worker.terminate();
-  }
-});
+      worker.postMessage({
+        id: 1,
+        owner,
+        xyStepUm: 1,
+        maxTriangles: 1200000,
+        adaptiveChordErrorUm,
+      });
+      const result = await response;
+      assert.equal(result.type, 'done', result.message || 'Worker must build actual mesh');
+      assert.equal(result.mesh.triangles, expected.triangles);
+      assert.deepEqual(
+        Buffer.from(result.mesh.positions.buffer),
+        Buffer.from(expected.positions.buffer),
+        'Worker transferred exact position bytes',
+      );
+      assert.deepEqual(
+        Buffer.from(result.mesh.normals.buffer),
+        Buffer.from(expected.normals.buffer),
+        'Worker transferred exact normal bytes',
+      );
+    } finally {
+      await worker.terminate();
+    }
+  });
