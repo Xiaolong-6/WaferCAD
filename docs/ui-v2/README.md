@@ -12,7 +12,7 @@
 - [Mobile Workstation layout](MOBILE_WORKSTATION_LAYOUT_2026-10-13.md).
 - [Mobile CSS ownership audit](MOBILE_CSS_OWNERSHIP_AUDIT_2026-10-16.md).
 - [Tooltip architecture](TOOLTIP_ARCHITECTURE_2026-10-13.md).
-- [Z Break editor](Z_BREAK_EDITOR_2026-10-13.md).
+- [Z Break editor](Z_BREAK_EDITOR_2026-10-13.md) — current presentation rules with clearly bounded 2026-10-13 implementation evidence.
 
 ## Historical implementation evidence, not current selectors or merge gates
 
