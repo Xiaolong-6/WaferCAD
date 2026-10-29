@@ -92,6 +92,7 @@ jobs:
       skip_node_gate: true
     permissions:
       contents: read
+      actions: read
 
   release-ui-v2:
     name: Release real UI v2 acceptance

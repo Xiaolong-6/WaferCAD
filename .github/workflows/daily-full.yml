@@ -28,6 +28,7 @@ jobs:
       skip_node_gate: true
     permissions:
       contents: read
+      actions: read
 
   main-mask:
     name: Real Main/Mask/Section browser acceptance
