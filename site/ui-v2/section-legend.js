@@ -128,11 +128,7 @@
       const out = [];
       for (let index = 0; index < count; index++) {
         out.push(
-          hslHex(
-            (seed + index * 137.508) % 360,
-            48 + (index % 3) * 4,
-            61 + (index % 2) * 5,
-          ),
+          hslHex((seed + index * 137.508) % 360, 48 + (index % 3) * 4, 61 + (index % 2) * 5),
         );
       }
       return out;

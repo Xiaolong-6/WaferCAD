@@ -8,7 +8,7 @@ function workflow(name) {
   return readFileSync(new URL('../../.github/workflows/' + name, import.meta.url), 'utf8');
 }
 
-test('PR Quality is proof-only while nightly executes real full checks', () => {
+test('PR Quality requires full proof or verified-base incremental checks while nightly runs full', () => {
   const quality = workflow('quality.yml');
   assert.match(quality, /branches: \[main\]/);
   assert.match(quality, /id: evidence\n        continue-on-error: true/);
@@ -30,11 +30,11 @@ test('PR Quality is proof-only while nightly executes real full checks', () => {
     const firstLine = quality.split(`name: ${step}\n`)[1]?.split('\n')[0];
     return firstLine?.trim().match(/^if: \$\{\{ (.+) \}\}$/)?.[1];
   };
-  const condition = (step, event, evidence, draft) => {
+  const condition = (step, event, evidence, draft, incremental = 'skipped') => {
     const expr = matchCondition(step);
     assert.ok(expr, 'missing guarded step: ' + step);
     return runInNewContext(expr, {
-      steps: { evidence: { outcome: evidence } },
+      steps: { evidence: { outcome: evidence }, incremental_checks: { outcome: incremental } },
       github: { event_name: event, event: { pull_request: { draft } } },
       cancelled: () => false,
     });
@@ -81,6 +81,36 @@ test('PR Quality is proof-only while nightly executes real full checks', () => {
       !draft,
     );
   }
+  assert.equal(
+    condition(
+      'Reject missing or stale PR proof before remote tests',
+      'pull_request',
+      'failure',
+      true,
+      'success',
+    ),
+    false,
+    'passing incremental checks with a verified main baseline replace missing Draft proof',
+  );
+  assert.equal(
+    condition(
+      'Reject missing or stale PR proof before remote tests',
+      'pull_request',
+      'failure',
+      false,
+      'failure',
+    ),
+    true,
+    'failed incremental checks must never become a passing Ready proof',
+  );
+  assert.match(
+    quality,
+    /name: Verify exact main baseline and incremental diff eligibility[\s\S]*?git worktree add --detach[\s\S]*?verify full/,
+  );
+  assert.match(
+    quality,
+    /name: Run exact-diff Quality and owning Node contracts[\s\S]*?incremental-quality\.mjs run/,
+  );
   for (const event of ['schedule', 'workflow_dispatch']) {
     assert.equal(
       condition(
