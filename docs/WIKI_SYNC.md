@@ -70,7 +70,20 @@ real image is ready.
 
 ## Pre-publication PR verification
 
-Documentation changes are checked locally through `node scripts/local-verification.mjs run draft` (or a current `full` receipt), including the focused documentation contracts. The [Documentation and Wiki targeted checks](../.github/workflows/documentation-wiki-targeted.yml) workflow is **manual-dispatch only** under the 2026-10-22 CI policy; it has read-only repository permissions and cannot publish Wiki or Pages. Automatic Draft `Quality` verifies exact-source-bound local evidence **without rerunning lint, formatting, or `docs:check` remotely**. Ready and Main release use their separately governed gates; see [CI routing](CI.md).
+Document changes follow the [current PR Quality policy](CI.md#incremental-quality-baseline--exact-diff):
+a source-bound Draft/Full local receipt is acceptable, **or** PR Quality may
+verify the cumulative changed documentation files and owning contracts using
+the strict incremental route, provided the exact Main parent has valid full
+evidence. This latter route performs actual changed-file formatting/lint and
+appropriate documentation Node checks on the PR merge tree; it is **not**
+a proof-only pass. Do not describe an untested Draft as locally verified.
+
+The [Documentation and Wiki targeted checks](../.github/workflows/documentation-wiki-targeted.yml)
+workflow remains **manual-dispatch only**; it cannot publish Wiki or Pages.
+Ready browser acceptance and Main publication have separate, more restrictive
+eligibility. The GitHub Wiki itself is published **after Main integration**;
+a green PR Docs result is not a claim that the remote Wiki already contains
+the changes.
 
 ## Deploy workflow
 
