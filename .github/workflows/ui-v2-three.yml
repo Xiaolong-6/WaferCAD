@@ -49,9 +49,7 @@ jobs:
           exit 1
       - name: Check real 3D four widths, touch and physical exports
         env:
-          # On #381's profiling branch, match the 17-minute full-M3D baseline.
-          # Other manual invocations keep their existing Metalens fixture.
-          WAFERCAD_V2_EXAMPLE: ${{ github.ref_name == 'perf/ci-three-viewport-lightweight-20261029' && 'm3d' || 'metalens' }}
+          WAFERCAD_V2_EXAMPLE: metalens
         run: node scripts/v2/check-three-view.mjs
       - name: Check real full M3D GLB cancellation
         run: node scripts/v2/check-three-export-abort.mjs
@@ -61,7 +59,6 @@ jobs:
         with:
           name: wafercad-ui-v2-three-${{ github.sha }}
           path: |
-            test-results/ui-v2-three-review/
             test-results/ui-v2-three-review-metalens/
             test-results/ui-v2-three-export-abort/
             serve-three.log
