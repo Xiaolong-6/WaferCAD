@@ -183,8 +183,10 @@ test('Ready browser matrix only removes three with a successful authenticated pr
   assert.match(browser, /workstation\) npm run test:ui:workstation ;;/);
 });
 
-test('Ready owner reuse requires every selected named job to have passed', async () => {
-  const { acceptedReadyEvidence } = await import('../../scripts/ci-three-evidence.mjs');
+test('all Ready owners reuse their individual successful named jobs, not just green status', async () => {
+  const { acceptedReadyEvidence, findAcceptedReady } =
+    await import('../../scripts/ci-three-evidence.mjs');
+  const succeeded = (name) => ({ name, status: 'completed', conclusion: 'success' });
   const selected = {
     browser: true,
     main_mask: true,
@@ -195,57 +197,85 @@ test('Ready owner reuse requires every selected named job to have passed', async
     process: false,
     extendedMatrix: ['interaction', 'three'],
   };
-  const jobs = [
-    'browser / Plan browser suites',
-    'browser / Chromium targeted regression',
-    'browser / Native v2 Release interaction',
-    'browser / Native v2 Release three',
-    'main-mask / Main and Mask browser gates',
-  ].map((name) => ({ name, status: 'completed', conclusion: 'success' }));
-  const evidence = { run, jobs, current, changedPaths: ciDelta, selected };
-  assert.equal(acceptedReadyEvidence(evidence), true);
-  for (const job of jobs) {
-    assert.equal(
-      acceptedReadyEvidence({ ...evidence, jobs: jobs.filter((item) => item !== job) }),
-      false,
-    );
+  const ownerJobs = [
+    succeeded('browser / Plan browser suites'),
+    succeeded('browser / Chromium targeted regression'),
+    succeeded('browser / Native v2 Release interaction'),
+    succeeded('browser / Native v2 Release three'),
+    succeeded('main-mask / Main and Mask browser gates'),
+  ];
+  assert.equal(
+    acceptedReadyEvidence({ run, jobs: ownerJobs, current, changedPaths: ciDelta, selected }),
+    true,
+  );
+  for (const job of ownerJobs) {
     assert.equal(
       acceptedReadyEvidence({
-        ...evidence,
-        jobs: jobs.map((item) => (item === job ? { ...item, conclusion: 'skipped' } : item)),
+        run,
+        jobs: ownerJobs.filter((one) => one !== job),
+        current,
+        changedPaths: ciDelta,
+        selected,
       }),
       false,
+      `A missing selected job must invalidate proof: ${job.name}`,
     );
   }
-  for (const changes of [
-    ['site/model.js'],
-    ['scripts/v2/check-three-view.mjs'],
-    ['package.json'],
-  ]) {
-    assert.equal(acceptedReadyEvidence({ ...evidence, changedPaths: changes }), false);
+  for (const job of ownerJobs) {
+    assert.equal(
+      acceptedReadyEvidence({
+        run,
+        jobs: ownerJobs.map((one) => (one === job ? { ...one, conclusion: 'skipped' } : one)),
+        current,
+        changedPaths: ciDelta,
+        selected,
+      }),
+      false,
+      `A skipped selected job is not a passing proof: ${job.name}`,
+    );
   }
-  for (const invalid of [
-    { ...selected, renderer: true },
-    { ...selected, process: true },
-    { ...selected, recipe: true },
-    { ...selected, klayout: true },
-    { ...selected, history: true },
-    { ...selected, extendedMatrix: ['missing-suite'] },
-  ]) {
-    assert.equal(acceptedReadyEvidence({ ...evidence, selected: invalid }), false);
-  }
+  // An accepted earlier full Workstation already exercises the exact 3D owner.
   assert.equal(
-    acceptedReadyEvidence({ ...evidence, run: { ...run, conclusion: 'failure' } }),
-    false,
+    acceptedReadyEvidence({
+      run,
+      jobs: [
+        ...ownerJobs.filter((job) => !job.name.endsWith('Release three')),
+        succeeded('browser / Native v2 Release workstation'),
+      ],
+      current,
+      changedPaths: ciDelta,
+      selected,
+    }),
+    true,
   );
-  assert.equal(
-    acceptedReadyEvidence({ ...evidence, run: { ...run, pull_requests: [] } }),
-    false,
-  );
+  // The later successfully reused 3D job cannot itself be counted as an
+  // executed 3D acceptance. Search must continue to an older real pass.
+  const reusedOnly = { ...run, id: 999, head_sha: 'b'.repeat(40) };
+  const visited = [];
+  const proof = await findAcceptedReady({
+    current,
+    token: 'test-token',
+    selected,
+    gitOps: {
+      isAncestor: () => true,
+      changedPaths: () => ciDelta,
+      sameOwnerCommands: () => true,
+    },
+    readApi: async (path) => {
+      visited.push(path);
+      if (path.endsWith('/runs/999/jobs?per_page=100'))
+        return { jobs: ownerJobs.filter((one) => !one.name.endsWith('Release three')) };
+      if (path.includes('/jobs?')) return { jobs: ownerJobs };
+      return { workflow_runs: [reusedOnly, run] };
+    },
+  });
+  assert.equal(proof.runId, run.id);
+  assert.ok(visited.includes('/actions/runs/999/jobs?per_page=100'));
 });
 
-test('Ready history lookup rejects changed main, source, missing token or changed owner commands', async () => {
-  const { findAcceptedReady } = await import('../../scripts/ci-three-evidence.mjs');
+test('Ready evidence rechecks main, source, owner code and source-delete boundaries', async () => {
+  const { acceptedReadyEvidence, findAcceptedReady } =
+    await import('../../scripts/ci-three-evidence.mjs');
   const selected = {
     browser: true,
     main_mask: true,
@@ -256,45 +286,59 @@ test('Ready history lookup rejects changed main, source, missing token or change
     process: false,
     extendedMatrix: ['interaction', 'three'],
   };
-  const jobs = [
+  const ownerJobs = [
     'browser / Plan browser suites',
     'browser / Chromium targeted regression',
     'browser / Native v2 Release interaction',
     'browser / Native v2 Release three',
     'main-mask / Main and Mask browser gates',
   ].map((name) => ({ name, status: 'completed', conclusion: 'success' }));
-  const gitOps = {
-    isAncestor: () => true,
-    changedPaths: () => ciDelta,
-    sameOwnerCommands: () => true,
-  };
-  const readApi = async (path) =>
-    path.includes('/jobs?') ? { jobs } : { workflow_runs: [run] };
-  const args = { current, token: 'test', selected, gitOps, readApi };
-  assert.equal((await findAcceptedReady(args)).runId, run.id);
-  assert.equal(await findAcceptedReady({ ...args, token: '' }), null);
-  assert.equal(
-    await findAcceptedReady({ ...args, gitOps: { ...gitOps, isAncestor: () => false } }),
-    null,
-  );
-  assert.equal(
-    await findAcceptedReady({
-      ...args,
-      gitOps: { ...gitOps, changedPaths: () => ['site/ui-v2/section-view.js'] },
-    }),
-    null,
-  );
-  assert.equal(
-    await findAcceptedReady({
-      ...args,
-      gitOps: { ...gitOps, sameOwnerCommands: () => false },
-    }),
-    null,
-  );
+  for (const mutation of [
+    { run: { ...run, conclusion: 'failure' } },
+    { run: { ...run, pull_requests: [{ number: 387, base: { ref: 'main', sha: base } }] } },
+    { run: { ...run, pull_requests: [{ number: 386, base: { ref: 'main', sha: old } }] } },
+    { changedPaths: ['site/ui-v2/section-view.js'] },
+    { changedPaths: ['scripts/v2/check-three-view.mjs'] },
+    { changedPaths: ['package-lock.json'] },
+    { selected: { ...selected, extendedMatrix: ['unknown-owner'] } },
+    { selected: { ...selected, renderer: true } },
+    { selected: { ...selected, process: true } },
+    { selected: { ...selected, klayout: true } },
+    { selected: { ...selected, recipe: true } },
+    { selected: { ...selected, history: true } },
+  ]) {
+    assert.equal(
+      acceptedReadyEvidence({
+        run: mutation.run ?? run,
+        jobs: ownerJobs,
+        current,
+        changedPaths: mutation.changedPaths ?? ciDelta,
+        selected: mutation.selected ?? selected,
+      }),
+      false,
+      JSON.stringify(mutation),
+    );
+  }
+  for (const type of ['new-main', 'mutated-commands', 'missing-token', 'wrong-source']) {
+    const result = await findAcceptedReady({
+      current,
+      token: type === 'missing-token' ? '' : 'token',
+      selected,
+      gitOps: {
+        isAncestor: (before) => type !== 'new-main' || before !== base,
+        changedPaths: () =>
+          type === 'wrong-source' ? ['scripts/v2/check-three-view.mjs'] : ciDelta,
+        sameOwnerCommands: () => type !== 'mutated-commands',
+      },
+      readApi: async (path) =>
+        path.includes('/jobs?') ? { jobs: ownerJobs } : { workflow_runs: [run] },
+    });
+    assert.equal(result, null, type);
+  }
 });
 
-test('owner execution command changes invalidate a previous Ready proof', async () => {
-  const { unchangedReadyOwnerCommands, ownerJobSection } =
+test('Ready owner commands must match even when changed CI file itself is allowed', async () => {
+  const { ownerJobSection, unchangedReadyOwnerCommands } =
     await import('../../scripts/ci-three-evidence.mjs');
   const browser = readFileSync(
     new URL('../../.github/workflows/browser-regression.yml', import.meta.url),
@@ -311,13 +355,19 @@ test('owner execution command changes invalidate a previous Ready proof', async 
     klayout: false,
     history: false,
   };
-  assert.ok(ownerJobSection(browser, 'release-ui-owners'));
+  assert.ok(ownerJobSection(browser, 'browser'));
   assert.ok(ownerJobSection(ready, 'main-mask'));
-  const accepted = { browser, ready };
-  assert.equal(unchangedReadyOwnerCommands({ accepted, current: accepted, selected }), true);
   assert.equal(
     unchangedReadyOwnerCommands({
-      accepted,
+      accepted: { browser, ready },
+      current: { browser, ready },
+      selected,
+    }),
+    true,
+  );
+  assert.equal(
+    unchangedReadyOwnerCommands({
+      accepted: { browser, ready },
       current: {
         browser: browser.replace('run: npm run test:ui:smoke', 'run: echo fake-pass'),
         ready,
@@ -328,37 +378,40 @@ test('owner execution command changes invalidate a previous Ready proof', async 
   );
   assert.equal(
     unchangedReadyOwnerCommands({
-      accepted,
+      accepted: { browser, ready },
       current: {
         browser,
-        ready: ready.replace(
-          'uses: ./.github/workflows/ui-v2-main-mask.yml',
-          'uses: ./fake.yml',
-        ),
+        ready: ready.replace('uses: ./.github/workflows/ui-v2-main-mask.yml', 'uses: ./fake.yml'),
       },
       selected,
     }),
     false,
   );
+  // Adding read-only Actions scope for the evidence probe does not alter the
+  // tests executed by the reusable Browser owner.
+  const beforePermission = ready.replace('      actions: read\n', '');
   assert.equal(
     unchangedReadyOwnerCommands({
-      accepted: { browser, ready: ready.replace('      actions: read\n', '') },
-      current: accepted,
+      accepted: { browser, ready: beforePermission },
+      current: { browser, ready },
       selected,
     }),
     true,
   );
 });
 
-test('Ready workflow connects proof routing to the fail-closed verdict', () => {
+test('Ready workflow wires all owner reuse outputs before the verdict without bypassing failures', () => {
   const ready = readFileSync(
     new URL('../../.github/workflows/ready-impact.yml', import.meta.url),
     'utf8',
   );
-  assert.match(ready, /node scripts\/ci-three-evidence\.mjs --ready/);
+  assert.match(ready, /name: Reuse already passed source-identical Ready owner gates/);
+  assert.match(ready, /run: node scripts\/ci-three-evidence\.mjs --ready/);
   for (const key of ['browser', 'main_mask', 'recipe', 'klayout']) {
-    assert.ok(ready.includes('steps.reuse.outputs.' + key + ' || steps.plan.outputs.' + key));
+    assert.ok(ready.includes(`steps.reuse.outputs.${key} || steps.plan.outputs.${key}`));
   }
   assert.ok(ready.includes('steps.reuse.outputs.history || steps.plan.outputs.history_required'));
+  assert.ok(ready.includes('actions: read'));
   assert.match(ready, /needs\.impact\.result/);
+  assert.ok(ready.includes('test "${!result}" = success'));
 });
