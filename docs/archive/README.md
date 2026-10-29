@@ -17,6 +17,17 @@ Draft/merge history. They are not current product contracts.
 For current contracts see [Workstation](../ui-v2/WORKSTATION_CONTRACT.md)
 and [Architecture](../ARCHITECTURE.md).
 
+## Scientific implementations and measurements reclassified after business review
+
+These records have finished their original merge/measurement purpose. Their
+scientific assumptions, source SHAs and numbers remain available, but their
+old instructions and observed runtimes must not be interpreted as the latest
+product contract or performance promise.
+
+- [Lift-off v1 original implementation and acceptance](science/LIFTOFF_V1_2026-10-09.md) — merged PR #167. The current ideal geometric support definition lives in [Process Geometry Kernel v2](../science/PROCESS_GEOMETRY_KERNEL_V2.md).
+- [Both-face bundled-example consolidation](examples/EXAMPLE_BOTH_FACE_CONSOLIDATION_2026-10-13.md) — merged PR #194; original Photodetector/PERC/Tandem migration and face-specific surface assumptions. The present Kernel contract is [Process Both-face](../science/PROCESS_BOTH_FACE_2026-10-11.md).
+- [TiO₂ full-array loading measurement](examples/TIO2_METALENS_PERFORMANCE_2026-10-10.md) — controlled Linux/Chromium measurements on the recorded 2026-10-10 SHA, not a cross-device latency target. The current [Metalens reconstruction source](../examples/TIO2_METALENS_RECONSTRUCTION_2026-10-09.md) retains the author's versus illustrative-grid boundaries.
+
 ## Completed implementation and renderer evidence — 2026-10-29 classification
 
 These records document merged work or a prior reviewed revision. They are not
@@ -87,7 +98,7 @@ The following are previously committed, revision-specific records preserved in f
 - [Example storage optimization — 2026-10-06](EXAMPLE_STORAGE_OPTIMIZATION_2026-10-06.md)
 - [Native Conformal follow-up - 2026-10-06](NATIVE_CONFORMAL_FOLLOWUP_2026-10-06.md)
 - [Native three-tier Fig3 Welcome example - 2026-10-06](NATIVE_FIG3_EXAMPLE_2026-10-06.md)
-- [Photodetector production example · Process Geometry Kernel rebuild (2026-10-08)](../examples/PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md)
+- [Photodetector reconstruction source and scientific assumptions (2026-10-08)](../examples/PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md)
 - [Photodetector border and 3D Z follow-up — 2026-10-05](PHOTODETECTOR_RENDER_FOLLOWUP_2026-10-05.md)
 
 ### Project storage, loading and presentation

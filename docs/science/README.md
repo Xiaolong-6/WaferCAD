@@ -26,7 +26,7 @@ process kinetics or predictive TCAD.
 ## Dated research and implementation evidence
 
 - [Isotropic release oracle and historical 8-/72-band work](ISOTROPIC_RELEASE_ORACLE_2026-10-16.md) — original proofs, experiments, revision-scoped M07 screenshots; the currently bundled Continuous M08 is described separately above.
-- [Lift-off v1 implementation record](LIFTOFF_V1_2026-10-09.md) — original 2026-10-09 regression evidence, not a replacement for current tests.
+- [Lift-off v1 implementation and acceptance](../archive/science/LIFTOFF_V1_2026-10-09.md) — historical PR #167 evidence; current ideal support semantics belong to [Kernel v2](PROCESS_GEOMETRY_KERNEL_V2.md).
 
 See [Documentation map](../README.md) for interchange,
 [Renderer and Section](../renderer/RENDERER_CONTRACT.md) for

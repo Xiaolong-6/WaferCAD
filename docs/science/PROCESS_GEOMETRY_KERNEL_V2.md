@@ -75,6 +75,22 @@ Equal-height computational partitions are neither type and cannot generate Confo
 
 The model layer receives those wall targets and performs the actual stack mutation.
 
+### Lift-off: ideal geometric support, not a solvent model
+
+Lift-off removes the selected sacrificial material interval and the outward
+material that is **directly supported by it** in each affected XY column.
+Material deposited into an open resist window may remain when it has a
+separate underlying support. Ambiguous continuous bridges across the resist
+boundary fail rather than assuming a physical film fracture. Partial-area
+operations must account for supporting material outside the ROI; an apparent
+local cut is not proof that the film is detachable.
+
+This operation is neither resist development nor a dissolution, adhesion,
+fracture or film-transport prediction. It produces geometric material changes;
+use the [Recipe reference](../wiki/Recipe-Code-Tutorial.md) for current syntax.
+The original implementation and revision-specific acceptance are preserved
+in the [Lift-off archive record](../archive/science/LIFTOFF_V1_2026-10-09.md).
+
 ### Owned material surfaces
 
 `ownedMaterialSurfacesFromTopology()` is the single source for 3D physical ownership. It splits caps by surface appearance, chooses one deterministic owner for coincident horizontal material interfaces, reconciles collinear partial-height sidewalls, and derives physical border lines. `renderer-geometry.js` is intentionally only an adapter to this result.

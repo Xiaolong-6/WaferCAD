@@ -41,12 +41,18 @@ The same syntax is available for directional deposition, Extend, directional/iso
 
 ## 2026-10-13: Face-specific texture profiles in Both Etch
 
-The bundled Perovskite–Si Tandem now uses one atomic Both Etch for symmetric substrate depth while preserving front/back pyramid appearance seeds and profile identities. In declarative Recipe Code, a directional `etch({ face: 'both' })` can specify `faceSurfaces: { front, back }` with one rough/pyramid appearance profile per face. Both model passes still share the same physical etch depth, area and target material. Individual `seed` and `profileId` values are preserved during Recipe serialization, Process worker dispatch, History replay and migration backfill. The face-specific surface is **display-only morphology**, not a physical random etch solver. See [example consolidation](../examples/EXAMPLE_BOTH_FACE_CONSOLIDATION_2026-10-13.md).
+The bundled Perovskite–Si Tandem now uses one atomic Both Etch for symmetric substrate depth while preserving front/back pyramid appearance seeds and profile identities. In declarative Recipe Code, a directional `etch({ face: 'both' })` can specify `faceSurfaces: { front, back }` with one rough/pyramid appearance profile per face. Both model passes still share the same physical etch depth, area and target material. Individual `seed` and `profileId` values are preserved during Recipe serialization, Process worker dispatch, History replay and migration backfill. The face-specific surface is **display-only morphology**, not a physical random etch solver. See [merged example consolidation evidence](../archive/examples/EXAMPLE_BOTH_FACE_CONSOLIDATION_2026-10-13.md).
 
 ## Regression / reproducibility
 
 Owned Node coverage: `site/tests/process-both-face.test.mjs` (two distinct linked material IDs, Mask footprint, paired Extend/Etch, independent single-face Etch, atomic rejection, Transfer, annotations, canonical arrays, Recipe round trip, unsupported methods) plus History replay ID-mapping regression. The v2 Manual selector has an additional browser owner, `scripts/v2/check-manual-both.mjs`; its dated [acceptance report](../archive/ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md) describes the tested commit and remaining CI gates.
 
-Repository: `Xiaolong-6/WaferCAD`. Branch: `feat/kernel-process-face-both-20261011` based on main, without merge. Implemented using the GitHub-connected repository interface. **Local `npm ci`, `npm run check`, and browser tests were not executed in this environment** because a checked-out workspace was unavailable. PR CI provides executable evidence; preserve Draft until green. PR CI is the initial executable verification and must be reviewed before merge; do not claim a product pass from source inspection alone.
+**Historical delivery checkpoint (2026-10-11):** The original Kernel branch
+`feat/kernel-process-face-both-20261011` had not yet merged at that time and
+that environment did not run local npm or browser checks. This paragraph
+preserves the initial evidence limit; it is **not** a current Draft/CI
+instruction. Later v2 Manual Both integration is recorded in the
+[archived acceptance note](../archive/ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md).
+Current release approval is owned by [testing](../testing.md) and [CI](../CI.md).
 
 Original delivery scope was Kernel, Process Recipe plumbing, regression tests, and this document. **Update (2026-10-12):** the new Workstation has since integrated Manual Both without changing the global inspection-face contract; its acceptance is recorded separately, and this earlier Kernel report remains revision-specific.
