@@ -18,7 +18,7 @@ is the cross-module map.
 
 - [PR #250 renderer audit](../archive/renderer/PR250_RENDERER_AUDIT_2026-10-15.md).
 - [PR #250 acceptance and GPU diagnostics](../archive/renderer/PR250_RENDERER_ACCEPTANCE_2026-10-15.md).
-- [Foreground-first PR #186 checkpoint](FOREGROUND_RENDERING_P0_2026-10-12.md) — merged on 2026-10-13; the historic pending gates are **not current merge instructions**. Its open interaction/LOD proposals are tracked in the [transparency roadmap](RENDERER_TRANSPARENCY_ROADMAP.md).
+- [Foreground-first PR #186 checkpoint](FOREGROUND_RENDERING_P0_2026-10-12.md) — merged on 2026-10-13; this file remains discoverable at its old path because the **manual-only historical workflow** still references it. Its Draft instructions are not current merge requirements. Outstanding interaction/LOD work belongs to the [transparency roadmap](RENDERER_TRANSPARENCY_ROADMAP.md).
 - [Rough boundary investigation](../archive/renderer/THREE_ROUGH_BOUNDARY_AUDIT_2026-10-15.md).
 - [Outline/depth investigation](../archive/renderer/THREE_OUTLINE_DEPTH_AUDIT_2026-10-15.md).
 

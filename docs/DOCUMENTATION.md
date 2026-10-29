@@ -24,8 +24,9 @@ revision**. Technical descriptions of a shipped feature live in one
 current owner file, not scattered across merged-PR acceptance records.
 Revision-specific test results, older DOM inventories, authoring
 checkpoints and completed Draft/merge instructions belong in the
-archive. Archive a file only after updating all inbound Markdown and
-script references, preserving its original SHA and measured results;
+archive. Archive a file only after updating all inbound Markdown,
+script and manual-workflow references (including legacy benchmark scripts),
+preserving its original SHA and measured results;
 do not create repository Markdown forwarding stubs.
 
 Current domain owners are

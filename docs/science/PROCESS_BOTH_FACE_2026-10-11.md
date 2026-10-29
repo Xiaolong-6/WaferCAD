@@ -1,8 +1,16 @@
-# Process Face: Both — Kernel contract and handoff (2026-10-11)
+# Process Face: Both — current Kernel contract and historical handoff
 
-## Scope
+## Current product boundary
 
-Adds `face: 'both'` as a single logical Process operation executed by the Kernel in a deterministic order: **Front → Back**. This is a Kernel/Recipe integration feature isolated from the in-progress Workstation UI v2 redesign. The active Main/Mask inspection face and persisted `project.activeFace` remain `front | back`. The current v2 Manual Process Surface selector supports **Front / Back / Both** (integrated in [Manual Both acceptance](../archive/ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md)); **Both must not change the global inspection face to `both`**. The original Kernel work preceded this UI integration.
+**Shipped:** One logical Front → Back operation for supported Manual/Recipe
+modes, two independent material Layer IDs for dual Deposit, atomic failure
+handling and a single History Step. **Not shipped:** Both Lift-off or absolute-Z
+Planarize/CMP. Historical implementation-branch and acceptance instructions
+below describe their original 2026-10-11/12 checkpoints, not today's merge
+requirements. For an end-user explanation, see
+[Process and Recipes](../wiki/Process-and-Recipes.md).
+
+Adds `face: 'both' as a single logical Process operation executed by the Kernel in a deterministic order: **Front → Back**. This is a Kernel/Recipe integration feature isolated from the in-progress Workstation UI v2 redesign. The active Main/Mask inspection face and persisted `project.activeFace` remain `front | back`. The current v2 Manual Process Surface selector supports **Front / Back / Both** (integrated in [Manual Both acceptance](../archive/ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md)); **Both must not change the global inspection face to `both`**. The original Kernel work preceded this UI integration.
 
 A current Recipe code example:
 
