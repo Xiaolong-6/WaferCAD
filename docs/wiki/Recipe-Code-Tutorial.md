@@ -61,7 +61,7 @@ The parser deliberately rejects variables, expressions, loops, arbitrary functio
 | `mask`                | Captured File/Draw context     | Required for masked or inverted steps                                           |
 | `thickness` / `depth` | Positive physical length       | How much to deposit, extend, etch, or annotate                                  |
 
-A **Mask ROI** clips masked Process operations; a **Main ROI** controls inspection/export view and does not limit Apply. See [Masks and ROI](Masks-and-ROI).
+An active **Mask ROI** clips the final Process area for **Selected mask**, **Invert mask**, and **Whole face**. Clear it before intending a genuinely full-face operation. A **Main/3D ROI** limits 3D inspection and applicable export, not Apply. See [Masks and ROI](Masks-and-ROI).
 
 ## 3. Command reference
 
@@ -106,7 +106,7 @@ _This is the **Conformal Deposit** guide illustration, not the result of running
 
 Directional covers exposed horizontal surfaces. Conformal also creates ideal geometric sidewall bands. For transfer, `placement: "follow"` follows local exposed planes; `"flat"` places a global bridge plane. Neither models deposition kinetics or mechanical sag.
 
-**Both-face Recipe support:** For supported Deposit, Extend, directional/isotropic Etch, Transfer, Implant and Electrical operations, `face: 'both'` applies **Front then Back** as one atomic logical Step. A successful Both Deposit produces **two independent material Layer IDs** (one per face), not a shared layer. Both Lift-off and Both Planarize/CMP are intentionally unsupported. The v2 Manual **Surface** selector also offers **Both**, and this same `face: 'both'` value is available in Recipe Code. The Legacy interface is unchanged. Example:
+**Both-face Recipe support:** For supported Deposit, Extend, directional/isotropic Etch, Transfer, Implant and Electrical operations, `face: 'both'` applies **Front then Back** as one atomic logical Step. A successful Both Deposit produces **two independent material Layer IDs** (one per face), not a shared layer. Both Lift-off and Both Planarize/CMP are intentionally unsupported. The v2 Manual **Surface** selector also offers **Both**, and this same `face: 'both'` value is available in Recipe Code. The retired Legacy editor is not part of the current Workstation. Example:
 
 ```javascript
 deposit({

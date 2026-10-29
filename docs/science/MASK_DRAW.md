@@ -12,7 +12,7 @@ Draw mode supports Rectangle, Circle, Polygon, Ring, and Ring Sector primitives.
 
 ## Process selection
 
-The active File/Draw source feeds Selected mask and Invert mask through the shared selection-geometry path. A separate **Mask ROI** can be Rect or Circle. When active, the Mask ROI clips the selected mask geometry used by Process Apply.
+The active File/Draw source feeds **Selected mask** and **Invert mask** through the shared selection-geometry path. **Whole face** does not use a Mask pattern. A separate **Mask ROI** can be Rect or Circle; when active, it intersects the final Process area for **all three Area choices**, including Whole face. Clear the Mask ROI before a genuinely full-face operation. The ROI limits the operation domain, not the imported source polygons.
 
 Mask ROI is independent from Main ROI and Section A–B. It is project/view working state and does not rewrite canonical material geometry.
 

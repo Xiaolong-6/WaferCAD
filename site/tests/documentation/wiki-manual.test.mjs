@@ -41,6 +41,36 @@ test('Wiki examples cover exactly the published Welcome project families and the
   }
 });
 
+test('published example details follow catalog order and reflect saved Microdisk states', async () => {
+  const page = await manual('Examples-and-Modeling-Limits');
+  const headings = [...page.matchAll(/^## (\d+)\. (.+)$/gm)].map((match) => ({
+    ordinal: Number(match[1]),
+    title: match[2],
+  }));
+  assert.deepEqual(
+    headings,
+    BUNDLED_EXAMPLES.map((example, index) => ({ ordinal: index + 1, title: example.title })),
+    'all published examples need discoverable, ordered, titled detail sections',
+  );
+
+  const microdisk = JSON.parse(
+    await readFile(
+      new URL('../../examples/suspended-silica-microdisks-continuous.wafercad', import.meta.url),
+      'utf8',
+    ),
+  );
+  const row = page.split('\n').find((line) => line.includes('example=suspended-silica-microdisk'));
+  assert.ok(row, 'the Microdisk Welcome entry must exist');
+  assert.ok(
+    row.includes(`${microdisk.processRecipe.steps.length} Recipe operations`),
+    'Microdisk Recipe length must match the published project',
+  );
+  assert.ok(
+    row.includes(`${microdisk.snapshots.length} restorable states`),
+    'Microdisk History count must match the published project',
+  );
+});
+
 test('current product documentation does not hard-code Welcome catalog size', async () => {
   const currentDocs = [
     '../../../README.md',
@@ -158,9 +188,17 @@ test('the novice path is discoverable and names the current UI controls', async 
 test('Mask ROI documentation agrees with Whole face worker clipping', async () => {
   const masks = await manual('Masks-and-ROI');
   const gettingStarted = await manual('Getting-Started');
+  const recipe = await manual('Recipe-Code-Tutorial');
+  const maskContract = await readFile(
+    new URL('../../../docs/science/MASK_DRAW.md', import.meta.url),
+    'utf8',
+  );
   const worker = await readFile(new URL('../../process-worker.js', import.meta.url), 'utf8');
   assert.match(masks, /even \*\*Whole face\*\*/);
   assert.match(gettingStarted, /including Whole face/);
+  assert.match(recipe, /Mask ROI[\s\S]*?Whole face/);
+  assert.match(maskContract, /Mask ROI[\s\S]*?all three Area choices[\s\S]*?Whole face/);
+  assert.doesNotMatch(recipe, /Legacy interface is unchanged/);
   assert.match(worker, /return limiter \? vectorApi\.intersection\(area, limiter\) : area/);
   assert.match(
     worker,

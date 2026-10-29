@@ -16,9 +16,16 @@ describe the current shipped project geometry. In particular,
 the full Microdisk is Continuous-release M08, not the
 historical eight- or 72-band experimental state. The
 36 µm reach is an assumption, and the cited SEM is from
-a similar disk. The ninth family is T-CMOS; the tenth is the suspended TFLN microring array. Both retain explicit engineering Mask/geometry assumptions and open paper-figure correspondence.
+a similar disk. The T-CMOS and suspended TFLN projects retain explicit engineering Mask/geometry assumptions; the published HBAR and Transmon projects preserve source-GDS provenance but do not establish physical process calibration or paper-figure acceptance.
 
-- [TFLN ring reconstruction source](../../examples/projects/tfln-10x8-recovery/README.md) — source Mask, 80-site process model and reproducibility checks; author GDS unavailable.
+- [TFLN ring reconstruction source](../../examples/projects/tfln-10x8-recovery/README.md) — 80-site reconstructed Mask and project; original author GDS unavailable.
+- [HBAR original-GDS reconstruction](../../examples/projects/hbar-blesin-2024-candidate/README.md) — officially published project with 11 saved operations; layer roles and release geometry are provisional.
+- [Transmon Q2 original-GDS geometry](../../examples/projects/transmon-nature-communications-2025-candidate/README.md) — officially published research geometry with one saved checkpoint; the physical bilayer resist/development and Josephson junction flow are not replayable in the standard editor (tracked in [#382](https://github.com/Xiaolong-6/WaferCAD/issues/382)).
+
+These current examples differ in replay status. **Published** means the project is
+accessible from Welcome, not that its full fabrication process, paper-figure
+correspondence, electrical behavior or fresh end-to-end Recipe replay is certified.
+See the project-specific evidence and the [figure evidence register](../evidence/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md).
 
 ## Research reconstruction work and open experiments
 
@@ -37,7 +44,3 @@ Historical screenshot and regression records identify their own
 project SHA, browser environment and authoring assumptions. They
 cannot be reused to certify a different saved asset or promote an
 inferred GDS layout to original manufacturer evidence.
-
-- [HBAR local source-GDS reconstruction](../../examples/projects/hbar-blesin-2024-candidate/README.md) — promoted Welcome Example preserving the 11-step editable HBAR recipe, with explicitly provisional layer roles, local Si thickness and illustrative release geometry.
-
-- [Transmon Q2 author-GDS geometry](../../examples/projects/transmon-nature-communications-2025-candidate/README.md) — native Nb/Si and three Al doses, separate from unfinished generic physical MMA/PMMA/lift-off (#382).
