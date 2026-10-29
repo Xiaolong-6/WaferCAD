@@ -11,12 +11,13 @@ const SAFE = [
   /^\.github\/workflows\/quality\.yml$/,
   /^scripts\/incremental-quality\.mjs$/,
   /^scripts\/ci-test-plan\.mjs$/,
+  /^scripts\/ci-three-evidence\.mjs$/,
   /^scripts\/v2\/check-three-view\.mjs$/,
   /^\.github\/workflows\/daily-full\.yml$/,
   /^\.github\/workflows\/browser-regression\.yml$/,
   /^\.github\/workflows\/ready-impact\.yml$/,
   /^site\/ui-v2\/(?:section-legend|section-view)\.js$/,
-  /^site\/tests\/(?:section-legend-random|ci-trigger-policy|ci-development-gates|ci-test-plan|incremental-quality)\.test\.mjs$/,
+  /^site\/tests\/(?:section-legend-random|ci-trigger-policy|ci-development-gates|ci-test-plan|incremental-quality|ci-three-evidence)\.test\.mjs$/,
 ];
 const SOURCE_TYPES = /\.(?:js|mjs)$/;
 const FORMAT_TYPES = /\.(?:js|mjs|md)$/;
@@ -42,6 +43,7 @@ export function incrementalPlan(changes) {
     (path) =>
       path === 'scripts/incremental-quality.mjs' ||
       path === 'scripts/ci-test-plan.mjs' ||
+      path === 'scripts/ci-three-evidence.mjs' ||
       path === '.github/workflows/quality.yml',
   );
   const ui = files.some((path) => path.startsWith('site/ui-v2/'));
@@ -62,6 +64,7 @@ export function incrementalPlan(changes) {
     for (const test of [
       'site/tests/incremental-quality.test.mjs',
       'site/tests/ci-test-plan.test.mjs',
+      'site/tests/ci-three-evidence.test.mjs',
       'site/tests/ci-development-gates.test.mjs',
       'site/tests/ci-workflow-architecture.test.mjs',
       'site/tests/local-verification.test.mjs',

@@ -79,6 +79,18 @@ with CI contracts rather than silently claiming previous proof covers modified
 CI code. The output of the GitHub Quality job is tied to the exact PR merge SHA;
 no developer-supplied incremental transcript is trusted.
 
+**Cross-commit 3D browser reuse:** the Ready Browser planner can reuse an actual
+successful native-3D/Workstation job from a prior completed Ready run of the
+**same PR**, only when the base main SHA, branch, job result, Git ancestry and
+cumulative changed-file inventory are independently verified. The only allowed
+intervening changes are a closed set of CI-routing code/contracts and this CI
+documentation. Product source, test harnesses, fixtures, dependencies, scientific
+code and unknown files are forbidden. The previous accepted 3D job must exist
+and have passed; a generic green PR check is insufficient. The proof is retrieved
+read-only from GitHub Actions using the workflow token, not from developer input.
+On API/provenance/ancestry failure the real native Chromium 3D test runs.
+Daily/full and Pages paths do not reuse this PR-only browser proof.
+
 **Ready browser owner de-duplication:** the exact standalone
 `scripts/v2/check-three-view.mjs` acceptance script uses a dedicated `three`
 Browser matrix entry, and the Section palette's narrowly owned visual change
