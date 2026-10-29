@@ -156,9 +156,18 @@
             {
               "cutId": "power-via-both-tiers",
               "probeId": "second-power-via",
-              "a": [12, -5.3],
-              "b": [20, -5.3],
-              "xy": [16, 5.3],
+              "a": [
+                12,
+                -5.3
+              ],
+              "b": [
+                20,
+                -5.3
+              ],
+              "xy": [
+                16,
+                5.3
+              ],
               "offSectionDistanceUm": 10.6
             }
           ],
@@ -167,16 +176,34 @@
             {
               "cutId": "power-via-both-tiers",
               "probeId": "first-power-via",
-              "a": [12, -5.3],
-              "b": [20, -5.3],
-              "xy": [16, -5.3]
+              "a": [
+                12,
+                -5.3
+              ],
+              "b": [
+                20,
+                -5.3
+              ],
+              "xy": [
+                16,
+                -5.3
+              ]
             },
             {
               "cutId": "data-via-transfer",
               "probeId": "data-via-contact",
-              "a": [12, 0],
-              "b": [20, 0],
-              "xy": [16, 0]
+              "a": [
+                12,
+                0
+              ],
+              "b": [
+                20,
+                0
+              ],
+              "xy": [
+                16,
+                0
+              ]
             }
           ]
         },
@@ -194,16 +221,34 @@
           "cuts": [
             {
               "id": "first-power-via",
-              "a": [12, -5.3],
-              "b": [20, -5.3],
-              "probeXY": [16, -5.3],
+              "a": [
+                12,
+                -5.3
+              ],
+              "b": [
+                20,
+                -5.3
+              ],
+              "probeXY": [
+                16,
+                -5.3
+              ],
               "image": "first-power-via-native-v2-section.png"
             },
             {
               "id": "second-power-via",
-              "a": [12, 5.3],
-              "b": [20, 5.3],
-              "probeXY": [16, 5.3],
+              "a": [
+                12,
+                5.3
+              ],
+              "b": [
+                20,
+                5.3
+              ],
+              "probeXY": [
+                16,
+                5.3
+              ],
               "image": "second-power-via-native-v2-section.png"
             }
           ]
@@ -241,9 +286,18 @@
             {
               "cutId": "beol-four-metal-levels",
               "probeId": "right-four-levels",
-              "a": [-10, -4],
-              "b": [10, -4],
-              "xy": [7, 4],
+              "a": [
+                -10,
+                -4
+              ],
+              "b": [
+                10,
+                -4
+              ],
+              "xy": [
+                7,
+                4
+              ],
               "offSectionDistanceUm": 8
             }
           ],
@@ -252,23 +306,50 @@
             {
               "cutId": "beol-four-metal-levels",
               "probeId": "left-four-levels",
-              "a": [-10, -4],
-              "b": [10, -4],
-              "xy": [-7, -4]
+              "a": [
+                -10,
+                -4
+              ],
+              "b": [
+                10,
+                -4
+              ],
+              "xy": [
+                -7,
+                -4
+              ]
             },
             {
               "cutId": "mos2-gate-and-alox",
               "probeId": "enhancement-gate",
-              "a": [-10, 4],
-              "b": [10, 4],
-              "xy": [7, 4]
+              "a": [
+                -10,
+                4
+              ],
+              "b": [
+                10,
+                4
+              ],
+              "xy": [
+                7,
+                4
+              ]
             },
             {
               "cutId": "mos2-gate-and-alox",
               "probeId": "depletion-surrogate",
-              "a": [-10, 4],
-              "b": [10, 4],
-              "xy": [-7, 4]
+              "a": [
+                -10,
+                4
+              ],
+              "b": [
+                10,
+                4
+              ],
+              "xy": [
+                -7,
+                4
+              ]
             }
           ]
         }
@@ -332,9 +413,18 @@
             {
               "cutId": "two-nanopillar-diameters",
               "probeId": "substrate-control",
-              "a": [-2.3, 1.1],
-              "b": [2.3, 1.1],
-              "xy": [0, 0],
+              "a": [
+                -2.3,
+                1.1
+              ],
+              "b": [
+                2.3,
+                1.1
+              ],
+              "xy": [
+                0,
+                0
+              ],
               "offSectionDistanceUm": 1.1
             }
           ],
@@ -343,16 +433,34 @@
             {
               "cutId": "two-nanopillar-diameters",
               "probeId": "negative-x-annular-pillar",
-              "a": [-2.3, 1.1],
-              "b": [2.3, 1.1],
-              "xy": [-1.2, 1.1]
+              "a": [
+                -2.3,
+                1.1
+              ],
+              "b": [
+                2.3,
+                1.1
+              ],
+              "xy": [
+                -1.2,
+                1.1
+              ]
             },
             {
               "cutId": "two-nanopillar-diameters",
               "probeId": "positive-x-pillar",
-              "a": [-2.3, 1.1],
-              "b": [2.3, 1.1],
-              "xy": [1.1, 1.1]
+              "a": [
+                -2.3,
+                1.1
+              ],
+              "b": [
+                2.3,
+                1.1
+              ],
+              "xy": [
+                1.1,
+                1.1
+              ]
             }
           ]
         }
@@ -388,6 +496,22 @@
       },
       "browserEvidenceURL": null,
       "evidenceType": "figure cut still missing: device-matched original paper Fig. 2 measured XY and A-B overlay; native 3D/Section proof is model-only",
+      "captureEvidence": null
+    },
+    {
+      "id": "hbar-microwave-optical-transducer",
+      "projectPath": "./examples/hbar-microwave-optical-transducer.wafercad",
+      "sourceURL": "https://doi.org/10.1038/s41467-024-49467-8",
+      "paperPanel": "Source-device transducer geometry and released HBAR cavity; local 130 × 150 µm author-GDS ROI",
+      "classification": "assumed",
+      "claim": "The local GDS mask polygons are source-preserved, but roles of layers 8/9/11, 36 µm local silicon surrogate, and 19/24 µm illustrative elliptical cavity reach have not been calibrated against author process geometry; no acoustic or optical FEM.",
+      "acceptance": {
+        "status": "open-paper-match",
+        "calibratedScale": false,
+        "quantitativeOverlay": false
+      },
+      "browserEvidenceURL": null,
+      "evidenceType": "figure cut still missing: exact published-panel overlay; author-source native four-view/History/Recovery regression is independent geometry acceptance",
       "captureEvidence": null
     }
   ]

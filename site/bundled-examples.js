@@ -314,6 +314,35 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     ],
     tags: ['Literature', 'TFLN', 'Optomechanics', 'Mask-driven', 'Array', 'Engineering release'],
   },
+  {
+    id: 'hbar-microwave-optical-transducer',
+    title: 'HBAR microwave–optical transducer',
+    figure: 'Blésin et al. · author GDS local ROI',
+    kind: 'project',
+    level: 'Research reconstruction · source GDS',
+    variants: ['11-Step physical Recipe · 6 inspection bookmarks'],
+    path: './examples/hbar-microwave-optical-transducer.wafercad',
+    filename: 'hbar-microwave-optical-transducer.wafercad',
+    previewProject: {
+      path: './examples/previews/hbar-microwave-optical-transducer.wafercad',
+      filename: 'hbar-microwave-optical-transducer-preview.wafercad',
+    },
+    preview: {
+      path: './examples/thumbnails/hbar-microwave-optical-transducer.svg',
+      view: 'three',
+      alt: 'Illustrative HBAR layer-stack schematic only; open the project for actual 3D geometry',
+    },
+    summary:
+      'Author-GDS 130 × 150 µm local transducer ROI (92 source polygons), 11 Recipe Steps and six inspection bookmarks. Provisional GDS layer roles, a 36 µm local Si surrogate and assumed cavity undercut are documented. No optical/acoustic FEM or measured cavity match is claimed.',
+    sources: [
+      {
+        citation: 'R. Blésin et al., Nature Communications 15, 6096 (2024).',
+        doi: '10.1038/s41467-024-49467-8',
+        href: 'https://doi.org/10.1038/s41467-024-49467-8',
+      },
+    ],
+    tags: ['Literature', 'Source GDS', 'HBAR', 'Transducer', 'Continuous release', 'Recipe'],
+  },
 ]);
 
 export function bundledExampleById(id) {

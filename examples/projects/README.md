@@ -33,6 +33,8 @@ status of paper-figure fidelity remains governed separately by the
 Source files are kept where the reproducible build and targeted scientific
 tests expect them. No duplicate runtime resource is introduced here.
 
+- [HBAR author-GDS research reconstruction](hbar-blesin-2024-candidate/README.md) → `site/examples/hbar-microwave-optical-transducer.wafercad` (source-GDS ROI; provisional layer roles and release reach).
+
 ## Production bundled example families
 
 The Welcome page is driven by `site/bundled-examples.js`. Public, editable bundled examples live under `site/examples/` and should be grouped by **device/application family**, not one card per paper.

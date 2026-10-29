@@ -1,6 +1,6 @@
 # Blésin et al. (2024): author-GDS HBAR transducer reconstruction
 
-**Candidate only — do not publish in Welcome before full scientific/visual acceptance.**
+**Promoted as a bounded research Example** in the Welcome catalog. The source folder remains the canonical research provenance and test fixture. No calibrated paper-figure correspondence or full manufacturing physics is claimed; Welcome visual acceptance must be recorded separately.
 
 - Paper: Terence Blésin et al., _Nature Communications_ **15**, 6096 (2024), [doi:10.1038/s41467-024-49467-8](https://doi.org/10.1038/s41467-024-49467-8).
 - Original authors' data: [Zenodo 10965620](https://doi.org/10.5281/zenodo.10965620), downloaded dataset's `ChipLayout/D76_33_F2_Chip2.gds`.

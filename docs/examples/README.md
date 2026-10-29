@@ -1,10 +1,10 @@
 # Literature reconstructions and provenance
 
-## Current published catalog (ten families)
+## Current published catalog (eleven families)
 
 `site/bundled-examples.js` and the
 [figure evidence matrix](../evidence/LITERATURE_FIGURE_MATRIX_2026-10-16.json)
-are the versioned source of truth for **ten** promoted Welcome
+are the versioned source of truth for **eleven** promoted Welcome
 projects and their publication citations. The
 [research figure evidence register](../evidence/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md)
 records source panels, model assumptions and explicit
@@ -37,3 +37,5 @@ Historical screenshot and regression records identify their own
 project SHA, browser environment and authoring assumptions. They
 cannot be reused to certify a different saved asset or promote an
 inferred GDS layout to original manufacturer evidence.
+
+- [HBAR local source-GDS reconstruction](../../examples/projects/hbar-blesin-2024-candidate/README.md) — promoted Welcome Example preserving the 11-step editable HBAR recipe, with explicitly provisional layer roles, local Si thickness and illustrative release geometry.
