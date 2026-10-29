@@ -53,6 +53,28 @@ uses A–B; a 3D ROI does not define that line. The 3D Display settings
 presentation-only; see the
 [Renderer contract](../renderer/RENDERER_CONTRACT.md).
 
+## Contextual help without competing controls
+
+The current Workstation uses one noninteractive tooltip service:
+`site/ui-v2/tooltip-catalog.js` owns stable English help keys and
+state-dependent descriptions, and `tooltip-controller.js` owns a single
+document-level overlay. Existing actions opt in through `data-help`;
+do **not** add duplicate help buttons, decorative question marks or extra
+focusable controls. Dynamic `data-help-detail` is rendered as plain text,
+never injected HTML or untrusted imported project content.
+
+Pointer hover (after a brief delay) and keyboard focus reveal help.
+Pointerdown, Escape, scrolling, view or shell updates dismiss it;
+touch is not treated as hover. Any `aria-describedby` integration must
+preserve unrelated description IDs. Tooltips cannot mutate the Process model,
+receive pointer events or replace the in-app illustrated Process Guide.
+Their content describes the *current* operation, including face, area,
+material/depth and visual-only 3D settings.
+
+The original rollout, coverage priorities and 2026-10-13 browser checklist
+are [archived implementation evidence](../archive/ui-v2/TOOLTIP_ARCHITECTURE_2026-10-13.md);
+they are **not** current implementation/merge instructions.
+
 ## Process, History and transactions
 
 `site/controllers/process-panel-controller.js` assembles Manual

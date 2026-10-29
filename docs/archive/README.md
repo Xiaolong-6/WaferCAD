@@ -30,6 +30,8 @@ product contract or performance promise.
 
 - [Renderer capture/resource lifetime backport](renderer/RENDERER_LIFECYCLE_CORRECTNESS_2026-10-12.md) — revision-scoped backport and MSAA comparison; current capture and disposal rules live in [Renderer/Section](../renderer/RENDERER_CONTRACT.md).
 
+- [Tooltip rollout and original interaction acceptance](ui-v2/TOOLTIP_ARCHITECTURE_2026-10-13.md) — implementation-branch record. Current single-overlay/keyboard semantics are maintained in [Workstation](../ui-v2/WORKSTATION_CONTRACT.md).
+
 ## Completed implementation and renderer evidence — 2026-10-29 classification
 
 These records document merged work or a prior reviewed revision. They are not
