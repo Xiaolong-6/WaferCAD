@@ -1,10 +1,10 @@
 # Literature reconstructions and provenance
 
-## Current published catalog (eleven families)
+## Current published catalog (twelve families)
 
 `site/bundled-examples.js` and the
 [figure evidence matrix](../evidence/LITERATURE_FIGURE_MATRIX_2026-10-16.json)
-are the versioned source of truth for **eleven** promoted Welcome
+are the versioned source of truth for **twelve** promoted Welcome
 projects and their publication citations. The
 [research figure evidence register](../evidence/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md)
 records source panels, model assumptions and explicit
@@ -39,3 +39,5 @@ cannot be reused to certify a different saved asset or promote an
 inferred GDS layout to original manufacturer evidence.
 
 - [HBAR local source-GDS reconstruction](../../examples/projects/hbar-blesin-2024-candidate/README.md) — promoted Welcome Example preserving the 11-step editable HBAR recipe, with explicitly provisional layer roles, local Si thickness and illustrative release geometry.
+
+- [Transmon Q2 author-GDS geometry](../../examples/projects/transmon-nature-communications-2025-candidate/README.md) — native Nb/Si and three Al doses, separate from unfinished generic physical MMA/PMMA/lift-off (#382).

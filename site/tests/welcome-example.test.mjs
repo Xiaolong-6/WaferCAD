@@ -14,7 +14,7 @@ const { BUNDLED_EXAMPLES } = await import('../bundled-examples.js');
 const { expandProjectStorage } = await import('../project-io.js');
 const { validateProjectFile } = await import('../project-schema.js');
 
-test('welcome example catalog promotes eleven literature-backed project families', async () => {
+test('welcome example catalog promotes twelve literature-backed project families', async () => {
   assert.deepEqual(
     BUNDLED_EXAMPLES.map((example) => example.id),
     [
@@ -29,6 +29,7 @@ test('welcome example catalog promotes eleven literature-backed project families
       'tcmos-ternary-inverter-130nm',
       'suspended-tfln-microrings-10x8',
       'hbar-microwave-optical-transducer',
+      'transmon-q2-original-gds',
     ],
   );
   const literature = BUNDLED_EXAMPLES[0];
@@ -188,7 +189,11 @@ test('Welcome previews preserve final structure and display while retaining only
     assert.equal(preview.snapshots.length, 0);
     assert.equal(preview.snapshotBranches.nodes.length, 1);
     assert.equal(preview.snapshotBranches.branches.length, 1);
-    assert.ok(original.snapshotBranches.nodes.length > 1, 'complete original must retain History');
+    if (example.id === 'transmon-q2-original-gds') {
+      assert.equal(original.snapshotBranches.nodes.length, 1, 'Q2 geometry import has one canonical checkpoint');
+    } else {
+      assert.ok(original.snapshotBranches.nodes.length > 1, 'complete original must retain History');
+    }
     assert.deepEqual(preview.snapshotBranches.nodes[0].state.model, original.model);
   }
 });

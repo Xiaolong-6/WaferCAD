@@ -513,6 +513,31 @@
       "browserEvidenceURL": null,
       "evidenceType": "figure cut still missing: exact published-panel overlay; author-source native four-view/History/Recovery regression is independent geometry acceptance",
       "captureEvidence": null
+    },
+    {
+      "id": "transmon-q2-original-gds",
+      "projectPath": "./examples/transmon-q2-original-gds.wafercad",
+      "sourceURL": "https://doi.org/10.1038/s41467-025-61126-0",
+      "paperPanel": "Supplementary Fig. S1 Q2 lithographic mask and S2 fabricated junction; native GDS-derived geometry not measured SEM",
+      "classification": "assumed",
+      "claim": "Native Nb/Si and three Al doses with 17 author-GDS EBL mask polygons; exposure-dose layer mapping and 3D MMA/PMMA openings are assumptions; no physical resist relief, AlOx, lift-off or Josephson electrical model.",
+      "acceptance": {
+        "status": "open-paper-match",
+        "calibratedScale": false,
+        "quantitativeOverlay": false
+      },
+      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/40698009481",
+      "evidenceType": "source-GDS native Chromium Section Z Break, not quantitative original-paper figure overlay",
+      "captureEvidence": {
+        "kind": "actual-chromium-project-capture",
+        "runURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/40698009481",
+        "artifactURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/40698009481/artifacts/12820530826",
+        "manifestMember": "report.json",
+        "capturedMembers": [
+          "q2-section-physical-z-break.png"
+        ],
+        "originalPaperOverlay": false
+      }
     }
   ]
 }

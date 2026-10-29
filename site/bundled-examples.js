@@ -343,6 +343,35 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     ],
     tags: ['Literature', 'Source GDS', 'HBAR', 'Transducer', 'Continuous release', 'Recipe'],
   },
+  {
+    id: 'transmon-q2-original-gds',
+    title: 'Superconducting transmon · original-GDS Q2',
+    figure: 'Tuokkola et al. · author Q2 junction GDS',
+    kind: 'project',
+    level: 'Research reconstruction · source GDS',
+    variants: ['Native Nb/Si recess and three fixed-angle Al doses · final geometry only'],
+    path: './examples/transmon-q2-original-gds.wafercad',
+    filename: 'transmon-q2-original-gds.wafercad',
+    previewProject: {
+      path: './examples/previews/transmon-q2-original-gds.wafercad',
+      filename: 'transmon-q2-original-gds-preview.wafercad',
+    },
+    preview: {
+      path: './examples/thumbnails/transmon-q2-original-gds.svg',
+      view: 'three',
+      alt: 'Illustrative Transmon junction schematic, not a WaferCAD renderer screenshot',
+    },
+    summary:
+      'Original-GDS 17-polygon Q2 junction EBL mask, Nb/Si recess and three native fixed-angle Al doses. Saved final-state research geometry, not a replayable lithography Recipe. MMA/PMMA opening geometry and dose mapping are inferred; actual resist development, AlOx tunnel barrier, lift-off and Josephson electrical physics are not simulated (Issue #382).',
+    sources: [
+      {
+        citation: 'M. Tuokkola et al., “Methods to achieve near-millisecond energy relaxation and dephasing times for a superconducting transmon qubit,” Nature Communications (2025).',
+        doi: '10.1038/s41467-025-61126-0',
+        href: 'https://doi.org/10.1038/s41467-025-61126-0',
+      },
+    ],
+    tags: ['Literature', 'Author GDS', 'Transmon', 'Al', 'Direct', 'Research'],
+  },
 ]);
 
 export function bundledExampleById(id) {
