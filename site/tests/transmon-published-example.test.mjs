@@ -6,7 +6,7 @@ import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 await loadGeometryKernel();
 const { readProjectFile } = await import('../project-io.js');
 const { geometryArea } = await import('../model.js');
-const { difference, intersection, unionGeometries } = await import('../vector-geometry.js');
+const { difference, intersection, pointInMulti, unionGeometries } = await import('../vector-geometry.js');
 
 test('published original-GDS Q2 keeps real native Al material owners without claiming electrical physics', async () => {
   const bytes = await readFile(
@@ -58,4 +58,44 @@ test('published original-GDS Q2 keeps real native Al material owners without cla
   );
   const allAl = model.layers.filter((layer) => /^Native Al /.test(layer.name));
   assert.equal(allAl.length, 3, 'Exactly three native Al doses');
+});
+
+test('Q2 inspection shows the real three-Al crossing without changing material ownership', async () => {
+  const readExample = async (suffix) => {
+    const bytes = await readFile(new URL(suffix, import.meta.url));
+    return readProjectFile(new Blob([bytes], { type: 'application/json' }));
+  };
+  const published = await readExample('../examples/transmon-q2-original-gds.wafercad');
+  const preview = await readExample('../examples/previews/transmon-q2-original-gds.wafercad');
+  const crossing = published.model.regions.find((region) => pointInMulti([-5, 0], region.geom));
+  assert.ok(crossing, 'The source-GDS crossing must have a physical material owner');
+  assert.deepEqual(
+    crossing.stack.map(({ layerId }) => layerId),
+    ['base', 'layer-2', 'layer-3', 'layer-4'],
+    'Do not fill an apparent screen-space gap with fabricated Al or a barrier',
+  );
+  assert.deepEqual(
+    crossing.stack.slice(1).map(({ z0, z1 }) => Number((z1 - z0).toFixed(4))),
+    [0.04, 0.03, 0.03],
+    'Retain physical 40/30/30 nm material thicknesses',
+  );
+  const expectedCollapse = { top: 337.3, bottom: -337.3, enabled: true };
+  for (const project of [published, preview]) {
+    assert.deepEqual(project.display.sectionCollapse, expectedCollapse);
+    assert.deepEqual(project.display.threeCamera.target, [-5, 0, 1.55]);
+    assert.ok(
+      project.display.threeCamera.position[2] > project.display.threeCamera.target[2],
+      'Inspect the junction from above, not through the bulk substrate',
+    );
+    for (const state of [
+      project.snapshotBranches.nodes[0].state,
+      project.snapshotBranches.branches[0].headState,
+    ]) {
+      assert.deepEqual(
+        state.display,
+        project.display,
+        'History restoration must retain the saved physical Section/3D inspection',
+      );
+    }
+  }
 });
