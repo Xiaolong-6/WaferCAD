@@ -314,6 +314,67 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     ],
     tags: ['Literature', 'TFLN', 'Optomechanics', 'Mask-driven', 'Array', 'Engineering release'],
   },
+  {
+    id: 'hbar-microwave-optical-transducer',
+    title: 'HBAR microwave–optical transducer',
+    figure: 'Blésin et al. · author GDS local ROI',
+    kind: 'project',
+    level: 'Research reconstruction · source GDS',
+    variants: ['11-Step physical Recipe · 6 inspection bookmarks'],
+    path: './examples/hbar-microwave-optical-transducer.wafercad',
+    filename: 'hbar-microwave-optical-transducer.wafercad',
+    previewProject: {
+      path: './examples/previews/hbar-microwave-optical-transducer.wafercad',
+      filename: 'hbar-microwave-optical-transducer-preview.wafercad',
+    },
+    preview: {
+      path: './examples/thumbnails/hbar-microwave-optical-transducer-three.webp',
+      coverSource: 'full',
+      view: 'three',
+      alt: 'Actual WaferCAD native Three.js render of the HBAR author-GDS local model (software WebGL)',
+    },
+    summary:
+      'Author-GDS 130 × 150 µm local transducer ROI (92 source polygons), 11 Recipe Steps and six inspection bookmarks. Provisional GDS layer roles, a 36 µm local Si surrogate and assumed cavity undercut are documented. No optical/acoustic FEM or measured cavity match is claimed.',
+    sources: [
+      {
+        citation: 'R. Blésin et al., Nature Communications 15, 6096 (2024).',
+        doi: '10.1038/s41467-024-49467-8',
+        href: 'https://doi.org/10.1038/s41467-024-49467-8',
+      },
+    ],
+    tags: ['Literature', 'Source GDS', 'HBAR', 'Transducer', 'Continuous release', 'Recipe'],
+  },
+  {
+    id: 'transmon-q2-original-gds',
+    title: 'Superconducting transmon · original-GDS Q2',
+    figure: 'Tuokkola et al. · author Q2 junction GDS',
+    kind: 'project',
+    level: 'Research reconstruction · source GDS',
+    variants: ['Native Nb/Si recess and three fixed-angle Al doses · final geometry only'],
+    path: './examples/transmon-q2-original-gds.wafercad',
+    filename: 'transmon-q2-original-gds.wafercad',
+    previewProject: {
+      path: './examples/previews/transmon-q2-original-gds.wafercad',
+      filename: 'transmon-q2-original-gds-preview.wafercad',
+    },
+    preview: {
+      path: './examples/thumbnails/transmon-q2-original-gds-section.webp',
+      coverSource: 'full',
+      view: 'section',
+      alt: 'Actual WaferCAD source-GDS Q2 junction Section Z Break (native renderer, not a paper SEM)',
+    },
+    summary:
+      'Original-GDS 17-polygon Q2 junction EBL mask, Nb/Si recess and three native fixed-angle Al doses. Saved final-state research geometry, not a replayable lithography Recipe. MMA/PMMA opening geometry and dose mapping are inferred; actual resist development, AlOx tunnel barrier, lift-off and Josephson electrical physics are not simulated (Issue #382).',
+    sources: [
+      {
+        citation:
+          'M. Tuokkola et al., “Methods to achieve near-millisecond energy relaxation and dephasing times for a superconducting transmon qubit,” Nature Communications (2025).',
+        doi: '10.1038/s41467-025-61126-0',
+        href: 'https://doi.org/10.1038/s41467-025-61126-0',
+      },
+    ],
+    tags: ['Literature', 'Author GDS', 'Transmon', 'Al', 'Direct', 'Research'],
+  },
 ]);
 
 export function bundledExampleById(id) {

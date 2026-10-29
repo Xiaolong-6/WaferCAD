@@ -42,6 +42,27 @@ for (const entry of BUNDLED_EXAMPLES) {
     const branches = project.snapshotBranches?.branches || [];
     assert.ok(nodes.length > 0, 'missing Process History');
     assert.ok(branches.length > 0, 'missing restorable Main/Variants');
+    if (entry.id === 'transmon-q2-original-gds') {
+      // Preserve scientific provenance instead of inventing a replayable
+      // lithography path: physical MMA/PMMA development remains Issue #382.
+      assert.equal(project.processRecipe, undefined, 'Q2 must not claim a fake Recipe');
+      assert.equal(nodes.length, 1, 'Q2 research snapshot is a single checkpoint');
+      assert.equal(branches.length, 1, 'Q2 has only its canonical Main branch');
+      const [node] = nodes;
+      const [branch] = branches;
+      assert.equal(node.operation?.kind, 'record');
+      assert.equal(node.operation?.geometryChanged, false);
+      assert.equal(node.parentId, null);
+      assert.equal(branch.rootNodeId, node.id);
+      assert.equal(branch.headNodeId, node.id);
+      assert.equal(project.layout.elements.length, 17, 'retain original Q2 EBL GDS');
+      assert.equal(project.model.regions.length, 9, 'retain original Q2 material partition');
+      assert.deepEqual(node.state.model, project.model, 'History must retain physical state');
+      assert.deepEqual(branch.headState.model, project.model, 'Main HEAD must retain model');
+      assert.deepEqual(node.state.layout, project.layout, 'History must retain source Mask');
+      assert.deepEqual(branch.headState.layout, project.layout, 'Main HEAD must retain Mask');
+      return;
+    }
     assert.ok(project.processRecipe?.steps?.length > 0, 'missing active Recipe');
 
     for (const branch of branches) {

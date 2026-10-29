@@ -102,6 +102,26 @@
       "bytes": 28898,
       "sourceSha256": "fd93a4120f2c4e7735f3f0f436890b8a6ba4cad2aadaa14a7cbb24ab8056ec2e",
       "sha256": "9581bd65146acd8746432e36968b7a8ac0c99862544a8f59af657411c17f3b80"
+    },
+    {
+      "id": "hbar-microwave-optical-transducer",
+      "path": "./examples/thumbnails/hbar-microwave-optical-transducer-three.webp",
+      "view": "three",
+      "width": 640,
+      "height": 560,
+      "bytes": 20324,
+      "sourceSha256": "dca21f4434d4b37918bc60d2614e4c7fe4c752b4c72fd1fcca2be17f0788cc1a",
+      "sha256": "444414633d1545e164ec36cc09c5bedbeb522f8c34941b7134a5d3d8675af2da"
+    },
+    {
+      "id": "transmon-q2-original-gds",
+      "path": "./examples/thumbnails/transmon-q2-original-gds-section.webp",
+      "view": "section",
+      "width": 640,
+      "height": 560,
+      "bytes": 6886,
+      "sourceSha256": "66875040de9de9ec8e5ece1c1cbf14682407892d4c73fc53fea85151fcc7e984",
+      "sha256": "87472a96d75600b12cecb3f4fb269f6877d611526da4c8bc7fe23f7e7cfa966b"
     }
   ]
 }

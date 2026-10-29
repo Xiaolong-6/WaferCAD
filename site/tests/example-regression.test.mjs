@@ -141,17 +141,27 @@ function assertRendererReadyState(state, label) {
     const owner = validateContinuousEtchModel(model);
     assert.ok(owner.fronts.length > 0, `${label}: missing exact release front`);
     const plan = createContinuousPlanSampler(model, 'front');
-    assert.equal(plan([0, 0])?.layerId, 'layer-1');
-    assert.equal(continuousModelMaterialAt(model, [0, 0, 39]), 'base');
-    assert.equal(continuousModelMaterialAt(model, [110, 0, 30]), null);
+    const sampledLayer = plan([0, 0])?.layerId;
+    assert.ok(knownLayerIds.has(sampledLayer), `${label}: unresolved continuous surface owner`);
     const section = state.section;
     assert.ok(section?.a && section?.b, `${label}: Section A-B missing`);
     const contours = continuousSectionContours(model, section.a, section.b);
-    assert.deepEqual(
-      contours.map((part) => part.layerId).sort(),
-      ['base', 'layer-1'],
-      `${label}: native Section cannot resolve both materials`,
-    );
+    assert.ok(contours.length > 0, `${label}: native Section lost all material contours`);
+    for (const part of contours) {
+      assert.ok(knownLayerIds.has(part.layerId), `${label}: native Section lost a material owner`);
+    }
+    // The published microdisk has separately calibrated source coordinates;
+    // the HBAR's author-GDS stack instead has its own exact material owners.
+    if (label.startsWith('suspended-silica-microdisk')) {
+      assert.equal(sampledLayer, 'layer-1');
+      assert.equal(continuousModelMaterialAt(model, [0, 0, 39]), 'base');
+      assert.equal(continuousModelMaterialAt(model, [110, 0, 30]), null);
+      assert.deepEqual(
+        contours.map((part) => part.layerId).sort(),
+        ['base', 'layer-1'],
+        `${label}: native Section cannot resolve both materials`,
+      );
+    }
     return;
   }
 

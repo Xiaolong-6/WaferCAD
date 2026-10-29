@@ -14,7 +14,7 @@ const { BUNDLED_EXAMPLES } = await import('../bundled-examples.js');
 const { expandProjectStorage } = await import('../project-io.js');
 const { validateProjectFile } = await import('../project-schema.js');
 
-test('welcome example catalog promotes ten literature-backed project families', async () => {
+test('welcome example catalog promotes twelve literature-backed project families', async () => {
   assert.deepEqual(
     BUNDLED_EXAMPLES.map((example) => example.id),
     [
@@ -28,6 +28,8 @@ test('welcome example catalog promotes ten literature-backed project families', 
       'tio2-metalens-four-unit',
       'tcmos-ternary-inverter-130nm',
       'suspended-tfln-microrings-10x8',
+      'hbar-microwave-optical-transducer',
+      'transmon-q2-original-gds',
     ],
   );
   const literature = BUNDLED_EXAMPLES[0];
@@ -187,7 +189,18 @@ test('Welcome previews preserve final structure and display while retaining only
     assert.equal(preview.snapshots.length, 0);
     assert.equal(preview.snapshotBranches.nodes.length, 1);
     assert.equal(preview.snapshotBranches.branches.length, 1);
-    assert.ok(original.snapshotBranches.nodes.length > 1, 'complete original must retain History');
+    if (example.id === 'transmon-q2-original-gds') {
+      assert.equal(
+        original.snapshotBranches.nodes.length,
+        1,
+        'Q2 geometry import has one canonical checkpoint',
+      );
+    } else {
+      assert.ok(
+        original.snapshotBranches.nodes.length > 1,
+        'complete original must retain History',
+      );
+    }
     assert.deepEqual(preview.snapshotBranches.nodes[0].state.model, original.model);
   }
 });
@@ -201,25 +214,9 @@ test('Welcome thumbnail assets match their final preview source and image manife
     ),
   );
   for (const example of BUNDLED_EXAMPLES) {
-    if (example.preview.path.endsWith('.svg')) {
-      // A documented schematic fallback must never masquerade as a WebP
-      // renderer screenshot or be required in the WebP checksum manifest.
-      const asset = await readFile(
-        new URL('../' + example.preview.path.replace(/^\.\//, ''), import.meta.url),
-        'utf8',
-      );
-      assert.match(asset, /<svg[\s>]/);
-      assert.match(asset, /Schematic only|Illustrative/i);
-      assert.match(example.preview.alt || '', /Illustrative|Schematic/i);
-      assert.equal(
-        manifest.examples.some((entry) => entry.id === example.id),
-        false,
-      );
-      continue;
-    }
     const entry = manifest.examples.find((entry) => entry.id === example.id);
     assert.ok(entry);
-    assert.equal(example.preview.view, 'three');
+    assert.equal(example.preview.view, entry.view, 'WebP cover view must match published evidence');
     assert.equal(example.preview.path, entry.path);
     const image = await readFile(new URL('../' + entry.path.replace(/^\.\//, ''), import.meta.url));
     const source = await readFile(
