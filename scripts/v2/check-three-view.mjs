@@ -43,7 +43,7 @@ async function clickThreeTool(page, action) {
 }
 // Timings are observational only; preserve all existing assertions and timeouts.
 function startProfile(scenario, mode) {
-  const entry = { scenario, mode, phasesMs: {} };
+  const entry = { scenario, mode, phasesMs: {}, milestonesMs: {} };
   report.profiles.push(entry);
   let checkpoint = performance.now();
   const start = checkpoint;
@@ -52,6 +52,9 @@ function startProfile(scenario, mode) {
       const now = performance.now();
       entry.phasesMs[phase] = Math.round(now - checkpoint);
       checkpoint = now;
+    },
+    stage(name) {
+      entry.milestonesMs[name] = Math.round(performance.now() - start);
     },
     finish() {
       entry.totalMs = Math.round(performance.now() - start);
@@ -243,6 +246,7 @@ try {
         'No tool must block wheel zoom',
       );
       await command('fit:three');
+      profile.stage('cameraGesturesComplete');
       assert.equal(
         await page.locator('#threePanel [aria-pressed="true"][data-action^="tool:"]').count(),
         1,
@@ -302,6 +306,7 @@ try {
       assert.equal(await host.locator('canvas').count(), 1);
       await command('maximize:three');
       await ready();
+      profile.stage('presentationControlsComplete');
       // Use real Main drawing tools; a Main ROI must change the real 3D clip.
       if (width === 1440) {
         await selectScientificView(page, 'main', width);
@@ -392,6 +397,7 @@ try {
           physicalMetres: true,
         };
       }
+      profile.stage('roiSectionExportsComplete');
       assert.deepEqual(
         (await snapshot()).model,
         initial.model,
@@ -455,7 +461,9 @@ try {
         type,
         touchPoints: points.map(([id, x, y]) => ({ id, x, y })),
       });
-      await waitForPaint(page);
+      // Preserve a settled, painted frame after every complete gesture, but
+      // avoid forcing redundant software-WebGL frames between CDP input events.
+      if (type === 'touchEnd') await waitForPaint(page);
     };
     for (const mode of ['rotate', 'pan', 'none']) {
       if ((await snapshot()).local.three.mode !== mode) {
@@ -493,6 +501,7 @@ try {
         distance((await snapshot()).threeCamera) < distance(before),
         `Pinch must work in ${mode} mode`,
       );
+      touchProfile.stage(`${mode}GesturesComplete`);
     }
     assert.deepEqual((await snapshot()).model, initial.model);
     assert.deepEqual(errors, []);
