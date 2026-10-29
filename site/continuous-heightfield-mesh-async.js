@@ -8,7 +8,7 @@ function aborted() {
 
 export async function buildContinuousSiHeightfieldMeshAsync(
   owner,
-  { xyStepUm = 1, maxTriangles = 1200000, signal } = {},
+  { xyStepUm = 1, maxTriangles = 1200000, adaptiveChordErrorUm = null, signal } = {},
 ) {
   if (signal?.aborted) throw aborted();
   let worker;
@@ -22,7 +22,11 @@ export async function buildContinuousSiHeightfieldMeshAsync(
     // CPU work ran synchronously. In a normal app Origin, use the Worker.
     if (signal?.aborted) throw aborted();
     return {
-      mesh: buildContinuousSiHeightfieldMesh(owner, { xyStepUm, maxTriangles }),
+      mesh: buildContinuousSiHeightfieldMesh(owner, {
+        xyStepUm,
+        maxTriangles,
+        adaptiveChordErrorUm,
+      }),
       backend: 'sync-worker-unavailable',
     };
   }
@@ -64,7 +68,7 @@ export async function buildContinuousSiHeightfieldMeshAsync(
     signal?.addEventListener('abort', onAbort, { once: true });
     if (signal?.aborted) return onAbort();
     try {
-      worker.postMessage({ id: 1, owner, xyStepUm, maxTriangles });
+      worker.postMessage({ id: 1, owner, xyStepUm, maxTriangles, adaptiveChordErrorUm });
     } catch (error) {
       finish(error);
     }

@@ -36,6 +36,7 @@ import {
 import {
   canBuildContinuousSiHeightfield,
   continuousSiDisplayStepUm,
+  continuousSiAdaptiveChordErrorUm,
 } from './continuous-heightfield-mesh.js';
 import {
   CONTINUOUS_ETCH_MODEL_KERNEL,
@@ -3872,6 +3873,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       siliconResult = canBuildContinuousSiHeightfield(owner)
         ? await buildContinuousSiHeightfieldMeshAsync(owner, {
             xyStepUm: continuousSiDisplayStepUm(owner),
+            adaptiveChordErrorUm: continuousSiAdaptiveChordErrorUm(owner),
             signal: controller.signal,
           })
         : null;
