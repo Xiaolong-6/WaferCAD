@@ -4,10 +4,10 @@
   "scope": "full",
   "status": "pass",
   "source": {
-    "digest": "2187ecec09ca1c3645ca543150f9d1a4238734197ea7a227be4bcdf38ee28ffc",
+    "digest": "59ec9fef6c2ef219ac166b91a27cde759d107b24eb20e2e540c9c01b827ff060",
     "fileCount": 1289
   },
-  "sourceRevision": "9a2c76253662c97e9c64d18892ac861200348770",
+  "sourceRevision": "83bb2d2a5264d9a350128dfdf22e103136cb1e15",
   "planDigest": "9e40e14c41649069d23911dc155328f17e554f0307619aef8493378a2f26b4b3",
   "environment": {
     "node": "v22.16.0",
@@ -19,7 +19,7 @@
       "three": "0.179.1"
     }
   },
-  "startedAt": "2026-10-28T16:03:35.771Z",
+  "startedAt": "2026-10-29T08:36:33.874Z",
   "checks": [
     {
       "id": "lint",
@@ -31,7 +31,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 6066,
+      "durationMs": 9522,
       "logDigest": "7e083cff9d323606d09accd3389828279cc52091b6c62b45c8100c1ced589c7c"
     },
     {
@@ -44,7 +44,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 17477,
+      "durationMs": 24253,
       "logDigest": "1230617af071df8c1efeb12bcd6d41c3aa159e1cd0841cc546fbae4c8c56f867"
     },
     {
@@ -57,7 +57,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 403,
+      "durationMs": 892,
       "logDigest": "60d8e5351af88ce7b7b0acb8b3ac39a66ae96c4444f3ad9834b6b61092aa9d75"
     },
     {
@@ -69,10 +69,10 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 248727,
-      "logDigest": "53d4acdd78c031a309f53d2c0134c428bbcf4a9e855a6ab4fe3d12fab4b2ad78"
+      "durationMs": 421271,
+      "logDigest": "2b12637399d41f6956f037728dc6859e5c9eedff60ba72c90af2b516edc61bbb"
     }
   ],
-  "finishedAt": "2026-10-28T16:08:08.449Z",
-  "transcriptDigest": "fd95d9dc0752ef214070c3f9286f322eb62923273aab093a904f3048596e73ad"
+  "finishedAt": "2026-10-29T08:44:09.821Z",
+  "transcriptDigest": "25a32c851c642ce61acd5cc68b03d6bb767853e602aaeeae7dc011f38f5921ea"
 }
