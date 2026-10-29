@@ -91,7 +91,7 @@ Neither the 72-band historical Chromium capture nor the current
 3D thumbnail proves the new device's original SEM correspondence.
 The bundled interactive preview may retain an intentionally
 smaller historical model, distinct from the complete project.
-See the [nine-example provenance register](../evidence/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md).
+See the [published-example provenance register](../evidence/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md).
 
 ## Acceptance and historical research
 

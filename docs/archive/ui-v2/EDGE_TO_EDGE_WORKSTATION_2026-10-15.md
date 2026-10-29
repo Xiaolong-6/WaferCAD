@@ -1,6 +1,6 @@
 # Production Workstation edge-to-edge viewport — 2026-10-15
 
-> **Integration status verified 2026-10-16:** The original full-viewport and compact-navigation work in [PR #249](https://github.com/Xiaolong-6/WaferCAD/pull/249) was merged on 2026-10-15, followed by [integration PR #256](https://github.com/Xiaolong-6/WaferCAD/pull/256). The layout and PR-overlap statements below record the original implementation boundary; the current production Shell is further specified by [Architecture](../ARCHITECTURE.md) and [Usage](../USAGE.md).
+> **Integration status verified 2026-10-16:** The original full-viewport and compact-navigation work in [PR #249](https://github.com/Xiaolong-6/WaferCAD/pull/249) was merged on 2026-10-15, followed by [integration PR #256](https://github.com/Xiaolong-6/WaferCAD/pull/256). The layout and PR-overlap statements below record the original implementation boundary; the current production Shell is further specified by [Architecture](../../ARCHITECTURE.md) and [Usage](../../USAGE.md).
 
 ## Scope and ownership
 

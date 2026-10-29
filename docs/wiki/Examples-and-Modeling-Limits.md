@@ -21,7 +21,7 @@ The current **Welcome** catalog presents **twelve editable device/application fa
 | [**HBAR microwave–optical transducer**](https://xiaolong-6.github.io/WaferCAD/app.html?start=example&example=hbar-microwave-optical-transducer)                | Original author-GDS 130 × 150 µm local ROI, 11 restorable Recipe operations and six bookmarks. 36 µm Si surrogate and elliptical XeF₂ release geometry are explicitly assumed.                         | Blésin _et al._, _Nature Communications_ (2024), [DOI](https://doi.org/10.1038/s41467-024-49467-8). Author GDS is retained, but mask roles and etch kinetics are not independently calibrated.                                                                        |
 | [**Superconducting transmon · original-GDS Q2**](https://xiaolong-6.github.io/WaferCAD/app.html?start=example&example=transmon-q2-original-gds)                | Native Q2 EBL mask, Nb/Si recess and three angled Al doses. One final research-geometry checkpoint, **no replayable bilayer lithography**, AlOx or Josephson electrical solver.                        | Tuokkola _et al._, _Nature Communications_ (2025), [DOI](https://doi.org/10.1038/s41467-025-61126-0). Dataset [Zenodo](https://zenodo.org/records/14651787). Physical MMA/PMMA/lift-off tracked in [#382](https://github.com/Xiaolong-6/WaferCAD/issues/382).         |
 
-These twelve entries are registered in the shipped Welcome catalog. Other research reconstructions or development fixtures in `examples/projects/` are not necessarily Welcome examples. When a new example is actually added to `BUNDLED_EXAMPLES`, update this catalog and keep the documented title and project ID synchronized. The repository's Welcome example tests validate the promoted project files.
+The entries above correspond to the current shipped Welcome catalog. Other research reconstructions or development fixtures in `examples/projects/` are not necessarily Welcome examples. When a new example is actually added to `BUNDLED_EXAMPLES`, update this catalog and keep the documented title and project ID synchronized. The repository's Welcome example tests validate the promoted project files.
 
 ## 1. Photodetectors with nanopatterns
 
@@ -174,7 +174,7 @@ WaferCAD does not predict ALD/sputter transport, etch rates, implantation dose/e
 
 ## Optional research geometry: not required for Welcome projects
 
-The ten Welcome examples deliberately use **lightweight process geometry**
+The published Welcome examples deliberately use **lightweight process geometry**
 and display-only Roughness/pyramidal relief where appropriate. Rendering a
 pyramid does not imply that the full 3D facets participated in Boolean Process
 operations; that is an intentional performance trade-off, **not** a defect or

@@ -15,8 +15,8 @@ At that checkpoint it was not final visual approval or merge authorization.
 
 ## Evidence owners
 
-- [Geometry and boundary diagnosis](../../renderer/THREE_ROUGH_BOUNDARY_AUDIT_2026-10-15.md).
-- [ROI ownership and structural depth](../../renderer/THREE_OUTLINE_DEPTH_AUDIT_2026-10-15.md).
+- [Geometry and boundary diagnosis](THREE_ROUGH_BOUNDARY_AUDIT_2026-10-15.md).
+- [ROI ownership and structural depth](THREE_OUTLINE_DEPTH_AUDIT_2026-10-15.md).
 - [Runtime fixtures and visual acceptance](PR250_RENDERER_ACCEPTANCE_2026-10-15.md).
 
 ## Integration contracts

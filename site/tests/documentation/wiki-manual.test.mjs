@@ -41,6 +41,47 @@ test('Wiki examples cover exactly the published Welcome project families and the
   }
 });
 
+test('current product documentation does not hard-code Welcome catalog size', async () => {
+  const currentDocs = [
+    '../../../README.md',
+    '../../../docs/README.md',
+    '../../../docs/DOCUMENTATION.md',
+    '../../../docs/examples/README.md',
+    '../../../docs/evidence/README.md',
+    '../../../docs/evidence/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md',
+    '../../../docs/science/PHYSICAL_FACET_MODELING_2026-10-16.md',
+    '../../../docs/science/CONTINUOUS_RELEASE_CONTRACT.md',
+    '../../../docs/wiki/Home.md',
+    '../../../docs/wiki/Getting-Started.md',
+    '../../../docs/wiki/First-10-Minutes.md',
+    '../../../docs/wiki/Examples-and-Modeling-Limits.md',
+  ];
+  // The source-defined list and provenance test own membership. Historical
+  // counts remain valid only in explicitly revision-scoped archive material.
+  const staleClaim =
+    /\b(?:[0-9]+|six|seven|eight|nine|ten|eleven|twelve)\s+(?:shipped\s+)?(?:Welcome\s+)?(?:example(?:\s+projects?)?|families|family|entries)\b/i;
+  for (const path of currentDocs) {
+    const source = await readFile(new URL(path, import.meta.url), 'utf8');
+    assert.doesNotMatch(source, staleClaim, `${path}: use the source-defined Welcome catalog`);
+  }
+});
+
+test('Recipe Code command reference matches the parser command vocabulary', async () => {
+  const tutorial = await manual('Recipe-Code-Tutorial');
+  const table = tutorial.split('## 3. Command reference')[1]?.split('### Deposit')[0];
+  assert.ok(table, 'the current Recipe command reference table must be present');
+  const documented = [...table.matchAll(/^\|\s*`([a-z]+)\(/gm)].map((match) => match[1]);
+  const parser = await readFile(new URL('../../process-recipe.js', import.meta.url), 'utf8');
+  const commandSet = parser.match(/const COMMANDS = new Set\(\[([\s\S]*?)\]\);/);
+  assert.ok(commandSet, 'cannot find the canonical Recipe command vocabulary');
+  const supported = [...commandSet[1].matchAll(/'([a-z]+)'/g)].map((match) => match[1]);
+  assert.deepEqual(
+    documented.sort(),
+    supported.sort(),
+    'document each supported Recipe command once',
+  );
+});
+
 test('every shipped example section embeds a real corresponding preview asset', async () => {
   const page = await manual('Examples-and-Modeling-Limits');
   for (const example of BUNDLED_EXAMPLES) {

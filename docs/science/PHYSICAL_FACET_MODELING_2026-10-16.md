@@ -1,6 +1,6 @@
 # Physical facet modeling — experimental mathematical contract (#297)
 
-> **Current status (October 2026):** This is a retained **opt-in research prototype**, not a production requirement. Detailed physical Si/SiO₂ source and previews live in [site/experimental/physical-facets](../../site/experimental/physical-facets/README.md). Regular WaferCAD Roughness pyramids remain deliberate lightweight display morphology and all eight Welcome examples stay unchanged. See the [Roughness contract](ROUGHNESS_MORPHOLOGY.md). Historical development milestones below are retained for traceability.
+> **Current status (October 2026):** This is a retained **opt-in research prototype**, not a production requirement. Detailed physical Si/SiO₂ source and previews live in [site/experimental/physical-facets](../../site/experimental/physical-facets/README.md). Regular WaferCAD Roughness pyramids remain deliberate lightweight display morphology and the published Welcome examples remain on their existing, lightweight geometry paths. See the [Roughness contract](ROUGHNESS_MORPHOLOGY.md). Historical development milestones below are retained for traceability.
 
 This module is **an isolated analytic oracle**, not a Process Kernel feature or a
 new project schema. Existing `geometryMode: ideal` rough/pyramid appearance,

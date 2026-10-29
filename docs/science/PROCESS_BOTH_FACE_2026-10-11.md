@@ -2,7 +2,7 @@
 
 ## Scope
 
-Adds `face: 'both'` as a single logical Process operation executed by the Kernel in a deterministic order: **Front → Back**. This is a Kernel/Recipe integration feature isolated from the in-progress Workstation UI v2 redesign. The active Main/Mask inspection face and persisted `project.activeFace` remain `front | back`. The current v2 Manual Process Surface selector supports **Front / Back / Both** (integrated in [Manual Both acceptance](../ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md)); **Both must not change the global inspection face to `both`**. The original Kernel work preceded this UI integration.
+Adds `face: 'both'` as a single logical Process operation executed by the Kernel in a deterministic order: **Front → Back**. This is a Kernel/Recipe integration feature isolated from the in-progress Workstation UI v2 redesign. The active Main/Mask inspection face and persisted `project.activeFace` remain `front | back`. The current v2 Manual Process Surface selector supports **Front / Back / Both** (integrated in [Manual Both acceptance](../archive/ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md)); **Both must not change the global inspection face to `both`**. The original Kernel work preceded this UI integration.
 
 A current Recipe code example:
 
@@ -34,7 +34,7 @@ The same syntax is available for directional deposition, Extend, directional/iso
 ## UI v2 integration (implemented 2026-10-12) and remaining presentation work
 
 - Process Surface options: Front / Back / Both. `Both` is an **operation target** only.
-- The released v2 Manual Surface selector accepts `Both` and the Recipe editor preserves/restores `params.face === 'both'`; the retired Legacy editor's historical Front/Back-only controls are preserved at the `legacy-frozen` tag. See the [dated integration and test report](../ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md).
+- The released v2 Manual Surface selector accepts `Both` and the Recipe editor preserves/restores `params.face === 'both'`; the retired Legacy editor's historical Front/Back-only controls are preserved at the `legacy-frozen` tag. See the [dated integration and test report](../archive/ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md).
 - Send a _single_ worker operation with `params.face: 'both'`; do not call Apply twice in the UI.
 - One Both application creates one restorable History Step with two distinct, paired material Layer IDs. The v2 Manual form exposes valid paired material targets and rejects unsupported Both combinations; a more explicit two-child layer/legend presentation remains a **future UX enhancement**.
 - For a symmetric oxidation/ALD-like step, material thickness is measured from each local exposed face into the outward direction (one full thickness on each side). Any future diffusion/chemical/transport model should be a separate physical process implementation.
@@ -45,7 +45,7 @@ The bundled Perovskite–Si Tandem now uses one atomic Both Etch for symmetric s
 
 ## Regression / reproducibility
 
-Owned Node coverage: `site/tests/process-both-face.test.mjs` (two distinct linked material IDs, Mask footprint, paired Extend/Etch, independent single-face Etch, atomic rejection, Transfer, annotations, canonical arrays, Recipe round trip, unsupported methods) plus History replay ID-mapping regression. The v2 Manual selector has an additional browser owner, `scripts/v2/check-manual-both.mjs`; its dated [acceptance report](../ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md) describes the tested commit and remaining CI gates.
+Owned Node coverage: `site/tests/process-both-face.test.mjs` (two distinct linked material IDs, Mask footprint, paired Extend/Etch, independent single-face Etch, atomic rejection, Transfer, annotations, canonical arrays, Recipe round trip, unsupported methods) plus History replay ID-mapping regression. The v2 Manual selector has an additional browser owner, `scripts/v2/check-manual-both.mjs`; its dated [acceptance report](../archive/ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md) describes the tested commit and remaining CI gates.
 
 Repository: `Xiaolong-6/WaferCAD`. Branch: `feat/kernel-process-face-both-20261011` based on main, without merge. Implemented using the GitHub-connected repository interface. **Local `npm ci`, `npm run check`, and browser tests were not executed in this environment** because a checked-out workspace was unavailable. PR CI provides executable evidence; preserve Draft until green. PR CI is the initial executable verification and must be reviewed before merge; do not claim a product pass from source inspection alone.
 

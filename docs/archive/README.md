@@ -12,10 +12,23 @@ Draft/merge history. They are not current product contracts.
 - [Merged PR #188 progressive startup evidence](ui-v2/PROGRESSIVE_STARTUP_2026-10-13.md).
 
 - [Merged PR #250 Renderer audit](renderer/PR250_RENDERER_AUDIT_2026-10-15.md) and [revision-scoped acceptance](renderer/PR250_RENDERER_ACCEPTANCE_2026-10-15.md).
-- [2026-10-14 eight-family literature comparison](examples/EXAMPLE_LITERATURE_FIDELITY_2026-10-14.md) — original eight-family evidence, not a nine-family paper match.
+- [2026-10-14 eight-family literature comparison](examples/EXAMPLE_LITERATURE_FIDELITY_2026-10-14.md) — original eight-family evidence, not current-catalog paper-match acceptance.
 
 For current contracts see [Workstation](../ui-v2/WORKSTATION_CONTRACT.md)
 and [Architecture](../ARCHITECTURE.md).
+
+## Completed implementation and renderer evidence — 2026-10-29 classification
+
+These records document merged work or a prior reviewed revision. They are not
+active implementation requests; current behavior belongs to the Workstation,
+Renderer and scientific contracts. The open Mobile CSS cleanup audit remains
+in `docs/ui-v2/` until its deferred work is resolved.
+
+- [Manual Both integration checkpoint](ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md) — original PR #179 acceptance and historical test paths.
+- [Desktop docking implementation](ui-v2/DESKTOP_DOCKING_PLAN_2026-10-15.md) — merged PR #267's original implementation stages.
+- [Edge-to-edge Workstation implementation](ui-v2/EDGE_TO_EDGE_WORKSTATION_2026-10-15.md) — merged PRs #249/#256.
+- [Renderer outline-depth ownership audit](renderer/THREE_OUTLINE_DEPTH_AUDIT_2026-10-15.md) — PR #250's original diagnosed geometry defects.
+- [Renderer rough-boundary audit](renderer/THREE_ROUGH_BOUNDARY_AUDIT_2026-10-15.md) — PR #250's original seam/LOD evidence.
 
 ## Dated audits relocated on 2026-10-16
 

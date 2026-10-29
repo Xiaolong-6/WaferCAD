@@ -65,15 +65,16 @@ A **Mask ROI** clips masked Process operations; a **Main ROI** controls inspecti
 
 ## 3. Command reference
 
-| Command             | Required or principal fields                  | Notes                                                  |
-| ------------------- | --------------------------------------------- | ------------------------------------------------------ |
-| `deposit({...})`    | `material`, `thickness`, `coverage`           | New material; `directional`, `conformal`, `transfer`   |
-| `extend({...})`     | `material`, `thickness`, `coverage`           | Material must already exist and have an exposed target |
-| `etch({...})`       | `depth` or `targetZ`, `profile`               | `directional`, `isotropic`, `undercut`, `planarize`    |
-| `implant({...})`    | `name`, `depth`, optional `tilt`              | Structural annotation; tilt from −80° to +80°          |
-| `electrical({...})` | `name`, `depth`, `regionType`, `source`       | Non-material electrical region                         |
-| `record({...})`     | `process`, `label`, optional thermal metadata | History entry only; no geometric reaction              |
-| `snapshot("...")`   | Milestone name                                | Named inspection/restoration marker                    |
+| Command             | Required or principal fields                  | Notes                                                                    |
+| ------------------- | --------------------------------------------- | ------------------------------------------------------------------------ |
+| `deposit({...})`    | `material`, `thickness`, `coverage`           | New material; `directional`, `conformal`, `transfer`                     |
+| `extend({...})`     | `material`, `thickness`, `coverage`           | Material must already exist and have an exposed target                   |
+| `etch({...})`       | `depth` or `targetZ`, `profile`               | `directional`, `isotropic`, `undercut`, `planarize`                      |
+| `liftoff({...})`    | `sacrificial`, optional `face` and `area`     | Remove exposed sacrificial resist and attached material; Front/Back only |
+| `implant({...})`    | `name`, `depth`, optional `tilt`              | Structural annotation; tilt from −80° to +80°                            |
+| `electrical({...})` | `name`, `depth`, `regionType`, `source`       | Non-material electrical region                                           |
+| `record({...})`     | `process`, `label`, optional thermal metadata | History entry only; no geometric reaction                                |
+| `snapshot("...")`   | Milestone name                                | Named inspection/restoration marker                                      |
 
 ### Deposit, Extend and Transfer
 

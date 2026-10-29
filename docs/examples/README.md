@@ -1,10 +1,10 @@
 # Literature reconstructions and provenance
 
-## Current published catalog (twelve families)
+## Current published catalog
 
 `site/bundled-examples.js` and the
 [figure evidence matrix](../evidence/LITERATURE_FIGURE_MATRIX_2026-10-16.json)
-are the versioned source of truth for **twelve** promoted Welcome
+are the versioned source of truth for the currently promoted Welcome
 projects and their publication citations. The
 [research figure evidence register](../evidence/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md)
 records source panels, model assumptions and explicit
@@ -31,7 +31,7 @@ a similar disk. The ninth family is T-CMOS; the tenth is the suspended TFLN micr
 
 ## Historical accepted/bounded evidence
 
-- [Eight-family literature audit, 2026-10-14](../archive/examples/EXAMPLE_LITERATURE_FIDELITY_2026-10-14.md) — preserved original eight-project source inspection and limitations, **not** a nine-family current acceptance.
+- [Eight-family literature audit, 2026-10-14](../archive/examples/EXAMPLE_LITERATURE_FIDELITY_2026-10-14.md) — preserved original eight-project source inspection and limitations, **not** current-catalog acceptance.
 
 Historical screenshot and regression records identify their own
 project SHA, browser environment and authoring assumptions. They

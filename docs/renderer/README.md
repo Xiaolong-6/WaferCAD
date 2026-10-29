@@ -19,8 +19,8 @@ is the cross-module map.
 - [PR #250 renderer audit](../archive/renderer/PR250_RENDERER_AUDIT_2026-10-15.md).
 - [PR #250 acceptance and GPU diagnostics](../archive/renderer/PR250_RENDERER_ACCEPTANCE_2026-10-15.md).
 - [Foreground-first scene investigation](FOREGROUND_RENDERING_P0_2026-10-12.md).
-- [Rough boundary investigation](THREE_ROUGH_BOUNDARY_AUDIT_2026-10-15.md).
-- [Outline/depth investigation](THREE_OUTLINE_DEPTH_AUDIT_2026-10-15.md).
+- [Rough boundary investigation](../archive/renderer/THREE_ROUGH_BOUNDARY_AUDIT_2026-10-15.md).
+- [Outline/depth investigation](../archive/renderer/THREE_OUTLINE_DEPTH_AUDIT_2026-10-15.md).
 
 Scientific correctness is independently owned by
 [scientific contracts](../science/README.md); browser and GPU gates remain
