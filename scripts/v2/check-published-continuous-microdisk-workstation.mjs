@@ -151,12 +151,12 @@ try {
       const project = await published(page);
       const original = await snapshot(page);
       assert.equal(original.workflow.writable, true, 'Published project must own writer lease');
-      assert.equal(original.workflow.steps.length, 9);
+      assert.equal(original.workflow.steps.length, 11);
       assert.equal(original.model.kernel, 'vector-continuous-etch-v1');
       assert.deepEqual(original.model, project.final);
-      assert.equal(project.nodeIds.length, 9);
+      assert.equal(project.nodeIds.length, 11);
       assert.equal(project.m08Replay.areaMode, 'invert');
-      report.example = { source: original.source, steps: 9, replayArea: 'invert' };
+      report.example = { source: original.source, steps: 11, replayArea: 'invert' };
       await assertMaterial(page, project.released, 'Original published M08');
       // A durable starting checkpoint also proves that navigating History
       // cannot accidentally discard an imported publication project.
@@ -208,7 +208,48 @@ try {
           );
         }
       };
-      await restore('07', 'vector-2.5d-v1');
+      const checkTemporaryFilm = async (stepId, expectations) => {
+        await restore(stepId, 'vector-2.5d-v1');
+        const actual = await page.evaluate(async () => {
+          const { pointInMulti } = await import('/vector-geometry.js');
+          const model = window.WaferCadV2Workstation.snapshot().model;
+          const at = (xy) =>
+            model.regions
+              .find((region) => pointInMulti(xy, region.geom))
+              ?.stack.map((segment) => segment.layerId) || [];
+          return { annulus: at([110, 0]), field: at([175, 0]) };
+        });
+        for (const [location, layerId, expected] of expectations) {
+          assert.equal(
+            actual[location].includes(layerId),
+            expected,
+            `M${stepId}: ${layerId} physical occupancy at ${location}`,
+          );
+        }
+      };
+      await checkTemporaryFilm('03', [
+        ['annulus', 'layer-2', true],
+        ['field', 'layer-2', true],
+      ]);
+      await checkTemporaryFilm('04', [
+        ['annulus', 'layer-2', true],
+        ['field', 'layer-2', false],
+        ['field', 'layer-1', true],
+      ]);
+      await checkTemporaryFilm('05', [
+        ['annulus', 'layer-2', true],
+        ['field', 'layer-1', false],
+      ]);
+      await checkTemporaryFilm('06', [['annulus', 'layer-2', false]]);
+      await checkTemporaryFilm('07a', [
+        ['annulus', 'layer-3', true],
+        ['field', 'layer-3', true],
+      ]);
+      await checkTemporaryFilm('07b', [['field', 'layer-3', true]]);
+      await checkTemporaryFilm('07', [
+        ['annulus', 'layer-3', false],
+        ['field', 'layer-3', false],
+      ]);
       assert.deepEqual(
         (await snapshot(page)).model,
         project.source,
@@ -255,7 +296,7 @@ try {
           const state = window.WaferCadV2Workstation.snapshot();
           return (
             !state.workflow.busy &&
-            state.workflow.steps.length === 9 &&
+            state.workflow.steps.length === 11 &&
             state.model?.continuousEtchOwner?.fronts?.[0]?.lateralUm === 36.1
           );
         },
@@ -323,8 +364,8 @@ try {
       );
       assert.equal(
         (await snapshot(page)).workflow.steps.length,
-        9,
-        'Recovery restores the nine steps',
+        11,
+        'Recovery restores all eleven physical lithography and release steps',
       );
       await screenshot(page, 'm08-after-recovery');
       report.scenarios.push({ action: 'Published History Save/Reload/Recovery', status: 'pass' });
