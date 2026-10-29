@@ -125,7 +125,18 @@ Etch has no deposition coverage setting. Its **Profile** selector defaults to **
 
 **Continuous release (experimental):** This distinct Process Guide entry uses an analytic circular, elliptical or vertical removal front without stored Z-depth bands. It operates under restricted material-owner and History/ROI rules (one release per lineage; subsequent physical Process steps and non-rectangular 3D ROI are not generally supported). The bundled suspended-silica microdisk uses the circular Continuous M08 mode; its 36 µm reach is a geometric reconstruction assumption, not XeF₂ kinetics or a calibrated experimental etch. See [Process Operations](wiki/Process-Operations.md#continuous-release--experimental) and [scientific provenance](evidence/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md).
 
-For Directional Etch, **Surface** supports **Smooth**, **Rough**, and **Pyramid**. Rough is stochastic correlated relief; Pyramid is a deterministic square-pyramid array. Both expose **Orientation**: Normal points features outward and Inverted mirrors the same field inward. Rough additionally exposes Feature/Height CV controls. Surface morphology is render-only metadata on the newly exposed face; it does not alter the canonical material Z stack. Section and 3D sample the same deterministic field. Rough/Pyramid are intentionally unavailable for Isotropic release because release already changes physical geometry.
+For Directional Etch, **Surface** supports **Smooth**, **Rough**, and **Pyramid**.
+New Rough operations use stable-scale stochastic v2. Existing project surfaces and replayable
+steps using v1 retain their exact morphology; the legacy editor choice appears only
+when an old Rough step is loaded. Code-based Recipes keep the historical `rough` alias
+as v1 and use explicit `stochastic-v2` for the new model.
+
+Rough is stochastic correlated relief; Pyramid is a deterministic square-pyramid array.
+Both expose **Orientation**: Normal points features outward and Inverted mirrors the same field inward.
+Rough additionally exposes Feature/Height CV controls. Surface morphology is render-only metadata
+on the newly exposed face; it does not alter the canonical material Z stack.
+Section and 3D sample the same deterministic field. Rough/Pyramid are intentionally unavailable
+for Isotropic release because release already changes physical geometry.
 
 Electrical Region is a separate schematic annotation for p/n regions, inversion, accumulation, depletion, or custom induced/doped/interface regions. Set Name, Type, Source, Area, and Depth. It does not create material and it does not solve electrostatics or carrier transport. Later Etch clips the region against surviving material, and Layers controls its name, palette color, and visibility.
 

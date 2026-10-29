@@ -47,6 +47,19 @@ export function createProcessPanelController({
   ensureProcessOption('etchProfile', 'undercut', 'Undercut release');
   ensureProcessOption('etchProfile', 'continuous', 'Continuous release · experimental');
 
+  // A legacy choice is available only while editing an existing v1 step.
+  // New processes expose just Smooth / Rough / Pyramid.
+  function allowLegacyRough(enabled) {
+    const select = $('etchSurfaceMode');
+    if (!select) return;
+    ensureProcessOption('etchSurfaceMode', 'rough-legacy', 'Legacy Rough (v1)');
+    const option = [...select.options].find((item) => item.value === 'rough-legacy');
+    option.hidden = !enabled;
+    option.disabled = !enabled;
+    if (!enabled && select.value === 'rough-legacy') select.value = 'rough';
+  }
+  allowLegacyRough(false);
+
   function selectedEtchProfile() {
     const value = $('etchProfile')?.value;
     return ['directional', 'isotropic', 'continuous', 'planarize', 'undercut'].includes(value)
@@ -254,8 +267,12 @@ export function createProcessPanelController({
     $('etchSurfaceRow').classList.toggle('hidden', t !== 'etch' || advancedEtch);
     const surfaceMode = $('etchSurfaceMode').value,
       texturedEtch = t === 'etch' && !advancedEtch && surfaceMode !== 'smooth',
-      stochasticEtch = texturedEtch && ['rough', 'rough-stable'].includes(surfaceMode),
+      stochasticEtch = texturedEtch && ['rough', 'rough-legacy'].includes(surfaceMode),
       pyramidEtch = texturedEtch && surfaceMode === 'pyramid';
+    // Keep Legacy available during a History edit even after the user previews v2.
+    // Otherwise selecting Rough once prevents reverting to v1 before Save.
+    if (!getHistoricalStepEdit() && (t !== 'etch' || surfaceMode !== 'rough-legacy'))
+      allowLegacyRough(false);
     $('roughPolarityRow').classList.toggle('hidden', !texturedEtch);
     $('roughSeedRow').classList.toggle('hidden', !texturedEtch);
     $('roughFeatureRow').classList.toggle('hidden', !texturedEtch);
@@ -443,7 +460,7 @@ export function createProcessPanelController({
                     : continuousEtch
                       ? 'Experimental exact continuous release: choose circular, elliptical or vertical front and physical lateral/vertical lengths. One release only; follow-on Process is unsupported. 3D supports rectangular ROI cutaway; other ROI shapes remain unsupported.'
                       : stochasticEtch
-                        ? `${surfaceMode === 'rough-stable' ? 'Stable scale uses bounded local spacing variation and a different seeded shape from Rough. ' : ''}Depth is the maximum etch depth; Height and Feature XY are means, with CV controlling their spread. ${$('roughPolarity').value === 'normal' ? 'Normal points features outward (peaks).' : 'Inverted keeps the existing inward pit/valley orientation.'} Display morphology only for process simulation: the canonical process stack remains ideal, while 3D and GLB inspection surfaces include the deterministic morphology.`
+                        ? `${surfaceMode === 'rough-legacy' ? 'Legacy v1 algorithm retained for historical reproducibility; selecting Rough explicitly upgrades this step to v2. ' : 'Rough uses bounded spatial scale variation. '}Depth is the maximum etch depth; Height and Feature XY are means, with CV controlling their spread. ${$('roughPolarity').value === 'normal' ? 'Normal points features outward (peaks).' : 'Inverted keeps the existing inward pit/valley orientation.'} Display morphology only for process simulation: the canonical process stack remains ideal, while 3D and GLB inspection surfaces include the deterministic morphology.`
                         : pyramidEtch
                           ? `Pyramid XY and Height are means; CV controls deterministic base-size/position and height variation, and Seed makes the random field reproducible. ${$('roughPolarity').value === 'normal' ? 'Normal gives outward pyramids.' : 'Inverted gives inward pyramid pits.'} Display morphology only for process simulation: the canonical process stack remains ideal, while 3D and GLB inspection surfaces include the deterministic morphology.`
                           : $('etchTargetLayer').value
@@ -541,14 +558,24 @@ export function createProcessPanelController({
         if (Number.isFinite(Number(lateral)))
           $('continuousLateral').value = formatLengthField(Number(lateral));
       }
-      const surface = params.surface || operation.surface || null;
-      $('etchSurfaceMode').value = surface
-        ? surface.morphology === 'pyramid'
+      // Older saved steps may use a string alias or omit morphology entirely.
+      // The Kernel defaults missing Rough morphology to legacy stochastic v1.
+      const rawSurface = params.surface ?? operation.surface ?? null;
+      const surface =
+        typeof rawSurface === 'string'
+          ? !rawSurface || rawSurface === 'smooth'
+            ? null
+            : { morphology: rawSurface === 'rough' ? 'stochastic' : rawSurface }
+          : rawSurface;
+      const surfaceMode = !surface
+        ? 'smooth'
+        : surface.morphology === 'pyramid'
           ? 'pyramid'
           : surface.morphology === 'stochastic-v2'
-            ? 'rough-stable'
-            : 'rough'
-        : 'smooth';
+            ? 'rough'
+            : 'rough-legacy';
+      allowLegacyRough(surfaceMode === 'rough-legacy');
+      $('etchSurfaceMode').value = surfaceMode;
       if (surface) {
         $('roughPolarity').value = surface.polarity === 'normal' ? 'normal' : 'inverted';
         if (Number.isFinite(Number(surface.featureSize))) {
@@ -1031,9 +1058,9 @@ export function createProcessPanelController({
         kind: 'rough',
         morphology: pyramid
           ? 'pyramid'
-          : etchSurfaceMode === 'rough-stable'
-            ? 'stochastic-v2'
-            : 'stochastic',
+          : etchSurfaceMode === 'rough-legacy'
+            ? 'stochastic'
+            : 'stochastic-v2',
         polarity: $('roughPolarity').value === 'normal' ? 'normal' : 'inverted',
         featureSize,
         meanHeight,
@@ -1368,6 +1395,7 @@ export function createProcessPanelController({
     updateUi: updateOperationUI,
     applyOperation,
     loadOperationForEdit,
+    allowLegacyRough,
     replayOperations,
     canReplayOperation,
   };

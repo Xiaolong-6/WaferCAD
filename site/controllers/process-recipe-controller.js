@@ -897,15 +897,17 @@ export function createProcessRecipeController({
             surfaceMode = appearance
               ? appearance.morphology === 'pyramid'
                 ? 'pyramid'
-                : appearance.morphology === 'stochastic-v2'
-                  ? 'rough-stable'
+                : appearance.morphology === 'stochastic'
+                  ? 'rough-legacy'
                   : 'rough'
               : 'smooth',
             surfaceSelect = selectInput(
               [
                 { value: 'smooth', label: 'Smooth' },
                 { value: 'rough', label: 'Rough' },
-                { value: 'rough-stable', label: 'Rough (stable scale)' },
+                ...(surfaceMode === 'rough-legacy'
+                  ? [{ value: 'rough-legacy', label: 'Legacy Rough (v1)' }]
+                  : []),
                 { value: 'pyramid', label: 'Pyramid' },
               ],
               surfaceMode,
@@ -927,9 +929,9 @@ export function createProcessRecipeController({
                 morphology:
                   mode === 'pyramid'
                     ? 'pyramid'
-                    : mode === 'rough-stable'
-                      ? 'stochastic-v2'
-                      : 'stochastic',
+                    : mode === 'rough-legacy'
+                      ? 'stochastic'
+                      : 'stochastic-v2',
                 polarity: previous.polarity || 'inverted',
                 featureSize: Number(previous.featureSize) || 0.5,
                 meanHeight:
@@ -1446,11 +1448,14 @@ export function createProcessRecipeController({
         const surface = p.surface;
         if (p.profile === 'directional' && surface && surface !== 'smooth') {
           const appearance = typeof surface === 'object' ? surface : {};
+          processPanelController.allowLegacyRough(
+            appearance.morphology === 'stochastic' || surface === 'stochastic',
+          );
           $('etchSurfaceMode').value =
             appearance.morphology === 'pyramid' || surface === 'pyramid'
               ? 'pyramid'
-              : appearance.morphology === 'stochastic-v2' || surface === 'stochastic-v2'
-                ? 'rough-stable'
+              : appearance.morphology === 'stochastic' || surface === 'stochastic'
+                ? 'rough-legacy'
                 : 'rough';
           updateOperationUI();
           if (appearance.featureSize != null)

@@ -86,7 +86,13 @@ function fakeRoot() {
 function controllerForTask(
   taskResult,
   events,
-  { mode = 'add', recorded = [], areaGeometry = () => [], initialModel = null } = {},
+  {
+    mode = 'add',
+    recorded = [],
+    areaGeometry = () => [],
+    initialModel = null,
+    historicalEdit = false,
+  } = {},
 ) {
   let model = initialModel || createModel();
   const maskState = {
@@ -121,6 +127,7 @@ function controllerForTask(
       },
     },
     saveHistory: () => events.push('save-history'),
+    getHistoricalStepEdit: () => (historicalEdit ? { stepId: 'legacy-step' } : null),
     beforeApply: async () => {
       events.push('prepare-variant');
       return { createVariant: true };
@@ -164,11 +171,11 @@ test('historical Apply does not commit a variant when the worker does not change
   }
 });
 
-test('History edit restores the explicit rough algorithm instead of downgrading stable scale', () => {
+test('History edit preserves legacy rough and exposes modern Rough without two permanent UI entries', () => {
   const controller = controllerForTask(() => ({ result: { changed: false } }), []);
   for (const [morphology, mode] of [
-    ['stochastic', 'rough'],
-    ['stochastic-v2', 'rough-stable'],
+    ['stochastic', 'rough-legacy'],
+    ['stochastic-v2', 'rough'],
     ['pyramid', 'pyramid'],
   ]) {
     controller.loadOperationForEdit({
@@ -192,9 +199,134 @@ test('History edit restores the explicit rough algorithm instead of downgrading 
         },
       },
     });
-    assert.equal(controller.__root.getElementById('etchSurfaceMode').value, mode);
+    const surfaceSelect = controller.__root.getElementById('etchSurfaceMode');
+    assert.equal(surfaceSelect.value, mode);
+    assert.equal(
+      surfaceSelect.options.find((option) => option.value === 'rough-legacy').disabled,
+      morphology !== 'stochastic',
+    );
     assert.equal(controller.__root.getElementById('roughSeed').value, '123');
   }
+});
+
+test('History editor preserves historical string surface tokens without implicit v2 upgrade', () => {
+  const controller = controllerForTask(() => ({ result: { changed: false } }), []);
+  for (const [surface, mode, legacy] of [
+    ['smooth', 'smooth', false],
+    ['', 'smooth', false],
+    ['rough', 'rough-legacy', true],
+    ['stochastic', 'rough-legacy', true],
+    ['stochastic-v2', 'rough', false],
+    ['pyramid', 'pyramid', false],
+  ]) {
+    assert.equal(
+      controller.loadOperationForEdit({
+        kind: 'etch',
+        replay: {
+          version: 1,
+          params: { type: 'etch', thickness: 0.75, face: 'front', surface },
+        },
+      }),
+      true,
+    );
+    const selector = controller.__root.getElementById('etchSurfaceMode');
+    assert.equal(selector.value, mode, `history surface ${surface}`);
+    assert.equal(
+      selector.options.find((option) => option.value === 'rough-legacy').disabled,
+      !legacy,
+      `Legacy should only be enabled for historical v1 surface ${surface}`,
+    );
+  }
+});
+
+test('History edit does not silently upgrade morphology-less legacy Rough objects', () => {
+  const controller = controllerForTask(() => ({ result: { changed: false } }), []);
+  for (const surface of [
+    { kind: 'rough', featureSize: 0.3, meanHeight: 0.4 },
+    { kind: 'rough', morphology: 'rough', featureSize: 0.3, meanHeight: 0.4 },
+  ]) {
+    assert.equal(
+      controller.loadOperationForEdit({
+        kind: 'etch',
+        replay: {
+          version: 1,
+          params: { type: 'etch', thickness: 0.75, face: 'front', surface },
+        },
+      }),
+      true,
+    );
+    const selector = controller.__root.getElementById('etchSurfaceMode');
+    assert.equal(selector.value, 'rough-legacy');
+    assert.equal(
+      selector.options.find((option) => option.value === 'rough-legacy').disabled,
+      false,
+    );
+  }
+});
+
+test('Legacy option stays available through v2 selection until a History edit is saved', () => {
+  const controller = controllerForTask(() => ({ result: { changed: false } }), [], {
+    mode: 'etch',
+    historicalEdit: true,
+  });
+  controller.loadOperationForEdit({
+    kind: 'etch',
+    replay: {
+      version: 1,
+      params: {
+        type: 'etch',
+        thickness: 0.75,
+        face: 'front',
+        surface: {
+          kind: 'rough',
+          morphology: 'stochastic',
+          featureSize: 0.3,
+          meanHeight: 0.4,
+          featureCv: 0.25,
+          heightCv: 0.3,
+          seed: 123,
+        },
+      },
+    },
+  });
+  const selector = controller.__root.getElementById('etchSurfaceMode');
+  assert.equal(selector.value, 'rough-legacy');
+  selector.value = 'rough';
+  controller.updateUi();
+  assert.equal(
+    selector.options.find((option) => option.value === 'rough-legacy').disabled,
+    false,
+    'History edit must permit reverting to original v1 before save',
+  );
+});
+
+test('Manual Rough writes v2, while an explicit Legacy history selection preserves v1', async () => {
+  const morphologies = [];
+  const controller = controllerForTask(
+    (_model, _workerModel, params) => {
+      morphologies.push(params.surface?.morphology);
+      return { result: { changed: false } };
+    },
+    [],
+    { mode: 'etch' },
+  );
+  const root = controller.__root;
+  root.getElementById('operationThickness').value = '1';
+  root.getElementById('etchProfile').value = 'directional';
+  root.getElementById('etchSurfaceMode').value = 'rough';
+  root.getElementById('roughFeatureSize').value = '0.3';
+  root.getElementById('roughAmplitude').value = '0.4';
+  root.getElementById('roughFeatureCv').value = '25';
+  root.getElementById('roughHeightCv').value = '30';
+  root.getElementById('roughSeed').value = '123';
+  await controller.applyOperation();
+  await controller.applyOperation({
+    canonicalSurface: { morphology: 'stochastic', featureSize: 0.3, meanHeight: 0.4 },
+  });
+  controller.allowLegacyRough(true);
+  root.getElementById('etchSurfaceMode').value = 'rough-legacy';
+  await controller.applyOperation();
+  assert.deepEqual(morphologies, ['stochastic-v2', 'stochastic-v2', 'stochastic']);
 });
 
 test('historical Apply commits the variant only after a successful changed worker result', async () => {

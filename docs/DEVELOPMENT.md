@@ -242,7 +242,7 @@ registration. Reported interpolation errors are diagnostics, not approved
 tolerances. Changing that physical heightfield requires an explicit scientific
 and project-compatibility contract, including physical GLB export.
 
-The explicit **Rough (stable scale)** option stores `morphology: stochastic-v2`.
+The default **Rough** option stores `morphology: stochastic-v2`.
 It keeps the seeded rotation, height distribution, polarity and depth envelope,
 but replaces the variable denominator with a fixed `featureSize` lattice.
 Each rotated coordinate is displaced by
@@ -253,10 +253,13 @@ a distinct deterministic morphology, not a measured SEM reconstruction or a
 band-limited signal. Section, CPU mesh, GLSL, sidewall/border sampling and
 physical GLB export consume that same explicit field.
 
-Existing `stochastic` profiles and unspecified Recipe rough modes retain their
-legacy algorithm without automatic conversion. Manual Process, Recipe editing,
-History replay, inherited films/annotations and file/Recovery storage must
-preserve the selected morphology. A legacy reader rejects the unfamiliar enum
+Existing saved `stochastic` profiles and Recipe source aliases `rough` / `stochastic`
+retain the legacy algorithm without automatic conversion. The Process UI and
+new Recipe form selections create explicit `stochastic-v2` records; users writing
+Recipe code should specify `stochastic-v2` to obtain the modern field. This
+preserves old code-based Recipes without guessing their creation date.
+Manual Process, Recipe editing, History replay, inherited films/annotations,
+and file/Recovery storage must preserve the selected morphology. A legacy reader rejects the unfamiliar enum
 rather than silently displaying v2 as v1; unknown future values also reject.
 No bundled example or saved History state is implicitly upgraded.
 

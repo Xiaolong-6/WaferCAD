@@ -362,7 +362,7 @@ step(black, {
   bookmark: true,
   surface: {
     kind: 'rough',
-    morphology: 'stochastic',
+    morphology: 'stochastic-v2',
     polarity: 'normal',
     featureSize: 0.3,
     meanHeight: 0.5,
@@ -551,7 +551,7 @@ step(ge, {
   bookmark: true,
   surface: {
     kind: 'rough',
-    morphology: 'stochastic',
+    morphology: 'stochastic-v2',
     polarity: 'normal',
     featureSize: 0.2,
     meanHeight: 0.7,

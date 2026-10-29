@@ -24,6 +24,7 @@ test('Photodetector rough conformal geometry retains a 50 nm film', async () => 
   assert.ok(silicon?.frontSurface && ald?.frontSurface && implant?.surfaceAppearance);
   assert.deepEqual(ald.frontSurface, silicon.frontSurface);
   assert.deepEqual(implant.surfaceAppearance, silicon.frontSurface);
+  assert.equal(silicon.frontSurface.morphology, 'stochastic-v2');
   assert.equal(ald.z0, silicon.z1);
 
   const thickness = ald.z1 - silicon.z1;

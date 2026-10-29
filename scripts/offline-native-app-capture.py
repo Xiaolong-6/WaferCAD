@@ -71,7 +71,7 @@ def check_stable_rough_ui(page, out: Path):
     page.locator('[data-action="domain:process"]').click()
     for control, value in [('operationType', 'etch'), ('etchProfile', 'directional'),
                            ('operationArea', 'full'), ('faceToggleBtn', 'front'),
-                           ('etchSurfaceMode', 'rough-stable')]:
+                           ('etchSurfaceMode', 'rough')]:
         page.locator('#' + control).select_option(value)
     for control, value in [('operationThickness', '0.75'), ('roughFeatureSize', '0.3'),
                            ('roughAmplitude', '0.4'), ('roughFeatureCv', '25'),

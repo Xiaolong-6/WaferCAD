@@ -287,7 +287,12 @@ test('Legacy profile samples remain fixed and stable-scale increments stay bound
     [2495.0133, 0.123, 0.12885675297740373],
     [-50000, 20000, 0.3018437136383224],
   ])
-    assert.equal(roughProfileOffsetAtPoint(x, y, appearance), expected);
+    // The shipped Photodetector was upgraded to v2, but this immutable v1
+    // numeric regression must continue sampling the original algorithm.
+    assert.equal(
+      roughProfileOffsetAtPoint(x, y, { ...appearance, morphology: 'stochastic' }),
+      expected,
+    );
   for (const seed of [0, 123, appearance.seed, 0xffffffff]) {
     for (const featureCv of [0, 0.25, 1]) {
       const profile = {
