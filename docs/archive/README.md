@@ -28,6 +28,8 @@ product contract or performance promise.
 - [Both-face bundled-example consolidation](examples/EXAMPLE_BOTH_FACE_CONSOLIDATION_2026-10-13.md) — merged PR #194; original Photodetector/PERC/Tandem migration and face-specific surface assumptions. The present Kernel contract is [Process Both-face](../science/PROCESS_BOTH_FACE_2026-10-11.md).
 - [TiO₂ full-array loading measurement](examples/TIO2_METALENS_PERFORMANCE_2026-10-10.md) — controlled Linux/Chromium measurements on the recorded 2026-10-10 SHA, not a cross-device latency target. The current [Metalens reconstruction source](../examples/TIO2_METALENS_RECONSTRUCTION_2026-10-09.md) retains the author's versus illustrative-grid boundaries.
 
+- [Renderer capture/resource lifetime backport](renderer/RENDERER_LIFECYCLE_CORRECTNESS_2026-10-12.md) — revision-scoped backport and MSAA comparison; current capture and disposal rules live in [Renderer/Section](../renderer/RENDERER_CONTRACT.md).
+
 ## Completed implementation and renderer evidence — 2026-10-29 classification
 
 These records document merged work or a prior reviewed revision. They are not

@@ -11,14 +11,14 @@ is the cross-module map.
 
 - [Renderer, Section and capture](RENDERER_CONTRACT.md) — present behavior and safety boundaries.
 - [3D Border Inspector](BORDER_INSPECTOR.md) — shared visible contour ownership.
-- [Resource lifetime and capture correctness](RENDERER_LIFECYCLE_CORRECTNESS_2026-10-12.md) — renderer lifecycle rules; dates scope measurements.
+- Capture transaction and resource-retirement rules are in the [current Renderer contract](RENDERER_CONTRACT.md); the [original v3/v4 correctness backport](../archive/renderer/RENDERER_LIFECYCLE_CORRECTNESS_2026-10-12.md) preserves dated implementation and hardware diagnostics.
 - [Transparency and LOD roadmap](RENDERER_TRANSPARENCY_ROADMAP.md) — **open performance debt**, not current latency certification.
 
 ## Historical evidence at its recorded revision
 
 - [PR #250 renderer audit](../archive/renderer/PR250_RENDERER_AUDIT_2026-10-15.md).
 - [PR #250 acceptance and GPU diagnostics](../archive/renderer/PR250_RENDERER_ACCEPTANCE_2026-10-15.md).
-- [Foreground-first scene investigation](FOREGROUND_RENDERING_P0_2026-10-12.md).
+- [Foreground-first PR #186 checkpoint](FOREGROUND_RENDERING_P0_2026-10-12.md) — merged on 2026-10-13; the historic pending gates are **not current merge instructions**. Its open interaction/LOD proposals are tracked in the [transparency roadmap](RENDERER_TRANSPARENCY_ROADMAP.md).
 - [Rough boundary investigation](../archive/renderer/THREE_ROUGH_BOUNDARY_AUDIT_2026-10-15.md).
 - [Outline/depth investigation](../archive/renderer/THREE_OUTLINE_DEPTH_AUDIT_2026-10-15.md).
 

@@ -15,6 +15,13 @@ October 24 full-wafer transparent 3D result. Keep their exact
 hardware/browser provenance; repeat on equivalent hardware and
 identical scene state before setting new targets.
 
+**Open work remains distinct from the merged foreground-first PR #186:**
+scene continuity and cooperative yields were incorporated into the renderer,
+but the original [dated implementation checkpoint](FOREGROUND_RENDERING_P0_2026-10-12.md)
+is not an instruction to rerun its 2026-10-12 Draft gate. Hardware input
+latency, main-thread GPU-upload stalls, safe interruption and exact near/ROI
+LOD remain engineering work requiring fresh source-bound evidence.
+
 **Open:** transparent repeated buried interfaces, electrical
 annotation raster cost, adaptive rough LOD cache coherency and
 cross-view physical boundary checks. Faster visible _preview_
