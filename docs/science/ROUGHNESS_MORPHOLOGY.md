@@ -15,7 +15,7 @@ Both non-smooth modes use the same appearance contract:
 ```js
 {
   kind: "rough",
-  morphology: "stochastic" | "pyramid",
+  morphology: "stochastic" | "stochastic-v2" | "pyramid",
   polarity: "normal" | "inverted",
   featureSize,
   meanHeight,
@@ -32,7 +32,7 @@ The `kind: "rough"` field remains the compatibility marker used by the existing 
 
 ## Stochastic morphology
 
-For `morphology: "stochastic"` (legacy v1; `stochastic-v2` is the new default):
+Two stochastic profiles are supported. **`stochastic-v2`** is the stable-scale field selected by new Manual and graphical Recipe Rough steps. **`stochastic`** is the original v1 field retained by imported projects and historical Recipe aliases; old states and saved operations are not silently upgraded. Both use the parameters below:
 
 - `featureSize`: mean lateral feature scale.
 - `featureCv`: coefficient of variation of the lateral scale.
@@ -41,7 +41,12 @@ For `morphology: "stochastic"` (legacy v1; `stochastic-v2` is the new default):
 - `etchDepth`: maximum roughness envelope / etch depth.
 - `seed` and `profileId`: deterministic profile identity.
 
-This is the legacy roughness generator.
+The two algorithms are distinct even at identical parameters and seed: the
+legacy variable-frequency field can change its apparent spatial scale far
+from the origin, while `stochastic-v2` uses the stable-scale generator. This is
+a morphology *appearance* difference, not a change to canonical material
+geometry. A reproducible migration must explicitly choose the new profile;
+it cannot claim pixel or field equality to the old one.
 
 ## Pyramid morphology
 
@@ -69,7 +74,10 @@ For a fixed morphology and parameters:
 offsetNormal(x, y) + offsetInverted(x, y) = etchDepth
 ```
 
-For stochastic roughness this preserves the existing algorithm exactly when `polarity: "inverted"`. For pyramids it produces an exact analytic vertical mirror.
+For a **fixed profile version**, stochastic inverted/normal polarity
+preserves the stored field while mirroring its height. This does not imply
+`stochastic` and `stochastic-v2` have the same field. Pyramid uses an exact
+analytic vertical mirror; its generator does not become stochastic-v2.
 
 Projects from versions <= 11 migrate to:
 

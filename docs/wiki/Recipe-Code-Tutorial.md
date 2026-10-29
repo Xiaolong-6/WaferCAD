@@ -151,7 +151,7 @@ etch({
   profile: 'directional',
   area: 'full',
   surface: {
-    morphology: 'rough',
+    morphology: 'stochastic-v2',
     polarity: 'normal',
     featureSize: '500 nm',
     meanHeight: '1 µm',
@@ -162,7 +162,7 @@ etch({
 });
 ```
 
-`morphology` accepts `"rough"` / `"stochastic"` or `"pyramid"`; `polarity` is `"normal"` (outward peaks) or `"inverted"` (recessed pits). `featureSize` and `meanHeight` are positive lengths, `meanHeight` cannot exceed directional etch depth, CV values are 0–1 or percentages 0–100, and `seed` is a non-negative 32-bit integer.
+For new code, choose `morphology: "stochastic-v2"` to match the current Manual/graphical Recipe Rough default. The historical `"rough"` / `"stochastic"` aliases deliberately select **legacy stochastic v1**, so replaying old code remains backward-compatible; `"pyramid"` selects deterministic facets. `polarity` is `"normal"` (outward peaks) or `"inverted"` (recessed pits). Do **not** change an old project to v2 merely to modernize its text: the resulting display field can differ even with the same seed. `featureSize` and `meanHeight` are positive lengths, `meanHeight` cannot exceed directional etch depth, CV values are 0–1 or percentages 0–100, and `seed` is a non-negative 32-bit integer.
 
 ### Implant, Electrical, Record and Snapshot
 
