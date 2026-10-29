@@ -171,8 +171,22 @@ try {
         'Layer eye buttons are right aligned',
       );
       const palette = page.getByRole('combobox', { name: 'Structure color palette', exact: true });
-      await palette.selectOption('random');
-      await waitForPaint(page);
+      const selectRandomPalette = async (randomValue) => {
+        await page.evaluate((value) => {
+          window.__reviewInteractionsOriginalRandom = Math.random;
+          Math.random = () => value;
+        }, randomValue);
+        try {
+          await palette.selectOption('random');
+        } finally {
+          await page.evaluate(() => {
+            Math.random = window.__reviewInteractionsOriginalRandom;
+            delete window.__reviewInteractionsOriginalRandom;
+          });
+        }
+        await waitForPaint(page);
+      };
+      await selectRandomPalette(0.125);
       const first = (await snapshot()).model.layers.map((l) => l.color);
       // Random intentionally returns the select to a 'Randomized' placeholder
       // after the legend is reconstructed. Wait for that observable UI state
@@ -183,8 +197,7 @@ try {
         null,
         { timeout: 15000 },
       );
-      await palette.selectOption('random');
-      await waitForPaint(page);
+      await selectRandomPalette(0.625);
       assert.notDeepEqual(
         (await snapshot()).model.layers.map((l) => l.color),
         first,
