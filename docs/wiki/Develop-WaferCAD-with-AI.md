@@ -6,7 +6,7 @@ and researchers who need reproducible source, process, geometry and visual
 evidence—not just a persuasive screenshot. End users asking for Recipe and
 mask prompts should read [Using WaferCAD with AI](AI-Assisted-Workflows).
 
-The repeated **T-CMOS PR #225** details below are a *worked engineering case*;
+The repeated **T-CMOS PR #225** details below are a _worked engineering case_;
 its polygon counts, metallization tiers and validation commands are **not**
 universal requirements for unrelated devices. Its uncompleted follow-ups are
 tracked in [Issue #333](https://github.com/Xiaolong-6/WaferCAD/issues/333).

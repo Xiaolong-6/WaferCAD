@@ -13,9 +13,9 @@ a claim that the corresponding image or scientific geometry exists.
 
 ## Presets
 
-| Preset            | Candidate views  | Maximum planned images | Maximum keyframes |
-| ----------------- | ---------------- | ---------------------: | ----------------: |
-| Compact (default) | Section          |                     24 |                24 |
+| Preset                 | Candidate views  | Maximum planned images | Maximum keyframes |
+| ---------------------- | ---------------- | ---------------------: | ----------------: |
+| Compact (default)      | Section          |                     24 |                24 |
 | Standard (planner API) | Main and Section |                     96 |                48 |
 
 The Standard row documents the **planner API budget**, not an additional
@@ -47,7 +47,7 @@ satisfy extra Bookmarks or Variants.
    every unknown/deleted History reference, with its stable node ID and reason.
 
 Operation type provides a cheap sampling hint. It is **not** a measure of
-actual structural or visual difference. The *current* saved-state reader and independent physical Section SVG
+actual structural or visual difference. The _current_ saved-state reader and independent physical Section SVG
 renderer described below establish bounded, validated state provenance.
 Future **visual-difference ranking**, multi-view historical presentation,
 and before/after comparisons would require additional reference-frame,

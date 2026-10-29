@@ -71,7 +71,7 @@ The following retained documents remain in their existing locations. **Classific
 - [`docs/wiki/Masks-and-ROI.md`](../wiki/Masks-and-ROI.md) — Active manual/legacy compatibility
 - [`docs/wiki/Process-Operations.md`](../wiki/Process-Operations.md) — Active manual/legacy compatibility
 - [`docs/wiki/Process-and-Recipes.md`](../wiki/Process-and-Recipes.md) — Active manual/legacy compatibility
-- [`docs/wiki/Recipe-Code-Tutorial-zh-CN.md`](../wiki/Recipe-Code-Tutorial-zh-CN.md) — Active manual/legacy compatibility
+- `docs/wiki/Recipe-Code-Tutorial-zh-CN.md` — present in the original 2026-10-12 inventory; retired on 2026-10-29 with no forwarding page. The [English Recipe Code Tutorial](../wiki/Recipe-Code-Tutorial.md) remains canonical.
 - [`docs/wiki/Recipe-Code-Tutorial.md`](../wiki/Recipe-Code-Tutorial.md) — Active manual/legacy compatibility
 - [`docs/wiki/Troubleshooting.md`](../wiki/Troubleshooting.md) — Active manual/legacy compatibility
 - [`docs/wiki/Workspace-and-Views.md`](../wiki/Workspace-and-Views.md) — Active manual/legacy compatibility

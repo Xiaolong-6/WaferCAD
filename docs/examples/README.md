@@ -13,13 +13,13 @@ record an accepted original-paper figure match.
 
 **Do not conflate these independently scoped claims:**
 
-| Claim | What it establishes | What it does not establish |
-| --- | --- | --- |
-| Published on Welcome | An editable `.wafercad` project can be opened from the current catalog | Process fidelity, full-Recipe replay or calibrated device performance |
-| Original/author GDS | Geometric mask polygons came from a source package | Correct layer-purpose mapping, resist/undercut physics or fabricated cross-sections |
-| Reconstructed mask | WaferCAD geometry follows stated or explicitly inferred design dimensions | Possession of the author's original GDS or paper-image equivalence |
-| Saved History / Recipe | The project contains inspectable states or executable operation text | A fresh full-project replay on the current commit |
-| Figure match | Independently measured registration/tolerances and reviewed reference figures | No match is accepted until the evidence register explicitly records acceptance |
+| Claim                  | What it establishes                                                           | What it does not establish                                                          |
+| ---------------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Published on Welcome   | An editable `.wafercad` project can be opened from the current catalog        | Process fidelity, full-Recipe replay or calibrated device performance               |
+| Original/author GDS    | Geometric mask polygons came from a source package                            | Correct layer-purpose mapping, resist/undercut physics or fabricated cross-sections |
+| Reconstructed mask     | WaferCAD geometry follows stated or explicitly inferred design dimensions     | Possession of the author's original GDS or paper-image equivalence                  |
+| Saved History / Recipe | The project contains inspectable states or executable operation text          | A fresh full-project replay on the current commit                                   |
+| Figure match           | Independently measured registration/tolerances and reviewed reference figures | No match is accepted until the evidence register explicitly records acceptance      |
 
 ## Source and modeling assumptions for published projects
 

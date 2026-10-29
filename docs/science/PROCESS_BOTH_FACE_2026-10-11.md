@@ -10,7 +10,14 @@ below describe their original 2026-10-11/12 checkpoints, not today's merge
 requirements. For an end-user explanation, see
 [Process and Recipes](../wiki/Process-and-Recipes.md).
 
-Adds `face: 'both' as a single logical Process operation executed by the Kernel in a deterministic order: **Front → Back**. This is a Kernel/Recipe integration feature isolated from the in-progress Workstation UI v2 redesign. The active Main/Mask inspection face and persisted `project.activeFace` remain `front | back`. The current v2 Manual Process Surface selector supports **Front / Back / Both** (integrated in [Manual Both acceptance](../archive/ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md)); **Both must not change the global inspection face to `both`**. The original Kernel work preceded this UI integration.
+The `face: 'both'` option runs one logical Process operation in the
+Kernel's deterministic **Front → Back** order. The original Kernel work
+predated the Workstation v2 integration. The active Main/Mask inspection face
+and persisted `project.activeFace` remain `front | back`; the Manual Process
+Surface selector supports **Front / Back / Both** (see the
+[Manual Both acceptance](../archive/ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md)).
+Selecting **Both** does not change the global inspection face to a synthetic
+`both` state.
 
 A current Recipe code example:
 

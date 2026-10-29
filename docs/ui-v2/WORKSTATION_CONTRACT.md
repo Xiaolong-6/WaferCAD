@@ -68,7 +68,7 @@ Pointerdown, Escape, scrolling, view or shell updates dismiss it;
 touch is not treated as hover. Any `aria-describedby` integration must
 preserve unrelated description IDs. Tooltips cannot mutate the Process model,
 receive pointer events or replace the in-app illustrated Process Guide.
-Their content describes the *current* operation, including face, area,
+Their content describes the _current_ operation, including face, area,
 material/depth and visual-only 3D settings.
 
 The original rollout, coverage priorities and 2026-10-13 browser checklist

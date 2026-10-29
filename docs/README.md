@@ -24,16 +24,16 @@ flow or a validated paper-figure reproduction.
 
 ## Developers and reviewers
 
-| Responsibility | Current owner |
-| --- | --- |
-| Overall product, install/no-install entry and scope | [Repository README](../README.md) |
-| Canonical physical model, Worker/History boundaries and modules | [Architecture](ARCHITECTURE.md) |
-| Local development/bootstrap and current design contracts | [Development](DEVELOPMENT.md) |
-| Collaborative work, exact revisions and handoffs | [Collaboration](COLLABORATION.md) |
-| Test ownership and scientific/browser acceptance | [Testing](testing.md) |
-| Scheduled/PR/release CI behavior | [CI](CI.md) |
-| Authored versus generated docs, Wiki and archive policy | [Documentation architecture](DOCUMENTATION.md) |
-| Wiki publication and external link ownership | [Wiki sync](WIKI_SYNC.md) |
+| Responsibility                                                  | Current owner                                  |
+| --------------------------------------------------------------- | ---------------------------------------------- |
+| Overall product, install/no-install entry and scope             | [Repository README](../README.md)              |
+| Canonical physical model, Worker/History boundaries and modules | [Architecture](ARCHITECTURE.md)                |
+| Local development/bootstrap and current design contracts        | [Development](DEVELOPMENT.md)                  |
+| Collaborative work, exact revisions and handoffs                | [Collaboration](COLLABORATION.md)              |
+| Test ownership and scientific/browser acceptance                | [Testing](testing.md)                          |
+| Scheduled/PR/release CI behavior                                | [CI](CI.md)                                    |
+| Authored versus generated docs, Wiki and archive policy         | [Documentation architecture](DOCUMENTATION.md) |
+| Wiki publication and external link ownership                    | [Wiki sync](WIKI_SYNC.md)                      |
 
 For changes under the Workstation, Renderer or Process engine, read the
 respective **current owner** below before relying on old PR handoffs.
@@ -42,7 +42,7 @@ respective **current owner** below before relying on old PR handoffs.
 
 - [Workstation](ui-v2/README.md) — shell, mobile interaction, tooltips and Z Break; canonical [Workstation contract](ui-v2/WORKSTATION_CONTRACT.md).
 - [Renderer and Section](renderer/README.md) — exact geometry versus preview/LOD, cache, export and resource lifetime; canonical [Renderer contract](renderer/RENDERER_CONTRACT.md).
-- [Process geometry and science](science/README.md) — 2.5D material ownership, shipped bounded Geometry Diagnostics, Both-face operations, rough/pyramid *appearance*, Lift-off, numerical precision and History.
+- [Process geometry and science](science/README.md) — 2.5D material ownership, shipped bounded Geometry Diagnostics, Both-face operations, rough/pyramid _appearance_, Lift-off, numerical precision and History.
 - [Continuous release contract](science/CONTINUOUS_RELEASE_CONTRACT.md) — selectable **experimental** geometric release, with unsupported follow-on operations explicitly documented.
 - [Import/export and reports](io/README.md) — GDS/OAS masks, project schema, read-only report and historical keyframes.
 - [Published example provenance](examples/README.md) and [figure evidence](evidence/README.md) — distinguish Welcome publication, source GDS, inferred geometry, saved History, fresh replay and paper matching.

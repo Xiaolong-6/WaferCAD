@@ -44,7 +44,7 @@ Two stochastic profiles are supported. **`stochastic-v2`** is the stable-scale f
 The two algorithms are distinct even at identical parameters and seed: the
 legacy variable-frequency field can change its apparent spatial scale far
 from the origin, while `stochastic-v2` uses the stable-scale generator. This is
-a morphology *appearance* difference, not a change to canonical material
+a morphology _appearance_ difference, not a change to canonical material
 geometry. A reproducible migration must explicitly choose the new profile;
 it cannot claim pixel or field equality to the old one.
 
