@@ -38,6 +38,8 @@ test('published original-GDS Q2 keeps real native Al material owners without cla
     1,
     'One authentic source geometry checkpoint',
   );
+  assert.equal(project.snapshotBranches.nodes[0].operation.geometryCheckpoint, true);
+  assert.equal(project.snapshotBranches.nodes[0].operation.replay, undefined);
   const coverage = unionGeometries(model.regions.map((region) => region.geom));
   assert.ok(geometryArea(difference(model.boundary, coverage)) < 1e-8, 'No missing XY coverage');
   assert.ok(geometryArea(difference(coverage, model.boundary)) < 1e-8, 'No outside XY coverage');

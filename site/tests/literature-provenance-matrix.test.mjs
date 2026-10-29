@@ -126,12 +126,19 @@ test('paper provenance records match the actual published example catalog', asyn
         entry.captureEvidence.manifestMember,
         entry.id === 'suspended-silica-microdisk'
           ? 'test-results/issue298-persisted-variant/manifest.json'
-          : 'figure-cut-manifest.json',
+          : entry.id === 'transmon-q2-original-gds'
+            ? 'transmon-q2-browser/report.json'
+            : 'figure-cut-manifest.json',
       );
       assert.ok(entry.captureEvidence.capturedMembers.length > 0);
       assert.equal(typeof entry.captureEvidence.originalPaperOverlay, 'boolean');
       for (const member of entry.captureEvidence.capturedMembers) {
         assert.match(member, /\.png$/);
+      }
+      if (entry.id === 'transmon-q2-original-gds') {
+        assert.deepEqual(entry.captureEvidence.capturedMembers, [
+          'transmon-q2-browser/q2-section-physical-z-break.png',
+        ]);
       }
     } else {
       assert.equal(entry.captureEvidence, null);
