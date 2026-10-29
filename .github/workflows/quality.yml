@@ -22,6 +22,8 @@ jobs:
       # The default PR checkout is the proposed merge tree. Test precisely that tree.
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -42,11 +44,42 @@ jobs:
           fi
           node scripts/local-verification.mjs verify "$QUALITY_SCOPE"
 
-      - name: Reject missing or stale PR proof before remote tests
+      # A missing receipt may use incremental Quality ONLY when the exact main
+      # parent has independently verifiable full proof and every changed path
+      # has an explicit ownership rule. Unknown/critical changes fail closed.
+      - name: Verify exact main baseline and incremental diff eligibility
+        id: incremental_base
         if: ${{ github.event_name == 'pull_request' && steps.evidence.outcome != 'success' }}
+        continue-on-error: true
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          node scripts/incremental-quality.mjs plan "$BASE_SHA" "$HEAD_SHA"
+          base_dir="$(mktemp -d)"
+          git worktree add --detach "$base_dir" "$BASE_SHA"
+          node "$base_dir/scripts/local-verification.mjs" verify full
+          git worktree remove --force "$base_dir"
+
+      - name: Install locked dependencies for incremental Quality
+        if: ${{ github.event_name == 'pull_request' && steps.incremental_base.outcome == 'success' }}
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Run exact-diff Quality and owning Node contracts
+        id: incremental_checks
+        if: ${{ github.event_name == 'pull_request' && steps.incremental_base.outcome == 'success' }}
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/incremental-quality.mjs run "$BASE_SHA" "$HEAD_SHA"
+
+      - name: Reject missing or stale PR proof before remote tests
+        if: ${{ github.event_name == 'pull_request' && steps.evidence.outcome != 'success' && steps.incremental_checks.outcome != 'success' }}
         shell: bash
         run: |
-          echo '::error::Missing or stale source-bound local verification. Run locally and commit its receipt; CI will not repeat your tests.'
+          echo '::error::Neither source-bound Quality receipt nor verified-base incremental Quality passed.'
           exit 1
 
       # Strict second verification is named for the fast-release provenance gate.

@@ -26,6 +26,16 @@ const DEPENDENCY_FILES = new Set(['package-lock.json']);
 // dispatched renderer stress remain available without starting unrelated UI CI.
 const CI_ONLY_V2_SCRIPTS = new Set(['scripts/v2/check-source-sunset-renderer-stress.mjs']);
 const V2_WORKSPACE_PATHS = [/^site\/ui-v2\//, /^scripts\/v2\//];
+// These narrowly owned view/acceptance changes do not require replaying the
+// entire native Workstation. The full Workstation owner remains mandatory for
+// shared UI changes, scheduled integration and release acceptance.
+const TARGETED_THREE_OWNER = 'scripts/v2/check-three-view.mjs';
+// Section Layers palette and inspection interactions are owned by the real
+// native interaction suite, including 390px repeated Random browser checks.
+const V2_LEGEND_INTERACTION_PATHS = [
+  /^site\/ui-v2\/(?:section-legend|section-view)\.js$/,
+  /^scripts\/v2\/check-review-interactions\.mjs$/,
+];
 const V2_CROSS_UI_PATHS = [
   /^site\/ui-v2\/(?:workstation-(?:entry|runtime|workflow)|project-mask-panels)\.js$/,
   /^site\/app(?:-legacy)?\.html$/,
@@ -185,7 +195,11 @@ function matchesAny(path, patterns) {
 }
 
 function emptyPlan() {
-  return Object.fromEntries(BROWSER_SUITES.map((suite) => [suite, false]));
+  return {
+    ...Object.fromEntries(BROWSER_SUITES.map((suite) => [suite, false])),
+    // A Ready-only owner. Full/daily/release already cover 3D in Workstation.
+    three: false,
+  };
 }
 
 function enable(plan, ...suites) {
@@ -246,10 +260,17 @@ export function buildCiTestPlan(
   for (const path of paths) {
     // The dedicated Stage C/M4 job owns real v2 behavior on main and PRs.
     // Legacy cross-interface owners still guard shared recovery and History.
-    if (!CI_ONLY_V2_SCRIPTS.has(path) && matchesAny(path, V2_WORKSPACE_PATHS))
+    if (
+      !CI_ONLY_V2_SCRIPTS.has(path) &&
+      path !== TARGETED_THREE_OWNER &&
+      !matchesAny(path, V2_LEGEND_INTERACTION_PATHS) &&
+      matchesAny(path, V2_WORKSPACE_PATHS)
+    )
       enable(plan, 'workstation');
+    if (path === TARGETED_THREE_OWNER) enable(plan, 'three');
     if (matchesAny(path, V2_CROSS_UI_PATHS))
       enable(plan, 'workstation', 'history', 'persistence', 'interaction');
+    if (matchesAny(path, V2_LEGEND_INTERACTION_PATHS)) enable(plan, 'interaction');
     if (matchesAny(path, WORKSTATION_PATHS)) enable(plan, 'workstation');
     if (matchesAny(path, RESILIENCE_PATHS)) enable(plan, 'resilience');
     if (matchesAny(path, HISTORY_PATHS)) enable(plan, 'history');
@@ -263,6 +284,9 @@ export function buildCiTestPlan(
     if (matchesAny(path, LAYOUT_PATHS)) enable(plan, 'interaction', 'product_layout');
   }
 
+  // Never run the same 3D owner twice if a broader change requires the
+  // original complete Workstation (which already includes check-three-view).
+  if (plan.workstation) plan.three = false;
   return { full: false, paths, suites: plan, release: buildReleaseGates(paths) };
 }
 
@@ -288,11 +312,12 @@ async function stdinText() {
 
 async function writeGithubOutputs(plan) {
   if (!process.env.GITHUB_OUTPUT) return;
-  const heavy = ['workstation', 'interaction', 'examples', 'product_layout', 'renderer'];
+  const heavy = ['workstation', 'interaction', 'examples', 'product_layout', 'renderer', 'three'];
   const selected = heavy.filter((suite) => plan.suites[suite]);
   const lines = [
     `full=${plan.full}`,
     ...BROWSER_SUITES.map((suite) => `${suite}=${plan.suites[suite]}`),
+    `three=${plan.suites.three}`,
     ...RELEASE_GATES.map((gate) => `${gate}=${plan.release[gate]}`),
     `extended=${selected.length > 0}`,
     `extended_matrix=${JSON.stringify(selected.length > 0 ? selected : ['none'])}`,

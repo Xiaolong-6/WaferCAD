@@ -368,7 +368,12 @@ export function createSectionView({ store, main, workstation }) {
     });
     next.querySelector('.v2-legend-palette-select').onchange = (event) => {
       legendPalette = event.target.value;
-      const colors = STRUCTURE_PALETTES[legendPalette] || window.WaferCadV2RandomLegendPalette();
+      const colors =
+        STRUCTURE_PALETTES[legendPalette] ||
+        window.WaferCadV2RandomLegendPalette(
+          20,
+          state.model.layers.map((layer) => layer.color),
+        );
       state.model.layers.forEach((layer, index) =>
         recolorLayer(state.model, layer.id, colors[index % colors.length]),
       );

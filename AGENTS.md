@@ -25,11 +25,14 @@ Read `docs/COLLABORATION.md` for the shared ChatGPT/Codex handoff workflow, `doc
 Renderer, Example, scientific matrix or History/Recovery suite runs automatically
 for ordinary Draft pushes.** Before pushing, run the smallest owning Node tests,
 science contracts and actual local Chromium/Playwright captures; keep exact-SHA
-source-bound verification receipts. Draft PRs must have a valid local `draft`
-(or `full`) receipt and receive proof-only Quality verification, not a remote
-fallback run. Missing/stale proof means stop and fix locally, not automatic
-CI execution. A Ready PR must have a valid `full` receipt and receives only the
-risk-selected reusable acceptance gates from `ready-impact.yml`.
+source-bound verification receipts. Draft PRs should have a valid local `draft` (or `full`) receipt. Alternatively,
+PR Quality may run a strict incremental path **only** after verifying the full
+receipt of the exact main parent and executing the explicitly owned changed-file
+lint/format and Node contracts on the exact PR merge tree. Unknown/high-risk
+diffs, missing baselines and failed targeted tests reject this shortcut and
+require full proof. A Ready PR requires full proof **or** passing verified-base
+incremental Quality plus the risk-selected reusable acceptance gates from
+`ready-impact.yml`. Do not trigger unbounded remote fallback Quality.
 
 The only automatic PR workflows are `Quality`, `Release evidence contract`,
 and `Ready risk-targeted acceptance`. All heavyweight workflows are called by

@@ -85,3 +85,11 @@ test('opt-in source transport is allowed only for labeled events', () => {
   );
   assert.match(auditWorkflowEvents(files).join(' '), /forbidden automatic pull_request/);
 });
+
+test('daily runner budget is an alert, while mandatory suites remain fail-closed', () => {
+  const daily = sources()['daily-full.yml'];
+  assert.match(daily, /core\.warning\(`Daily CI used /);
+  assert.doesNotMatch(daily, /core\.setFailed\(`Daily CI used /);
+  assert.match(daily, /Fail on any missing, skipped or failed mandatory group/);
+  assert.match(daily, /job\.result !== 'success'/);
+});

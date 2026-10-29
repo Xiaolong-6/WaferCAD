@@ -12,8 +12,8 @@ its owning unit tests; **do not** restore broad automatic `pull_request`,
 | Phase                | Automated remote execution                                                                                                                                             | Local owner                                                            | Merge eligibility                                                    |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------- |
 | Ordinary development | None                                                                                                                                                                   | Focused Node/scientific tests and real Chromium screenshots            | No waiting on GitHub                                                 |
-| Draft PR push        | Proof-only `Quality`; small release policy contract on relevant changes; Ready router skips                                                                            | `node scripts/local-verification.mjs run draft` or matching full proof | Not merge-ready                                                      |
-| Ready for Review     | Proof-only full Quality plus `ready-impact.yml` selected owner gates                                                                                                   | Full proof and actual app/browser inspection                           | All selected gates must pass on the candidate tree                   |
+| Draft PR push        | Proof-only Quality or verified-base diff Quality; small release policy contract; Ready router skips                                                                    | `node scripts/local-verification.mjs run draft` or matching full proof | Not merge-ready                                                      |
+| Ready for Review     | Full Quality proof or verified-base diff Quality plus selected Ready owner gates                                                                                       | Full proof and actual app/browser inspection                           | All selected gates must pass on the candidate tree                   |
 | Daily at 02:30 UTC   | `daily-full.yml`: actual full lint/format/docs/Node + full Browser + Process/Recipe + scientific examples/facets + UI/Renderer + normal-Origin History/Recovery/Worker | None required to start the nightly run                                 | Informative for its exact SHA, never a substitute for a newer PR SHA |
 | Main release         | Unchanged fail-closed `pages.yml` exact release-tree checks and deploy verdict                                                                                         | Human approval and correct source-bound proof                          | Required prior to publication                                        |
 
@@ -30,8 +30,9 @@ large paper-specific one-offs remain explicitly manual, not duplicated daily.
 **Source identity:** A midnight pass at commit `abc123` says nothing about a
 new Kernel commit `def456`. The Ready planner routes changed paths using the
 base/head diff; a fixed `Ready impact verdict` fails if a selected owner gate
-fails, cancels, or is missing. Missing local Quality proof fails quickly; it
-never falls back to the remote 1,197-test inventory. The nightly run deliberately
+fails, cancels, or is missing. Missing local Quality proof triggers a strictly owned diff Quality path only when
+the main base has independently verified full proof. Unknown/high-risk diffs
+fail closed; they never fall back to the remote 1,197-test inventory. The nightly run deliberately
 executes full checks irrespective of committed proof; publication continues to
 be fail-closed at the exact release tree.
 
@@ -57,6 +58,57 @@ repository settings and **cannot be guaranteed by YAML alone**.
 ---
 
 **Authority note:** The table above and `AGENTS.md` govern execution. The sections below detail local verification, accepted visual evidence, Ready routing and release. Any historical references to automatic Draft/weekly Browser runs are explicitly superseded by the 2026-10-22 policy.
+
+## Incremental Quality (baseline + exact diff)
+
+The automatic PR Quality job accepts either the existing source-bound Draft/Full
+receipt **or** a strict incremental route. This is not a replacement for release
+Quality. The incremental route must first inspect the exact synthetic merge
+commit's two parents against the event's main-base/head SHAs, classify every
+cumulative changed file using `scripts/incremental-quality.mjs`, and verify
+`node scripts/local-verification.mjs verify full` in a detached worktree of the
+**exact main parent**. A missing/stale base proof, unknown path, rename/deletion,
+or failure of any selected command rejects incremental Quality.
+
+Eligible changes use locked `npm ci`, ESLint and Prettier on changed JS/MD files,
+plus real Node tests for changed tests and explicitly mapped workflow, UI and
+Docs owners. New ownership is opt-in within `scripts/incremental-quality.mjs`;
+Kernel/Process/History/Recovery, dependencies, export and unknown sources remain
+full-proof-only. The first implementation also tests its own Quality routing
+with CI contracts rather than silently claiming previous proof covers modified
+CI code. The output of the GitHub Quality job is tied to the exact PR merge SHA;
+no developer-supplied incremental transcript is trusted.
+
+**Cross-commit Ready owner reuse:** before starting browser and scientific
+jobs, the Ready impact planner checks whether **all currently selected owner
+jobs** already passed in a completed Ready run of the same PR and unchanged
+main base. It validates the original GitHub Actions run, each selected named
+nested job (including Interaction, Main/Mask, real Chromium smoke and 3D),
+Git ancestry and the cumulative changed-file inventory. Only an explicit
+allowlist of CI-routing code/contracts and this CI documentation may differ;
+application source, test harnesses, scientific fixtures, dependencies, unknown
+changes and new main baselines always invalidate this shortcut. Only if every
+selected gate is proved are those gates suppressed together; the Ready verdict
+still runs and the exact new merge tree's Quality and Release contracts are
+checked independently. An API/provenance/owner failure runs the selected real
+browser tests, with no unverified skip. The original narrower 3D-only reuse
+remains as a fallback when a full Ready proof is unavailable. Daily/full,
+manual and Pages release still execute their own unchanged full acceptance.
+
+**Ready browser owner de-duplication:** the exact standalone
+`scripts/v2/check-three-view.mjs` acceptance script uses a dedicated `three`
+Browser matrix entry, and the Section palette's narrowly owned visual change
+uses the real Interaction owner (including the 390px Random regression).
+Those known paths do **not** schedule the old monolithic Workstation; if a
+shared or unknown v2 Workstation source is also changed, the complete
+Workstation is selected and the standalone 3D entry is suppressed. Full daily
+and production acceptance retain their existing complete Workstation coverage.
+
+**This optimization applies only to PR Quality.** The scheduled daily job
+continues actual full Quality, Ready runs real risk-selected browser/science
+acceptance, and the main Pages release continues its unchanged full Quality
+proof-or-execution and fail-closed publication chain. The 75-minute nightly
+budget target remains a **warning**, while failed mandatory tests still fail.
 
 ## Local Quality evidence
 

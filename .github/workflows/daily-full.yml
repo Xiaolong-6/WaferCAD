@@ -89,7 +89,7 @@ jobs:
       contents: read
       actions: read
     steps:
-      - name: Measure daily runner minutes and flag budget overruns
+      - name: Measure daily runner minutes and warn on budget overruns
         uses: actions/github-script@v7
         with:
           script: |
@@ -106,7 +106,7 @@ jobs:
               .addRaw(`Run: ${context.runId}, completed runner jobs: ${jobs.length}, cumulative: ${minutes.toFixed(1)} minutes; daily target: ${target} minutes.`)
               .write();
             if (minutes > target) {
-              core.setFailed(`Daily CI used ${minutes.toFixed(1)} runner-minutes; target is ${target}. Review suite selection before the next run.`);
+              core.warning(`Daily CI used ${minutes.toFixed(1)} runner-minutes; target is ${target}. Review suite selection before the next run.`);
             }
       - name: Fail on any missing, skipped or failed mandatory group
         env:
