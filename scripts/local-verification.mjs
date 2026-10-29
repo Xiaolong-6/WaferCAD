@@ -33,6 +33,28 @@ const GENERATED_DIRECTORIES = new Set([
   '.cache',
 ]);
 
+// Quality executes ESLint, Prettier, documentation generation and Node tests.
+// Playwright is owned by the separate real-browser acceptance suites, not by
+// either Quality plan. Full Node tests do import Three.js; the Draft plan does not.
+const QUALITY_TOOLS = {
+  draft: ['eslint', 'prettier'],
+  full: ['eslint', 'prettier', 'three'],
+};
+
+export function requiredQualityDependencies(scope, devDependencies) {
+  qualityPlan(scope);
+  const required = {};
+  for (const name of QUALITY_TOOLS[scope]) {
+    const version = devDependencies?.[name];
+    requireValue(
+      typeof version === 'string' && version.length > 0,
+      'Missing Quality tool: ' + name,
+    );
+    required[name] = version;
+  }
+  return required;
+}
+
 export function qualityPlan(scope) {
   if (scope !== 'draft' && scope !== 'full') throw new Error('Scope must be draft or full');
   return [
@@ -258,7 +280,9 @@ export function validateEvidence(report, transcript, source, requiredScope, depe
     SUPPORTED_NODE.test(report.environment?.node || ''),
     'Unsupported Node LTS evidence version',
   );
-  for (const [name, version] of Object.entries(dependencies)) {
+  for (const [name, version] of Object.entries(
+    requiredQualityDependencies(report.scope, dependencies),
+  )) {
     requireValue(
       report.environment.dependencies?.[name] === version,
       'Tool version mismatch: ' + name,
@@ -351,12 +375,15 @@ export function runQuality(root, scope, execute = executeCheck) {
   evidenceDirectory(root, true);
   for (const path of EVIDENCE_FILES) rmSync(join(root, path), { force: true });
   const source = sourceSnapshot(root);
-  const expected = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).devDependencies;
+  const expected = requiredQualityDependencies(
+    scope,
+    JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).devDependencies,
+  );
   const installed = {};
   for (const [name, version] of Object.entries(expected)) {
-    installed[name] = JSON.parse(
-      readFileSync(join(root, 'node_modules', name, 'package.json'), 'utf8'),
-    ).version;
+    const manifest = join(root, 'node_modules', name, 'package.json');
+    requireValue(existsSync(manifest), 'Install pinned Quality tools before verifying: ' + name);
+    installed[name] = JSON.parse(readFileSync(manifest, 'utf8')).version;
     requireValue(installed[name] === version, 'Install pinned tools before verifying: ' + name);
   }
   requireValue(SUPPORTED_NODE.test(process.version), 'Use a supported Node LTS release (22 or 24)');

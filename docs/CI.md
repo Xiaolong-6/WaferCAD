@@ -63,7 +63,12 @@ repository settings and **cannot be guaranteed by YAML alone**.
 Run the existing checks locally and commit their source-bound report.
 Neither **Node 24 exclusively** nor a complete Git checkout/staged index is
 mandatory. Both Node **22 and 24 LTS** are accepted for local proof; the exact
-pinned package versions must still match. In an ordinary Git workspace the
+pinned versions of the tools actually used by the Quality plan must still
+match: ESLint and Prettier for Draft, plus Three.js for Full Node geometry
+tests. Playwright is a browser-only dependency and is checked by the separate
+real-browser suites, not the Node-only Quality preflight. This does not change
+the locked `npm ci` installation contract or waive any browser acceptance.
+In an ordinary Git workspace the
 verifier enumerates tracked source paths but hashes the **actual working bytes**
 (no staging needed). For a source-only package, it requires the standard
 `wafercad-source-manifest.json`, rejects missing and unlisted source files, and

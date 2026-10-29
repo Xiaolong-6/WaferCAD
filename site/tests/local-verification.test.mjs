@@ -9,13 +9,19 @@ import {
   digest,
   EVIDENCE_FILES,
   qualityPlan,
+  requiredQualityDependencies,
   runQuality,
   sourceSnapshot,
   validateEvidence,
   verifyQuality,
 } from '../../scripts/local-verification.mjs';
 
-const dependencies = { eslint: '10.11.0', prettier: '3.9.9' };
+const dependencies = {
+  eslint: '10.11.0',
+  playwright: '1.55.1',
+  prettier: '3.9.9',
+  three: '0.179.1',
+};
 const source = { digest: 'source-digest', fileCount: 3 };
 
 function passing(scope = 'full') {
@@ -33,7 +39,10 @@ function passing(scope = 'full') {
     scope,
     status: 'pass',
     source: { ...source },
-    environment: { node: 'v24.0.0', dependencies: { ...dependencies } },
+    environment: {
+      node: 'v24.0.0',
+      dependencies: requiredQualityDependencies(scope, dependencies),
+    },
     planDigest: digest(JSON.stringify(plan)),
     startedAt: '2026-10-20T12:00:00Z',
     finishedAt: '2026-10-20T12:00:01Z',
@@ -73,6 +82,7 @@ function fixture(t) {
     'fixture',
   );
   for (const [name, version] of Object.entries(dependencies)) {
+    if (name === 'playwright') continue; // Browser-only dependency is intentionally absent.
     mkdirSync(join(root, 'node_modules', name), { recursive: true });
     writeFileSync(join(root, 'node_modules', name, 'package.json'), JSON.stringify({ version }));
   }
@@ -91,6 +101,42 @@ test('Quality plans preserve lint, format, docs and full Node ownership', () => 
   assert.deepEqual(qualityPlan('full').at(-1).args, ['test']);
   assert.ok(qualityPlan('draft').at(-1).args.includes('site/tests/local-verification.test.mjs'));
   assert.throws(() => qualityPlan('none'), /Scope/);
+});
+
+test('Quality dependency sets exclude browser-only Playwright but protect Three in full', (t) => {
+  assert.deepEqual(requiredQualityDependencies('draft', dependencies), {
+    eslint: '10.11.0',
+    prettier: '3.9.9',
+  });
+  assert.deepEqual(requiredQualityDependencies('full', dependencies), {
+    eslint: '10.11.0',
+    prettier: '3.9.9',
+    three: '0.179.1',
+  });
+  assert.throws(
+    () => requiredQualityDependencies('full', { eslint: '10.11.0', prettier: '3.9.9' }),
+    /Missing Quality tool: three/,
+  );
+
+  const { root } = fixture(t);
+  assert.equal(runQuality(root, 'draft', success).checks, 4);
+  assert.deepEqual(
+    Object.keys(JSON.parse(readFileSync(join(root, EVIDENCE_FILES[0]))).environment.dependencies),
+    ['eslint', 'prettier'],
+  );
+  assert.equal(runQuality(root, 'full', success).checks, 4);
+  assert.equal(verifyQuality(root, 'full').scope, 'full');
+  rmSync(join(root, 'node_modules/three'), { recursive: true, force: true });
+  assert.equal(runQuality(root, 'draft', success).checks, 4);
+  assert.throws(() => runQuality(root, 'full', success), /Install pinned Quality tools.*three/);
+  assert.throws(() => verifyQuality(root, 'full'));
+});
+
+test('full Quality report rejects a mismatched Three version but does not demand Playwright', () => {
+  const proof = passing();
+  assert.equal(validate(proof).checks, 4);
+  proof.report.environment.dependencies.three = '0.0.0';
+  assert.throws(() => validate(proof), /Tool version mismatch: three/);
 });
 
 test('full evidence satisfies both levels and Draft evidence cannot satisfy Ready', () => {
