@@ -523,10 +523,10 @@ test('published continuous Microdisk provides exact air gap, central support and
   const project = await loadBundledProject('suspended-silica-microdisk');
   const model = project.model;
   assert.equal(model.kernel, 'vector-continuous-etch-v1');
-  assert.equal(model.processRevision, 8);
+  assert.equal(model.processRevision, 10);
   assert.equal(project.snapshotBranches.activeBranchId, 'main');
-  assert.equal(project.snapshotBranches.nodes.length, 9);
-  assert.equal(project.snapshots.length, 9);
+  assert.equal(project.snapshotBranches.nodes.length, 11);
+  assert.equal(project.snapshots.length, 11);
   assert.equal(project.snapshotBranches.branches.length, 1);
   const owner = validateContinuousEtchModel(model);
   assert.equal(owner.sourceModel.kernel, 'vector-2.5d-v1');
