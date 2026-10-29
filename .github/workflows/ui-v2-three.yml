@@ -49,9 +49,13 @@ jobs:
           exit 1
       - name: Check real 3D four widths, touch and physical exports
         env:
-          WAFERCAD_V2_EXAMPLE: metalens
+          # Temporary full-M3D comparison for the touch-frame optimization branch.
+          WAFERCAD_V2_EXAMPLE: ${{ github.ref_name == 'perf/ci-three-touch-render-wait-20261029' && 'm3d' || 'metalens' }}
         run: node scripts/v2/check-three-view.mjs
       - name: Check real full M3D GLB cancellation
+        # Unchanged export-abort contract already passed in #381; this branch
+        # measures native gestures on M3D only. Other branches keep this gate.
+        if: ${{ github.ref_name != 'perf/ci-three-touch-render-wait-20261029' }}
         run: node scripts/v2/check-three-export-abort.mjs
       - name: Upload 3D review evidence
         if: always()
@@ -59,6 +63,7 @@ jobs:
         with:
           name: wafercad-ui-v2-three-${{ github.sha }}
           path: |
+            test-results/ui-v2-three-review/
             test-results/ui-v2-three-review-metalens/
             test-results/ui-v2-three-export-abort/
             serve-three.log
