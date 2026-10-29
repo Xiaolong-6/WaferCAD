@@ -17,6 +17,10 @@ Draft/merge history. They are not current product contracts.
 For current contracts see [Workstation](../ui-v2/WORKSTATION_CONTRACT.md)
 and [Architecture](../ARCHITECTURE.md).
 
+## Continuous-release mathematical development (revision-scoped)
+
+- [Microdisk isotropic oracle and banded/Continuous development history](science/ISOTROPIC_RELEASE_ORACLE_2026-10-16.md) — preserves mathematical bounds, source experiments, original eight-/72-band attempts and #332-era integration notes. This is **not** the current published material contract; see [Continuous selective release](../science/CONTINUOUS_RELEASE_CONTRACT.md) for the shipped experimental single-release envelope and explicit follow-on limits.
+
 ## Scientific implementations and measurements reclassified after business review
 
 These records have finished their original merge/measurement purpose. Their

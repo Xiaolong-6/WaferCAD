@@ -105,7 +105,7 @@ by a null-Origin native Three.js diagnostic or isolated math tests.
 Do not claim chemical accuracy, mechanical stability or paper
 image fidelity without external calibration.
 
-The [2026-10-16 isotropic oracle and development record](ISOTROPIC_RELEASE_ORACLE_2026-10-16.md)
+The [2026-10-16 isotropic oracle and development record](../archive/science/ISOTROPIC_RELEASE_ORACLE_2026-10-16.md)
 preserves the earlier eight-band mathematics, adaptive 72-band
 experiments, bounded convergence and dated M07 evidence.
 Historical measurements remain correct for their original source

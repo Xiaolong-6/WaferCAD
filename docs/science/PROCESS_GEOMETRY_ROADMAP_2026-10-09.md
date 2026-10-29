@@ -33,7 +33,7 @@ True production etch-profile taper, arbitrary step coverage/gap fill and
 mass-conserving oxidation require separate Kernel and replay acceptance. Rough and
 pyramid appearance currently does not constitute physical microgeometry. The
 [experimental facet model](PHYSICAL_FACET_MODELING_2026-10-16.md) and
-[isotropic release oracle](ISOTROPIC_RELEASE_ORACLE_2026-10-16.md) are bounded
+[isotropic release oracle](../archive/science/ISOTROPIC_RELEASE_ORACLE_2026-10-16.md) are bounded
 research owners, not enabled general-purpose production Process operations.
 GLB rendering/export also does not establish watertight, unit-verified
 FEM/FDTD interoperability.
