@@ -10,7 +10,7 @@ is the cross-module map.
 ## Current contracts and open work
 
 - [Renderer, Section and capture](RENDERER_CONTRACT.md) — present behavior and safety boundaries.
-- [3D Border Inspector](BORDER_INSPECTOR.md) — shared visible contour ownership.
+- [3D Border Inspector](BORDER_INSPECTOR.md) — current physical contour and dense-array presentation rules; the 2026-10-18 null-Origin screenshots are explicitly historical, not current app acceptance.
 - Capture transaction and resource-retirement rules are in the [current Renderer contract](RENDERER_CONTRACT.md); the [original v3/v4 correctness backport](../archive/renderer/RENDERER_LIFECYCLE_CORRECTNESS_2026-10-12.md) preserves dated implementation and hardware diagnostics.
 - [Transparency and LOD roadmap](RENDERER_TRANSPARENCY_ROADMAP.md) — **open performance debt**, not current latency certification.
 
