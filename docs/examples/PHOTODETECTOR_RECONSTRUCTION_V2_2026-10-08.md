@@ -1,6 +1,13 @@
 # Photodetector production example · Process Geometry Kernel rebuild (2026-10-08)
 
-> **Revision-specific evidence.** This record describes its original date, branch and validation scope. It does not establish current main status. Use the [documentation map](../README.md) and [archive index](../archive/README.md) for current contracts and later evidence.
+> **Source and revision boundary.** This page retains paper-derived device geometry,
+> explicit assumptions and the **2026-10-08** rebuild decisions. The later
+> [Both-face consolidation](../archive/examples/EXAMPLE_BOTH_FACE_CONSOLIDATION_2026-10-13.md)
+> changed saved Front/Back stages for the published Photodetector family. Do not
+> treat the original sequence below as an exact description of today's saved
+> project, or the old validation paragraphs as current replay acceptance.
+> See the [current Welcome project guide](../wiki/Examples-and-Modeling-Limits.md)
+> and [figure evidence register](../evidence/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md).
 
 ## Scope and sources
 
