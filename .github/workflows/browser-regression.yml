@@ -34,6 +34,9 @@ permissions:
 jobs:
   plan:
     name: Plan browser suites
+    permissions:
+      contents: read
+      actions: read
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -48,8 +51,8 @@ jobs:
       product_layout: ${{ steps.plan.outputs.product_layout }}
       renderer: ${{ steps.plan.outputs.renderer }}
       process: ${{ steps.plan.outputs.process }}
-      extended: ${{ steps.plan.outputs.extended }}
-      extended_matrix: ${{ steps.plan.outputs.extended_matrix }}
+      extended: ${{ steps.three_reuse.outputs.extended || steps.plan.outputs.extended }}
+      extended_matrix: ${{ steps.three_reuse.outputs.extended_matrix || steps.plan.outputs.extended_matrix }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -91,6 +94,18 @@ jobs:
           else
             node scripts/ci-test-plan.mjs --full
           fi
+
+      - name: Reuse source-identical accepted 3D browser evidence
+        id: three_reuse
+        if: ${{ github.event_name == 'pull_request' && !github.event.pull_request.draft && !inputs.force_full && steps.plan.outputs.three == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          BROWSER_EXTENDED_MATRIX: ${{ steps.plan.outputs.extended_matrix }}
+        run: node scripts/ci-three-evidence.mjs
 
   browser:
     name: ${{ github.event_name == 'push' && 'Main targeted regression' || 'Chromium targeted regression' }}
