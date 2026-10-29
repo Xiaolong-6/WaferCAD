@@ -6,7 +6,7 @@ process kinetics or predictive TCAD.
 
 ## Current implementation and numerical contracts
 
-- [Process Geometry Kernel v2](PROCESS_GEOMETRY_KERNEL_V2.md) — exposed surfaces, physical sidewalls and owned material.
+- [Process Geometry Kernel v2](PROCESS_GEOMETRY_KERNEL_V2.md) — exposed surfaces, physical sidewalls and owned material; includes the [shipped but bounded read-only Geometry Diagnostics contract](PROCESS_GEOMETRY_KERNEL_V2.md#read-only-geometry-diagnostics).
 - [Process benchmarks](PROCESS_BENCHMARKS.md) — independent analytic geometry invariants.
 - [Continuous release](CONTINUOUS_RELEASE_CONTRACT.md) — **experimental but selectable** single-release analytic material owner and its unsupported follow-on operations.
 - [Numerical and physical interpretation](PROCESS_NUMERICAL_CONTRACT_2026-10-14.md) — physical precision, compact versus lossless semantics.
@@ -20,7 +20,7 @@ process kinetics or predictive TCAD.
 ## Open proposals and experimental work
 
 - [Material/Target semantics proposal](MATERIAL_TARGET_SEMANTICS_2026-10-13.md) — non-activated review matrix.
-- [Geometry/Process roadmap](PROCESS_GEOMETRY_ROADMAP_2026-10-09.md) — proposals are not automatically product features.
+- [Geometry/Process roadmap](PROCESS_GEOMETRY_ROADMAP_2026-10-09.md) — distinguishes delivered bounded Diagnostics from the remaining six unshipped proposals.
 - [Physical Facet modeling](PHYSICAL_FACET_MODELING_2026-10-16.md) — opt-in research, **not** normal Process parity; see [experimental ownership](../../site/experimental/README.md).
 
 ## Dated research and implementation evidence

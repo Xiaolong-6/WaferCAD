@@ -142,6 +142,33 @@ The permanent test suite protects these properties:
 - rough Etch followed by Conformal cannot create sidewall material below the etched floor;
 - front/back Step/Trench/Island and through-void Conformal benchmarks remain unchanged.
 
+## Read-only geometry diagnostics
+
+The shipped **Process → Diagnostics → Analyze geometry** action delegates to
+`site/controllers/process-diagnostics-controller.js`, which invokes
+`site/process-diagnostics-worker.js` to analyze a snapshot of the canonical
+model through `site/process-diagnostics.js`. The analysis **does not write**
+material stacks, History, Recipe or saved geometry; findings are inspection
+results associated with the model revision and must be marked stale after
+the model changes.
+
+The implementation reports measured material volumes and segment thickness
+extrema, nonpositive Z segments, missing Layer IDs, material overlaps, actual
+Z gaps, XY region overlaps, uncovered voids and potentially numerical
+sub-grid cracks. Each finding has explicit severity and representative
+spatial context where available. **An intentional cavity is not itself an
+error**: the tool cannot infer etch intent or device manufacturability.
+
+For translation-array projects, volumes and region counts are instance-
+weighted, while the XY overlap scan is scoped to each referenced template.
+Cross-instance boundaries are **not certified**. Bounded pair, polygon and
+finding limits can omit or skip checks; incomplete coverage must be disclosed
+rather than presented as no defects. A clean result does not validate full
+3D manufacturability, mask correctness, chemical selectivity, film
+continuity, electrical properties or physical Rough/Pyramid texture.
+See the [user-facing Diagnostics workflow](../wiki/Process-and-Recipes.md#geometry-diagnostics)
+and [open extensions](PROCESS_GEOMETRY_ROADMAP_2026-10-09.md).
+
 ## Annotation clipping contract
 
 Implant and Electrical Region volumes are canonical annotations rather than material. Their stored source patches remain attached to the process state where they were created. Implant view geometry intersects those patches/depth intervals with current surviving material. Electrical Region geometry is stricter: it is additionally constrained to the original host `layerId`, so a semiconductor inversion/accumulation marker cannot survive inside a replacement dielectric or metal after its host material is removed. A later Etch therefore clips an existing annotation, exposes its current cut surface when appropriate, and removes it from an area when no annotated host depth survives. Electrical Region type/source metadata does not participate in material topology or process chemistry.

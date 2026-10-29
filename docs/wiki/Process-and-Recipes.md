@@ -48,7 +48,7 @@ An empty Z interval between two materials is reported as a **cavity observation*
 
 For a canonical wafer array, volumes and region counts are weighted across _all_ instances; the XY overlap test runs within each referenced template and **does not certify boundaries between adjacent array instances**. A complexity limit or a polygon error explicitly marks overlap coverage incomplete. “No findings” means only that the implemented geometry checks did not detect issues. This is not a process intent, transport physics, Rough/Pyramid microgeometry, Implant concentration or electrical validation.
 
-Current limitations and staged proposals are documented in the [geometry/process roadmap](https://github.com/Xiaolong-6/WaferCAD/blob/main/docs/science/PROCESS_GEOMETRY_ROADMAP_2026-10-09.md).
+The [scientific Diagnostics contract](https://github.com/Xiaolong-6/WaferCAD/blob/main/docs/science/PROCESS_GEOMETRY_KERNEL_V2.md#read-only-geometry-diagnostics) defines the shipped coverage and limits; the [geometry/process roadmap](https://github.com/Xiaolong-6/WaferCAD/blob/main/docs/science/PROCESS_GEOMETRY_ROADMAP_2026-10-09.md) separates additional planned capabilities.
 
 ## Replay and versions
 
