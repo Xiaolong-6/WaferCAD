@@ -1,25 +1,23 @@
 {
   "version": 2,
   "provenance": "developer-reported",
-  "scope": "full",
+  "scope": "draft",
   "status": "pass",
   "source": {
-    "digest": "2be6f3bccafc17daf1bd4f20148d1a8f61ac6034fb9d89329ee72f12e3de928c",
-    "fileCount": 1289
+    "digest": "daf870427dd0487a6345aeae7ecd262d8890a341f2a13336a056902505a01b92",
+    "fileCount": 1296
   },
-  "sourceRevision": "b779f18050077c9af002dfc42263461f63884516",
-  "planDigest": "9e40e14c41649069d23911dc155328f17e554f0307619aef8493378a2f26b4b3",
+  "sourceRevision": "8b50c771c367b7ade55212de313214598efb36bd",
+  "planDigest": "a45061373e4a9c9e6f414d7b3b2e48cab7e2bd0feb4378633d0ff24a1a396899",
   "environment": {
     "node": "v22.16.0",
     "platform": "linux",
     "dependencies": {
       "eslint": "10.11.0",
-      "playwright": "1.55.1",
-      "prettier": "3.9.9",
-      "three": "0.179.1"
+      "prettier": "3.9.9"
     }
   },
-  "startedAt": "2026-10-29T08:48:45.726Z",
+  "startedAt": "2026-10-29T10:17:02.896Z",
   "checks": [
     {
       "id": "lint",
@@ -31,7 +29,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 6711,
+      "durationMs": 6777,
       "logDigest": "7e083cff9d323606d09accd3389828279cc52091b6c62b45c8100c1ced589c7c"
     },
     {
@@ -44,7 +42,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 18092,
+      "durationMs": 17609,
       "logDigest": "1230617af071df8c1efeb12bcd6d41c3aa159e1cd0841cc546fbae4c8c56f867"
     },
     {
@@ -57,22 +55,27 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 367,
-      "logDigest": "60d8e5351af88ce7b7b0acb8b3ac39a66ae96c4444f3ad9834b6b61092aa9d75"
+      "durationMs": 437,
+      "logDigest": "401c7a1566c74929a07766cbf5fb887d9affe3f8b97c041bcf20cdd16b7fa6a4"
     },
     {
       "id": "node",
-      "command": "npm",
+      "command": "node",
       "args": [
-        "test"
+        "--test",
+        "site/tests/ci-test-plan.test.mjs",
+        "site/tests/ci-development-gates.test.mjs",
+        "site/tests/ci-workflow-architecture.test.mjs",
+        "site/tests/local-verification.test.mjs",
+        "site/tests/documentation-suite.test.mjs"
       ],
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 241626,
-      "logDigest": "00a4bdb9fbdffa95f3bb11e5b9998040621a0528341ebba9429f1b8472a59139"
+      "durationMs": 1727,
+      "logDigest": "437085cb6938b06d5dafbdbada1d8fb178d98445fa30abe9505c5240f3075e6b"
     }
   ],
-  "finishedAt": "2026-10-29T08:53:12.527Z",
-  "transcriptDigest": "aa2b2281bc27295fa9d97eafccce775244721d9c746f40765f4330e21aed6083"
+  "finishedAt": "2026-10-29T10:17:29.448Z",
+  "transcriptDigest": "36e4ae6a1daa39826c460dfe7985c995a688876bdbaa558e36e577acc2c65e46"
 }
