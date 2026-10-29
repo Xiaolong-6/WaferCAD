@@ -209,6 +209,35 @@ test('History edit preserves legacy rough and exposes modern Rough without two p
   }
 });
 
+test('History editor preserves historical string surface tokens without implicit v2 upgrade', () => {
+  const controller = controllerForTask(() => ({ result: { changed: false } }), []);
+  for (const [surface, mode, legacy] of [
+    ['smooth', 'smooth', false],
+    ['rough', 'rough-legacy', true],
+    ['stochastic', 'rough-legacy', true],
+    ['stochastic-v2', 'rough', false],
+    ['pyramid', 'pyramid', false],
+  ]) {
+    assert.equal(
+      controller.loadOperationForEdit({
+        kind: 'etch',
+        replay: {
+          version: 1,
+          params: { type: 'etch', thickness: 0.75, face: 'front', surface },
+        },
+      }),
+      true,
+    );
+    const selector = controller.__root.getElementById('etchSurfaceMode');
+    assert.equal(selector.value, mode, `history surface ${surface}`);
+    assert.equal(
+      selector.options.find((option) => option.value === 'rough-legacy').disabled,
+      !legacy,
+      `Legacy should only be enabled for historical v1 surface ${surface}`,
+    );
+  }
+});
+
 test('Legacy option stays available through v2 selection until a History edit is saved', () => {
   const controller = controllerForTask(() => ({ result: { changed: false } }), [], {
     mode: 'etch',

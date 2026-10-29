@@ -558,7 +558,15 @@ export function createProcessPanelController({
         if (Number.isFinite(Number(lateral)))
           $('continuousLateral').value = formatLengthField(Number(lateral));
       }
-      const surface = params.surface || operation.surface || null;
+      // Historical replay data can store smooth/rough as string tokens.
+      // A truthy 'smooth' must not become a v2 Rough step on History edit.
+      const rawSurface = params.surface ?? operation.surface ?? null;
+      const surface =
+        typeof rawSurface === 'string'
+          ? rawSurface === 'smooth'
+            ? null
+            : { morphology: rawSurface === 'rough' ? 'stochastic' : rawSurface }
+          : rawSurface;
       allowLegacyRough(surface?.morphology === 'stochastic');
       $('etchSurfaceMode').value = surface
         ? surface.morphology === 'pyramid'
