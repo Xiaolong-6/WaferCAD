@@ -39,7 +39,7 @@ jobs:
           # Browser is reserved for changed Renderer/Section, Process, app,
           # Example and compatibility owners (not every source edit).
           # Classify the planner outputs without adding another Runner Job.
-          if grep -Eq '^(renderer|process|interaction|workstation|resilience|product_layout|examples)=true$' "$GITHUB_OUTPUT"; then
+          if grep -Eq '^(renderer|three|process|interaction|workstation|resilience|product_layout|examples)=true$' "$GITHUB_OUTPUT"; then
             echo 'browser=true' >> "$GITHUB_OUTPUT"
           else
             echo 'browser=false' >> "$GITHUB_OUTPUT"

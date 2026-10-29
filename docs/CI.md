@@ -79,6 +79,15 @@ with CI contracts rather than silently claiming previous proof covers modified
 CI code. The output of the GitHub Quality job is tied to the exact PR merge SHA;
 no developer-supplied incremental transcript is trusted.
 
+**Ready browser owner de-duplication:** the exact standalone
+`scripts/v2/check-three-view.mjs` acceptance script uses a dedicated `three`
+Browser matrix entry, and the Section palette's narrowly owned visual change
+uses the real Interaction owner (including the 390px Random regression).
+Those known paths do **not** schedule the old monolithic Workstation; if a
+shared or unknown v2 Workstation source is also changed, the complete
+Workstation is selected and the standalone 3D entry is suppressed. Full daily
+and production acceptance retain their existing complete Workstation coverage.
+
 **This optimization applies only to PR Quality.** The scheduled daily job
 continues actual full Quality, Ready runs real risk-selected browser/science
 acceptance, and the main Pages release continues its unchanged full Quality

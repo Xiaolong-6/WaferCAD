@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import { BROWSER_SUITES, buildCiTestPlan } from '../../scripts/ci-test-plan.mjs';
@@ -359,7 +360,67 @@ test('native Section Layers palette changes route the real repeated-Random Inter
   ]) {
     const plan = buildCiTestPlan([path]);
     assert.equal(plan.suites.interaction, true, path);
-    assert.equal(plan.suites.workstation, true, path);
+    assert.equal(plan.suites.workstation, false, path);
   }
   assert.equal(buildCiTestPlan(['site/ui-v2/mask-view.js']).suites.interaction, false);
+});
+
+test('narrow Section palette and accepted 3D changes avoid repeating the complete Workstation', () => {
+  for (const path of [
+    'site/ui-v2/section-legend.js',
+    'site/ui-v2/section-view.js',
+    'scripts/v2/check-review-interactions.mjs',
+  ]) {
+    const plan = buildCiTestPlan([path]);
+    assert.equal(plan.suites.workstation, false, path);
+    assert.equal(plan.suites.interaction, true, path);
+    assert.equal(plan.suites.three, false, path);
+  }
+  const three = buildCiTestPlan(['scripts/v2/check-three-view.mjs']);
+  assert.equal(three.suites.three, true);
+  assert.equal(three.suites.workstation, false);
+  assert.equal(three.suites.interaction, false);
+
+  const combined = buildCiTestPlan([
+    'scripts/v2/check-three-view.mjs',
+    'site/ui-v2/section-view.js',
+    'site/ui-v2/section-legend.js',
+    'scripts/ci-test-plan.mjs',
+  ]);
+  assert.equal(combined.suites.three, true);
+  assert.equal(combined.suites.interaction, true);
+  assert.equal(combined.suites.workstation, false);
+});
+
+test('shared Workstation edits retain full four-view coverage without double-running 3D', () => {
+  const plan = buildCiTestPlan([
+    'scripts/v2/check-three-view.mjs',
+    'site/ui-v2/workstation-runtime.js',
+  ]);
+  assert.equal(plan.suites.workstation, true);
+  assert.equal(plan.suites.three, false);
+  const nightly = buildCiTestPlan([], { full: true });
+  assert.equal(nightly.suites.workstation, true);
+  assert.equal(nightly.suites.three, false);
+});
+
+test('real 3D owner is wired to the Ready matrix while the full Workstation retains all views', () => {
+  const regression = readFileSync(
+    new URL('../../.github/workflows/browser-regression.yml', import.meta.url),
+    'utf8',
+  );
+  assert.match(regression, /three\) node scripts\/v2\/check-three-view\.mjs ;;/);
+  assert.match(regression, /workstation\) npm run test:ui:workstation ;;/);
+  const ready = readFileSync(
+    new URL('../../.github/workflows/ready-impact.yml', import.meta.url),
+    'utf8',
+  );
+  assert.match(ready, /renderer\|three\|process\|interaction\|workstation/);
+  const workstation = readFileSync(
+    new URL('../../scripts/v2/check-source-sunset-view-ux.mjs', import.meta.url),
+    'utf8',
+  );
+  for (const owner of ['check-section-view.mjs', 'check-three-view.mjs']) {
+    assert.ok(workstation.includes(owner), `Full Workstation must retain ${owner}`);
+  }
 });

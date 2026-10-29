@@ -13,6 +13,8 @@ const SAFE = [
   /^scripts\/ci-test-plan\.mjs$/,
   /^scripts\/v2\/check-three-view\.mjs$/,
   /^\.github\/workflows\/daily-full\.yml$/,
+  /^\.github\/workflows\/browser-regression\.yml$/,
+  /^\.github\/workflows\/ready-impact\.yml$/,
   /^site\/ui-v2\/(?:section-legend|section-view)\.js$/,
   /^site\/tests\/(?:section-legend-random|ci-trigger-policy|ci-development-gates|ci-test-plan|incremental-quality)\.test\.mjs$/,
 ];
