@@ -109,7 +109,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
-          node-version: "24"
+          node-version: '24'
           cache: npm
 
       - name: Cache Playwright Chromium
@@ -279,6 +279,9 @@ jobs:
             examples) npm run test:ui:examples ;;
             product_layout) npm run test:ui:product:layout ;;
             renderer) node scripts/renderer-product-regression.mjs ;;
+            # Ready-only: accepted 3D gesture/viewport/export owner without
+            # duplicating the full Workstation/Section/interaction sequence.
+            three) node scripts/v2/check-three-view.mjs ;;
             *) echo 'Unknown release owner' >&2; exit 1 ;;
           esac
       - name: Archive real Chromium release evidence
@@ -311,7 +314,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
-          node-version: "24"
+          node-version: '24'
           cache: npm
 
       - name: Cache Playwright Chromium
@@ -376,7 +379,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
-          node-version: "24"
+          node-version: '24'
           cache: npm
 
       - name: Cache Playwright Chromium
@@ -436,7 +439,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
-          node-version: "24"
+          node-version: '24'
           cache: npm
       - name: Cache Playwright Chromium
         uses: actions/cache@v5

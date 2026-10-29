@@ -122,11 +122,27 @@
     );
   }
 
-  function randomHarmoniousPalette(count = 20) {
-    const seed = Math.random() * 360,
-      out = [];
-    for (let index = 0; index < count; index++) {
-      out.push(hslHex((seed + index * 137.508) % 360, 48 + (index % 3) * 4, 61 + (index % 2) * 5));
+  function randomHarmoniousPalette(count = 20, previousColors = []) {
+    let seed = Math.random() * 360;
+    const makePalette = () => {
+      const out = [];
+      for (let index = 0; index < count; index++) {
+        out.push(
+          hslHex((seed + index * 137.508) % 360, 48 + (index % 3) * 4, 61 + (index % 2) * 5),
+        );
+      }
+      return out;
+    };
+    let out = makePalette();
+    // Quantized RGB can produce the same colors for different random hues.
+    // A repeated Random selection must visibly change at least one layer.
+    if (
+      out.length &&
+      previousColors.length &&
+      previousColors.every((color, index) => color === out[index % out.length])
+    ) {
+      seed = (seed + 45) % 360;
+      out = makePalette();
     }
     return out;
   }
