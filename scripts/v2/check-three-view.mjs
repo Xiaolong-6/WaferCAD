@@ -34,10 +34,7 @@ async function clickThreeTool(page, action) {
     assert.equal(await control.isVisible(), true, `${action} should be visible in More`);
   }
   await control.click();
-  // The command's real state assertions and explicit ready() checks still run.
-  // One scheduled frame is sufficient for the immediate toolbar/popover state;
-  // waiting for a second expensive software-WebGL frame here is redundant.
-  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+  await waitForPaint(page);
   assert.equal(
     await page.locator('#p-overflow-3d:popover-open').count(),
     0,
@@ -180,9 +177,7 @@ try {
         const b = await canvas.boundingBox();
         await page.mouse.move(b.x + b.width * 0.5, b.y + b.height * 0.5);
         await page.mouse.down();
-        // One real pointermove suffices for OrbitControls; six intermediate
-        // moves forced extra software-WebGL frames without asserting them.
-        await page.mouse.move(b.x + b.width * 0.5 + dx, b.y + b.height * 0.5 + dy);
+        await page.mouse.move(b.x + b.width * 0.5 + dx, b.y + b.height * 0.5 + dy, { steps: 6 });
         await page.mouse.up();
         await page.waitForTimeout(400);
       };
