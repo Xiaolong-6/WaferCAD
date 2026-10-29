@@ -34,7 +34,10 @@ async function clickThreeTool(page, action) {
     assert.equal(await control.isVisible(), true, `${action} should be visible in More`);
   }
   await control.click();
-  await waitForPaint(page);
+  // The command's real state assertions and explicit ready() checks still run.
+  // One scheduled frame is sufficient for the immediate toolbar/popover state;
+  // waiting for a second expensive software-WebGL frame here is redundant.
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
   assert.equal(
     await page.locator('#p-overflow-3d:popover-open').count(),
     0,
