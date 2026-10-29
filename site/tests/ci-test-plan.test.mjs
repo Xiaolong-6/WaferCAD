@@ -350,3 +350,16 @@ test('project open and replacement controller changes retain browser workstation
   const plan = buildCiTestPlan(['site/controllers/project-controller.js']);
   assert.deepEqual(enabled(plan), ['smoke', 'workstation', 'history', 'persistence']);
 });
+
+test('native Section Layers palette changes route the real repeated-Random Interaction owner', () => {
+  for (const path of [
+    'site/ui-v2/section-legend.js',
+    'site/ui-v2/section-view.js',
+    'scripts/v2/check-review-interactions.mjs',
+  ]) {
+    const plan = buildCiTestPlan([path]);
+    assert.equal(plan.suites.interaction, true, path);
+    assert.equal(plan.suites.workstation, true, path);
+  }
+  assert.equal(buildCiTestPlan(['site/ui-v2/mask-view.js']).suites.interaction, false);
+});

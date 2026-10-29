@@ -10,9 +10,11 @@ const SAFE = [
   /^AGENTS\.md$/,
   /^\.github\/workflows\/quality\.yml$/,
   /^scripts\/incremental-quality\.mjs$/,
+  /^scripts\/ci-test-plan\.mjs$/,
+  /^scripts\/v2\/check-three-view\.mjs$/,
   /^\.github\/workflows\/daily-full\.yml$/,
   /^site\/ui-v2\/(?:section-legend|section-view)\.js$/,
-  /^site\/tests\/(?:section-legend-random|ci-trigger-policy|ci-development-gates|incremental-quality)\.test\.mjs$/,
+  /^site\/tests\/(?:section-legend-random|ci-trigger-policy|ci-development-gates|ci-test-plan|incremental-quality)\.test\.mjs$/,
 ];
 const SOURCE_TYPES = /\.(?:js|mjs)$/;
 const FORMAT_TYPES = /\.(?:js|mjs|md)$/;
@@ -36,9 +38,12 @@ export function incrementalPlan(changes) {
   const workflow = files.some((path) => path.startsWith('.github/workflows/'));
   const infrastructure = files.some(
     (path) =>
-      path === 'scripts/incremental-quality.mjs' || path === '.github/workflows/quality.yml',
+      path === 'scripts/incremental-quality.mjs' ||
+      path === 'scripts/ci-test-plan.mjs' ||
+      path === '.github/workflows/quality.yml',
   );
   const ui = files.some((path) => path.startsWith('site/ui-v2/'));
+  const threeAcceptance = files.includes('scripts/v2/check-three-view.mjs');
   const docs = files.some(
     (path) => path.startsWith('docs/') || path === 'README.md' || path === 'AGENTS.md',
   );
@@ -54,6 +59,7 @@ export function incrementalPlan(changes) {
   if (infrastructure) {
     for (const test of [
       'site/tests/incremental-quality.test.mjs',
+      'site/tests/ci-test-plan.test.mjs',
       'site/tests/ci-development-gates.test.mjs',
       'site/tests/ci-workflow-architecture.test.mjs',
       'site/tests/local-verification.test.mjs',
@@ -63,6 +69,10 @@ export function incrementalPlan(changes) {
   if (ui) {
     tests.add('site/tests/section-legend-random.test.mjs');
     tests.add('site/tests/source-sunset-view-ux-owners.test.mjs');
+  }
+  if (threeAcceptance) {
+    tests.add('site/tests/source-sunset-view-ux-owners.test.mjs');
+    tests.add('site/tests/ci-test-plan.test.mjs');
   }
   if (docs) tests.add('site/tests/documentation-suite.test.mjs');
   return {

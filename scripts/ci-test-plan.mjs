@@ -26,6 +26,11 @@ const DEPENDENCY_FILES = new Set(['package-lock.json']);
 // dispatched renderer stress remain available without starting unrelated UI CI.
 const CI_ONLY_V2_SCRIPTS = new Set(['scripts/v2/check-source-sunset-renderer-stress.mjs']);
 const V2_WORKSPACE_PATHS = [/^site\/ui-v2\//, /^scripts\/v2\//];
+// Section Layers palette changes require their real Interaction owner.
+const V2_LEGEND_INTERACTION_PATHS = [
+  /^site\/ui-v2\/(?:section-legend|section-view)\.js$/,
+  /^scripts\/v2\/check-review-interactions\.mjs$/,
+];
 const V2_CROSS_UI_PATHS = [
   /^site\/ui-v2\/(?:workstation-(?:entry|runtime|workflow)|project-mask-panels)\.js$/,
   /^site\/app(?:-legacy)?\.html$/,
@@ -250,6 +255,7 @@ export function buildCiTestPlan(
       enable(plan, 'workstation');
     if (matchesAny(path, V2_CROSS_UI_PATHS))
       enable(plan, 'workstation', 'history', 'persistence', 'interaction');
+    if (matchesAny(path, V2_LEGEND_INTERACTION_PATHS)) enable(plan, 'interaction');
     if (matchesAny(path, WORKSTATION_PATHS)) enable(plan, 'workstation');
     if (matchesAny(path, RESILIENCE_PATHS)) enable(plan, 'resilience');
     if (matchesAny(path, HISTORY_PATHS)) enable(plan, 'history');

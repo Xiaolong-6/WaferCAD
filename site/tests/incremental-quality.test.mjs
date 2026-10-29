@@ -97,6 +97,21 @@ test('Quality infrastructure changes require all security and verification contr
     'site/tests/ci-development-gates.test.mjs',
     'site/tests/local-verification.test.mjs',
     'site/tests/ci-workflow-architecture.test.mjs',
+    'site/tests/ci-test-plan.test.mjs',
   ])
     assert.ok(plan.tests.includes(path), path);
+});
+
+test('CI routing changes demand their own source-mapping unit contracts', () => {
+  const plan = incrementalPlan([changed('scripts/ci-test-plan.mjs')]);
+  assert.equal(plan.infrastructure, true);
+  assert.ok(plan.tests.includes('site/tests/ci-test-plan.test.mjs'));
+});
+
+test('accepted 3D interaction harness has explicit lint and source-retirement ownership', () => {
+  const plan = incrementalPlan([changed('scripts/v2/check-three-view.mjs')]);
+  assert.deepEqual(plan.lint, ['scripts/v2/check-three-view.mjs']);
+  assert.ok(plan.tests.includes('site/tests/source-sunset-view-ux-owners.test.mjs'));
+  assert.ok(plan.tests.includes('site/tests/ci-test-plan.test.mjs'));
+  assert.equal(plan.infrastructure, false);
 });
