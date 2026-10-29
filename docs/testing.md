@@ -277,12 +277,18 @@ not by historical weekly or automatic Draft workflow routing.
 
 ### CI cost controls
 
-- Run focused owner tests and capture real local Chromium evidence before
-  proposing a change. The source-bound local `draft` receipt covers
-  formatting, lint, generated documentation and focused Node checks;
-  `full` is required before Ready/merge.
-- Automatic Draft `Quality` is proof-only. Missing or stale receipts
-  fail closed without remote reruns.
+- During source development, complete business and product changes before
+  selecting the smallest owning checks. Source-bound Draft/Full receipts
+  remain supported, but are **not** the only PR Quality admission route:
+  [incremental Quality](CI.md#incremental-quality-baseline--exact-diff)
+  can verify an explicitly owned diff against an independently proven exact
+  Main parent. Unknown, integrity-sensitive, renamed/deleted or unowned
+  changes reject that shortcut rather than launching an unbounded fallback.
+- Ready PRs may use verified-base incremental Quality **plus** all selected
+  risk-owning acceptance gates, or full proof where required. A qualifying
+  Ready verdict is not the same thing as the **full Quality proof** required
+  to authorize a fast Pages release; the latter follows
+  [release evidence](operations/RELEASE_EVIDENCE.md).
 - Ready PRs use `ready-impact.yml` and its cumulative-diff selected
   scientific, History/Recovery/Worker or Browser/Renderer/Example owners.
 - One full integration controller runs at **02:30 UTC daily**, for its
