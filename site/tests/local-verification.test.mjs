@@ -128,8 +128,37 @@ test('Quality dependency sets exclude browser-only Playwright but protect Three 
   assert.equal(verifyQuality(root, 'full').scope, 'full');
   rmSync(join(root, 'node_modules/three'), { recursive: true, force: true });
   assert.equal(runQuality(root, 'draft', success).checks, 4);
-  assert.throws(() => runQuality(root, 'full', success), /Install pinned Quality tools.*three/);
+  assert.throws(() => runQuality(root, 'full', success), /Install Quality tools.*three/);
   assert.throws(() => verifyQuality(root, 'full'));
+});
+
+test('Draft Quality records arbitrary installed tool versions, while Full still rejects them', (t) => {
+  const { root } = fixture(t);
+  writeFileSync(join(root, 'node_modules/eslint/package.json'), '{"version":"9.18.0"}');
+  writeFileSync(join(root, 'node_modules/prettier/package.json'), '{"version":"3.1.0"}');
+  assert.equal(runQuality(root, 'draft', success).scope, 'draft');
+  const saved = JSON.parse(readFileSync(join(root, EVIDENCE_FILES[0])));
+  assert.deepEqual(saved.environment.dependencies, { eslint: '9.18.0', prettier: '3.1.0' });
+  assert.equal(verifyQuality(root, 'draft').scope, 'draft');
+  assert.throws(() => verifyQuality(root, 'full'), /Full evidence/);
+  assert.throws(() => runQuality(root, 'full', success), /Install pinned tools/);
+});
+
+test('Draft evidence accepts differing Node and tool versions but rejects missing version fields', () => {
+  for (const nodeVersion of ['v18.20.2', 'v20.19.0', 'v23.11.0', 'v25.0.0']) {
+    const proof = passing('draft');
+    proof.report.environment.node = nodeVersion;
+    proof.report.environment.dependencies = { eslint: '8.0.0', prettier: '4.0.0-beta.1' };
+    assert.equal(validate(proof, 'draft').checks, 4);
+  }
+  for (const invalid of ['', 'not-a-version', null, undefined]) {
+    const proof = passing('draft');
+    proof.report.environment.dependencies.eslint = invalid;
+    assert.throws(() => validate(proof, 'draft'), /Missing or invalid reported tool version/);
+  }
+  const proof = passing('draft');
+  proof.report.environment.node = 'unknown';
+  assert.throws(() => validate(proof, 'draft'), /Invalid or unsupported Node evidence version/);
 });
 
 test('full Quality report rejects a mismatched Three version but does not demand Playwright', () => {
@@ -210,7 +239,7 @@ test('Node 22 and Node 24 LTS reports are accepted without relaxing tool version
   for (const version of ['v20.19.0', 'v23.11.0', 'v25.0.0', 'unknown']) {
     const proof = passing();
     proof.report.environment.node = version;
-    assert.throws(() => validate(proof), /Unsupported Node LTS/);
+    assert.throws(() => validate(proof), /Invalid or unsupported Node evidence version/);
   }
 });
 
@@ -383,12 +412,21 @@ test('a source change during execution prevents a successful receipt', (t) => {
   assert.throws(() => verifyQuality(root, 'draft'), /did not pass/);
 });
 
-test('incorrect installed tooling invalidates a rerun instead of retaining old success', (t) => {
+test('Draft rerun records a changed tool version but still requires executing every check', (t) => {
   const { root } = fixture(t);
   runQuality(root, 'draft', success);
   writeFileSync(join(root, 'node_modules/eslint/package.json'), '{"version":"0.0.0"}');
-  assert.throws(() => runQuality(root, 'draft', success), /Install pinned tools/);
-  assert.throws(() => verifyQuality(root, 'draft'));
+  assert.equal(runQuality(root, 'draft', success).checks, 4);
+  assert.equal(
+    JSON.parse(readFileSync(join(root, EVIDENCE_FILES[0]))).environment.dependencies.eslint,
+    '0.0.0',
+  );
+  assert.throws(
+    () => runQuality(root, 'draft', () => ({ status: 1, stdout: 'failed' })),
+    /Local Quality failed/,
+  );
+  assert.throws(() => verifyQuality(root, 'draft'), /did not pass/);
+  assert.throws(() => runQuality(root, 'full', success), /Install pinned tools/);
 });
 
 test('evidence symlinks cannot redirect writes outside the repository', (t) => {

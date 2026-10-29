@@ -62,12 +62,14 @@ repository settings and **cannot be guaranteed by YAML alone**.
 
 Run the existing checks locally and commit their source-bound report.
 Neither **Node 24 exclusively** nor a complete Git checkout/staged index is
-mandatory. Both Node **22 and 24 LTS** are accepted for local proof; the exact
-pinned versions of the tools actually used by the Quality plan must still
-match: ESLint and Prettier for Draft, plus Three.js for Full Node geometry
-tests. Playwright is a browser-only dependency and is checked by the separate
-real-browser suites, not the Node-only Quality preflight. This does not change
-the locked `npm ci` installation contract or waive any browser acceptance.
+mandatory. **Draft Quality accepts any local Node, ESLint and Prettier versions
+that successfully execute its unchanged checks**, and records their actual
+versions for diagnosis; an uninstalled tool or failed command is not a pass.
+**Full Quality remains pinned to Node 22 or 24 LTS** and the required installed
+dependencies (ESLint, Prettier and Three.js) must match `package.json` exactly.
+Playwright remains owned by browser acceptance, not Node-only Quality.
+This does not change the locked `npm ci` reproducible release environment or
+waive any real-browser or scientific correctness acceptance.
 In an ordinary Git workspace the
 verifier enumerates tracked source paths but hashes the **actual working bytes**
 (no staging needed). For a source-only package, it requires the standard
@@ -78,7 +80,7 @@ package is required; an outdated/incomplete recovery bundle cannot certify a
 new merged source tree.
 
 ```sh
-# Prefer local tests where the tools exist (Node 22 or 24):
+# Draft accepts any running local Node/tool versions; Full requires Node 22 or 24:
 node scripts/local-verification.mjs run draft
 node scripts/local-verification.mjs run full
 # In a Git checkout, if evidence was generated, commit only these two files:
@@ -89,9 +91,10 @@ The v2 source fingerprint covers sorted path names and SHA-256 of the actual
 file contents, excluding only the two generated proof files. The CI checkout
 computes the same digest from its authoritative tracked inventory. Old v1
 Git-index evidence remains readable and valid when its original source tree
-matches. Reports record the actual Node version; both supported LTS majors are
-accepted. Logs, exact command plan, pinned tools and fingerprints remain
-mandatory. An evidence-only commit leaves the content digest unchanged.
+matches. Reports record the actual Node and Quality tool versions. Draft
+checks accept non-pinned versions; Full checks enforce the locked toolchain.
+Logs, exact commands and source fingerprints remain mandatory for both.
+An evidence-only commit leaves the content digest unchanged.
 
 Both scopes retain ESLint, Prettier and generated-document checks. Draft runs
 the focused planner/workflow/evidence and documentation Node contracts; full

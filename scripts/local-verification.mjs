@@ -21,6 +21,7 @@ const MAX_LOG = 64 * 1024 * 1024;
 const MAX_REPORT = 128 * 1024;
 const VERSION = 2;
 const SUPPORTED_NODE = /^v(?:22|24)\.\d+\.\d+(?:[-+].+)?$/;
+const REPORTED_NODE = /^v\d+\.\d+\.\d+(?:[-+].+)?$/;
 const SOURCE_MANIFEST = 'wafercad-source-manifest.json';
 const PINNED_ARCHIVE = 'vendor/npm/three-0.179.1.tgz';
 const GENERATED_DIRECTORIES = new Set([
@@ -276,17 +277,24 @@ export function validateEvidence(report, transcript, source, requiredScope, depe
     'Evidence is stale: source changed',
   );
   requireValue(report.planDigest === digest(JSON.stringify(plan)), 'Test plan changed');
+  // Draft may use any locally available Node/tool versions. The executed
+  // commands and exact source-bound logs remain mandatory; only Full must
+  // match the reproducible, locked release toolchain.
   requireValue(
-    SUPPORTED_NODE.test(report.environment?.node || ''),
-    'Unsupported Node LTS evidence version',
+    (report.scope === 'full' ? SUPPORTED_NODE : REPORTED_NODE).test(report.environment?.node || ''),
+    'Invalid or unsupported Node evidence version',
   );
   for (const [name, version] of Object.entries(
     requiredQualityDependencies(report.scope, dependencies),
   )) {
+    const actual = report.environment.dependencies?.[name];
     requireValue(
-      report.environment.dependencies?.[name] === version,
-      'Tool version mismatch: ' + name,
+      typeof actual === 'string' && /^\d+\.\d+\.\d+(?:[-+][\w.-]+)?$/.test(actual),
+      'Missing or invalid reported tool version: ' + name,
     );
+    if (report.scope === 'full') {
+      requireValue(actual === version, 'Tool version mismatch: ' + name);
+    }
   }
   requireValue(
     Number.isFinite(Date.parse(report.startedAt)) &&
@@ -382,11 +390,21 @@ export function runQuality(root, scope, execute = executeCheck) {
   const installed = {};
   for (const [name, version] of Object.entries(expected)) {
     const manifest = join(root, 'node_modules', name, 'package.json');
-    requireValue(existsSync(manifest), 'Install pinned Quality tools before verifying: ' + name);
+    requireValue(existsSync(manifest), 'Install Quality tools before verifying: ' + name);
     installed[name] = JSON.parse(readFileSync(manifest, 'utf8')).version;
-    requireValue(installed[name] === version, 'Install pinned tools before verifying: ' + name);
+    requireValue(
+      typeof installed[name] === 'string' &&
+        /^\d+\.\d+\.\d+(?:[-+][\w.-]+)?$/.test(installed[name]),
+      'Missing or invalid installed tool version: ' + name,
+    );
+    if (scope === 'full') {
+      requireValue(installed[name] === version, 'Install pinned tools before verifying: ' + name);
+    }
   }
-  requireValue(SUPPORTED_NODE.test(process.version), 'Use a supported Node LTS release (22 or 24)');
+  requireValue(
+    (scope === 'full' ? SUPPORTED_NODE : REPORTED_NODE).test(process.version),
+    'Invalid or unsupported Node runtime',
+  );
   const report = {
     version: VERSION,
     provenance: 'developer-reported',
