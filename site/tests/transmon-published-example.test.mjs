@@ -82,11 +82,19 @@ test('Q2 inspection shows the real three-Al crossing without changing material o
   const expectedCollapse = { top: 337.3, bottom: -337.3, enabled: true };
   for (const project of [published, preview]) {
     assert.deepEqual(project.display.sectionCollapse, expectedCollapse);
-    assert.deepEqual(project.display.threeCamera.target, [-5, 0, 1.55]);
-    assert.ok(
-      project.display.threeCamera.position[2] > project.display.threeCamera.target[2],
-      'Inspect the junction from above, not through the bulk substrate',
-    );
+    if (project === published) {
+      assert.deepEqual(project.display.threeCamera.target, [-5, 0, 1.55]);
+      assert.ok(
+        project.display.threeCamera.position[2] > project.display.threeCamera.target[2],
+        'Inspect the junction from above, not through the bulk substrate',
+      );
+    } else {
+      assert.equal(
+        project.display.threeCamera,
+        undefined,
+        'The Welcome preview intentionally fits the whole structure',
+      );
+    }
     for (const state of [
       project.snapshotBranches.nodes[0].state,
       project.snapshotBranches.branches[0].headState,
