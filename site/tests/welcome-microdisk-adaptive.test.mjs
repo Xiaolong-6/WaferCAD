@@ -81,10 +81,10 @@ test('Welcome opens exact Continuous M08/M09 with historical lightweight preview
   assert.equal(continuous.snapshotBranches.nodes.length, 11);
   assert.equal(continuous.snapshotBranches.branches.length, 1);
   assert.equal(continuous.snapshotBranches.activeBranchId, 'main');
-  // The intentionally lightweight preview retains the historical physical solids.
-  // New temporary PR layers exist in the expanded full project History only.
+  // The lightweight preview preserves final solids and layer metadata exactly;
+  // only the full project retains the physical PR stages in its History.
   assert.deepEqual(preview.model.regions, original.model.regions);
-  assert.deepEqual(preview.model.layers, original.model.layers.slice(0, 2));
+  assert.deepEqual(preview.model.layers, original.model.layers);
   assert.deepEqual(preview.layout, original.layout);
   assert.equal(preview.snapshotBranches.nodes.length, 1);
   assert.ok(original.snapshotBranches.nodes.length > 1);
