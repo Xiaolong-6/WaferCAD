@@ -128,7 +128,7 @@ test('all repository documentation is reachable with valid internal destinations
   assert.ok(result.moduleReferences > 20);
 });
 
-test('Wiki aliases, repository links and fenced examples resolve in their correct context', async (t) => {
+test('Wiki navigation slugs, repository links and fenced examples resolve in their correct context', async (t) => {
   const result = await fixture(t, {
     'docs/README.md': '# Map\n[Manual](wiki/Home.md)\n',
     'docs/wiki/Home.md':
@@ -183,6 +183,11 @@ test('categorized documents have no forwarding files or obsolete root aliases', 
     assert.doesNotMatch(source, /^# Moved:/, `${entry.name}: remove obsolete forwarding file`);
   }
   await assert.rejects(access(new URL('COMPATIBILITY.md', docsRoot)), { code: 'ENOENT' });
+  await assert.rejects(
+    access(new URL('wiki/Recipe-Code-Tutorial-zh-CN.md', docsRoot)),
+    { code: 'ENOENT' },
+    'retired localized Wiki pages must be deleted, not kept as alias placeholders',
+  );
 
   const archiveRoot = new URL('archive/', docsRoot);
   const archiveIndex = await readFile(new URL('README.md', archiveRoot), 'utf8');

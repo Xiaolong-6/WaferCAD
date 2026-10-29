@@ -1,6 +1,6 @@
 # WaferCAD development
 
-**English-only convention for current and future work:** Write new and actively maintained documentation, UI copy, prompts, examples, commit messages, source comments, and handoff reports in English. Preserve historical audits, completed plans and old handoffs in their original language; do not translate them just for consistency. Retain compatibility links when retiring localized Wiki pages.
+**English-only convention for current and future work:** Write new and actively maintained documentation, UI copy, prompts, examples, commit messages, source comments, and handoff reports in English. Preserve historical audits, completed plans and old handoffs in their original language; do not translate them just for consistency. When retiring localized Wiki pages, remove obsolete placeholder/alias files, update tracked links to the canonical English page, and let the managed Wiki sync delete the old published slug after Main integration. Do not leave stubs solely for old bookmarks.
 
 Read `docs/COLLABORATION.md` for the shared ChatGPT/Codex handoff workflow, `docs/DEVELOPMENT.md` for product contracts, and `docs/testing.md` for test ownership.
 
