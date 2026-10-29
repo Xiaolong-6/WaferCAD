@@ -558,23 +558,24 @@ export function createProcessPanelController({
         if (Number.isFinite(Number(lateral)))
           $('continuousLateral').value = formatLengthField(Number(lateral));
       }
-      // Historical replay data can store smooth/rough as string tokens.
-      // A truthy 'smooth' must not become a v2 Rough step on History edit.
+      // Older saved steps may use a string alias or omit morphology entirely.
+      // The Kernel defaults missing Rough morphology to legacy stochastic v1.
       const rawSurface = params.surface ?? operation.surface ?? null;
       const surface =
         typeof rawSurface === 'string'
-          ? rawSurface === 'smooth'
+          ? !rawSurface || rawSurface === 'smooth'
             ? null
             : { morphology: rawSurface === 'rough' ? 'stochastic' : rawSurface }
           : rawSurface;
-      allowLegacyRough(surface?.morphology === 'stochastic');
-      $('etchSurfaceMode').value = surface
-        ? surface.morphology === 'pyramid'
+      const surfaceMode = !surface
+        ? 'smooth'
+        : surface.morphology === 'pyramid'
           ? 'pyramid'
-          : surface.morphology === 'stochastic'
-            ? 'rough-legacy'
-            : 'rough'
-        : 'smooth';
+          : surface.morphology === 'stochastic-v2'
+            ? 'rough'
+            : 'rough-legacy';
+      allowLegacyRough(surfaceMode === 'rough-legacy');
+      $('etchSurfaceMode').value = surfaceMode;
       if (surface) {
         $('roughPolarity').value = surface.polarity === 'normal' ? 'normal' : 'inverted';
         if (Number.isFinite(Number(surface.featureSize))) {

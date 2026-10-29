@@ -213,6 +213,7 @@ test('History editor preserves historical string surface tokens without implicit
   const controller = controllerForTask(() => ({ result: { changed: false } }), []);
   for (const [surface, mode, legacy] of [
     ['smooth', 'smooth', false],
+    ['', 'smooth', false],
     ['rough', 'rough-legacy', true],
     ['stochastic', 'rough-legacy', true],
     ['stochastic-v2', 'rough', false],
@@ -234,6 +235,31 @@ test('History editor preserves historical string surface tokens without implicit
       selector.options.find((option) => option.value === 'rough-legacy').disabled,
       !legacy,
       `Legacy should only be enabled for historical v1 surface ${surface}`,
+    );
+  }
+});
+
+test('History edit does not silently upgrade morphology-less legacy Rough objects', () => {
+  const controller = controllerForTask(() => ({ result: { changed: false } }), []);
+  for (const surface of [
+    { kind: 'rough', featureSize: 0.3, meanHeight: 0.4 },
+    { kind: 'rough', morphology: 'rough', featureSize: 0.3, meanHeight: 0.4 },
+  ]) {
+    assert.equal(
+      controller.loadOperationForEdit({
+        kind: 'etch',
+        replay: {
+          version: 1,
+          params: { type: 'etch', thickness: 0.75, face: 'front', surface },
+        },
+      }),
+      true,
+    );
+    const selector = controller.__root.getElementById('etchSurfaceMode');
+    assert.equal(selector.value, 'rough-legacy');
+    assert.equal(
+      selector.options.find((option) => option.value === 'rough-legacy').disabled,
+      false,
     );
   }
 });
