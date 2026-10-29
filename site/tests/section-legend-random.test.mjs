@@ -7,10 +7,7 @@ test('repeated Random visibly changes a palette even when random hue collides', 
   const window = { WaferCadV2Components: { el: () => null } };
   const deterministicMath = Object.create(Math);
   deterministicMath.random = () => 0.125;
-  const script = readFileSync(
-    new URL('../ui-v2/section-legend.js', import.meta.url),
-    'utf8',
-  );
+  const script = readFileSync(new URL('../ui-v2/section-legend.js', import.meta.url), 'utf8');
   runInNewContext(script, { window, Math: deterministicMath });
   const randomPalette = window.WaferCadV2RandomLegendPalette;
   const first = Array.from(randomPalette(5));
