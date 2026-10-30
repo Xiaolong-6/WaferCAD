@@ -45,7 +45,18 @@ function fixture() {
     timers.clear();
     for (const callback of pending) callback();
   };
-  return { calls, frames, timers, canvas, preview, flushFrames, settle, get renders() { return renders; } };
+  return {
+    calls,
+    frames,
+    timers,
+    canvas,
+    preview,
+    flushFrames,
+    settle,
+    get renders() {
+      return renders;
+    },
+  };
 }
 
 test('dense pan/zoom reprojects one raster and redraws scientific vectors only after settling', () => {
