@@ -185,3 +185,22 @@ test('exact Worker failure after a displayed sketch never commits the sketch or 
     globalThis.Worker = original;
   }
 });
+
+test('large imported polygon collections use a Worker even with two physical regions', () => {
+  const priorWorker = globalThis.Worker;
+  try {
+    globalThis.Worker = class {};
+    const model = createModel({ shape: 'rect', width: 100, height: 100, thickness: 2 });
+    // One region can contain an entire imported GDS with tens of thousands
+    // of polygons; counting only regions or layers misses expensive topology.
+    const polygon = [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]];
+    model.regions[0].geom = Array.from({ length: 256 }, () => polygon);
+    assert.equal(model.layers.length, 1);
+    assert.equal(model.regions.length, 1);
+    assert.equal(shouldBuildSurfacePlanInWorker(model), true);
+    model.regions[0].geom.length = 255;
+    assert.equal(shouldBuildSurfacePlanInWorker(model), false);
+  } finally {
+    globalThis.Worker = priorWorker;
+  }
+});
