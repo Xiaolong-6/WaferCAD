@@ -81,7 +81,7 @@ export function fullSourceLayout(parsed, choice = ROOT) {
   };
 }
 
-export async function constructSourceProject(bytes, { root = ROOT } = {}) {
+export async function constructSourceProject(bytes, { root = ROOT, maskOnly = false } = {}) {
   const sha = createHash('sha256').update(bytes).digest('hex');
   if (sha !== ORIGINAL_SHA) throw Error('Original author GDS hash mismatch');
   const parsed = parseGDS(
@@ -98,40 +98,41 @@ export async function constructSourceProject(bytes, { root = ROOT } = {}) {
   const stages = [
     { model: structuredClone(model), label: 'Original source GDS: starting Si wafer' },
   ];
-  const nb = applyOperation(model, {
-    type: 'add',
-    name: 'Nb blanket',
-    thickness: 0.2,
-    face: 'front',
-    growth: 'direct',
-    area: model.boundary,
-  });
-  assert.ok(nb.changed, 'Nb deposition failed');
-  stages.push({ model: structuredClone(model), label: '200 nm Nb blanket on Si' });
-  let maskPolygonCount = 0;
-  if (root !== ROOT) {
-    // Known source GDS 2/0 etch-mask interpretation remains explicitly provisional.
-    // Use every author polygon; no shape is replaced with a hand-drawn substitute.
-    const { unionGeometries } = await import('../site/vector-geometry.js');
-    const polygons = layout.elements.filter((e) => e.layer === 2 && e.datatype === 0);
-    maskPolygonCount = polygons.length;
-    const mask = unionGeometries(polygons.map((e) => [[[...e.points, e.points[0]]]]));
-    const etch = applyOperation(model, {
-      type: 'etch',
-      name: '2/0 GDS Nb/Si etch — provisional polarity',
-      etchProfile: 'directional',
-      thickness: 0.25,
+  const maskPolygonCount = layout.elements.filter((e) => e.layer === 2 && e.datatype === 0).length;
+  if (!maskOnly) {
+    const nb = applyOperation(model, {
+      type: 'add',
+      name: 'Nb blanket',
+      thickness: 0.2,
       face: 'front',
-      area: mask,
+      growth: 'direct',
+      area: model.boundary,
     });
-    assert.ok(etch.changed, etch.error || 'Nb/Si etch failed');
-    stages.push({
-      model: structuredClone(model),
-      label: '250 nm directional etch — GDS 2/0 (provisional mask interpretation)',
-    });
+    assert.ok(nb.changed, 'Nb deposition failed');
+    stages.push({ model: structuredClone(model), label: '200 nm Nb blanket on Si' });
+    if (root !== ROOT) {
+      // Known source GDS 2/0 etch-mask interpretation remains explicitly provisional.
+      // Use every author polygon; no shape is replaced with a hand-drawn substitute.
+      const { unionGeometries } = await import('../site/vector-geometry.js');
+      const polygons = layout.elements.filter((e) => e.layer === 2 && e.datatype === 0);
+      const mask = unionGeometries(polygons.map((e) => [[[...e.points, e.points[0]]]]));
+      const etch = applyOperation(model, {
+        type: 'etch',
+        name: '2/0 GDS Nb/Si etch — provisional polarity',
+        etchProfile: 'directional',
+        thickness: 0.25,
+        face: 'front',
+        area: mask,
+      });
+      assert.ok(etch.changed, etch.error || 'Nb/Si etch failed');
+      stages.push({
+        model: structuredClone(model),
+        label: '250 nm directional etch — GDS 2/0 (provisional mask interpretation)',
+      });
+    }
   }
   const stageLabel = root === ROOT ? 'four-die reticle' : 'entire ' + root;
-  const name = `Tuokkola 2025 — ${stageLabel} original-GDS ${root === ROOT ? 'mask + Nb baseline' : 'Nb/Si etched baseline'} (not Josephson-complete)`;
+  const name = `Tuokkola 2025 — ${stageLabel} original-GDS ${maskOnly ? 'source Mask audit only' : root === ROOT ? 'mask + Nb baseline' : 'Nb/Si etched baseline'} (not Josephson-complete)`;
   const section =
     root === ROOT
       ? { a: [minX + width * 0.1, 0], b: [maxX - width * 0.1, 0] }
@@ -140,7 +141,10 @@ export async function constructSourceProject(bytes, { root = ROOT } = {}) {
     format: 'WaferCAD-vector',
     version: 14,
     name,
-    selectedLayerKeys: layout.combos.map((x) => x.key),
+    // File Mask selection is GLOBAL layer|datatype, not sourceCell|layer|datatype.
+    // Only the large-area 2/0 source mask is initially emphasized; other
+    // independent EBL and alignment masks stay available for user selection.
+    selectedLayerKeys: ['2|0'],
     activeCell: root,
     maskTransform: { x: 0, y: 0, scale: 1, rotation: 0 },
     maskSourceMode: 'file',
@@ -236,7 +240,9 @@ export async function constructSourceProject(bytes, { root = ROOT } = {}) {
       })),
       processedLayers: model.layers.map((l) => l.name),
       sourceMaskPolygonCount: maskPolygonCount,
-      materialPatterned: root !== ROOT,
+      materialPatterned: !maskOnly && root !== ROOT,
+      maskOnly,
+      initiallySelectedMaskLayer: '2/0',
       scientificLimitations:
         'GDS 2/0 etch-mask polarity inferred; MMA/PMMA resist, Al shadow, lift-off, AlOx and Josephson electrical physics not modeled.',
       bytes: Buffer.byteLength(content),
@@ -248,13 +254,14 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const input = inputArg('--input'),
     output = inputArg('--output'),
     root = inputArg('--root') || ROOT,
-    report = inputArg('--report');
+    report = inputArg('--report'),
+    maskOnly = process.argv.includes('--mask-only');
   if (!input || !output)
     throw Error(
       'Use --input original sample.gds --output project.wafercad [--root chip2|2024-04-07_EITR2_1] [--report report.json]',
     );
   await loadGeometryKernel();
-  const result = await constructSourceProject(await readFile(input), { root });
+  const result = await constructSourceProject(await readFile(input), { root, maskOnly });
   await writeFile(
     output,
     output.endsWith('.gz')
