@@ -546,7 +546,12 @@ export function createPlanRenderers({
       width: w,
       height: h,
       scale: Number(maskTransform.scale) || 1,
-      transformKey: [maskTransform.x, maskTransform.y, maskTransform.scale, maskTransform.rotation].join(':'),
+      transformKey: [
+        maskTransform.x,
+        maskTransform.y,
+        maskTransform.scale,
+        maskTransform.rotation,
+      ].join(':'),
     };
     ctx.clearRect(0, 0, w, h);
     if (validateExperimentalPhysicalFacetModel(model)) {
