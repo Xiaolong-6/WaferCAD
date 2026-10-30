@@ -161,3 +161,27 @@ test('dynamic preview face selector supports orbit across wafer during exact wor
   );
   assert.equal(progressivePreviewFacingNormal(NaN), 0);
 });
+
+test('dense two-region GDS geometry receives a bounded conservative 3D overview', () => {
+  const model = twoLayerModel();
+  model.regions[0].geom = Array.from({ length: 26000 }, () => structuredClone(polygon[0]));
+  const first = structuredClone(model.regions[0].geom[0]);
+  const preview = buildProgressiveSurfacePreview(model);
+  assert.equal(preview.kind, 'approximate-caps-preview');
+  assert.equal(preview.approximation, 'coverage-grid');
+  assert.equal(preview.gridSize, 48);
+  assert.deepEqual(preview.caps.map((cap) => cap.normal), [1, -1]);
+  assert.ok(preview.caps.every((cap) => cap.polys.length <= 48 * 48));
+  assert.ok(preview.lineCount <= 120000);
+  assert.equal(preview.borderPositions.length, preview.lineCount * 6);
+  assert.deepEqual(model.regions[0].geom[0], first, 'The source geometry stays untouched');
+  assert.equal('sidewalls' in preview, false);
+  assert.equal('solids' in preview, false);
+});
+
+test('dense overview refuses malformed polygons instead of masking invalid source data', () => {
+  const model = twoLayerModel();
+  model.regions[0].geom = Array.from({ length: 26000 }, () => structuredClone(polygon[0]));
+  model.regions[0].geom.at(-1)[0][0][0] = Infinity;
+  assert.equal(buildProgressiveSurfacePreview(model), null);
+});
