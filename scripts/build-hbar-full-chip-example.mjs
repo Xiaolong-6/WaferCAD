@@ -26,6 +26,28 @@ function close(element) {
   return [[first[0] === last[0] && first[1] === last[1] ? points : [...points, first]]];
 }
 
+/**
+ * Preserve each Boolean partition polygon and its original material stack,
+ * but keep each region spatially local. A small number of die-wide
+ * multi-polygons defeats exact geometry-validation sweep-line pruning:
+ * their aggregate bounding boxes all intersect, even if the actual
+ * polygons are disjoint. Splitting does not change a single source vertex
+ * or the material assigned to any XY location.
+ */
+export function spatialMaterialRegions(partitions) {
+  const regions = [];
+  for (const part of partitions) {
+    for (const polygon of part.geom) {
+      regions.push({
+        id: `region-${regions.length + 1}`,
+        geom: [polygon],
+        stack: part.stack,
+      });
+    }
+  }
+  return regions;
+}
+
 export async function buildFullHbarChip(sourceBytes) {
   const digest = createHash('sha256').update(sourceBytes).digest('hex');
   assert.equal(digest, SOURCE_SHA256, 'Unrecognized original Chip2 source GDS');
@@ -123,7 +145,7 @@ export async function buildFullHbarChip(sourceBytes) {
     parts = next;
   }
   const top = thickness.silicon / 2;
-  model.regions = parts.map((part, index) => {
+  const materialPartitions = parts.map((part) => {
     const roles = new Set(part.roles);
     const stack = [{ layerId: 'base', z0: -top, z1: top }];
     // GDS 9 is only an inferred oxide-opening mask. Do not invent a
@@ -138,8 +160,9 @@ export async function buildFullHbarChip(sourceBytes) {
         stack.push({ layerId: 'layer-6', z0: top + 6.995, z1: top + 7.09 });
       }
     }
-    return { id: 'region-' + (index + 1), geom: part.geom, stack };
+    return { geom: part.geom, stack };
   });
+  model.regions = spatialMaterialRegions(materialPartitions);
   model.nextRegionId = model.regions.length + 1;
 
   const project = projectForBenchmark({
@@ -183,6 +206,7 @@ export async function buildFullHbarChip(sourceBytes) {
     originalBoundsUm: original.bounds,
     sourcePolygonCount: original.elements.length,
     fullChipModelRegions: model.regions.length,
+    materialPartitionGroups: materialPartitions.length,
     layer12SourcePolygons: layer12.length,
     layer12SilhouetteComponents: l12Silhouette.length,
     layer12SilhouetteHoles: l12Silhouette.reduce((sum, poly) => sum + Math.max(0, poly.length - 1), 0),
