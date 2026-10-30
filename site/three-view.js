@@ -26,6 +26,7 @@ import {
   borderPresentationState,
 } from './border-inspector.js';
 import { shouldYieldDuringSceneAssembly } from './renderer-cooperative-assembly.js';
+import { shouldUseDenseInteractionSinglePass } from './renderer-interaction-pass.js';
 import { progressivePreviewFacingNormal } from './renderer-progressive-preview.js';
 import { buildContinuousMaterialSurfaceMesh } from './continuous-etch-mesh.js';
 import { buildContinuousSiHeightfieldMeshAsync } from './continuous-heightfield-mesh-async.js';
@@ -959,6 +960,21 @@ export function createThreeView({
   function renderInspectionFrame(targetRenderer = renderer) {
     updateOriginVisibility();
     updateBorderDashScale();
+    // Three full WebGL passes (color, owned depth, contours) are too expensive
+    // for pointer-rate updates on dense imported layouts. Keep all geometry and
+    // saved Border settings; restore exact depth-aware outlines on pointer-up.
+    if (
+      shouldUseDenseInteractionSinglePass({
+        model: getModel(),
+        interacting,
+        primaryRenderer: targetRenderer === renderer,
+      })
+    ) {
+      targetRenderer.render(scene, camera);
+      host.dataset.outlineVisibility = 'interaction-single-pass';
+      host.dataset.outlineDepthMeshCount = '0';
+      return;
+    }
     const occluders = [],
       outlines = [];
     scene.traverseVisible((object) => {
@@ -4101,7 +4117,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
       // Refining remains interactive without falsely satisfying those gates.
       host.dataset.renderState = 'refining';
       host.dataset.rendererProgressiveBuildMs = String(performance.now() - startedAt);
-      stats.textContent = '3D preview — refining exact solids…';
+      stats.textContent =
+        preview.approximation === 'coverage-grid'
+          ? '3D coarse coverage preview — refining exact solids…'
+          : '3D preview — refining exact solids…';
+      host.dataset.rendererPreviewApproximation = preview.approximation || 'contours';
       scheduleFrame();
     } catch (error) {
       disposeGroup();
