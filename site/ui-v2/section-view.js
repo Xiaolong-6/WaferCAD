@@ -11,6 +11,7 @@ import {
 import { createInspectionFields } from './view-kit/inspection-fields.js';
 import { createZBreakEditor } from './z-break-editor.js';
 import { bindPlanGestures } from './view-kit/plan-gestures.js';
+import { createCanvasInteractionPreview } from '../canvas-interaction-preview.js';
 import { createDisplayUnits, syncDisplayUnitFields } from './view-kit/display-units.js';
 import { mountToolPopover } from './view-kit/tool-popover.js';
 import { STRUCTURE_PALETTES } from '../controllers/layer-legend-controller.js';
@@ -238,12 +239,26 @@ export function createSectionView({ store, main, workstation }) {
     panel.querySelector('[data-action="legend"]')?.setAttribute('aria-pressed', String(shown));
   };
   let renderer, detail, collapse;
+  let sectionNavigation = null;
   const render = () => {
+    sectionNavigation?.cancel();
     if (!canvas.checkVisibility()) return;
     renderer.renderSection();
     detail.sync();
     sync();
   };
+  sectionNavigation = createCanvasInteractionPreview({ getCanvas: () => canvas, render });
+  const sectionScreenTransform = (view) => {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      s: view.zoom,
+      cx: ((1 - view.zoom) * rect.width) / 2 + view.panX,
+      cy: ((1 - view.zoom) * rect.height) / 2 + view.panY,
+    };
+  };
+  const hasDenseSectionGeometry = () =>
+    (state.model?.regions || []).reduce((count, region) => count + (region.geom?.length || 0), 0) >=
+    3000;
   collapse = createSectionCollapseController({
     root,
     getModel: () => state.model,
@@ -283,8 +298,13 @@ export function createSectionView({ store, main, workstation }) {
     xyUnitLabel: units.label,
   });
   const viewport = (value) => {
+    const before = sectionScreenTransform(normalizeSectionViewport(state.sectionViewport));
     state.sectionViewport = normalizeSectionViewport(value);
-    render();
+    if (hasDenseSectionGeometry() && canvas.checkVisibility()) {
+      sectionNavigation.request(before, sectionScreenTransform(state.sectionViewport));
+    } else {
+      render();
+    }
   };
   const zoomAt = (factor, x, y) => {
     const rect = canvas.getBoundingClientRect();

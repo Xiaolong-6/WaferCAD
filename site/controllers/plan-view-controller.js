@@ -1,5 +1,6 @@
 import { referencedModelParts } from '../model-array.js';
 import { minimumSegmentLength, zoomLimitForFeature } from '../view-interactions.js';
+import { createCanvasInteractionPreview } from '../canvas-interaction-preview.js';
 
 export function createPlanViewController({
   windowRef = window,
@@ -19,12 +20,43 @@ export function createPlanViewController({
   getViewportMargin = () => 34,
   fitMaskToContent = false,
   getCompactAxes = () => false,
+  getInteractionCanvas = () => null,
   onChanged = () => {},
 }) {
   const featureSizeCache = {
     mask: { layout: null, scale: null, value: null },
     main: { model: null, revision: null, value: null },
   };
+  const navigationPreviews = {
+    mask: createCanvasInteractionPreview({
+      getCanvas: () => getInteractionCanvas('mask'),
+      render: renderMask,
+    }),
+    main: createCanvasInteractionPreview({
+      getCanvas: () => getInteractionCanvas('main'),
+      render: renderMain,
+    }),
+  };
+  const complexViewport = (kind) => {
+    if (kind === 'mask') {
+      const layout = getLayout();
+      return (layout?.elements?.length || 0) + (layout?.linework?.length || 0) >= 3000;
+    }
+    return (
+      (getModel()?.regions || []).reduce(
+        (count, region) => count + (region.geom?.length || 0),
+        0,
+      ) >= 3000
+    );
+  };
+  function redrawAfterNavigation(kind, before, after) {
+    if (complexViewport(kind)) {
+      navigationPreviews[kind].request(before, after);
+    } else {
+      navigationPreviews[kind].cancel();
+      kind === 'mask' ? renderMask() : renderMain();
+    }
+  }
 
   function setupCanvas(canvas) {
     const dpr = Math.min(windowRef.devicePixelRatio || 1, 2),
@@ -250,6 +282,7 @@ export function createPlanViewController({
   }
 
   function resetPlanView(kind) {
+    navigationPreviews[kind].cancel();
     Object.assign(getPlanViews()[kind], { zoom: 1, panX: 0, panY: 0 });
     onChanged();
     kind === 'mask' ? renderMask() : renderMain();
@@ -260,10 +293,13 @@ export function createPlanViewController({
     const deltaX = Number(dx);
     const deltaY = Number(dy);
     if (!state || !Number.isFinite(deltaX) || !Number.isFinite(deltaY)) return;
+    const canvas = getInteractionCanvas(kind);
+    const rect = canvas?.getBoundingClientRect();
+    const before = rect ? viewport(rect.width, rect.height, kind) : null;
     state.panX += deltaX;
     state.panY += deltaY;
     onChanged();
-    kind === 'mask' ? renderMask() : renderMain();
+    redrawAfterNavigation(kind, before, rect ? viewport(rect.width, rect.height, kind) : null);
   }
 
   function zoomPlanView(kind, canvas, factor, clientX = null, clientY = null, back = false) {
@@ -282,7 +318,7 @@ export function createPlanViewController({
     state.panX += px - mapped[0];
     state.panY += py - mapped[1];
     onChanged();
-    kind === 'mask' ? renderMask() : renderMain();
+    redrawAfterNavigation(kind, before, viewport(w, h, kind));
   }
 
   function niceStep(range, count = 6) {
