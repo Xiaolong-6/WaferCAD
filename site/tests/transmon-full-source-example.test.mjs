@@ -101,7 +101,10 @@ test(
     skip: !sourcePath && 'Public author GDS supplied through WAFERCAD_TRANSMON_GDS',
   },
   async () => {
-    const result = await constructSourceProject(await readFile(sourcePath), { root: 'chip2' });
+    const result = await constructSourceProject(await readFile(sourcePath), {
+      root: 'chip2',
+      maskOnly: false,
+    });
     const p = await readProjectFile(new Blob([result.content]));
     assert.equal(
       result.report.sourceSha256,
@@ -133,7 +136,7 @@ test(
     skip: !sourcePath && 'Public author GDS supplied through WAFERCAD_TRANSMON_GDS',
   },
   async () => {
-    const result = await constructSourceProject(await readFile(sourcePath));
+    const result = await constructSourceProject(await readFile(sourcePath), { maskOnly: false });
     const p = await readProjectFile(new Blob([result.content]));
     assert.equal(p.layout.elements.length, 157950);
     assert.deepEqual(
@@ -161,7 +164,7 @@ test(
   async () => {
     const result = await constructSourceProject(await readFile(sourcePath), {
       root: 'chip2',
-      maskOnly: true,
+      // The default is intentionally Mask-only; no speculative etch on import.
     });
     const project = await readProjectFile(new Blob([result.content]));
     assert.equal(result.report.maskOnly, true);
