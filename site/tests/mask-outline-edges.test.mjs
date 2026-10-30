@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { maskVisibleOutlineEdges } from '../mask-outline-edges.js';
+import { createPlanRenderers } from '../plan-renderers.js';
 
 test('ordinary GDS squares retain the original Canvas outline fast path', () => {
   assert.equal(
@@ -77,3 +78,66 @@ test(
     assert.ok(fastSquares >= 39194, 'Source apertures retain the constant-time fast path');
   },
 );
+
+test('production Mask Canvas renders source keyholes without missing integration imports', () => {
+  const points = [
+    [0, 0],
+    [8, 0],
+    [8, 8],
+    [5, 8],
+    [5, 5],
+    [5, 8],
+    [0, 8],
+  ];
+  const fillRules = [];
+  let strokes = 0;
+  const context = {
+    clearRect() {},
+    fillRect() {},
+    save() {},
+    restore() {},
+    beginPath() {},
+    moveTo() {},
+    lineTo() {},
+    closePath() {},
+    fill(rule) {
+      fillRules.push(rule);
+    },
+    stroke() {
+      strokes++;
+    },
+  };
+  const layout = {
+    elements: [{ kind: 'polygon', layer: 2, datatype: 0, points }],
+    linework: [],
+    maskPresentation: {
+      background: '#fff',
+      showStructure: false,
+      showUnselected: false,
+      layers: [{ layer: 2, datatype: 0, color: '#123456', mode: 'fill', opacity: 1 }],
+    },
+  };
+  const renderer = createPlanRenderers({
+    root: { getElementById: () => ({}) },
+    getState: () => ({
+      model: {},
+      activeFace: 'front',
+      maskSourceMode: 'file',
+      layout,
+      maskOpacity: 1,
+      readOnlyPreview: true,
+      maskTransform: { scale: 1 },
+    }),
+    setupCanvas: () => ({ ctx: context, w: 100, h: 100 }),
+    viewport: () => ({ s: 1, cx: 10, cy: 10 }),
+    worldToCanvas: ([x, y], v) => [v.cx + x * v.s, v.cy - y * v.s],
+    maskPoint: (point) => point,
+    selectedElement: () => true,
+    layerKey: (layer, datatype) => `${layer}|${datatype}`,
+    layerColor: () => '#123456',
+    drawPlanAxes() {},
+  });
+  renderer.renderMask();
+  assert.deepEqual(fillRules, ['evenodd']);
+  assert.ok(strokes > 0);
+});
