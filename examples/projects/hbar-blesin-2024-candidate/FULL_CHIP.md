@@ -131,3 +131,30 @@ GDS export or the editable source. The default view now selects only L12,
 so its fractured blue polygon edges can be inspected independently; an
 optional filled-only L2 style suppresses artificial 1-pixel polygon strokes
 when the user enables the real traces.
+
+### Full-chip spatial overlay audit
+
+The 122 repeated-device pattern is measurable in the exact GDS (not a
+confirmed lithographic run-card mapping):
+
+- L8, L9, L11, L13, and L14 each form exactly **122** disconnected source-mask
+  clusters after geometry union; counts per individual source layer differ
+  because GDS drawing boundaries have been fractured.
+- L8 intersects L11 across approximately **72.2% of L8's footprint**, while
+  L9 and L8/L11 do **not** overlap in XY. This is compatible with a peripheral
+  actuator around the optical ring and separate oxide-release openings, but
+  by itself does not identify separate top/bottom electrode masks.
+- L2 and L3 each consist mostly of 1 µm features and do not overlap in
+  area; their end-to-end geometric continuity makes a combined optical
+  routing **candidate** reasonable, not proven.
+- L11 lies wholly inside the large L12 region in XY. This does **not**
+  prove L12 is an electrode or deposited film; the layer could be an
+  inverted/coverage mask. GDS polygons alone carry no deposition polarity.
+- L4 contains 1,748 disconnected small regions, and L13/14 each have 122
+  clusters. These remain unassigned until a layer legend, original design
+  script, or mask process record substantiates their meaning.
+
+The figures are derived from planar polygon sets; their percentages are
+not measured process tolerances or 3D overlap volumes. **Do not** assign
+L4/L12/L13/L14 a physical material merely to maximize the modeled layer
+count.
