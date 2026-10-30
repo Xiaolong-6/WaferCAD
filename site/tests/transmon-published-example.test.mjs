@@ -5,6 +5,8 @@ import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 
 await loadGeometryKernel();
 const { readProjectFile } = await import('../project-io.js');
+const { directApertureStackFromGds } = await import('../direct-aperture-from-gds.js');
+const { directIncidenceArea } = await import('../direct-incidence-geometry.js');
 const { geometryArea } = await import('../model.js');
 const { difference, intersection, pointInMulti, unionGeometries } = await import('../vector-geometry.js');
 
@@ -98,4 +100,83 @@ test('Q2 inspection shows the real three-Al crossing without changing material o
   }
   assert.equal(preview.display.sectionCollapse, undefined);
   assert.equal(preview.display.threeCamera, undefined);
+});
+
+test('Q2 Al3 discontinuities follow saved native oblique self-shadow geometry', async () => {
+  const bytes = await readFile(
+    new URL('../examples/transmon-q2-original-gds.wafercad', import.meta.url),
+  );
+  const { model, layout } = await readProjectFile(new Blob([bytes], { type: 'application/json' }));
+  const etchedSi = unionGeometries(
+    model.regions
+      .filter((region) => Math.abs(region.stack[0].z1 - 337.45) < 1e-8)
+      .map((region) => region.geom),
+  );
+  const apertureStack = directApertureStackFromGds(layout.elements, [
+    {
+      bottomZUm: 337.45,
+      topZUm: 337.95,
+      selectors: [
+        { layer: 8, datatype: 0 },
+        { layer: 8, datatype: 1 },
+      ],
+    },
+    {
+      bottomZUm: 337.95,
+      topZUm: 338.35,
+      selectors: [{ layer: 8, datatype: 1 }],
+    },
+  ]);
+  const incidence = { tiltDeg: 45, azimuthDeg: -135, heightStepUm: 0.0375, apertureStack };
+  const beforeAl3 = {
+    ...model,
+    regions: model.regions.map((region) => ({
+      ...region,
+      stack: region.stack.filter(({ layerId }) => layerId !== 'layer-4'),
+    })),
+  };
+  const flatWithoutExistingAl = {
+    ...model,
+    regions: model.regions.map((region) => ({
+      ...region,
+      stack: region.stack.filter(({ layerId }) => layerId === 'base'),
+    })),
+  };
+  const persistedAl3 = unionGeometries(
+    model.regions
+      .filter((region) => region.stack.some(({ layerId }) => layerId === 'layer-4'))
+      .map((region) => region.geom),
+  );
+  // Full single-dose shadow projection over a flat target cannot reproduce
+  // the disconnections created by sequential Al1/Al2 topography. The normal
+  // Direct path explicitly excludes non-rectangular sidewall deposition.
+  const staticAl3 = directIncidenceArea(flatWithoutExistingAl, etchedSi, incidence, {
+    depositedThicknessUm: 0.03,
+  }).area;
+  const nativeAl3 = directIncidenceArea(beforeAl3, etchedSi, incidence, {
+    depositedThicknessUm: 0.03,
+  }).area;
+  const storedArea = geometryArea(persistedAl3);
+  const staticDelta = geometryArea(staticAl3) - storedArea;
+  const nativeDisagreement =
+    geometryArea(difference(nativeAl3, persistedAl3)) +
+    geometryArea(difference(persistedAl3, nativeAl3));
+  assert.ok(
+    staticDelta > 0.008 && staticDelta < 0.02,
+    `Flat-target shadowing unexpectedly matches the saved Al3: Δ=${staticDelta} µm²`,
+  );
+  assert.ok(
+    nativeDisagreement / storedArea < 0.002,
+    `Q2 Al3 footprint no longer follows native topographic shadowing: Δ=${nativeDisagreement} µm²`,
+  );
+  for (const point of [
+    [-5.043, -0.1195],
+    [-4.8841, 0.0394],
+  ]) {
+    assert.equal(
+      pointInMulti(point, persistedAl3),
+      false,
+      'Preserve source-backed shadow gaps; do not fabricate a cosmetic Al bridge',
+    );
+  }
 });
