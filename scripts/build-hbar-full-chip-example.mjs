@@ -14,7 +14,9 @@ import { loadGeometryKernel, projectForBenchmark } from './process-benchmarks.mj
 
 const CHIP = 5000;
 const ORIGINAL_COUNT = 9646;
-const LAYERS = [8, 9, 11];
+const LAYERS = [2, 3, 8, 9, 11];
+const MATERIAL_LAYERS = [8, 9, 11];
+const L12_COUNT = 3017;
 const thickness = { silicon: 525, lowerOxide: 2.8, nitride: 0.85, oxide: 5.9 };
 
 function close(element) {
@@ -68,12 +70,22 @@ export async function buildFullHbarChip(sourceBytes) {
       layers: [{ layer: 12, datatype: 0, color: '#65a9cf', mode: 'fill', opacity: 0.62 }],
     },
   };
+  const layer12 = elements.filter((item) => item.layer === 12 && item.datatype === 0);
+  assert.equal(layer12.length, L12_COUNT, 'Original GDS Layer 12 changed');
+  // Compute only at project BUILD time. The stored display silhouette is
+  // separate from the canonical GDS, whose 3,017 polygons remain untouched.
+  // Boolean union repairs overlapping/fractured polygon display seams. Its
+  // internal rings encode real author Mask openings; they must not be painted.
+  const l12Silhouette = v.unionGeometries(layer12.map(close));
+  assert.ok(l12Silhouette.length > 0, 'Missing merged Layer 12 silhouette');
+  layout.maskPresentation.layers[0].silhouette = l12Silhouette;
+  layout.maskPresentation.layers[0].sourceElementCount = L12_COUNT;
   const model = createModel({ shape: 'rect', width: CHIP, height: CHIP, thickness: thickness.silicon });
   const layer = (id, name, color) => ({ id, name, color, visible: true });
   model.layers = [
     layer('base', 'Si handle 525 um starting wafer', '#a1adb7'),
     layer('layer-1', 'SiO2 lower 2.8 um', '#c4cbd3'),
-    layer('layer-2', 'Si3N4 850 nm | inferred GDS 8', '#416db7'),
+    layer('layer-2', 'Si3N4 850 nm | inferred GDS 2+3+8 optics', '#416db7'),
     layer('layer-3', 'SiO2 upper 5.9 um total', '#d5dae0'),
     layer('layer-4', 'Mo lower 95 nm | inferred GDS 11', '#bc9650'),
     layer('layer-5', 'AlN 1 um | assumed GDS 11 footprint', '#80b870'),
@@ -86,14 +98,19 @@ export async function buildFullHbarChip(sourceBytes) {
     assert.ok(shapes.length > 0, 'Missing original GDS layer ' + gdsLayer);
     masks.set(gdsLayer, v.unionGeometries(shapes));
   }
+  // Straight 1 um bus guides and tapers in L2/L3 are spatially aligned with
+  // the L8 ring candidates. This is a provisional optical-layout inference,
+  // NOT an author-confirmed process-purpose mapping.
+  const opticalCircuit = v.unionGeometries([masks.get(2), masks.get(3), masks.get(8)]);
 
   // Disjoint Boolean partition of the entire uncut wafer.
   let parts = [{ geom: model.boundary, roles: [] }];
-  for (const gdsLayer of LAYERS) {
+  for (const gdsLayer of MATERIAL_LAYERS) {
     const next = [];
     for (const part of parts) {
-      const inside = v.intersection(part.geom, masks.get(gdsLayer));
-      const outside = v.difference(part.geom, masks.get(gdsLayer));
+      const processMask = gdsLayer === 8 ? opticalCircuit : masks.get(gdsLayer);
+      const inside = v.intersection(part.geom, processMask);
+      const outside = v.difference(part.geom, processMask);
       if (!v.isEmpty(inside)) next.push({ geom: inside, roles: [...part.roles, gdsLayer] });
       if (!v.isEmpty(outside)) next.push({ geom: outside, roles: part.roles });
     }
@@ -145,7 +162,8 @@ export async function buildFullHbarChip(sourceBytes) {
     sha256: digest,
     absoluteGdsCenterUm: [cx, cy],
     localTranslationUm: [-cx, -cy],
-    layerPurposes: 'Provisional: 8/9/11. All other layers retained as Mask only.',
+    layerPurposes:
+      'Provisional: GDS 2+3 bus guides/tapers, 8 rings, 9 holes, 11 electrodes. Remaining layers Mask only.',
     limitations: 'No calibrated XeF2 cavity, facet, lithography, or replayable Process Recipe.',
   };
   validateProjectFile(project);
@@ -158,6 +176,9 @@ export async function buildFullHbarChip(sourceBytes) {
     originalBoundsUm: original.bounds,
     sourcePolygonCount: original.elements.length,
     fullChipModelRegions: model.regions.length,
+    layer12SourcePolygons: layer12.length,
+    layer12SilhouetteComponents: l12Silhouette.length,
+    layer12SilhouetteHoles: l12Silhouette.reduce((sum, poly) => sum + Math.max(0, poly.length - 1), 0),
     countByLayer: Object.fromEntries(
       [...new Set(elements.map((element) => element.layer))].sort((a, b) => a - b)
         .map((gdsLayer) => [gdsLayer, elements.filter((element) => element.layer === gdsLayer).length]),

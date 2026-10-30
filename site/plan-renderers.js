@@ -33,7 +33,7 @@ import {
   roughVisualBoundsZ,
 } from './surface-rendering.js';
 import { unionGeometries } from './vector-geometry.js';
-import { appendAdditiveMaskPolygons } from './mask-additive-path.js';
+import { appendAdditiveMaskPolygons, appendUnionMaskPolygons } from './mask-additive-path.js';
 import {
   createSectionZTransform,
   niceSectionTicks,
@@ -552,13 +552,23 @@ export function createPlanRenderers({
             // remain untouched for Mask selection, export and Process operations.
             ctx.save();
             ctx.beginPath();
-            const count = appendAdditiveMaskPolygons(ctx, matching, (point) =>
-              worldToCanvas(maskPoint(point), v),
-            );
+            const hasVerifiedSilhouette =
+              Array.isArray(style.silhouette) &&
+              Number.isInteger(style.sourceElementCount) &&
+              matching.length === style.sourceElementCount;
+            const count = hasVerifiedSilhouette
+              ? appendUnionMaskPolygons(ctx, style.silhouette, (point) =>
+                  worldToCanvas(maskPoint(point), v),
+                )
+              : appendAdditiveMaskPolygons(ctx, matching, (point) =>
+                  worldToCanvas(maskPoint(point), v),
+                );
             if (count) {
               ctx.fillStyle = style.color;
               ctx.globalAlpha *= style.opacity;
-              ctx.fill();
+              // Union contours contain real holes. Even-odd is essential:
+              // filling all rings with nonzero winding can erase openings.
+              ctx.fill(hasVerifiedSilhouette ? 'evenodd' : 'nonzero');
             }
             ctx.restore();
             for (const element of matching) {

@@ -1152,6 +1152,16 @@ function validateLayout(layout, budget) {
         fail(path + '.mode', 'must be fill, outline, hatch, or cross.');
       }
       assertFinite(style.opacity, path + '.opacity', { min: 0, max: 1 });
+      if (style.silhouette != null) {
+        if (style.mode !== 'fill') fail(path + '.silhouette', 'requires fill mode.');
+        assertInteger(style.sourceElementCount, path + '.sourceElementCount', {
+          min: 1,
+          max: LIMITS.layoutElements,
+        });
+        // View-only merged geometry stays separate from canonical GDS polygons,
+        // but its input is still untrusted project data and must be bounded.
+        validateMultiPolygon(style.silhouette, path + '.silhouette', budget);
+      }
     }
   }
 

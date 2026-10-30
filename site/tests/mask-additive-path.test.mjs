@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { appendAdditiveMaskPolygons } from '../mask-additive-path.js';
+import { appendAdditiveMaskPolygons, appendUnionMaskPolygons } from '../mask-additive-path.js';
 
 function recorder() {
   const calls = [];
@@ -104,4 +104,25 @@ test('entire layer is one path and no per-polygon stroke or fill is emitted', ()
   );
   assert.equal(ctx.calls.filter((c) => c[0] === 'close').length, 300);
   assert.equal(ctx.calls.length, 300 * 5);
+});
+
+
+test('premerged display silhouette traces exterior and real hole without source edits', () => {
+  const shape = [[
+    [[0, 0], [20, 0], [20, 20], [0, 20], [0, 0]],
+    [[5, 5], [5, 15], [15, 15], [15, 5], [5, 5]],
+  ]];
+  const before = JSON.stringify(shape);
+  const ctx = recorder();
+  assert.equal(appendUnionMaskPolygons(ctx, shape, ([x, y]) => [x * 2, y * 2]), 2);
+  assert.equal(ctx.calls.filter((step) => step[0] === 'close').length, 2);
+  assert.deepEqual(ctx.calls[0], ['move', 0, 0]);
+  assert.ok(ctx.calls.some((step) => step[0] === 'move' && step[1] === 10 && step[2] === 10));
+  assert.equal(JSON.stringify(shape), before);
+});
+
+test('empty silhouette renders no subpaths', () => {
+  const ctx = recorder();
+  assert.equal(appendUnionMaskPolygons(ctx, [], (point) => point), 0);
+  assert.deepEqual(ctx.calls, []);
 });

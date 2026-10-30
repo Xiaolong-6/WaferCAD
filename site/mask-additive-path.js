@@ -28,3 +28,25 @@ export function appendAdditiveMaskPolygons(ctx, elements, projectPoint) {
   }
   return appended;
 }
+
+/**
+ * Append topology-merged physical GDS layer contours, including true holes.
+ * The geometry is precomputed once from the original author polygons by the
+ * example generator. Never re-run Boolean union on interactive zoom/pan.
+ */
+export function appendUnionMaskPolygons(ctx, silhouette, projectPoint) {
+  let rings = 0;
+  for (const polygon of silhouette || []) {
+    for (const ring of polygon || []) {
+      if (ring.length < 4) continue;
+      ring.forEach((point, index) => {
+        const [x, y] = projectPoint(point);
+        if (index === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.closePath();
+      rings++;
+    }
+  }
+  return rings;
+}

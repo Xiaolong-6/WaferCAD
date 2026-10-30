@@ -48,9 +48,10 @@ The original 5.7 MB GDS input is not checked in to this repository.
 
 The complete Mask is exact author geometry. The full-chip 3D model is a
 disjoint 2.5D partition with a 525 µm starting Si wafer and a provisional
-SiO2/Si3N4/Mo/AlN/Mo stack. Three **unverified** role assignments supply
-physical material masks: layer 8 (Si3N4), layer 9 (oxide openings) and
-layer 11 (common assumed bottom/top electrode plus AlN footprint).
+SiO2/Si3N4/Mo/AlN/Mo stack. Provisional role assignments use
+layers 2 and 3 (1 µm optical bus/taper candidates), 8 (Si3N4 ring
+candidates), 9 (oxide-opening candidates) and 11 (assumed Mo/AlN/Mo footprint).
+These are layout-based interpretations, not author-certified layer purposes.
 
 The remaining source layers are retained in Mask but are NOT given invented
 material/process meanings. In particular, no fictitious XeF2 cavity,
@@ -83,3 +84,40 @@ Source GDS geometry may contain self-intersecting boundaries; they remain
 unaltered and require separate author-purpose/topological review before
 being promoted into material process geometry. No unverified material meaning
 is assigned to layers 2 or 12.
+
+## Layer-purpose evidence review (2026-10-30)
+
+The source-GDS mask has ten layers, but a GDS number does not imply a
+material. The authors explicitly report 1 µm straight Si3N4 bus waveguides,
+2.1 µm ring waveguides, SiO2 release holes and 12/14 µm electrodes in the
+paper Methods. The following remain geometry-based *candidates*:
+
+| GDS | Source polygons | Physical interpretation | Evidence level |
+| --- | ---: | --- | --- |
+| 2 | 488 | 1 µm straight optical routing candidate | inferred from dimensions/connectivity |
+| 3 | 732 | bent/taper optical routing candidate | inferred from continuity with L2 |
+| 4 | 1,748 | unknown fine lithographic structures | not assigned |
+| 6 | 1 | exact 5 mm square chip outline | geometric identity |
+| 8 | 2,684 | Si3N4 microring candidate | inferred from ring morphology |
+| 9 | 244 | oxide release openings candidate | inferred from location/count |
+| 11 | 488 | piezoelectric actuator footprint candidate | inferred from arc geometry |
+| 12 | 3,017 | broad mask field with interconnecting voids | geometry only; not a material |
+| 13 | 122 | repeated ~100 µm local structures | unknown |
+| 14 | 122 | repeated ~12 µm structures | unknown |
+
+The full-chip 3D presentation therefore includes L2+L3+L8 as an
+**inferred Si3N4 optical-routing union**. The remaining layers are
+retained in the original Mask, not coerced into guessed process materials.
+This is not a completed author-verified full-chip Recipe.
+
+## Topology-correct Layer 12 visual silhouette
+
+The 3,017 native Layer 12 polygons contain 8 self-intersections and many
+overlaps. Their topological Boolean union has 23 connected components with
+131 genuine internal holes (Shapely 2.1.2 reference on the original GDS).
+The previous per-polygon fill-without-stroke approach could still leave
+invalid-ring artifacts or misrepresent holes. The builder now creates a
+**premerged, read-only silhouette**, retaining all original source elements,
+and the Mask painter fills this with the even-odd winding rule in one call.
+It never uses the derived silhouette for Process, export, 3D materials or
+geometry ownership. Union runs at build time, *not on zoom or pan*.
