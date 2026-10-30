@@ -3,7 +3,12 @@ import test from 'node:test';
 import { createMaskViewportCuller } from '../mask-viewport-culling.js';
 
 const element = {
-  points: [[20, 0], [24, 0], [24, 2], [20, 2]],
+  points: [
+    [20, 0],
+    [24, 0],
+    [24, 2],
+    [20, 2],
+  ],
 };
 const view = { cx: 0, cy: 50, s: 1 };
 

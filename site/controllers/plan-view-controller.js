@@ -42,10 +42,12 @@ export function createPlanViewController({
       const layout = getLayout();
       return (layout?.elements?.length || 0) + (layout?.linework?.length || 0) >= 3000;
     }
-    return (getModel()?.regions || []).reduce(
-      (count, region) => count + (region.geom?.length || 0),
-      0,
-    ) >= 3000;
+    return (
+      (getModel()?.regions || []).reduce(
+        (count, region) => count + (region.geom?.length || 0),
+        0,
+      ) >= 3000
+    );
   };
   function redrawAfterNavigation(kind, before, after) {
     if (complexViewport(kind)) {
@@ -297,11 +299,7 @@ export function createPlanViewController({
     state.panX += deltaX;
     state.panY += deltaY;
     onChanged();
-    redrawAfterNavigation(
-      kind,
-      before,
-      rect ? viewport(rect.width, rect.height, kind) : null,
-    );
+    redrawAfterNavigation(kind, before, rect ? viewport(rect.width, rect.height, kind) : null);
   }
 
   function zoomPlanView(kind, canvas, factor, clientX = null, clientY = null, back = false) {

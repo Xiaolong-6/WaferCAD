@@ -27,7 +27,10 @@ import {
   borderPresentationState,
 } from './border-inspector.js';
 import { shouldYieldDuringSceneAssembly } from './renderer-cooperative-assembly.js';
-import { createDenseSidewallMotionLod, shouldUseDenseInteractionSinglePass } from './renderer-interaction-pass.js';
+import {
+  createDenseSidewallMotionLod,
+  shouldUseDenseInteractionSinglePass,
+} from './renderer-interaction-pass.js';
 import { chunkOpaquePlanarCaps } from './renderer-opaque-cap-chunks.js';
 import { progressivePreviewFacingNormal } from './renderer-progressive-preview.js';
 import { buildContinuousMaterialSurfaceMesh } from './continuous-etch-mesh.js';

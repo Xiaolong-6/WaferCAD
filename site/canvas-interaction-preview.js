@@ -51,13 +51,7 @@ export function createCanvasInteractionPreview({
     context.save();
     context.setTransform(1, 0, 0, 1, 0, 0);
     context.clearRect(0, 0, canvas.width, canvas.height);
-    context.drawImage(
-      image,
-      dx * dprX,
-      dy * dprY,
-      image.width * scale,
-      image.height * scale,
-    );
+    context.drawImage(image, dx * dprX, dy * dprY, image.width * scale, image.height * scale);
     context.restore();
   }
 

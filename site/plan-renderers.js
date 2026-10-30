@@ -18,6 +18,7 @@ import { drawPlanGrid } from './plan-grid.js';
 import { ringMayIntersectCanvas } from './plan-ring-visibility.js';
 import { createMaskViewportCuller } from './mask-viewport-culling.js';
 import { maskVisibleOutlineEdges } from './mask-outline-edges.js';
+import { clipCanvasSegment } from './canvas-segment-clip.js';
 import { validateExperimentalPhysicalFacetModel } from './experimental/physical-facets/physical-facet-model.js';
 import {
   electricalRegionSectionBands,
@@ -520,15 +521,36 @@ export function createPlanRenderers({
   }
 
   function strokeClosedGeometry(ctx, geom, v, back = false) {
+    const rect = ctx.canvas?.getBoundingClientRect?.();
+    const clip = rect?.width > 0 && rect?.height > 0;
     ctx.beginPath();
     for (const polygon of geom || []) {
       for (const ring of polygon || []) {
-        ring.forEach((point, index) => {
-          const q = worldToCanvas(point, v, back);
-          if (index === 0) ctx.moveTo(q[0], q[1]);
-          else ctx.lineTo(q[0], q[1]);
-        });
-        if (ring?.length) ctx.closePath();
+        if (!ring?.length) continue;
+        if (!clip) {
+          ring.forEach((point, index) => {
+            const q = worldToCanvas(point, v, back);
+            if (index === 0) ctx.moveTo(q[0], q[1]);
+            else ctx.lineTo(q[0], q[1]);
+          });
+          ctx.closePath();
+          continue;
+        }
+        let lastEnd = null;
+        for (let index = 0; index < ring.length; index++) {
+          const start = worldToCanvas(ring[index], v, back);
+          const end = worldToCanvas(ring[(index + 1) % ring.length], v, back);
+          const segment = clipCanvasSegment(start, end, rect.width, rect.height);
+          if (!segment) {
+            lastEnd = null;
+            continue;
+          }
+          if (!lastEnd || lastEnd[0] !== segment[0][0] || lastEnd[1] !== segment[0][1]) {
+            ctx.moveTo(segment[0][0], segment[0][1]);
+          }
+          ctx.lineTo(segment[1][0], segment[1][1]);
+          lastEnd = segment[1];
+        }
       }
     }
     ctx.stroke();

@@ -1,19 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createDenseSidewallMotionLod, shouldUseDenseInteractionSinglePass } from '../renderer-interaction-pass.js';
+import {
+  createDenseSidewallMotionLod,
+  shouldUseDenseInteractionSinglePass,
+} from '../renderer-interaction-pass.js';
 
 const denseModel = {
-  regions: [
-    { geom: Array.from({ length: 1500 }) },
-    { geom: Array.from({ length: 2000 }) },
-  ],
+  regions: [{ geom: Array.from({ length: 1500 }) }, { geom: Array.from({ length: 2000 }) }],
 };
 
 test('large imported geometry drops extra WebGL outline passes only while moving', () => {
-  assert.equal(
-    shouldUseDenseInteractionSinglePass({ model: denseModel, interacting: true }),
-    true,
-  );
+  assert.equal(shouldUseDenseInteractionSinglePass({ model: denseModel, interacting: true }), true);
   assert.equal(
     shouldUseDenseInteractionSinglePass({ model: denseModel, interacting: false }),
     false,

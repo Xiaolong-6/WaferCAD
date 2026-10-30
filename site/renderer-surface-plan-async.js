@@ -18,8 +18,7 @@ export function shouldBuildSurfacePlanInWorker(model) {
       (model.regions?.length || 0) >= 64 ||
       // Imported layouts can store tens of thousands of polygons in just two
       // regions (e.g. dense GDS text). Region count alone misses this cost.
-      (model.regions || []).reduce((count, region) => count + (region.geom?.length || 0), 0) >=
-        256)
+      (model.regions || []).reduce((count, region) => count + (region.geom?.length || 0), 0) >= 256)
   );
 }
 

@@ -257,10 +257,8 @@ export function createSectionView({ store, main, workstation }) {
     };
   };
   const hasDenseSectionGeometry = () =>
-    (state.model?.regions || []).reduce(
-      (count, region) => count + (region.geom?.length || 0),
-      0,
-    ) >= 3000;
+    (state.model?.regions || []).reduce((count, region) => count + (region.geom?.length || 0), 0) >=
+    3000;
   collapse = createSectionCollapseController({
     root,
     getModel: () => state.model,

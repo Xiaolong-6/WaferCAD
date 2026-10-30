@@ -50,10 +50,7 @@ export function createMaskViewportCuller(transformPoint) {
     const top = view.cy - box.maxY * view.s;
     const bottom = view.cy - box.minY * view.s;
     return (
-      right >= -margin &&
-      left <= width + margin &&
-      bottom >= -margin &&
-      top <= height + margin
+      right >= -margin && left <= width + margin && bottom >= -margin && top <= height + margin
     );
   };
 }

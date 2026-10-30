@@ -41,7 +41,7 @@ function mergeOccupiedTiles(cells, bounds, stepX, stepY) {
   // thousands of coplanar triangles for a full-wafer substrate.
   for (let y = 0; y <= GRID; y++) {
     const next = new Map();
-    for (let x = 0; x < GRID && y < GRID; ) {
+    for (let x = 0; x < GRID && y < GRID;) {
       if (!cells[y * GRID + x]) {
         x++;
         continue;
@@ -63,7 +63,15 @@ function mergeOccupiedTiles(cells, bounds, stepX, stepY) {
     const right = bounds.minX + x1 * stepX;
     const bottom = bounds.minY + y0 * stepY;
     const top = bounds.minY + y1 * stepY;
-    return [[[left, bottom], [right, bottom], [right, top], [left, top], [left, bottom]]];
+    return [
+      [
+        [left, bottom],
+        [right, bottom],
+        [right, top],
+        [left, top],
+        [left, bottom],
+      ],
+    ];
   });
 }
 

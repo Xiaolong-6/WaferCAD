@@ -11,9 +11,9 @@ test('opaque cap chunks preserve exact polygon references, orientation, ownershi
   ];
   const chunks = [...chunkOpaquePlanarCaps(caps, 1024)];
   assert.equal(chunks.length, 4);
-  assert.ok(chunks.every((batch) =>
-    batch.reduce((total, cap) => total + cap.polys.length, 0) <= 1024,
-  ));
+  assert.ok(
+    chunks.every((batch) => batch.reduce((total, cap) => total + cap.polys.length, 0) <= 1024),
+  );
   assert.deepEqual(
     chunks.flatMap((batch) => batch.flatMap((cap) => cap.polys)),
     [...first, ...second],

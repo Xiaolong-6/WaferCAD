@@ -170,7 +170,10 @@ test('dense two-region GDS geometry receives a bounded conservative 3D overview'
   assert.equal(preview.kind, 'approximate-caps-preview');
   assert.equal(preview.approximation, 'coverage-grid');
   assert.equal(preview.gridSize, 48);
-  assert.deepEqual(preview.caps.map((cap) => cap.normal), [1, -1]);
+  assert.deepEqual(
+    preview.caps.map((cap) => cap.normal),
+    [1, -1],
+  );
   assert.ok(preview.caps.every((cap) => cap.polys.length <= 48 * 48));
   assert.ok(preview.lineCount <= 120000);
   assert.equal(preview.borderPositions.length, preview.lineCount * 6);

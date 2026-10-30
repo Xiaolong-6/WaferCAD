@@ -9,11 +9,21 @@ function fixture() {
   let nextId = 0;
   let renders = 0;
   const context = {
-    save() { calls.push(['save']); },
-    restore() { calls.push(['restore']); },
-    setTransform(...values) { calls.push(['transform', ...values]); },
-    clearRect(...values) { calls.push(['clear', ...values]); },
-    drawImage(...values) { calls.push(['draw', ...values.slice(1)]); },
+    save() {
+      calls.push(['save']);
+    },
+    restore() {
+      calls.push(['restore']);
+    },
+    setTransform(...values) {
+      calls.push(['transform', ...values]);
+    },
+    clearRect(...values) {
+      calls.push(['clear', ...values]);
+    },
+    drawImage(...values) {
+      calls.push(['draw', ...values.slice(1)]);
+    },
   };
   const canvas = {
     width: 400,
@@ -29,11 +39,25 @@ function fixture() {
   };
   const preview = createCanvasInteractionPreview({
     getCanvas: () => canvas,
-    render() { renders++; },
-    requestFrame(callback) { const id = ++nextId; frames.set(id, callback); return id; },
-    cancelFrame(id) { frames.delete(id); },
-    setTimer(callback) { const id = ++nextId; timers.set(id, callback); return id; },
-    clearTimer(id) { timers.delete(id); },
+    render() {
+      renders++;
+    },
+    requestFrame(callback) {
+      const id = ++nextId;
+      frames.set(id, callback);
+      return id;
+    },
+    cancelFrame(id) {
+      frames.delete(id);
+    },
+    setTimer(callback) {
+      const id = ++nextId;
+      timers.set(id, callback);
+      return id;
+    },
+    clearTimer(id) {
+      timers.delete(id);
+    },
   });
   const flushFrames = () => {
     const pending = [...frames.values()];
@@ -69,9 +93,12 @@ test('dense pan/zoom reprojects one raster and redraws scientific vectors only a
   assert.equal(ui.timers.size, 1, 'Only the last gesture schedules the exact redraw');
   assert.equal(ui.renders, 0);
   ui.flushFrames();
-  assert.ok(ui.calls.some(([name, x, y, width, height]) =>
-    name === 'draw' && x === 30 && y === 50 && width === 1200 && height === 600
-  ));
+  assert.ok(
+    ui.calls.some(
+      ([name, x, y, width, height]) =>
+        name === 'draw' && x === 30 && y === 50 && width === 1200 && height === 600,
+    ),
+  );
   ui.settle();
   assert.equal(ui.renders, 1);
   assert.equal(ui.preview.pending, false);

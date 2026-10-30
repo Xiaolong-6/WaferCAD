@@ -91,7 +91,7 @@ export async function constructSourceProject(bytes, { root = ROOT, maskOnly = tr
   const { createModel, applyOperation } = await import('../site/model.js');
   const { validateProjectFile } = await import('../site/project-schema.js');
   const { prepareProjectForExport, expandProjectStorage } = await import('../site/project-io.js');
-  const { width, height, minX, minY, maxX, maxY } = layout.bounds;
+  const { width, height, minX, maxX } = layout.bounds;
   if (!(width > 0 && height > 0)) throw Error('Source layout has no physical extent');
   const model = createModel({ shape: 'rect', width, height, thickness: 675 });
   model.layers[0].name = 'Si (100) — original source footprint';
