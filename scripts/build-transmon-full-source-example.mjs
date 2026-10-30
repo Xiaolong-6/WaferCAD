@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { gzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { flattenGDS, parseGDS } from '../site/gds.js';
 import { loadGeometryKernel } from './process-benchmarks.mjs';
@@ -254,7 +255,12 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     );
   await loadGeometryKernel();
   const result = await constructSourceProject(await readFile(input), { root });
-  await writeFile(output, result.content);
+  await writeFile(
+    output,
+    output.endsWith('.gz')
+      ? gzipSync(Buffer.from(result.content), { level: 9, mtime: 0 })
+      : result.content,
+  );
   if (report) await writeFile(report, JSON.stringify(result.report, null, 2) + '\n');
   console.log(JSON.stringify(result.report, null, 2));
 }
