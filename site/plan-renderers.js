@@ -33,6 +33,7 @@ import {
   roughVisualBoundsZ,
 } from './surface-rendering.js';
 import { unionGeometries } from './vector-geometry.js';
+import { appendAdditiveMaskPolygons } from './mask-additive-path.js';
 import {
   createSectionZTransform,
   niceSectionTicks,
@@ -538,10 +539,43 @@ export function createPlanRenderers({
         // Keep the physical File Mask unchanged. Presentation is an opt-in,
         // display-only overlay with per-layer ordering and visual semantics.
         for (const style of presentation.layers) {
-          for (const element of layout.elements || []) {
-            if (element.layer !== style.layer || element.datatype !== style.datatype) continue;
-            if (selectedElement(element)) tracePresentedMask(ctx, element, v, style);
+          const matching = (layout.elements || []).filter(
+            (element) =>
+              element.layer === style.layer &&
+              element.datatype === style.datatype &&
+              selectedElement(element),
+          );
+          if (style.mode === 'fill') {
+            // One additive nonzero fill for the complete layer. Per-polygon
+            // strokes and repeated translucent fills expose GDS fracture seams,
+            // especially where author polygons overlap. The original elements
+            // remain untouched for Mask selection, export and Process operations.
+            ctx.save();
+            ctx.beginPath();
+            const count = appendAdditiveMaskPolygons(ctx, matching, (point) =>
+              worldToCanvas(maskPoint(point), v),
+            );
+            if (count) {
+              ctx.fillStyle = style.color;
+              ctx.globalAlpha *= style.opacity;
+              ctx.fill();
+            }
+            ctx.restore();
+            for (const element of matching) {
+              if (element.kind !== 'polygon') traceElement(ctx, element, v, true);
+            }
+          } else {
+            for (const element of matching) tracePresentedMask(ctx, element, v, style);
           }
+        }
+        // A project may give just one dense layer a silhouette style. Other
+        // checked layers must still render (e.g., the real 1 um GDS layer 2).
+        const styled = new Set(
+          presentation.layers.map((style) => layerKey(style.layer, style.datatype)),
+        );
+        for (const element of layout.elements || []) {
+          if (!styled.has(layerKey(element.layer, element.datatype)) && selectedElement(element))
+            traceElement(ctx, element, v, true);
         }
         if (presentation.showUnselected) {
           for (const element of layout.elements || []) {

@@ -56,6 +56,17 @@ export async function buildFullHbarChip(sourceBytes) {
     name: 'Blésin 2024 | complete original Chip2 author GDS',
     elements,
     bounds: { minX: -CHIP / 2, maxX: CHIP / 2, minY: -CHIP / 2, maxY: CHIP / 2, width: CHIP, height: CHIP },
+    // View-only: suppress polygon fracture seams for the overlapping L12
+    // geometry. Every original GDS element remains available for export.
+    // Unstyled checked layers, including the real 1 um L2 traces, are drawn
+    // by the ordinary Mask renderer.
+    maskPresentation: {
+      version: 1,
+      background: '#f9fbfd',
+      showStructure: false,
+      showUnselected: false,
+      layers: [{ layer: 12, datatype: 0, color: '#65a9cf', mode: 'fill', opacity: 0.62 }],
+    },
   };
   const model = createModel({ shape: 'rect', width: CHIP, height: CHIP, thickness: thickness.silicon });
   const layer = (id, name, color) => ({ id, name, color, visible: true });
@@ -117,7 +128,7 @@ export async function buildFullHbarChip(sourceBytes) {
   project.activeCell = 'Chip2';
   project.maskSourceMode = 'file';
   project.maskTransform = { x: 0, y: 0, scale: 1, rotation: 0 };
-  project.selectedLayerKeys = layout.combos.map((combo) => String(combo.layer) + '|' + String(combo.datatype));
+  project.selectedLayerKeys = ['2|0', '12|0']; // Focus on real L2 traces and seamless L12; all layers remain selectable.
   project.drawMask = { nextShapeId: 1, shapes: [] };
   project.maskRoi = null;
   project.roi = null;
