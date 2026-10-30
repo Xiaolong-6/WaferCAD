@@ -1,3 +1,5 @@
+import { scanlineTriangulatePolygon } from './scanline-triangulation.js';
+
 const TRIANGULATION_RELATIVE_TOLERANCE = 1e-6;
 const TRIANGULATION_ABSOLUTE_TOLERANCE = 1e-9;
 const ANGLE_EPSILON = 1e-10;
@@ -257,6 +259,9 @@ export function triangulatePolygon(THREE, polygon) {
 
   const expectedArea = polygonArea(rings);
   if (expectedArea <= TRIANGULATION_ABSOLUTE_TOLERANCE) return [];
+
+  const scanline = scanlineTriangulatePolygon(rings);
+  if (scanline) return scanline;
 
   const primary = primaryTriangles(THREE, rings);
   if (areaMatches(expectedArea, primary.area)) return primary.triangles;
