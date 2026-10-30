@@ -3407,7 +3407,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
               if (gestureMode !== null && !(gestureWheelZoom ?? gestureMode === 'zoom')) {
                 event.preventDefault();
                 event.stopImmediatePropagation();
-              } else {
+              } else if (
+                (physicalSurfacePlan?.sidewalls?.length || 0) >= 100000 &&
+                !getInspection()?.borders &&
+                getInspection()?.fast !== false &&
+                !getClipGeometry()
+              ) {
                 denseWheelActive = true;
                 if (denseWheelTimer !== null) clearTimeout(denseWheelTimer);
                 denseWheelTimer = setTimeout(() => {
