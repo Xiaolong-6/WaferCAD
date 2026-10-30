@@ -15,6 +15,7 @@ import { visibleSurfaceGroups } from './process-topology.js';
 import { layerById, modelBoundsZ } from './model.js';
 import { layerInspectionTone, sectionInspectionFill } from './layer-inspection-presentation.js';
 import { drawPlanGrid } from './plan-grid.js';
+import { ringMayIntersectCanvas } from './plan-ring-visibility.js';
 import { createMaskViewportCuller } from './mask-viewport-culling.js';
 import { validateExperimentalPhysicalFacetModel } from './experimental/physical-facets/physical-facet-model.js';
 import {
@@ -118,12 +119,21 @@ export function createPlanRenderers({
 
   function canvasPathMulti(ctx, geom, v, back = false) {
     ctx.beginPath();
-    for (const poly of geom || [])
-      for (const ring of poly)
+    // Multi-hole GDS contours can exceed 39k rings. Offscreen holes need no
+    // Canvas2D path commands at this zoom; retain exact coordinates for all
+    // visible rings and leave scientific ownership/export paths untouched.
+    const dense = geom?.length >= 512 || geom?.some((poly) => poly.length >= 128);
+    const rect = dense ? ctx.canvas?.getBoundingClientRect?.() : null;
+    const cull = rect?.width > 0 && rect?.height > 0;
+    for (const poly of geom || []) {
+      for (const ring of poly) {
+        if (cull && !ringMayIntersectCanvas(ring, v, rect.width, rect.height, back)) continue;
         ring.forEach((p, i) => {
           const q = worldToCanvas(p, v, back);
           i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]);
         });
+      }
+    }
   }
   function drawBaseOutline(ctx, v, { fill = true, back = false, colors } = {}) {
     const { model } = getState();
