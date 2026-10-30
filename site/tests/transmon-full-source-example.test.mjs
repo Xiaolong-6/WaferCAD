@@ -9,6 +9,7 @@ import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 
 await loadGeometryKernel();
 const { readProjectFile } = await import('../project-io.js');
+const { parseGDS, flattenGDS } = await import('../gds.js');
 const { pointInMulti } = await import('../vector-geometry.js');
 const ROOT = '2024-04-07_EITR2_1';
 const sourcePath = process.env.WAFERCAD_TRANSMON_GDS;
@@ -108,6 +109,7 @@ test(
     );
     assert.equal(p.layout.root, 'chip2');
     assert.equal(p.layout.elements.length, 39487);
+    assert.deepEqual(p.selectedLayerKeys, ['2|0'], 'Mask selection keys must be layer|datatype');
     assert.equal(result.report.sourceMaskPolygonCount, 39235);
     assert.equal(p.model.processRevision, 2);
     assert.equal(p.snapshotBranches.nodes.length, 3);
@@ -135,6 +137,11 @@ test(
     const p = await readProjectFile(new Blob([result.content]));
     assert.equal(p.layout.elements.length, 157950);
     assert.deepEqual(
+      p.selectedLayerKeys,
+      ['2|0'],
+      'Reticle Mask selection keys must be layer|datatype',
+    );
+    assert.deepEqual(
       [p.layout.bounds.minX, p.layout.bounds.minY, p.layout.bounds.maxX, p.layout.bounds.maxY],
       [-20000, -20000, 20000, 20000],
     );
@@ -145,5 +152,80 @@ test(
     assert.equal(p.snapshotBranches.nodes.length, 2);
     assert.equal(p.model.processRevision, 1, 'Do not etch uncertain reticle auxiliary cell');
     assert.ok(result.report.materialPatterned === false);
+  },
+);
+
+test(
+  'source chip2 Mask-only audit retains original geometry without speculative fabrication',
+  { skip: !sourcePath && 'Public author GDS supplied through WAFERCAD_TRANSMON_GDS' },
+  async () => {
+    const result = await constructSourceProject(await readFile(sourcePath), {
+      root: 'chip2',
+      maskOnly: true,
+    });
+    const project = await readProjectFile(new Blob([result.content]));
+    assert.equal(result.report.maskOnly, true);
+    assert.equal(result.report.materialPatterned, false);
+    assert.deepEqual(project.selectedLayerKeys, ['2|0']);
+    assert.equal(project.layout.elements.length, 39487);
+    assert.equal(project.snapshotBranches.nodes.length, 1);
+    assert.equal(project.model.layers.length, 1);
+    assert.equal(project.model.processRevision, 0);
+    assert.deepEqual(
+      Object.fromEntries(
+        [...new Set(project.layout.elements.map((e) => `${e.layer}/${e.datatype}`))]
+          .sort()
+          .map((k) => [
+            k,
+            project.layout.elements.filter((e) => `${e.layer}/${e.datatype}` === k).length,
+          ]),
+      ),
+      { '0/0': 24, '2/0': 39235, '8/0': 108, '8/1': 120 },
+    );
+    const grid = project.layout.elements.filter(
+      (e) =>
+        e.layer === 2 &&
+        e.datatype === 0 &&
+        e.points.length === 4 &&
+        Math.abs(
+          Math.max(...e.points.map((p) => p[0])) - Math.min(...e.points.map((p) => p[0])) - 20,
+        ) < 1e-6 &&
+        Math.abs(
+          Math.max(...e.points.map((p) => p[1])) - Math.min(...e.points.map((p) => p[1])) - 20,
+        ) < 1e-6,
+    );
+    assert.equal(grid.length, 39194, 'The repeated 20µm source apertures are not synthetic lines');
+    // Shared project storage preserves every source element and its cell/layer,
+    // quantizing only sub-grid floating-point XY coordinates at 0.1 nm.
+    const sourceBytes = await readFile(sourcePath);
+    const parsed = parseGDS(
+      sourceBytes.buffer.slice(
+        sourceBytes.byteOffset,
+        sourceBytes.byteOffset + sourceBytes.byteLength,
+      ),
+    );
+    const sourceElements = flattenGDS(parsed, 'chip2').elements;
+    assert.equal(sourceElements.length, project.layout.elements.length);
+    let greatestDeviationUm = 0;
+    for (let i = 0; i < sourceElements.length; i++) {
+      const original = sourceElements[i];
+      const saved = project.layout.elements[i];
+      assert.equal(saved.layer, original.layer);
+      assert.equal(saved.datatype, original.datatype);
+      assert.equal(saved.sourceCell, original.sourceCell);
+      assert.equal(saved.points.length, original.points.length);
+      for (let j = 0; j < original.points.length; j++) {
+        for (let k = 0; k < 2; k++) {
+          greatestDeviationUm = Math.max(
+            greatestDeviationUm,
+            Math.abs(saved.points[j][k] - original.points[j][k]),
+          );
+        }
+      }
+    }
+    assert.ok(
+      greatestDeviationUm < 0.000051,
+      `Unexpected GDS quantization ${greatestDeviationUm} µm`,
+    );
   },
 );
