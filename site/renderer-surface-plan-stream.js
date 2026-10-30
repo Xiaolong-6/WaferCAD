@@ -1,7 +1,7 @@
 // Transport-only framing for exact Process Geometry Kernel surface plans.
 // Stream bounded collections; never round coordinates or publish partial plans.
 const CAP_BATCH = 24;
-const POLYGON_BATCH = 12;
+const POLYGON_BATCH = 128;
 const POINT_BUDGET = 4096;
 const SIDEWALL_BATCH = 256;
 const BORDER_BATCH = 512;
