@@ -27,6 +27,7 @@ import {
 } from './border-inspector.js';
 import { shouldYieldDuringSceneAssembly } from './renderer-cooperative-assembly.js';
 import { shouldUseDenseInteractionSinglePass } from './renderer-interaction-pass.js';
+import { chunkOpaquePlanarCaps } from './renderer-opaque-cap-chunks.js';
 import { progressivePreviewFacingNormal } from './renderer-progressive-preview.js';
 import { buildContinuousMaterialSurfaceMesh } from './continuous-etch-mesh.js';
 import { buildContinuousSiHeightfieldMeshAsync } from './continuous-heightfield-mesh-async.js';
@@ -4556,17 +4557,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
               }
 
               if (plane.instances.leftovers.length) {
-                const geometry = geometryFromSolid({
-                    slabs: [],
-                    caps: [
-                      {
-                        z: plane.z,
-                        normal: plane.normal,
-                        polys: plane.instances.leftovers,
-                      },
-                    ],
-                  }),
-                  presentation = {
+                const presentation = {
                     ...presentationFor(bucket.part, bucket.part.buried ? 10 : 0),
                     planarCap: true,
                   },
@@ -4576,31 +4567,31 @@ diffuseColor.a *= waferCadAlphaScale;`,
                     null,
                     presentation,
                   );
-                addSurfaceMesh(
-                  geometry,
-                  material,
-                  state,
-                  null,
-                  bucket.part.buried ? 10 : 0,
-                  false,
-                  null,
-                  presentation,
-                );
+                // The old whole-bucket triangulation could freeze UI for many
+                // seconds. Preserve every polygon but yield between batches.
+                for (const batch of chunkOpaquePlanarCaps([
+                  { z: plane.z, normal: plane.normal, polys: plane.instances.leftovers },
+                ])) {
+                  await maybeYieldAssembly();
+                  const geometry = geometryFromSolid({ slabs: [], caps: batch });
+                  addSurfaceMesh(
+                    geometry,
+                    material,
+                    state,
+                    null,
+                    bucket.part.buried ? 10 : 0,
+                    false,
+                    null,
+                    presentation,
+                  );
+                }
               }
             }
             continue;
           }
         }
 
-        const geometry = geometryFromSolid({
-            slabs: [],
-            caps: visibleCaps.map((part) => ({
-              z: part.z,
-              normal: part.normal,
-              polys: part.polys,
-            })),
-          }),
-          presentation = {
+        const presentation = {
             ...presentationFor(bucket.part, bucket.part.buried ? 10 : 0),
             planarCap: true,
           },
@@ -4609,17 +4600,29 @@ diffuseColor.a *= waferCadAlphaScale;`,
             state,
             null,
             presentation,
+          ),
+          planarCaps = visibleCaps.map((part) => ({
+            z: part.z,
+            normal: part.normal,
+            polys: part.polys,
+          }));
+        // Never change transparent depth ordering: only opaque large buckets
+        // are split into separate but identically owned triangle meshes.
+        const batches = state.transparent ? [planarCaps] : chunkOpaquePlanarCaps(planarCaps);
+        for (const batch of batches) {
+          await maybeYieldAssembly();
+          const geometry = geometryFromSolid({ slabs: [], caps: batch });
+          addSurfaceMesh(
+            geometry,
+            material,
+            state,
+            null,
+            bucket.part.buried ? 10 : 0,
+            false,
+            null,
+            presentation,
           );
-        addSurfaceMesh(
-          geometry,
-          material,
-          state,
-          null,
-          bucket.part.buried ? 10 : 0,
-          false,
-          null,
-          presentation,
-        );
+        }
       }
       recordVariantStage('caps-complete');
       host.dataset.smoothCapInstanceGroups = String(smoothCapInstanceGroupCount);
