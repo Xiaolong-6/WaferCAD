@@ -81,7 +81,7 @@ export function fullSourceLayout(parsed, choice = ROOT) {
   };
 }
 
-export async function constructSourceProject(bytes, { root = ROOT, maskOnly = false } = {}) {
+export async function constructSourceProject(bytes, { root = ROOT, maskOnly = true } = {}) {
   const sha = createHash('sha256').update(bytes).digest('hex');
   if (sha !== ORIGINAL_SHA) throw Error('Original author GDS hash mismatch');
   const parsed = parseGDS(
@@ -255,10 +255,10 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     output = inputArg('--output'),
     root = inputArg('--root') || ROOT,
     report = inputArg('--report'),
-    maskOnly = process.argv.includes('--mask-only');
+    maskOnly = !process.argv.includes('--provisional-process');
   if (!input || !output)
     throw Error(
-      'Use --input original sample.gds --output project.wafercad [--root chip2|2024-04-07_EITR2_1] [--report report.json]',
+      'Use --input original sample.gds --output project.wafercad [--root chip2|2024-04-07_EITR2_1] [--provisional-process] [--report report.json]',
     );
   await loadGeometryKernel();
   const result = await constructSourceProject(await readFile(input), { root, maskOnly });
