@@ -34,6 +34,7 @@ import {
 } from './surface-rendering.js';
 import { unionGeometries } from './vector-geometry.js';
 import { maskVisibleOutlineEdges } from './mask-outline-edges.js';
+import { maskElementInCanvas, maskSourceBounds } from './mask-element-visibility.js';
 import {
   createSectionZTransform,
   niceSectionTicks,
@@ -109,6 +110,20 @@ export function createPlanRenderers({
     ctx.stroke();
     ctx.restore();
   }
+  // Cache immutable source-GDS bounds, not raster data. Each zoom/pan recomputes
+  // visibility using the live Mask transform and view, so offscreen polygons
+  // cannot generate huge Canvas paths (39k+ source-mask arrays are common).
+  const maskBoundsCache = new WeakMap();
+  const maskInViewport = (element, v, w, h) => {
+    let bounds = maskBoundsCache.get(element);
+    if (!bounds) {
+      bounds = maskSourceBounds(element.points);
+      if (bounds) maskBoundsCache.set(element, bounds);
+    }
+    const maskScale = Math.abs(Number(getState().maskTransform?.scale) || 1);
+    const linePadding = Math.max(4, (Number(element.width) || 0) * maskScale * Math.abs(v.s) * 2);
+    return maskElementInCanvas(bounds, maskPoint, worldToCanvas, v, w, h, linePadding);
+  };
   const maskOutlineCache = new WeakMap();
   const maskOutline = (element) => {
     if (element.points.length < 6) return null;
@@ -570,17 +585,23 @@ export function createPlanRenderers({
         for (const style of presentation.layers) {
           for (const element of layout.elements || []) {
             if (element.layer !== style.layer || element.datatype !== style.datatype) continue;
-            if (selectedElement(element)) tracePresentedMask(ctx, element, v, style);
+            if (selectedElement(element) && maskInViewport(element, v, w, h))
+              tracePresentedMask(ctx, element, v, style);
           }
         }
         if (presentation.showUnselected) {
           for (const element of layout.elements || []) {
-            if (!selectedElement(element)) traceElement(ctx, element, v, false);
+            if (!selectedElement(element) && maskInViewport(element, v, w, h))
+              traceElement(ctx, element, v, false);
           }
         }
       } else {
-        for (const e of layout.linework || []) traceElement(ctx, e, v, false);
-        for (const e of layout.elements || []) traceElement(ctx, e, v, selectedElement(e));
+        for (const e of layout.linework || []) {
+          if (maskInViewport(e, v, w, h)) traceElement(ctx, e, v, false);
+        }
+        for (const e of layout.elements || []) {
+          if (maskInViewport(e, v, w, h)) traceElement(ctx, e, v, selectedElement(e));
+        }
       }
       ctx.restore();
     }
