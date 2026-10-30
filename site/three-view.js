@@ -27,7 +27,7 @@ import {
   borderPresentationState,
 } from './border-inspector.js';
 import { shouldYieldDuringSceneAssembly } from './renderer-cooperative-assembly.js';
-import { shouldUseDenseInteractionSinglePass } from './renderer-interaction-pass.js';
+import { createDenseSidewallMotionLod, shouldUseDenseInteractionSinglePass } from './renderer-interaction-pass.js';
 import { chunkOpaquePlanarCaps } from './renderer-opaque-cap-chunks.js';
 import { progressivePreviewFacingNormal } from './renderer-progressive-preview.js';
 import { buildContinuousMaterialSurfaceMesh } from './continuous-etch-mesh.js';
@@ -229,6 +229,33 @@ export function createThreeView({
   let lastTransparencySort = -Infinity;
   let transparencyOrderDirty = true;
   let presentationObjects = new Set();
+  const denseSidewallMotion = createDenseSidewallMotionLod();
+  let denseWheelActive = false;
+  let denseWheelTimer = null;
+  function restoreDenseSidewalls() {
+    denseSidewallMotion.restore(
+      (object) => presentationState(object.userData?.waferCadPresentation, getInspection()).visible,
+    );
+    host.dataset.rendererMotionLod = 'exact';
+  }
+  function updateDenseSidewalls(targetRenderer = renderer) {
+    const approximate =
+      targetRenderer === renderer &&
+      (interacting || denseWheelActive) &&
+      !getClipGeometry() &&
+      !roughTasks.length &&
+      !getInspection()?.borders &&
+      getInspection()?.fast !== false &&
+      (physicalSurfacePlan?.sidewalls?.length || 0) >= 100000;
+    const count = denseSidewallMotion.update({
+      enabled: approximate,
+      objects: presentationObjects,
+      resolveVisibility: (object) =>
+        presentationState(object.userData?.waferCadPresentation, getInspection()).visible,
+    });
+    host.dataset.rendererMotionLod = count ? 'temporary-caps-only' : 'exact';
+    host.dataset.rendererMotionHiddenMeshes = String(count);
+  }
   // Focus is view-only: neutralize other materials without touching visibility,
   // opacity, depth ownership, geometry or persistent layer colors.
   let highlightedLayerId = null;
@@ -960,6 +987,7 @@ export function createThreeView({
   }
 
   function renderInspectionFrame(targetRenderer = renderer) {
+    updateDenseSidewalls(targetRenderer);
     updateOriginVisibility();
     updateBorderDashScale();
     // Three full WebGL passes (color, owned depth, contours) are too expensive
@@ -1087,6 +1115,10 @@ export function createThreeView({
   }
 
   function disposeGroup() {
+    restoreDenseSidewalls();
+    if (denseWheelTimer !== null) clearTimeout(denseWheelTimer);
+    denseWheelTimer = null;
+    denseWheelActive = false;
     if (!group) return;
     activeProgressiveCapGroup = null;
     clearRoughRefineTimer();
@@ -3375,6 +3407,14 @@ diffuseColor.a *= waferCadAlphaScale;`,
               if (gestureMode !== null && !(gestureWheelZoom ?? gestureMode === 'zoom')) {
                 event.preventDefault();
                 event.stopImmediatePropagation();
+              } else {
+                denseWheelActive = true;
+                if (denseWheelTimer !== null) clearTimeout(denseWheelTimer);
+                denseWheelTimer = setTimeout(() => {
+                  denseWheelActive = false;
+                  denseWheelTimer = null;
+                  scheduleFrame();
+                }, 170);
               }
             },
             { capture: true, passive: false },
@@ -4455,6 +4495,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
           layerId: part.layerId,
           sortBias,
         }),
+        sidewallPresentationFor = (part, sortBias = 0) => ({
+          ...presentationFor(part, sortBias),
+          displayRole: 'sidewall',
+        }),
         bucketKey = (part, state) => {
           const base = `${part.layerId}\u0000${part.buried ? 'interface' : 'exterior'}`;
           if (!state?.transparent) return base;
@@ -4668,7 +4712,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
               parts,
               sidewall.buried ? transparentArrayDisplayTolerance : 0,
             ),
-            presentation = presentationFor(sidewall),
+            presentation = sidewallPresentationFor(sidewall),
             material = createSurfaceMaterial(
               layerById(model, sidewall.layerId),
               state,
@@ -4706,7 +4750,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
             for (const groupInstances of instances.groups) {
               await maybeYieldAssembly();
               const geometry = geometryFromSidewallParts([groupInstances.template]),
-                presentation = presentationFor(bucket.part, bucket.part.buried ? 11 : 0),
+                presentation = sidewallPresentationFor(bucket.part, bucket.part.buried ? 11 : 0),
                 material = createSurfaceMaterial(
                   layerById(model, bucket.part.layerId),
                   state,
@@ -4731,7 +4775,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
             if (instances.leftovers.length) {
               const geometry = geometryFromSidewallParts(instances.leftovers),
-                presentation = presentationFor(bucket.part, bucket.part.buried ? 11 : 0),
+                presentation = sidewallPresentationFor(bucket.part, bucket.part.buried ? 11 : 0),
                 material = createSurfaceMaterial(
                   layerById(model, bucket.part.layerId),
                   state,
@@ -4757,7 +4801,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
             visibleParts,
             bucket.part.buried ? transparentArrayDisplayTolerance : 0,
           ),
-          presentation = presentationFor(bucket.part, bucket.part.buried ? 11 : 0),
+          presentation = sidewallPresentationFor(bucket.part, bucket.part.buried ? 11 : 0),
           material = createSurfaceMaterial(
             layerById(model, bucket.part.layerId),
             state,
