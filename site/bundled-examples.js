@@ -364,7 +364,7 @@ export const BUNDLED_EXAMPLES = Object.freeze([
       alt: 'Actual WaferCAD source-GDS Q2 junction Section Z Break (native renderer, not a paper SEM)',
     },
     summary:
-      'Original-GDS 17-polygon Q2 junction EBL mask, Nb/Si recess and three native fixed-angle Al doses. Saved final-state research geometry, not a replayable lithography Recipe. MMA/PMMA opening geometry and dose mapping are inferred; actual resist development, AlOx tunnel barrier, lift-off and Josephson electrical physics are not simulated (Issue #382).',
+      'Original-GDS 17-polygon Q2 junction EBL mask, Nb/Si recess and three native fixed-angle Al doses. Saved final-state research geometry, not a replayable lithography Recipe. MMA/PMMA opening geometry and dose mapping are inferred; each oblique Al dose uses sampled horizontal-surface visibility, without full sidewall coating. The resulting Al3 islands/gaps are model geometry, not validated fabricated junction discontinuities. Actual resist development, AlOx tunnel barrier, lift-off and Josephson electrical physics are not simulated (Issue #382).',
     sources: [
       {
         citation:

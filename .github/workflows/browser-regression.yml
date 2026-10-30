@@ -37,7 +37,7 @@ jobs:
     permissions:
       contents: read
       actions: read
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
       full: ${{ steps.plan.outputs.full }}
@@ -111,7 +111,7 @@ jobs:
     name: ${{ github.event_name == 'push' && 'Main targeted regression' || 'Chromium targeted regression' }}
     needs: plan
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_scope != 'renderer-array' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
       WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
@@ -257,7 +257,7 @@ jobs:
       fail-fast: false
       matrix:
         suite: ${{ fromJson(needs.plan.outputs.extended_matrix) }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:
       WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
@@ -315,7 +315,7 @@ jobs:
     needs: plan
     # Run 625-site software-WebGL stress at final review, on main or by manual dispatch.
     if: ${{ needs.plan.outputs.renderer == 'true' && (github.event_name != 'pull_request' || !github.event.pull_request.draft || github.event.pull_request.number == 290) }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # All 20 completed full-quality transparent WebGL toggles remain mandatory.
     # Preserve the established 1440x960 framebuffer and scientific invariants;
     # hangs and retained-resource failures remain hard failures.
@@ -382,7 +382,7 @@ jobs:
       fail-fast: false
       matrix:
         domain: [process, io, array]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:
       WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
@@ -444,7 +444,7 @@ jobs:
     name: 625-site edge-on exact-wall restoration
     needs: plan
     if: ${{ needs.plan.outputs.renderer == 'true' && (github.event_name != 'workflow_dispatch' || inputs.run_scope != 'renderer-array') && (github.event_name != 'pull_request' || !github.event.pull_request.draft || github.event.pull_request.number == 290) }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
       WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
