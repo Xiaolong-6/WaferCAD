@@ -580,7 +580,9 @@ export function createPlanRenderers({
         }
         // A project may give just one dense layer a silhouette style. Other
         // checked layers must still render (e.g., the real 1 um GDS layer 2).
-        const styled = new Set(presentation.layers.map((style) => layerKey(style.layer, style.datatype)));
+        const styled = new Set(
+          presentation.layers.map((style) => layerKey(style.layer, style.datatype)),
+        );
         for (const element of layout.elements || []) {
           if (!styled.has(layerKey(element.layer, element.datatype)) && selectedElement(element))
             traceElement(ctx, element, v, true);
