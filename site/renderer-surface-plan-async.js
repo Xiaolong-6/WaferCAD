@@ -14,7 +14,12 @@ export function shouldBuildSurfacePlanInWorker(model) {
     typeof globalThis.Worker === 'function' &&
     model &&
     !isArrayModel(model) &&
-    ((model.layers?.length || 0) >= 6 || (model.regions?.length || 0) >= 64)
+    ((model.layers?.length || 0) >= 6 ||
+      (model.regions?.length || 0) >= 64 ||
+      // Imported layouts can store tens of thousands of polygons in just two
+      // regions (e.g. dense GDS text). Region count alone misses this cost.
+      (model.regions || []).reduce((count, region) => count + (region.geom?.length || 0), 0) >=
+        256)
   );
 }
 
