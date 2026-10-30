@@ -6,19 +6,20 @@ export function* chunkOpaquePlanarCaps(caps, maxPolygons = 1024) {
   const limit = Math.max(1, Math.floor(Number(maxPolygons) || 1024));
   let chunk = [];
   let count = 0;
+  let lastSource = null;
   for (const cap of caps || []) {
     for (const poly of cap.polys || []) {
       if (count >= limit) {
         yield chunk;
         chunk = [];
         count = 0;
+        lastSource = null;
       }
-      let target = chunk[chunk.length - 1];
-      if (!target || target.sourceCap !== cap) {
-        target = { ...cap, polys: [], sourceCap: cap };
-        chunk.push(target);
+      if (lastSource !== cap) {
+        chunk.push({ ...cap, polys: [] });
+        lastSource = cap;
       }
-      target.polys.push(poly);
+      chunk[chunk.length - 1].polys.push(poly);
       count++;
     }
   }
