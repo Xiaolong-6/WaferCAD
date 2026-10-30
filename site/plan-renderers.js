@@ -17,6 +17,7 @@ import { layerInspectionTone, sectionInspectionFill } from './layer-inspection-p
 import { drawPlanGrid } from './plan-grid.js';
 import { ringMayIntersectCanvas } from './plan-ring-visibility.js';
 import { createMaskViewportCuller } from './mask-viewport-culling.js';
+import { maskVisibleOutlineEdges } from './mask-outline-edges.js';
 import { validateExperimentalPhysicalFacetModel } from './experimental/physical-facets/physical-facet-model.js';
 import {
   electricalRegionSectionBands,
