@@ -15,6 +15,7 @@ import { visibleSurfaceGroups } from './process-topology.js';
 import { layerById, modelBoundsZ } from './model.js';
 import { layerInspectionTone, sectionInspectionFill } from './layer-inspection-presentation.js';
 import { drawPlanGrid } from './plan-grid.js';
+import { createMaskViewportCuller } from './mask-viewport-culling.js';
 import { validateExperimentalPhysicalFacetModel } from './experimental/physical-facets/physical-facet-model.js';
 import {
   electricalRegionSectionBands,
@@ -67,6 +68,37 @@ export function createPlanRenderers({
   canvasTheme = false,
 }) {
   const $ = (id) => root.getElementById(id);
+  const intersectsMaskViewport = createMaskViewportCuller(maskPoint);
+  let maskPaintBounds = null;
+  let maskElementIndex = null;
+  function maskElementVisible(element, view) {
+    if (!maskPaintBounds) return true;
+    const margin = Math.max(
+      4,
+      Math.abs(Number(element.width) || 0) * Math.abs(maskPaintBounds.scale) * view.s + 4,
+    );
+    return intersectsMaskViewport(
+      element,
+      view,
+      maskPaintBounds.width,
+      maskPaintBounds.height,
+      maskPaintBounds.transformKey,
+      margin,
+    );
+  }
+  function maskElementsByLayer(layout) {
+    const elements = layout?.elements || [];
+    if (maskElementIndex?.elements === elements && maskElementIndex.count === elements.length)
+      return maskElementIndex.groups;
+    const groups = new Map();
+    for (const element of elements) {
+      const key = `${element.layer}|${element.datatype}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(element);
+    }
+    maskElementIndex = { elements, count: elements.length, groups };
+    return groups;
+  }
   const canvasColors = (canvas) => {
     // Shared renderer is also called by the legacy adapter. Only v2 opts in.
     const style = canvasTheme ? getComputedStyle(canvas) : null;
@@ -109,6 +141,7 @@ export function createPlanRenderers({
     ctx.restore();
   }
   function tracePresentedMask(ctx, e, v, style) {
+    if (!maskElementVisible(e, v)) return;
     const projected = e.points.map(maskPoint).map((point) => worldToCanvas(point, v));
     if (!projected.length) return;
     const bounds = {
@@ -157,6 +190,7 @@ export function createPlanRenderers({
     ctx.restore();
   }
   function traceElement(ctx, e, v, selected) {
+    if (!maskElementVisible(e, v)) return;
     const { hoveredLayerKey, maskTransform } = getState();
     const key = layerKey(e.layer, e.datatype),
       hovered = hoveredLayerKey === key;
@@ -507,6 +541,13 @@ export function createPlanRenderers({
       { ctx, w, h } = setupCanvas(c),
       v = viewport(w, h, 'mask'),
       colors = canvasColors(c);
+    const maskTransform = getState().maskTransform || {};
+    maskPaintBounds = {
+      width: w,
+      height: h,
+      scale: Number(maskTransform.scale) || 1,
+      transformKey: [maskTransform.x, maskTransform.y, maskTransform.scale, maskTransform.rotation].join(':'),
+    };
     ctx.clearRect(0, 0, w, h);
     if (validateExperimentalPhysicalFacetModel(model)) {
       // The fixed read-only lab offers physical 3D and Section only. Refuse
@@ -537,9 +578,9 @@ export function createPlanRenderers({
       if (presentation) {
         // Keep the physical File Mask unchanged. Presentation is an opt-in,
         // display-only overlay with per-layer ordering and visual semantics.
+        const grouped = maskElementsByLayer(layout);
         for (const style of presentation.layers) {
-          for (const element of layout.elements || []) {
-            if (element.layer !== style.layer || element.datatype !== style.datatype) continue;
+          for (const element of grouped.get(`${style.layer}|${style.datatype}`) || []) {
             if (selectedElement(element)) tracePresentedMask(ctx, element, v, style);
           }
         }
