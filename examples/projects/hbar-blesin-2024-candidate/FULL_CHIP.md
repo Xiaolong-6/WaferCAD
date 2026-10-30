@@ -158,3 +158,49 @@ The figures are derived from planar polygon sets; their percentages are
 not measured process tolerances or 3D overlap volumes. **Do not** assign
 L4/L12/L13/L14 a physical material merely to maximize the modeled layer
 count.
+
+## Full-chip validation cost and spatial material Region representation
+
+The complete 5 × 5 mm original GDS and all 9,646 source polygons remain
+unchanged. The first full-chip material model grouped 807,005 geometric
+vertices into only five large, die-spanning material Regions. Each aggregate
+Region's bounding box covered much of the die, forcing exact project
+validation to consider costly geometry intersections across otherwise
+separated structures.
+
+`spatialMaterialRegions()` now represents each existing, disjoint Boolean
+polygon as a local Region with the original unmodified polygon rings and
+material stack. This yields **1,343 physical Regions** from the five
+material-stack groups for the present author layout. Splitting does not
+change source GDS Mask geometry, layer identity, hole topology, Z intervals,
+or any material assignment. This is a partition representation improvement,
+not a numerical simplification or new physics.
+
+### Reproducible local evidence
+
+The local environment used Node 22.16.0 and verified exact source-only
+artifact revision `01397168c7199575e606c8fb0795f2eea7f6d494`
+(1,301 source-file SHA-256 matches). The source package is older than
+the PR and had the PR's production schema/Mask modules overlaid for the
+local Project IO probe. A source-faithful *independently reconstructed*
+optical-material project was built from the 9,646 original polygons using
+Shapely, with inferred GDS 2+3+8 optical routing, 9 oxide openings and 11
+piezoelectric footprint, and the same disjoint spatial-Region strategy.
+This checks native Project IO but is **not** a byte-for-byte production JS
+builder receipt.
+
+- Initial uncompressed test fixture: 34,710,674 bytes.
+- Native `serializeProject()`: compact encoding completed in **37.4 s**,
+  producing **23,008,583 bytes**.
+- Native `readProjectFile()`: compact file validated and reopened by
+  **54.1 s cumulative**.
+- Direct comparison completed at **55.8 s**, with exact equality for all
+  9,646 source Mask elements, the L12 premerged silhouette, and every one
+  of the 1,343 reopened material Region geometries and Z stacks.
+- Pure spatial splitting regression: **1/1 passed** under Node 22.16.0;
+  Prettier 3.9.9 check passed.
+
+The local managed Chromium still rejects the actual Workstation origin
+with `ERR_BLOCKED_BY_ADMINISTRATOR`. Native full-chip UI, 3D performance,
+History/Recovery and an exact-final-branch Quality receipt therefore remain
+**unverified**. Do not present this Project IO proof as browser acceptance.
