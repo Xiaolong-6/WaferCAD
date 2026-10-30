@@ -46,6 +46,7 @@ export function createMainRuntime({
   const plan = createPlanViewController({
     getModel: () => state.model,
     getPlanViews: () => state.planViews,
+    getInteractionCanvas: (kind) => root.getElementById(kind === 'mask' ? 'maskCanvas' : 'mainCanvas'),
     getViewportMargin: (_kind, width, height) =>
       readOnly ? Math.max(8, Math.round(Math.min(width, height) * 0.08)) : 34,
     formatXY: units.format,
