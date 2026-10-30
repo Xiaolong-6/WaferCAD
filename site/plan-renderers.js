@@ -33,6 +33,7 @@ import {
   roughVisualBoundsZ,
 } from './surface-rendering.js';
 import { unionGeometries } from './vector-geometry.js';
+import { maskVisibleOutlineEdges } from './mask-outline-edges.js';
 import {
   createSectionZTransform,
   niceSectionTicks,
@@ -108,6 +109,29 @@ export function createPlanRenderers({
     ctx.stroke();
     ctx.restore();
   }
+  const maskOutlineCache = new WeakMap();
+  const maskOutline = (element) => {
+    if (element.points.length < 6) return null;
+    if (!maskOutlineCache.has(element)) {
+      maskOutlineCache.set(element, maskVisibleOutlineEdges(element.points));
+    }
+    return maskOutlineCache.get(element);
+  };
+  function strokeMaskOutline(ctx, e, v, fallback) {
+    const edges = maskOutline(e);
+    if (!edges) {
+      fallback();
+      return;
+    }
+    ctx.beginPath();
+    for (const [a, b] of edges) {
+      const start = worldToCanvas(maskPoint(a), v),
+        end = worldToCanvas(maskPoint(b), v);
+      ctx.moveTo(...start);
+      ctx.lineTo(...end);
+    }
+    ctx.stroke();
+  }
   function tracePresentedMask(ctx, e, v, style) {
     const projected = e.points.map(maskPoint).map((point) => worldToCanvas(point, v));
     if (!projected.length) return;
@@ -128,14 +152,20 @@ export function createPlanRenderers({
     if (mode === 'fill' || mode === 'hatch') {
       ctx.fillStyle = color;
       ctx.globalAlpha *= opacity;
-      ctx.fill();
+      ctx.fill(maskOutline(e) ? 'evenodd' : 'nonzero');
       ctx.globalAlpha /= opacity;
     }
     ctx.strokeStyle = color;
     ctx.lineWidth = mode === 'outline' ? 1.5 : 1;
-    ctx.stroke();
+    strokeMaskOutline(ctx, e, v, () => ctx.stroke());
     if (mode === 'hatch' || mode === 'cross') {
-      ctx.clip();
+      ctx.beginPath();
+      projected.forEach(([x, y], index) => {
+        if (index) ctx.lineTo(x, y);
+        else ctx.moveTo(x, y);
+      });
+      ctx.closePath();
+      ctx.clip(maskOutline(e) ? 'evenodd' : 'nonzero');
       ctx.beginPath();
       const { x0, x1, y0, y1 } = bounds;
       if (mode === 'cross') {
@@ -172,10 +202,10 @@ export function createPlanRenderers({
         : hovered
           ? layerColor(key, 0.28)
           : 'rgba(155,166,178,.10)';
-      ctx.fill();
+      ctx.fill(maskOutline(e) ? 'evenodd' : 'nonzero');
       ctx.strokeStyle = selected || hovered ? layerColor(key, 0.98) : 'rgba(148,159,171,.52)';
       ctx.lineWidth = hovered ? 1.7 : selected ? 1 : 0.6;
-      ctx.stroke();
+      strokeMaskOutline(ctx, e, v, () => ctx.stroke());
     } else {
       e.points.map(maskPoint).forEach((p, i) => {
         const q = worldToCanvas(p, v);
