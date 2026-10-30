@@ -796,3 +796,44 @@ physical Z-resolved resist openings. A flat 2D mask alone still cannot
 justify oblique resist-shadow physics; the existing fail-closed UI
 restriction remains correct until a separately reviewed UX connects
 physical aperture definitions.
+
+### Q2 native Al3 islands: physical-model diagnosis, not a renderer repair
+
+The published no-oxide Q2 project preserves the assumed three-beam GDS
+geometry but **does not** represent arbitrary oblique deposition on vertical
+metal facets. In the native Direct operation, each dose is deposited onto
+ray-visible horizontal material at that step's actual surface height;
+previous Al doses can change the next exposure through height and shadowing.
+A nonzero 2D separation between two islands of the *same Al dose* is therefore
+possible without a Three.js or Border drawing error.
+
+An independent, read-only Shapely 2.1.2 cross-check decoded the published
+project's exact saved polygon templates and its 17 embedded original-GDS
+junction polygons. Using the documented *hypothetical* 500 nm MMA /
+400 nm PMMA aperture map and 45°/-135° Al3 beam yielded:
+
+| Q2 Al3 check | Result |
+| --- | ---: |
+| Flat-target sampled shadow, before earlier Al topography | 2.564029 µm²; 1 connected XY component |
+| Published, topography-dependent native Direct Al3 owner | 2.551283 µm²; 4 connected XY components |
+| Replayed native horizontal-surface and self-shadow visibility | 2.551449 µm² (0.0375 µm Z sampling step) |
+| Replayed vs saved XY intersection / union | 99.9744% |
+| Minimum plan-view gaps between central Al3 island and its two nearby arms | 0.029911 µm / 0.039952 µm |
+| Refined replay at 0.01875 / 0.009375 µm Z steps | 2.551436 / 2.551427 µm² |
+
+The replay used the **pre-Al3 material stack** recovered by excluding only
+Al3 slabs from the final canonical region ownership. Independent native
+Boolean/Process behavior is regression-owned by
+`site/tests/transmon-published-example.test.mjs`; the above Shapely
+calculation is explanatory evidence, **not** a substitute for that Node test
+or native Chromium/Section acceptance. The gaps survive Z-step refinement
+and are much larger than the 0.1 nm persistence grid; do not erase them by
+tweaking a renderer border or silently dilating metal.
+
+Crucially, this result only explains the output of the current **limited
+horizontal-surface Direct model**. It does **not** establish whether real
+45° evaporation onto resist, Al sidewalls or bandage contacts leaves the
+same gaps. No AlOx tunnel barrier or Josephson transport has been validated.
+Issue #382 owns the physical bilayer-resist, sidewall exposure and lift-off
+model; keep a separate source-paper comparison before claiming that the
+fabricated device's topology has been reproduced.
