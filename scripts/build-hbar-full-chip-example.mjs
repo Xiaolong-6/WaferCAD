@@ -67,7 +67,12 @@ export async function buildFullHbarChip(sourceBytes) {
       background: '#f9fbfd',
       showStructure: false,
       showUnselected: false,
-      layers: [{ layer: 12, datatype: 0, color: '#65a9cf', mode: 'fill', opacity: 0.62 }],
+      layers: [
+        // L2 traces are real ~1 um masks; fill them without a 1 px
+        // artificial per-polygon stroke when the user enables that layer.
+        { layer: 2, datatype: 0, color: '#6a8b5b', mode: 'fill', opacity: 0.78 },
+        { layer: 12, datatype: 0, color: '#65a9cf', mode: 'fill', opacity: 0.62 },
+      ],
     },
   };
   const layer12 = elements.filter((item) => item.layer === 12 && item.datatype === 0);
@@ -78,8 +83,9 @@ export async function buildFullHbarChip(sourceBytes) {
   // internal rings encode real author Mask openings; they must not be painted.
   const l12Silhouette = v.unionGeometries(layer12.map(close));
   assert.ok(l12Silhouette.length > 0, 'Missing merged Layer 12 silhouette');
-  layout.maskPresentation.layers[0].silhouette = l12Silhouette;
-  layout.maskPresentation.layers[0].sourceElementCount = L12_COUNT;
+  const layer12Style = layout.maskPresentation.layers.find((style) => style.layer === 12);
+  layer12Style.silhouette = l12Silhouette;
+  layer12Style.sourceElementCount = L12_COUNT;
   const model = createModel({ shape: 'rect', width: CHIP, height: CHIP, thickness: thickness.silicon });
   const layer = (id, name, color) => ({ id, name, color, visible: true });
   model.layers = [
@@ -145,9 +151,10 @@ export async function buildFullHbarChip(sourceBytes) {
   project.activeCell = 'Chip2';
   project.maskSourceMode = 'file';
   project.maskTransform = { x: 0, y: 0, scale: 1, rotation: 0 };
-  // Initially show real layer 2 narrow strips and seamless layer 12; the
-  // other original layers remain available via the checkbox controls.
-  project.selectedLayerKeys = ['2|0', '12|0'];
+  // Default to L12-only inspection: mixing in genuine 1 um L2 lines led to
+  // misidentifying those real waveguides as residual L12 polygon seams.
+  // L2 (and all remaining original layers) can still be enabled at any time.
+  project.selectedLayerKeys = ['12|0'];
   project.drawMask = { nextShapeId: 1, shapes: [] };
   project.maskRoi = null;
   project.roi = null;

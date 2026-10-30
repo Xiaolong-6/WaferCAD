@@ -72,7 +72,7 @@ invented material layer. Layer 12 contains 3,017 fractured/overlapping GDS
 polygons. Drawing a stroke around each polygon creates nonphysical internal
 seams, and filling each with opacity independently darkens overlaps.
 
-The full-chip project therefore selects layers **2/0 and 12/0** by default,
+The full-chip project therefore selects **12/0 only** by default,
 hides the provisional structure background in the Mask view, and opts layer
 12 into an **additive, once-per-layer Canvas silhouette fill**. The nonzero
 fill rule normalizes individual polygon winding, so opposite orientations do
@@ -121,3 +121,13 @@ invalid-ring artifacts or misrepresent holes. The builder now creates a
 and the Mask painter fills this with the even-odd winding rule in one call.
 It never uses the derived silhouette for Process, export, 3D materials or
 geometry ownership. Union runs at build time, *not on zoom or pan*.
+
+### Screenshot root-cause distinction
+
+On the simultaneous `2/0 + 12/0` Mask view, the long green
+horizontal 1 µm traces are genuine **Layer 2** GDS polygons. Layer 12 is
+the blue mask field. The cross-layer green traces must not disappear from
+GDS export or the editable source. The default view now selects only L12,
+so its fractured blue polygon edges can be inspected independently; an
+optional filled-only L2 style suppresses artificial 1-pixel polygon strokes
+when the user enables the real traces.
