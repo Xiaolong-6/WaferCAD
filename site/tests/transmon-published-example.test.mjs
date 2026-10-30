@@ -8,7 +8,8 @@ const { readProjectFile } = await import('../project-io.js');
 const { directApertureStackFromGds } = await import('../direct-aperture-from-gds.js');
 const { directIncidenceArea } = await import('../direct-incidence-geometry.js');
 const { geometryArea } = await import('../model.js');
-const { difference, intersection, pointInMulti, unionGeometries } = await import('../vector-geometry.js');
+const { difference, intersection, pointInMulti, unionGeometries } =
+  await import('../vector-geometry.js');
 
 test('published original-GDS Q2 keeps real native Al material owners without claiming electrical physics', async () => {
   const bytes = await readFile(
