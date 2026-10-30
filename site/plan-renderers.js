@@ -15,8 +15,6 @@ import { visibleSurfaceGroups } from './process-topology.js';
 import { layerById, modelBoundsZ } from './model.js';
 import { layerInspectionTone, sectionInspectionFill } from './layer-inspection-presentation.js';
 import { drawPlanGrid } from './plan-grid.js';
-import { ringMayIntersectCanvas } from './plan-ring-visibility.js';
-import { createMaskViewportCuller } from './mask-viewport-culling.js';
 import { validateExperimentalPhysicalFacetModel } from './experimental/physical-facets/physical-facet-model.js';
 import {
   electricalRegionSectionBands,
@@ -35,6 +33,8 @@ import {
   roughVisualBoundsZ,
 } from './surface-rendering.js';
 import { unionGeometries } from './vector-geometry.js';
+import { maskVisibleOutlineEdges } from './mask-outline-edges.js';
+import { maskElementInCanvas, maskSourceBounds } from './mask-element-visibility.js';
 import {
   createSectionZTransform,
   niceSectionTicks,
@@ -69,37 +69,6 @@ export function createPlanRenderers({
   canvasTheme = false,
 }) {
   const $ = (id) => root.getElementById(id);
-  const intersectsMaskViewport = createMaskViewportCuller(maskPoint);
-  let maskPaintBounds = null;
-  let maskElementIndex = null;
-  function maskElementVisible(element, view) {
-    if (!maskPaintBounds) return true;
-    const margin = Math.max(
-      4,
-      Math.abs(Number(element.width) || 0) * Math.abs(maskPaintBounds.scale) * view.s + 4,
-    );
-    return intersectsMaskViewport(
-      element,
-      view,
-      maskPaintBounds.width,
-      maskPaintBounds.height,
-      maskPaintBounds.transformKey,
-      margin,
-    );
-  }
-  function maskElementsByLayer(layout) {
-    const elements = layout?.elements || [];
-    if (maskElementIndex?.elements === elements && maskElementIndex.count === elements.length)
-      return maskElementIndex.groups;
-    const groups = new Map();
-    for (const element of elements) {
-      const key = `${element.layer}|${element.datatype}`;
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key).push(element);
-    }
-    maskElementIndex = { elements, count: elements.length, groups };
-    return groups;
-  }
   const canvasColors = (canvas) => {
     // Shared renderer is also called by the legacy adapter. Only v2 opts in.
     const style = canvasTheme ? getComputedStyle(canvas) : null;
@@ -119,26 +88,12 @@ export function createPlanRenderers({
 
   function canvasPathMulti(ctx, geom, v, back = false) {
     ctx.beginPath();
-    // Multi-hole GDS contours can exceed 39k rings. Offscreen holes need no
-    // Canvas2D path commands at this zoom; retain exact coordinates for all
-    // visible rings and leave scientific ownership/export paths untouched.
-    const dense = geom?.length >= 512 || geom?.some((poly) => poly.length >= 128);
-    const rect = dense ? ctx.canvas?.getBoundingClientRect?.() : null;
-    const model = getState().model;
-    const cull =
-      rect?.width > 0 &&
-      rect?.height > 0 &&
-      Math.max(Number(model?.width) || 0, Number(model?.height) || 0) * v.s >
-        Math.max(rect.width, rect.height) * 1.25;
-    for (const poly of geom || []) {
-      for (const ring of poly) {
-        if (cull && !ringMayIntersectCanvas(ring, v, rect.width, rect.height, back)) continue;
+    for (const poly of geom || [])
+      for (const ring of poly)
         ring.forEach((p, i) => {
           const q = worldToCanvas(p, v, back);
           i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]);
         });
-      }
-    }
   }
   function drawBaseOutline(ctx, v, { fill = true, back = false, colors } = {}) {
     const { model } = getState();
@@ -155,8 +110,44 @@ export function createPlanRenderers({
     ctx.stroke();
     ctx.restore();
   }
+  // Cache immutable source-GDS bounds, not raster data. Each zoom/pan recomputes
+  // visibility using the live Mask transform and view, so offscreen polygons
+  // cannot generate huge Canvas paths (39k+ source-mask arrays are common).
+  const maskBoundsCache = new WeakMap();
+  const maskInViewport = (element, v, w, h) => {
+    let bounds = maskBoundsCache.get(element);
+    if (!bounds) {
+      bounds = maskSourceBounds(element.points);
+      if (bounds) maskBoundsCache.set(element, bounds);
+    }
+    const maskScale = Math.abs(Number(getState().maskTransform?.scale) || 1);
+    const linePadding = Math.max(4, (Number(element.width) || 0) * maskScale * Math.abs(v.s) * 2);
+    return maskElementInCanvas(bounds, maskPoint, worldToCanvas, v, w, h, linePadding);
+  };
+  const maskOutlineCache = new WeakMap();
+  const maskOutline = (element) => {
+    if (element.points.length < 6) return null;
+    if (!maskOutlineCache.has(element)) {
+      maskOutlineCache.set(element, maskVisibleOutlineEdges(element.points));
+    }
+    return maskOutlineCache.get(element);
+  };
+  function strokeMaskOutline(ctx, e, v, fallback) {
+    const edges = maskOutline(e);
+    if (!edges) {
+      fallback();
+      return;
+    }
+    ctx.beginPath();
+    for (const [a, b] of edges) {
+      const start = worldToCanvas(maskPoint(a), v),
+        end = worldToCanvas(maskPoint(b), v);
+      ctx.moveTo(...start);
+      ctx.lineTo(...end);
+    }
+    ctx.stroke();
+  }
   function tracePresentedMask(ctx, e, v, style) {
-    if (!maskElementVisible(e, v)) return;
     const projected = e.points.map(maskPoint).map((point) => worldToCanvas(point, v));
     if (!projected.length) return;
     const bounds = {
@@ -176,14 +167,20 @@ export function createPlanRenderers({
     if (mode === 'fill' || mode === 'hatch') {
       ctx.fillStyle = color;
       ctx.globalAlpha *= opacity;
-      ctx.fill();
+      ctx.fill(maskOutline(e) ? 'evenodd' : 'nonzero');
       ctx.globalAlpha /= opacity;
     }
     ctx.strokeStyle = color;
     ctx.lineWidth = mode === 'outline' ? 1.5 : 1;
-    ctx.stroke();
+    strokeMaskOutline(ctx, e, v, () => ctx.stroke());
     if (mode === 'hatch' || mode === 'cross') {
-      ctx.clip();
+      ctx.beginPath();
+      projected.forEach(([x, y], index) => {
+        if (index) ctx.lineTo(x, y);
+        else ctx.moveTo(x, y);
+      });
+      ctx.closePath();
+      ctx.clip(maskOutline(e) ? 'evenodd' : 'nonzero');
       ctx.beginPath();
       const { x0, x1, y0, y1 } = bounds;
       if (mode === 'cross') {
@@ -205,7 +202,6 @@ export function createPlanRenderers({
     ctx.restore();
   }
   function traceElement(ctx, e, v, selected) {
-    if (!maskElementVisible(e, v)) return;
     const { hoveredLayerKey, maskTransform } = getState();
     const key = layerKey(e.layer, e.datatype),
       hovered = hoveredLayerKey === key;
@@ -221,10 +217,10 @@ export function createPlanRenderers({
         : hovered
           ? layerColor(key, 0.28)
           : 'rgba(155,166,178,.10)';
-      ctx.fill();
+      ctx.fill(maskOutline(e) ? 'evenodd' : 'nonzero');
       ctx.strokeStyle = selected || hovered ? layerColor(key, 0.98) : 'rgba(148,159,171,.52)';
       ctx.lineWidth = hovered ? 1.7 : selected ? 1 : 0.6;
-      ctx.stroke();
+      strokeMaskOutline(ctx, e, v, () => ctx.stroke());
     } else {
       e.points.map(maskPoint).forEach((p, i) => {
         const q = worldToCanvas(p, v);
@@ -556,18 +552,6 @@ export function createPlanRenderers({
       { ctx, w, h } = setupCanvas(c),
       v = viewport(w, h, 'mask'),
       colors = canvasColors(c);
-    const maskTransform = getState().maskTransform || {};
-    maskPaintBounds = {
-      width: w,
-      height: h,
-      scale: Number(maskTransform.scale) || 1,
-      transformKey: [
-        maskTransform.x,
-        maskTransform.y,
-        maskTransform.scale,
-        maskTransform.rotation,
-      ].join(':'),
-    };
     ctx.clearRect(0, 0, w, h);
     if (validateExperimentalPhysicalFacetModel(model)) {
       // The fixed read-only lab offers physical 3D and Section only. Refuse
@@ -598,20 +582,39 @@ export function createPlanRenderers({
       if (presentation) {
         // Keep the physical File Mask unchanged. Presentation is an opt-in,
         // display-only overlay with per-layer ordering and visual semantics.
-        const grouped = maskElementsByLayer(layout);
+        // Group source elements once per render. A full reticle can contain
+        // 150k+ polygons; rescanning it for every presentation layer makes
+        // zoom latency proportional to the number of layer styles.
+        // Keep this index frame-local because imported layouts can change.
+        const presentedByLayer = new Map();
+        for (const element of layout.elements || []) {
+          const key = `${element.layer}|${element.datatype}`;
+          let group = presentedByLayer.get(key);
+          if (!group) {
+            group = [];
+            presentedByLayer.set(key, group);
+          }
+          group.push(element);
+        }
         for (const style of presentation.layers) {
-          for (const element of grouped.get(`${style.layer}|${style.datatype}`) || []) {
-            if (selectedElement(element)) tracePresentedMask(ctx, element, v, style);
+          for (const element of presentedByLayer.get(`${style.layer}|${style.datatype}`) || []) {
+            if (selectedElement(element) && maskInViewport(element, v, w, h))
+              tracePresentedMask(ctx, element, v, style);
           }
         }
         if (presentation.showUnselected) {
           for (const element of layout.elements || []) {
-            if (!selectedElement(element)) traceElement(ctx, element, v, false);
+            if (!selectedElement(element) && maskInViewport(element, v, w, h))
+              traceElement(ctx, element, v, false);
           }
         }
       } else {
-        for (const e of layout.linework || []) traceElement(ctx, e, v, false);
-        for (const e of layout.elements || []) traceElement(ctx, e, v, selectedElement(e));
+        for (const e of layout.linework || []) {
+          if (maskInViewport(e, v, w, h)) traceElement(ctx, e, v, false);
+        }
+        for (const e of layout.elements || []) {
+          if (maskInViewport(e, v, w, h)) traceElement(ctx, e, v, selectedElement(e));
+        }
       }
       ctx.restore();
     }
