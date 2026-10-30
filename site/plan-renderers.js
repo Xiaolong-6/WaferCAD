@@ -582,9 +582,22 @@ export function createPlanRenderers({
       if (presentation) {
         // Keep the physical File Mask unchanged. Presentation is an opt-in,
         // display-only overlay with per-layer ordering and visual semantics.
+        // Group source elements once per render. A full reticle can contain
+        // 150k+ polygons; rescanning it for every presentation layer makes
+        // zoom latency proportional to the number of layer styles.
+        // Keep this index frame-local because imported layouts can change.
+        const presentedByLayer = new Map();
+        for (const element of layout.elements || []) {
+          const key = `${element.layer}|${element.datatype}`;
+          let group = presentedByLayer.get(key);
+          if (!group) {
+            group = [];
+            presentedByLayer.set(key, group);
+          }
+          group.push(element);
+        }
         for (const style of presentation.layers) {
-          for (const element of layout.elements || []) {
-            if (element.layer !== style.layer || element.datatype !== style.datatype) continue;
+          for (const element of presentedByLayer.get(`${style.layer}|${style.datatype}`) || []) {
             if (selectedElement(element) && maskInViewport(element, v, w, h))
               tracePresentedMask(ctx, element, v, style);
           }
