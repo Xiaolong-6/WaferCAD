@@ -4,10 +4,10 @@
   "scope": "full",
   "status": "pass",
   "source": {
-    "digest": "8ed02d053a1b8b7544dcdb43852624716dbb6bedf943ff3bac6afb5330d0eebb",
+    "digest": "d21e2e306da9c8800bf148c84f803bbbc0b4898fddbae23154fc301d1445bbc6",
     "fileCount": 1300
   },
-  "sourceRevision": "9bebfe0d5e226b65ce52e8d738a2548a68d80419",
+  "sourceRevision": "01397168c7199575e606c8fb0795f2eea7f6d494",
   "planDigest": "9e40e14c41649069d23911dc155328f17e554f0307619aef8493378a2f26b4b3",
   "environment": {
     "node": "v22.16.0",
@@ -18,7 +18,7 @@
       "three": "0.179.1"
     }
   },
-  "startedAt": "2026-10-29T15:01:17.631Z",
+  "startedAt": "2026-10-30T14:32:29.706Z",
   "checks": [
     {
       "id": "lint",
@@ -30,7 +30,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 6457,
+      "durationMs": 5314,
       "logDigest": "7e083cff9d323606d09accd3389828279cc52091b6c62b45c8100c1ced589c7c"
     },
     {
@@ -43,7 +43,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 18570,
+      "durationMs": 15307,
       "logDigest": "1230617af071df8c1efeb12bcd6d41c3aa159e1cd0841cc546fbae4c8c56f867"
     },
     {
@@ -56,7 +56,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 511,
+      "durationMs": 421,
       "logDigest": "f41d9b5846a8a95a7941fcd7428a4ff7e341b07bc5f5ab28e615f71d70bb7447"
     },
     {
@@ -68,10 +68,10 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 276083,
-      "logDigest": "02d265a869179ebf3e5ab3c0d899eb0c7e9b8310b7e3d251a3800e805d356914"
+      "durationMs": 263828,
+      "logDigest": "0ddff3ca062c681301e5474b2cbd9bea1e9f565136359a20089e292b1b672222"
     }
   ],
-  "finishedAt": "2026-10-29T15:06:19.257Z",
-  "transcriptDigest": "d0ad89b929230a3a91e9f21ac1152c98143e009636b436a4600bb5c30298d562"
+  "finishedAt": "2026-10-30T14:37:14.580Z",
+  "transcriptDigest": "ba309859d3f81f843066f5f6bb02254ae8ef1dd384e93109a53f589aff59c0ba"
 }
