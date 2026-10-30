@@ -128,7 +128,9 @@ export async function buildFullHbarChip(sourceBytes) {
   project.activeCell = 'Chip2';
   project.maskSourceMode = 'file';
   project.maskTransform = { x: 0, y: 0, scale: 1, rotation: 0 };
-  project.selectedLayerKeys = ['2|0', '12|0']; // Focus on real L2 traces and seamless L12; all layers remain selectable.
+  // Initially show real layer 2 narrow strips and seamless layer 12; the
+  // other original layers remain available via the checkbox controls.
+  project.selectedLayerKeys = ['2|0', '12|0'];
   project.drawMask = { nextShapeId: 1, shapes: [] };
   project.maskRoi = null;
   project.roi = null;

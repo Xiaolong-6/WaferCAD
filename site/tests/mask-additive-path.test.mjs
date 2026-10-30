@@ -13,11 +13,30 @@ function recorder() {
 }
 
 test('opposite GDS polygon windings become additive without modifying vertices', () => {
-  const a = { kind: 'polygon', points: [[0, 0], [10, 0], [10, 10], [0, 10]] };
-  const b = { kind: 'polygon', points: [[15, 10], [15, 0], [5, 0], [5, 10]] };
+  const a = {
+    kind: 'polygon',
+    points: [
+      [0, 0],
+      [10, 0],
+      [10, 10],
+      [0, 10],
+    ],
+  };
+  const b = {
+    kind: 'polygon',
+    points: [
+      [15, 10],
+      [15, 0],
+      [5, 0],
+      [5, 10],
+    ],
+  };
   const before = JSON.stringify([a, b]);
   const ctx = recorder();
-  assert.equal(appendAdditiveMaskPolygons(ctx, [a, b], (point) => point), 2);
+  assert.equal(
+    appendAdditiveMaskPolygons(ctx, [a, b], (point) => point),
+    2,
+  );
   const subpaths = [];
   let path = [];
   for (const call of ctx.calls) {
@@ -36,12 +55,29 @@ test('opposite GDS polygon windings become additive without modifying vertices',
 });
 
 test('skips paths and preserves 1 um rectangles', () => {
-  const narrow = { kind: 'polygon', points: [[0, 0], [100, 0], [100, 1], [0, 1]] };
+  const narrow = {
+    kind: 'polygon',
+    points: [
+      [0, 0],
+      [100, 0],
+      [100, 1],
+      [0, 1],
+    ],
+  };
   const ctx = recorder();
   assert.equal(
     appendAdditiveMaskPolygons(
       ctx,
-      [{ kind: 'path', points: [[0, 0], [1, 1]] }, narrow],
+      [
+        {
+          kind: 'path',
+          points: [
+            [0, 0],
+            [1, 1],
+          ],
+        },
+        narrow,
+      ],
       ([x, y]) => [x * 2, y * 2],
     ),
     1,
@@ -55,9 +91,17 @@ test('entire layer is one path and no per-polygon stroke or fill is emitted', ()
   const ctx = recorder();
   const rectangles = Array.from({ length: 300 }, (_, i) => ({
     kind: 'polygon',
-    points: [[i, 0], [i + 2, 0], [i + 2, 1], [i, 1]],
+    points: [
+      [i, 0],
+      [i + 2, 0],
+      [i + 2, 1],
+      [i, 1],
+    ],
   }));
-  assert.equal(appendAdditiveMaskPolygons(ctx, rectangles, (point) => point), 300);
+  assert.equal(
+    appendAdditiveMaskPolygons(ctx, rectangles, (point) => point),
+    300,
+  );
   assert.equal(ctx.calls.filter((c) => c[0] === 'close').length, 300);
   assert.equal(ctx.calls.length, 300 * 5);
 });
