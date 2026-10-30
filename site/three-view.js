@@ -15,6 +15,7 @@ import {
   internalRevealFraction,
 } from './three-internal-visibility.js';
 import { disposeRendererSceneResources } from './renderer-v4-resource-lifetime.js';
+import { shouldDeferDenseBorderBuffers } from './renderer-deferred-borders.js';
 import {
   assertExactThreePngReady,
   runTemporaryRendererCapture,
@@ -2308,6 +2309,23 @@ diffuseColor.a *= waferCadAlphaScale;`,
     return edges;
   }
 
+  function ensureDeferredDenseBorders() {
+    if (!group?.userData.waferCadExteriorBorderDeferred || !getInspection()?.borders) return false;
+    const plan = group.userData.waferCadSurfacePlan;
+    if (!plan) return false;
+    addBorderPositions(displayBorderPositions(plan.borderLines.flat(2)), {
+      order: 100000,
+      opacity: Number(getInspection()?.opacity ?? 1),
+      presentation: { kind: 'border', category: 'exterior' },
+    });
+    group.userData.waferCadExteriorBorderDeferred = false;
+    if (group.userData.waferCadHiddenContoursDeferred) {
+      rebuildInspectionContours();
+      group.userData.waferCadHiddenContoursDeferred = false;
+    }
+    return true;
+  }
+
   // Add real, owned internal outlines lazily to an already-built scene.
   // Keep per-group ownership so cached opaque/transparent variants can restore
   // their own overlays without forcing another Process surface-plan build.
@@ -4249,6 +4267,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         host.dataset.rendererUpdateKind = 'presentation';
         stats.textContent = 'updating 3D…';
         syncRenderPolicy();
+        ensureDeferredDenseBorders();
         ensureInternalBorderContours();
         applyPresentationState();
         return;
@@ -4260,6 +4279,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         host.dataset.renderState = 'updating';
         stats.textContent = 'updating 3D…';
         syncRenderPolicy();
+        ensureDeferredDenseBorders();
         ensureInternalBorderContours();
         applyPresentationState({ updateKind: 'variant-swap' });
         return;
@@ -4274,6 +4294,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         host.dataset.rendererUpdateKind = 'presentation';
         stats.textContent = 'updating 3D…';
         syncRenderPolicy();
+        ensureDeferredDenseBorders();
         ensureInternalBorderContours();
         applyPresentationState();
         return;
@@ -4773,11 +4794,18 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.sceneAssemblyYields = String(sceneAssemblyYields);
       if (sceneAssemblyYields) host.dataset.renderPhase = 'assembling';
 
-      addBorderPositions(displayBorderPositions(plan.borderLines.flat(2)), {
-        order: 100000,
-        opacity,
-        presentation: { kind: 'border', category: 'exterior' },
+      const deferDenseBorders = shouldDeferDenseBorderBuffers({
+        borderLineCount: plan.borderLines.length,
+        borders,
       });
+      group.userData.waferCadExteriorBorderDeferred = deferDenseBorders;
+      if (!deferDenseBorders) {
+        addBorderPositions(displayBorderPositions(plan.borderLines.flat(2)), {
+          order: 100000,
+          opacity,
+          presentation: { kind: 'border', category: 'exterior' },
+        });
+      }
       // Internal outline geometry is a cached view overlay, not a new
       // physical scene signature or a second Process ownership calculation.
       group.userData.waferCadSurfacePlan = plan;
@@ -4798,7 +4826,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
         targetVariant === 'transparent' ||
         Number(plan.arrayInstances || 0) < 64 ||
         roughTasks.length > 0;
-      if (needsHiddenContourSuperset) {
+      group.userData.waferCadHiddenContoursDeferred =
+        needsHiddenContourSuperset && deferDenseBorders;
+      if (needsHiddenContourSuperset && !deferDenseBorders) {
         rebuildInspectionContours();
       }
 
