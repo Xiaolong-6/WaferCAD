@@ -99,8 +99,17 @@ test('Q2 inspection shows the real three-Al crossing without changing material o
       'History restoration must retain the saved Section/3D inspection',
     );
   }
-  assert.equal(preview.display.sectionCollapse, undefined);
-  assert.equal(preview.display.threeCamera, undefined);
+  assert.deepEqual(
+    preview.display,
+    published.display,
+    'The deterministic Welcome preview must retain the full project inspection settings',
+  );
+  for (const state of [
+    preview.snapshotBranches.nodes[0].state,
+    preview.snapshotBranches.branches[0].headState,
+  ]) {
+    assert.deepEqual(state.display, published.display);
+  }
 });
 
 test('Q2 Al3 discontinuities follow saved native oblique self-shadow geometry', async () => {
