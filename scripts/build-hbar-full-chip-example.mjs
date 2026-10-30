@@ -58,7 +58,10 @@ export async function buildFullHbarChip(sourceBytes) {
   const { validateProjectFile } = await import('../site/project-schema.js');
   const { serializeProject, readProjectFile } = await import('../site/project-io.js');
   const source = await parseLayoutFile(
-    sourceBytes.buffer.slice(sourceBytes.byteOffset, sourceBytes.byteOffset + sourceBytes.byteLength),
+    sourceBytes.buffer.slice(
+      sourceBytes.byteOffset,
+      sourceBytes.byteOffset + sourceBytes.byteLength,
+    ),
     'D76_33_F2_Chip2.gds',
   );
   const original = source.layout;
@@ -73,13 +76,23 @@ export async function buildFullHbarChip(sourceBytes) {
   const cy = (original.bounds.minY + original.bounds.maxY) / 2;
   const elements = original.elements.map((element) => ({
     ...element,
-    points: element.points.map(([x, y]) => [Number((x - cx).toFixed(6)), Number((y - cy).toFixed(6))]),
+    points: element.points.map(([x, y]) => [
+      Number((x - cx).toFixed(6)),
+      Number((y - cy).toFixed(6)),
+    ]),
   }));
   const layout = {
     ...original,
     name: 'Blésin 2024 | complete original Chip2 author GDS',
     elements,
-    bounds: { minX: -CHIP / 2, maxX: CHIP / 2, minY: -CHIP / 2, maxY: CHIP / 2, width: CHIP, height: CHIP },
+    bounds: {
+      minX: -CHIP / 2,
+      maxX: CHIP / 2,
+      minY: -CHIP / 2,
+      maxY: CHIP / 2,
+      width: CHIP,
+      height: CHIP,
+    },
     // View-only: suppress polygon fracture seams for the overlapping L12
     // geometry. Every original GDS element remains available for export.
     // Unstyled checked layers, including the real 1 um L2 traces, are drawn
@@ -108,7 +121,12 @@ export async function buildFullHbarChip(sourceBytes) {
   const layer12Style = layout.maskPresentation.layers.find((style) => style.layer === 12);
   layer12Style.silhouette = l12Silhouette;
   layer12Style.sourceElementCount = L12_COUNT;
-  const model = createModel({ shape: 'rect', width: CHIP, height: CHIP, thickness: thickness.silicon });
+  const model = createModel({
+    shape: 'rect',
+    width: CHIP,
+    height: CHIP,
+    thickness: thickness.silicon,
+  });
   const layer = (id, name, color) => ({ id, name, color, visible: true });
   model.layers = [
     layer('base', 'Si handle 525 um starting wafer', '#a1adb7'),
@@ -209,10 +227,16 @@ export async function buildFullHbarChip(sourceBytes) {
     materialPartitionGroups: materialPartitions.length,
     layer12SourcePolygons: layer12.length,
     layer12SilhouetteComponents: l12Silhouette.length,
-    layer12SilhouetteHoles: l12Silhouette.reduce((sum, poly) => sum + Math.max(0, poly.length - 1), 0),
+    layer12SilhouetteHoles: l12Silhouette.reduce(
+      (sum, poly) => sum + Math.max(0, poly.length - 1),
+      0,
+    ),
     countByLayer: Object.fromEntries(
       [...new Set(elements.map((element) => element.layer))].sort((a, b) => a - b)
-        .map((gdsLayer) => [gdsLayer, elements.filter((element) => element.layer === gdsLayer).length]),
+        .map((gdsLayer) => [
+          gdsLayer,
+          elements.filter((element) => element.layer === gdsLayer).length,
+        ]),
     ),
     disclaimer: 'Full original author GDS, with non-author-verified final-state material hypotheses.',
   };
