@@ -124,7 +124,12 @@ export function createPlanRenderers({
     // visible rings and leave scientific ownership/export paths untouched.
     const dense = geom?.length >= 512 || geom?.some((poly) => poly.length >= 128);
     const rect = dense ? ctx.canvas?.getBoundingClientRect?.() : null;
-    const cull = rect?.width > 0 && rect?.height > 0;
+    const model = getState().model;
+    const cull =
+      rect?.width > 0 &&
+      rect?.height > 0 &&
+      Math.max(Number(model?.width) || 0, Number(model?.height) || 0) * v.s >
+        Math.max(rect.width, rect.height) * 1.25;
     for (const poly of geom || []) {
       for (const ring of poly) {
         if (cull && !ringMayIntersectCanvas(ring, v, rect.width, rect.height, back)) continue;
