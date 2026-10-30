@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { appendAdditiveMaskPolygons, appendUnionMaskPolygons } from '../mask-additive-path.js';
+import {
+  appendAdditiveMaskPolygons,
+  appendUnionMaskPolygons,
+  cachedUnionMaskPath,
+} from '../mask-additive-path.js';
 
 function recorder() {
   const calls = [];
@@ -125,4 +129,41 @@ test('empty silhouette renders no subpaths', () => {
   const ctx = recorder();
   assert.equal(appendUnionMaskPolygons(ctx, [], (point) => point), 0);
   assert.deepEqual(ctx.calls, []);
+});
+
+test('native Path2D caches unchanged union topology and keeps exterior/hole rings', () => {
+  const previous = globalThis.Path2D;
+  const events = [];
+  class FakePath2D {
+    moveTo(...xy) {
+      events.push(['move', ...xy]);
+    }
+    lineTo(...xy) {
+      events.push(['line', ...xy]);
+    }
+    closePath() {
+      events.push(['close']);
+    }
+  }
+  globalThis.Path2D = FakePath2D;
+  try {
+    const silhouette = [
+      [
+        [[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]],
+        [[3, 3], [3, 7], [7, 7], [7, 3], [3, 3]],
+      ],
+    ];
+    const before = JSON.stringify(silhouette);
+    const first = cachedUnionMaskPath(silhouette);
+    const eventCount = events.length;
+    const second = cachedUnionMaskPath(silhouette);
+    assert.equal(first, second);
+    assert.equal(first.rings, 2);
+    assert.equal(events.length, eventCount, 'zoom must not reconstruct the path');
+    assert.equal(events.filter((event) => event[0] === 'close').length, 2);
+    assert.equal(JSON.stringify(silhouette), before, 'source union must remain unchanged');
+  } finally {
+    if (previous === undefined) delete globalThis.Path2D;
+    else globalThis.Path2D = previous;
+  }
 });

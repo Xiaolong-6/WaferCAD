@@ -50,3 +50,33 @@ export function appendUnionMaskPolygons(ctx, silhouette, projectPoint) {
   }
   return rings;
 }
+
+/**
+ * Keep display-only merged GDS outlines in a native world-coordinate Path2D.
+ * This avoids reprojecting 176k Layer-12 union vertices on every pan/zoom.
+ * Cache entries are tied to the imported silhouette array's identity.
+ * The original GDS elements and material model are never altered.
+ */
+const nativeUnionPathCache = new WeakMap();
+
+export function cachedUnionMaskPath(silhouette) {
+  if (typeof Path2D !== 'function' || !Array.isArray(silhouette)) return null;
+  const cached = nativeUnionPathCache.get(silhouette);
+  if (cached) return cached;
+  const path = new Path2D();
+  let rings = 0;
+  for (const polygon of silhouette) {
+    for (const ring of polygon || []) {
+      if (ring.length < 4) continue;
+      ring.forEach(([x, y], index) => {
+        if (index === 0) path.moveTo(x, y);
+        else path.lineTo(x, y);
+      });
+      path.closePath();
+      rings++;
+    }
+  }
+  const result = { path, rings };
+  nativeUnionPathCache.set(silhouette, result);
+  return result;
+}

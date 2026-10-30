@@ -33,7 +33,11 @@ import {
   roughVisualBoundsZ,
 } from './surface-rendering.js';
 import { unionGeometries } from './vector-geometry.js';
-import { appendAdditiveMaskPolygons, appendUnionMaskPolygons } from './mask-additive-path.js';
+import {
+  appendAdditiveMaskPolygons,
+  appendUnionMaskPolygons,
+  cachedUnionMaskPath,
+} from './mask-additive-path.js';
 import {
   createSectionZTransform,
   niceSectionTicks,
@@ -551,24 +555,41 @@ export function createPlanRenderers({
             // especially where author polygons overlap. The original elements
             // remain untouched for Mask selection, export and Process operations.
             ctx.save();
-            ctx.beginPath();
             const hasVerifiedSilhouette =
               Array.isArray(style.silhouette) &&
               Number.isInteger(style.sourceElementCount) &&
               matching.length === style.sourceElementCount;
-            const count = hasVerifiedSilhouette
-              ? appendUnionMaskPolygons(ctx, style.silhouette, (point) =>
-                  worldToCanvas(maskPoint(point), v),
-                )
-              : appendAdditiveMaskPolygons(ctx, matching, (point) =>
-                  worldToCanvas(maskPoint(point), v),
-                );
-            if (count) {
-              ctx.fillStyle = style.color;
-              ctx.globalAlpha *= style.opacity;
-              // Union contours contain real holes. Even-odd is essential:
-              // filling all rings with nonzero winding can erase openings.
-              ctx.fill(hasVerifiedSilhouette ? 'evenodd' : 'nonzero');
+            const nativePath = hasVerifiedSilhouette ? cachedUnionMaskPath(style.silhouette) : null;
+            ctx.fillStyle = style.color;
+            ctx.globalAlpha *= style.opacity;
+            if (nativePath && typeof ctx.transform === 'function') {
+              // Compose the Mask affine transform from a physical unit basis.
+              // Canvas can then fill the same world-coordinate Path2D on every
+              // zoom/pan without reprojecting individual GDS vertices in JS.
+              const p0 = worldToCanvas(maskPoint([0, 0]), v);
+              const px = worldToCanvas(maskPoint([1, 0]), v);
+              const py = worldToCanvas(maskPoint([0, 1]), v);
+              ctx.transform(
+                px[0] - p0[0],
+                px[1] - p0[1],
+                py[0] - p0[0],
+                py[1] - p0[1],
+                p0[0],
+                p0[1],
+              );
+              if (nativePath.rings) ctx.fill(nativePath.path, 'evenodd');
+            } else {
+              // Fallback for older/synthetic Canvas implementations and
+              // source layers that lack a prevalidated merged silhouette.
+              ctx.beginPath();
+              const count = hasVerifiedSilhouette
+                ? appendUnionMaskPolygons(ctx, style.silhouette, (point) =>
+                    worldToCanvas(maskPoint(point), v),
+                  )
+                : appendAdditiveMaskPolygons(ctx, matching, (point) =>
+                    worldToCanvas(maskPoint(point), v),
+                  );
+              if (count) ctx.fill(hasVerifiedSilhouette ? 'evenodd' : 'nonzero');
             }
             ctx.restore();
             for (const element of matching) {
