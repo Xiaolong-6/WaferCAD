@@ -9,6 +9,16 @@
 - Original `Chip2` cell: 9,646 polygons, 5,000 µm square, 1 nm GDS database unit. ROI centered at `(-4367.57, 5393.4)` µm; 130 × 150 µm.
 - Included **author-derived** local source mask (`hbar-blesin-2024-author-roi.gds`) and native project (`hbar-blesin-2024-author-roi.wafercad`). Geometry is selected from the actual GDS, not traced from the SEM. The derived GDS uses a fixed export timestamp to keep its bytes reproducible. The 18 original shapes crossing the physical ROI are clipped with the production polygon Boolean kernel (rather than leaking multi-millimetre pads/waveguides into the 130 × 150 µm GDS). The untouched author input is retained separately.
 
+## Full original author-mask reconstruction
+
+The 5,000 × 5,000 µm **full-chip** model is now a separate, reproducible
+build target: [FULL_CHIP.md](FULL_CHIP.md). It retains all 9,646 original
+polygons from all 10 GDS layers and builds a full-chip provisional final-state
+material partition. It is **not** the same as this detailed 130 × 150 µm ROI,
+does not invent a complete XeF2 cavity, and has not yet replaced the published
+Welcome example. Use `scripts/build-hbar-full-chip-example.mjs` with the verified
+original author GDS.
+
 ## Physical construction
 
 The project contains original ring contours and release hole masks, a Si base, 2.8 µm lower SiO₂, 850 nm patterned Si₃N₄, filled/CMP-planarized total 5.9 µm SiO₂ cladding, and 95 nm Mo / 1.0 µm AlN / 95 nm Mo electrodes. These dimensions come from the paper's Methods and Supplementary Appendix B. The Workstation renders Starting Wafer as a synthetic Step 0. The candidate persists only the 11 Recipe History nodes (Steps 1–11), including intermediate film and hole-opening states and an exact continuous silicon release based on PR #352. No duplicate Base node is stored.

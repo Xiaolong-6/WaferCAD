@@ -34,6 +34,11 @@ import {
 } from './surface-rendering.js';
 import { unionGeometries } from './vector-geometry.js';
 import {
+  appendAdditiveMaskPolygons,
+  appendUnionMaskPolygons,
+  cachedUnionMaskPath,
+} from './mask-additive-path.js';
+import {
   createSectionZTransform,
   niceSectionTicks,
   resolveSectionCollapse,
@@ -538,10 +543,70 @@ export function createPlanRenderers({
         // Keep the physical File Mask unchanged. Presentation is an opt-in,
         // display-only overlay with per-layer ordering and visual semantics.
         for (const style of presentation.layers) {
-          for (const element of layout.elements || []) {
-            if (element.layer !== style.layer || element.datatype !== style.datatype) continue;
-            if (selectedElement(element)) tracePresentedMask(ctx, element, v, style);
+          const matching = (layout.elements || []).filter(
+            (element) =>
+              element.layer === style.layer &&
+              element.datatype === style.datatype &&
+              selectedElement(element),
+          );
+          if (style.mode === 'fill') {
+            // One additive nonzero fill for the complete layer. Per-polygon
+            // strokes and repeated translucent fills expose GDS fracture seams,
+            // especially where author polygons overlap. The original elements
+            // remain untouched for Mask selection, export and Process operations.
+            ctx.save();
+            const hasVerifiedSilhouette =
+              Array.isArray(style.silhouette) &&
+              Number.isInteger(style.sourceElementCount) &&
+              matching.length === style.sourceElementCount;
+            const nativePath = hasVerifiedSilhouette ? cachedUnionMaskPath(style.silhouette) : null;
+            ctx.fillStyle = style.color;
+            ctx.globalAlpha *= style.opacity;
+            if (nativePath && typeof ctx.transform === 'function') {
+              // Compose the Mask affine transform from a physical unit basis.
+              // Canvas can then fill the same world-coordinate Path2D on every
+              // zoom/pan without reprojecting individual GDS vertices in JS.
+              const p0 = worldToCanvas(maskPoint([0, 0]), v);
+              const px = worldToCanvas(maskPoint([1, 0]), v);
+              const py = worldToCanvas(maskPoint([0, 1]), v);
+              ctx.transform(
+                px[0] - p0[0],
+                px[1] - p0[1],
+                py[0] - p0[0],
+                py[1] - p0[1],
+                p0[0],
+                p0[1],
+              );
+              if (nativePath.rings) ctx.fill(nativePath.path, 'evenodd');
+            } else {
+              // Fallback for older/synthetic Canvas implementations and
+              // source layers that lack a prevalidated merged silhouette.
+              ctx.beginPath();
+              const count = hasVerifiedSilhouette
+                ? appendUnionMaskPolygons(ctx, style.silhouette, (point) =>
+                    worldToCanvas(maskPoint(point), v),
+                  )
+                : appendAdditiveMaskPolygons(ctx, matching, (point) =>
+                    worldToCanvas(maskPoint(point), v),
+                  );
+              if (count) ctx.fill(hasVerifiedSilhouette ? 'evenodd' : 'nonzero');
+            }
+            ctx.restore();
+            for (const element of matching) {
+              if (element.kind !== 'polygon') traceElement(ctx, element, v, true);
+            }
+          } else {
+            for (const element of matching) tracePresentedMask(ctx, element, v, style);
           }
+        }
+        // A project may give just one dense layer a silhouette style. Other
+        // checked layers must still render (e.g., the real 1 um GDS layer 2).
+        const styled = new Set(
+          presentation.layers.map((style) => layerKey(style.layer, style.datatype)),
+        );
+        for (const element of layout.elements || []) {
+          if (!styled.has(layerKey(element.layer, element.datatype)) && selectedElement(element))
+            traceElement(ctx, element, v, true);
         }
         if (presentation.showUnselected) {
           for (const element of layout.elements || []) {
