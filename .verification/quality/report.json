@@ -4,10 +4,10 @@
   "scope": "full",
   "status": "pass",
   "source": {
-    "digest": "ca096fd3f4b49a1e5f73b472edb7670925e3fef653247a257f885374e04cad71",
-    "fileCount": 1305
+    "digest": "a3c12f6a4b7a12fecd14761821ca977fcb3294266fb5f34bc331c29c0f3a16fd",
+    "fileCount": 1307
   },
-  "sourceRevision": "353f77215863a445532c678e2f45075c5833a97c",
+  "sourceRevision": "1a49e0c55bcd2cdf2ff4942f97e0b8146425a674",
   "planDigest": "9e40e14c41649069d23911dc155328f17e554f0307619aef8493378a2f26b4b3",
   "environment": {
     "node": "v22.16.0",
@@ -18,7 +18,7 @@
       "three": "0.179.1"
     }
   },
-  "startedAt": "2026-11-06T15:32:38.864Z",
+  "startedAt": "2026-11-06T18:10:31.893Z",
   "checks": [
     {
       "id": "lint",
@@ -30,7 +30,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 7893,
+      "durationMs": 5806,
       "logDigest": "7e083cff9d323606d09accd3389828279cc52091b6c62b45c8100c1ced589c7c"
     },
     {
@@ -43,7 +43,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 20463,
+      "durationMs": 16065,
       "logDigest": "1230617af071df8c1efeb12bcd6d41c3aa159e1cd0841cc546fbae4c8c56f867"
     },
     {
@@ -56,7 +56,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 438,
+      "durationMs": 379,
       "logDigest": "f41d9b5846a8a95a7941fcd7428a4ff7e341b07bc5f5ab28e615f71d70bb7447"
     },
     {
@@ -68,10 +68,10 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 303527,
-      "logDigest": "1c61baf8c849fe3614fca2e7d10c2d9ec238beec071fb6cfa32c4a0480df36ee"
+      "durationMs": 245089,
+      "logDigest": "6bdbebd72591bf48acf98f3674215002ebdd9973f48d83c3df2fc66811e279aa"
     }
   ],
-  "finishedAt": "2026-11-06T15:38:11.189Z",
-  "transcriptDigest": "0a41c011cb9e7230a4e77ba2cd591ec568f26f585dff4023243f7c9d7df15ff7"
+  "finishedAt": "2026-11-06T18:14:59.236Z",
+  "transcriptDigest": "9ba22ddf2e6b826358c432523d1cba670315c2933750ace996a5ac982a1ede8a"
 }
