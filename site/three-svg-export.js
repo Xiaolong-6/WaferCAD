@@ -51,7 +51,7 @@ function clipNear(vertices, near) {
   return result;
 }
 
-export function projectThreeMeshesToSvg(THREE, root, camera, {
+export async function projectThreeMeshesToSvg(THREE, root, camera, {
   width,
   height,
   mode = 'view',
@@ -98,6 +98,7 @@ export function projectThreeMeshesToSvg(THREE, root, camera, {
   }
 
   const faces = [];
+  let visitedTriangles = 0;
   const instanceMatrix = new THREE.Matrix4();
   const worldMatrix = new THREE.Matrix4();
   const light = new THREE.Vector3(-0.38, 0.62, 1).normalize();
@@ -125,7 +126,17 @@ export function projectThreeMeshesToSvg(THREE, root, camera, {
         worldMatrix.copy(mesh.matrixWorld);
       }
       for (let triangleIndex = 0; triangleIndex < geometryTriangleCount; triangleIndex++) {
-        if (triangleIndex % 2048 === 0) checkAbort();
+        visitedTriangles++;
+        if (visitedTriangles % 4096 === 0) {
+          checkAbort();
+          onProgress?.(
+            0.92 + 0.06 * (visitedTriangles / Math.max(1, estimatedTriangles)),
+            'Projecting vector facets',
+          );
+          // Yield to the host task panel so Abort is actionable on large arrays.
+          await new Promise((resolve) => setTimeout(resolve, 0));
+          checkAbort();
+        }
         const world = [];
         const view = [];
         for (let corner = 0; corner < 3; corner++) {
