@@ -117,3 +117,44 @@ test('back-facing wafer triangles cannot cover an exposed front surface', async 
   assert.match(svg, /data-wafercad-layer="front"/);
   assert.match(svg, /stroke="#/);
 });
+
+test('SVG background follows the active renderer clear color without markup injection', async () => {
+  const root = new THREE.Group();
+  root.add(triangle());
+  const svg = await exportSvg(root, { background: '#ffffff' });
+  assert.match(svg, /<rect[^>]*fill="#ffffff"/);
+  await assert.rejects(
+    exportSvg(root, { background: 'url(javascript:alert(1))' }),
+    /six-digit RGB color/,
+  );
+});
+
+test('a visible vertical material wall remains in the vector projection', async () => {
+  const root = new THREE.Group();
+  const wall = new THREE.BufferGeometry();
+  wall.setAttribute(
+    'position',
+    new THREE.Float32BufferAttribute([-1, -1, -1, 1, -1, -1, 1, -1, 1], 3),
+  );
+  const mesh = new THREE.Mesh(wall, new THREE.MeshBasicMaterial({ color: '#aaaaaa' }));
+  mesh.userData.wafercadLayerId = 'wall';
+  root.add(mesh);
+  const svg = await exportSvg(root);
+  assert.match(svg, /data-wafercad-layer="wall"/);
+});
+
+test('camera below the wafer sees the exposed back face rather than the front face', async () => {
+  const root = new THREE.Group();
+  const face = triangle([-1, -1, -1], 'back');
+  face.geometry.setIndex([0, 2, 1]);
+  root.add(face);
+  const view = camera();
+  view.position.set(3, -4, -10);
+  view.lookAt(0, 0, 0);
+  view.updateMatrixWorld(true);
+  const svg = await projectThreeMeshesToSvg(THREE, root, view, {
+    width: 900,
+    height: 900,
+  });
+  assert.match(svg, /data-wafercad-layer="back"/);
+});
