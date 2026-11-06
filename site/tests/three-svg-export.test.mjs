@@ -20,9 +20,7 @@ function triangle(z = [0, 0, 0], name = 'Si') {
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute(
     'position',
-    new THREE.Float32BufferAttribute([
-      -1, -1, z[0], 1, -1, z[1], 0, 1, z[2],
-    ], 3),
+    new THREE.Float32BufferAttribute([-1, -1, z[0], 1, -1, z[1], 0, 1, z[2]], 3),
   );
   const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color: '#b86e39' }));
   mesh.userData.wafercadLayerId = name;
@@ -54,10 +52,13 @@ test('Rough CPU vertex heights affect actual projected vector geometry', async (
   const rough = new THREE.Group();
   rough.add(triangle([0, 0.65, 0.11]));
   assert.notEqual(await exportSvg(flat), await exportSvg(rough));
-  assert.notEqual(await exportSvg(rough, { mode: 'view', mapZ: (z) => z * 3 }), await exportSvg(rough, {
-    mode: 'physical',
-    mapZ: (z) => z * 3,
-  }));
+  assert.notEqual(
+    await exportSvg(rough, { mode: 'view', mapZ: (z) => z * 3 }),
+    await exportSvg(rough, {
+      mode: 'physical',
+      mapZ: (z) => z * 3,
+    }),
+  );
 });
 
 test('parallel layer surfaces are painted back-to-front', async () => {
@@ -65,7 +66,9 @@ test('parallel layer surfaces are painted back-to-front', async () => {
   root.add(triangle([-1, -1, -1], 'behind'));
   root.add(triangle([1, 1, 1], 'front'));
   const svg = await exportSvg(root);
-  assert.ok(svg.indexOf('data-wafercad-layer="behind"') < svg.indexOf('data-wafercad-layer="front"'));
+  assert.ok(
+    svg.indexOf('data-wafercad-layer="behind"') < svg.indexOf('data-wafercad-layer="front"'),
+  );
 });
 
 test('instanced material templates are projected at all translations', async () => {
@@ -101,4 +104,16 @@ test('SVG options normalize to stable defaults and abort before work', async () 
   const aborter = new AbortController();
   aborter.abort();
   await assert.rejects(exportSvg(root, { signal: aborter.signal }), /cancelled/i);
+});
+
+test('back-facing wafer triangles cannot cover an exposed front surface', async () => {
+  const root = new THREE.Group();
+  const back = triangle([-5, -5, -5], 'bottom');
+  back.geometry.setIndex([0, 2, 1]);
+  root.add(back);
+  root.add(triangle([0, 0, 0], 'front'));
+  const svg = await exportSvg(root);
+  assert.doesNotMatch(svg, /data-wafercad-layer="bottom"/);
+  assert.match(svg, /data-wafercad-layer="front"/);
+  assert.match(svg, /stroke="#/);
 });
