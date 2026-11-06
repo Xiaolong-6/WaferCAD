@@ -546,7 +546,10 @@ export async function createMaskView({ project, sharedState, workstation } = {})
         return panel;
       },
       onShow() {},
-      onHide() {},
+      onHide() {
+        if (runtime?.alignment?.isActive())
+          overlays?.closeFloating('maskAlignmentSettings', 'hidden');
+      },
       destroy() {},
     });
     workstation?.mount(panel);
