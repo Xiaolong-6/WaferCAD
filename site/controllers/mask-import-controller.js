@@ -30,8 +30,7 @@ export function createMaskImportController({
 
   function syncTransformInputs() {
     // The native Mask viewport owns Alignment. The legacy form is optional.
-    if (!['maskOffsetX', 'maskOffsetY', 'maskScale', 'maskRotation'].every((id) => $(id)))
-      return;
+    if (!['maskOffsetX', 'maskOffsetY', 'maskScale', 'maskRotation'].every((id) => $(id))) return;
     const transform = getMaskTransform();
     $('maskOffsetX').value = formatLengthField(transform.x);
     $('maskOffsetY').value = formatLengthField(transform.y);
@@ -65,8 +64,7 @@ export function createMaskImportController({
   }
 
   function updateTransform() {
-    if (!['maskOffsetX', 'maskOffsetY', 'maskScale', 'maskRotation'].every((id) => $(id)))
-      return;
+    if (!['maskOffsetX', 'maskOffsetY', 'maskScale', 'maskRotation'].every((id) => $(id))) return;
     const current = getMaskTransform();
     const xChanged = displayLengthDraftChanged(
       $('maskOffsetX').value,
