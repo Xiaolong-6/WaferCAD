@@ -64,6 +64,7 @@
 .v2-section-body .p-science {
   flex: 1;
   min-width: 0;
+  background: var(--wc-canvas-background, #ffffff);
 }
 .v2-detail-overlay {
   position: absolute;
