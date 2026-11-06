@@ -123,8 +123,7 @@ export function analyzeMaterialLiftOff(
           const b = q.stack[j];
           // A lateral joint requires finite shared sidewall area, not a
           // height-only contact line at the top or bottom of a slab.
-          if (Math.min(a.z1, b.z1) - Math.max(a.z0, b.z0) > EPS)
-            contact(p, i, q, j, false);
+          if (Math.min(a.z1, b.z1) - Math.max(a.z0, b.z0) > EPS) contact(p, i, q, j, false);
         }
       }
     }

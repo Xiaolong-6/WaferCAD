@@ -86,7 +86,7 @@ test('a membrane supported by resist in a different tile is removed as one compo
   const resolved = resolveArrayModel(tiled);
   assert.ok(resolved.regions.every((r) => r.stack.every((s) => s.layerId === 'base')));
 });
- 
+
 test('cross-tile lift-off ignores zero-area face tangencies before deduplicating real contacts', async () => {
   const { crossContacts } = await import('../material-array-lift-off.js');
   const a = {

@@ -669,7 +669,7 @@ test('sidewall receiving support requires a finite shared edge, not a corner tan
     'a receiving wall inside a hole is still a real edge',
   );
 });
- 
+
 test('lift-off graph rejects point-only and zero-height metal support without losing a real sidewall', async () => {
   const { analyzeMaterialLiftOff, LIFT_PERMANENT } = await import('../material-lift-off.js');
   const layers = ['base', 'nb', 'resist', 'al'].map((id) => ({ id }));
