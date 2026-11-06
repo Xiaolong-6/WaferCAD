@@ -4,10 +4,10 @@
   "scope": "full",
   "status": "pass",
   "source": {
-    "digest": "6a92e83ee3b123f3053f517087fef18635e789bdbc0d67b52d7be1ecad213473",
+    "digest": "41ad810e426657a0223268bc3cfa0046bf829aaf19d056b02b770cc213feb40d",
     "fileCount": 1305
   },
-  "sourceRevision": "6729fd82d7e67c37dbfdc3ecf8b0dd871c2e292c",
+  "sourceRevision": "b2dc24e5fa5b2604a00a8b512aec272d3aaf2883",
   "planDigest": "9e40e14c41649069d23911dc155328f17e554f0307619aef8493378a2f26b4b3",
   "environment": {
     "node": "v22.16.0",
@@ -18,7 +18,7 @@
       "three": "0.179.1"
     }
   },
-  "startedAt": "2026-11-06T14:18:24.030Z",
+  "startedAt": "2026-11-06T14:29:59.692Z",
   "checks": [
     {
       "id": "lint",
@@ -30,7 +30,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 7512,
+      "durationMs": 7767,
       "logDigest": "7e083cff9d323606d09accd3389828279cc52091b6c62b45c8100c1ced589c7c"
     },
     {
@@ -43,7 +43,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 19841,
+      "durationMs": 21296,
       "logDigest": "1230617af071df8c1efeb12bcd6d41c3aa159e1cd0841cc546fbae4c8c56f867"
     },
     {
@@ -56,7 +56,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 451,
+      "durationMs": 515,
       "logDigest": "f41d9b5846a8a95a7941fcd7428a4ff7e341b07bc5f5ab28e615f71d70bb7447"
     },
     {
@@ -68,10 +68,10 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 302164,
-      "logDigest": "10b6cb0a84262862e0f242a80338574f8d52525112c8c0be86dfcbdbcb81adda"
+      "durationMs": 298312,
+      "logDigest": "663bb11bf5e78a91fb33b3179e9be7cfecb5d00b5e2723e2873af6b81d838ef1"
     }
   ],
-  "finishedAt": "2026-11-06T14:23:54.002Z",
-  "transcriptDigest": "4f5860006c9be5b633f8c78cefb4fd463353f1f8ca643f09073eac3036597d5b"
+  "finishedAt": "2026-11-06T14:35:27.590Z",
+  "transcriptDigest": "4286ba2f8561b2ca0334b363a1afbf5e31416328aca0ddd77339b44a3ea674d8"
 }
