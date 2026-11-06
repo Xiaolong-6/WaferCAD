@@ -116,9 +116,7 @@ test('Mask alignment does not move ROI filtering into world-coordinate input spa
   });
   const worldSquare = maskRoiWorldGeometry(roi, transform);
   const selected = selection.operationAreaGeometry('mask');
-  const center = [polygon(0, 0)].map((shape) => [
-    [shape.points.map((point) => maskLocalToWorld(point, transform))],
-  ]);
+  const center = [[polygon(0, 0).points.map((point) => maskLocalToWorld(point, transform))]];
   samePhysicalArea(selected, intersection(intersection(center, model.boundary), worldSquare), 'transformed');
   assert.equal(visits(), 4);
 });
