@@ -5498,7 +5498,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
                   sidewallBoundaryIntervals: cap.sidewallBoundaryIntervals,
                   profileNormal: cap.profileNormal,
                   lodZones: task.lodZones,
-                exportOrigin: origin,
+                  exportOrigin: origin,
                 });
             const roughBorderVertexCount = Math.floor(
               (geometry.userData?.roughBorderPositions?.length || 0) / 3,
@@ -5516,7 +5516,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
               cap.layerId,
               ' · morphology',
               cap.instanceTranslations,
-            origin,
+              origin,
             );
             if (mesh) {
               mesh.userData.wafercadMorphology = cap.appearance.morphology || 'rough';
@@ -5536,14 +5536,17 @@ diffuseColor.a *= waferCadAlphaScale;`,
         } else {
           const mesh = addExportMesh(
             geometryFromSolid(
-               { slabs: [], caps: [{ z: cap.z, normal: cap.normal, polys: cap.polys }] },
-               0,
-               origin,
-             ),
+              {
+                slabs: [],
+                caps: [{ z: cap.z, normal: cap.normal, polys: cap.polys }],
+              },
+              0,
+              origin,
+            ),
             cap.layerId,
             '',
             cap.instanceTranslations,
-          origin,
+            origin,
           );
           if (mesh) {
             mesh.userData.wafercadLayerId = cap.layerId || null;
@@ -5560,15 +5563,26 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
       throwIfAborted();
       const sidewallsByLayer = new Map();
+      let instancedSidewallIndex = 0;
       for (const sidewall of surfacePlan.sidewalls) {
         if (sidewall.instanceTranslations) {
+          const parts = sidewall.parts || [sidewall],
+            origin = glbSidewallLocalOrigin(parts);
           addExportMesh(
-            geometryFromSidewallParts(sidewall.parts || [sidewall], 0, exportBoundaryProfiles, null, physicalExportPolicy, glbSidewallLocalOrigin(sidewall.parts || [sidewall])),
+            geometryFromSidewallParts(
+              parts,
+              0,
+              exportBoundaryProfiles,
+              null,
+              physicalExportPolicy,
+              origin,
+            ),
             sidewall.layerId,
             ' · sidewalls',
             sidewall.instanceTranslations,
-          glbSidewallLocalOrigin(sidewall.parts || [sidewall]),
+            origin,
           );
+          if (++instancedSidewallIndex % 8 === 0) await yieldToUi();
           continue;
         }
         if (!sidewallsByLayer.has(sidewall.layerId)) sidewallsByLayer.set(sidewall.layerId, []);
@@ -5579,16 +5593,28 @@ diffuseColor.a *= waferCadAlphaScale;`,
       const sidewallGroupCount = Math.max(1, sidewallsByLayer.size);
       for (const [layerId, parts] of sidewallsByLayer) {
         throwIfAborted();
-        addExportMesh(
-          geometryFromSidewallParts(parts, 0, exportBoundaryProfiles, null, physicalExportPolicy, glbSidewallLocalOrigin(parts)),
-          layerId,
-          ' · sidewalls',
-        null,
-        glbSidewallLocalOrigin(parts),
-        );
+        // Bound peak JS/typed-array allocation and yield between independent chunks.
+        for (let offset = 0; offset < parts.length; offset += 256) {
+          const batch = parts.slice(offset, offset + 256),
+            origin = glbSidewallLocalOrigin(batch);
+          addExportMesh(
+            geometryFromSidewallParts(
+              batch,
+              0,
+              exportBoundaryProfiles,
+              null,
+              physicalExportPolicy,
+              origin,
+            ),
+            layerId,
+            ' · sidewalls',
+            null,
+            origin,
+          );
+          await yieldToUi();
+        }
         sidewallIndex++;
         reportProgress(0.79 + 0.1 * (sidewallIndex / sidewallGroupCount), 'Building sidewalls');
-        if (sidewallIndex % 2 === 0) await yieldToUi();
       }
 
       await yieldToUi();
