@@ -9,6 +9,16 @@ export async function selectScientificView(page, name, width) {
     const action = name === 'section' ? 'mobile-section' : 'view:' + name;
     await page.locator('.p-nav [data-action="' + action + '"]').click();
   } else {
+    const focused = await page.evaluate(
+      () => window.WaferCadV2Workstation.snapshot().ui.temporaryFocus,
+    );
+    if (focused === name) {
+      // Mask is already the visible workflow view. Its maximize button
+      // restores the saved Dock instead of maximizing this focus again.
+      await waitForPaint(page);
+      await page.locator('#' + name + 'Panel').waitFor({ state: 'visible' });
+      return;
+    }
     const maximize = (key) =>
       page.locator('#' + key + 'Panel [data-action="maximize:' + key + '"]');
     const target = maximize(name);
