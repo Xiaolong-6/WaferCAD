@@ -146,6 +146,10 @@
     ],
     'three.export.glb': ['Export physical GLB', 'Download the 3D structure in physical metres.'],
     'three.export.png': ['Capture 3D PNG', 'Export a 3× raster image of the current 3D view.'],
+    'three.export.svg': [
+      'Export 3D vector SVG',
+      'Project the current 3D camera to editable vector facets. Rough/Pyramid CPU morphology is retained; choose display or physical Z and a bounded detail tier.',
+    ],
     'section.zbreak': [
       'Z Break',
       'Compress or expand displayed vertical gaps in Section. Physical geometry is unchanged.',
