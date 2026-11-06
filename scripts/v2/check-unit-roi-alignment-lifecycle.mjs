@@ -179,6 +179,58 @@ try {
     assert.equal(changed.maskTransform.rotation, aligned.maskTransform.rotation);
     await checkImmutable(aligned, 'alignment intentional edit');
     report.cases.push({ type: 'alignment', units: ['nm', 'mm', 'um'] });
+    await page.getByRole('button', { name: 'Close Mask alignment', exact: true }).click();
+
+    // Use a real GDS source to verify drag previews do not modify canonical geometry.
+    await page.locator('#gdsInput').setInputFiles('site/samples/klayout/gds-basic-instances.gds');
+    await page.waitForFunction(
+      () => window.WaferCadV2Workstation.snapshot().layout.elements.length > 0,
+    );
+    await page.locator('.p-nav [data-action="domain:mask"]').click();
+    assert.equal(
+      await page.locator('[data-slot="panel.mask"] summary').filter({ hasText: 'Transform' }).count(),
+      0,
+      'There must be only one Alignment editor',
+    );
+    const committedBeforeDrag = await snapshot();
+    const alignmentTrigger = page.locator('[data-action="mask-alignment-settings"]');
+    await alignmentTrigger.click();
+    const canvasRect = await canvas.boundingBox();
+    const viewScale = await page.evaluate(() => {
+      const v = window.WaferCadV2Mask.projection();
+      return v.s;
+    });
+    const x0 = canvasRect.x + canvasRect.width * 0.5;
+    const y0 = canvasRect.y + canvasRect.height * 0.5;
+    const drag = async () => {
+      await page.mouse.move(x0, y0);
+      await page.mouse.down();
+      await page.mouse.move(x0 + 48, y0 - 24, { steps: 8 });
+      await page.mouse.up();
+      await waitForPaint(page);
+    };
+    await drag();
+    const previewX = Number(await page.locator('#maskOffsetX').inputValue());
+    const previewY = Number(await page.locator('#maskOffsetY').inputValue());
+    assert.ok(Math.abs(previewX - 48 / viewScale) < 0.00011, 'Drag X in physical µm');
+    assert.ok(Math.abs(previewY - 24 / viewScale) < 0.00011, 'Drag Y in physical µm');
+    assert.deepEqual(
+      (await snapshot()).maskTransform,
+      committedBeforeDrag.maskTransform,
+      'Pointer preview must not mutate the committed alignment',
+    );
+    await page.locator('[data-action="alignment-cancel"]').click();
+    assert.deepEqual((await snapshot()).maskTransform, committedBeforeDrag.maskTransform);
+    await alignmentTrigger.click();
+    await drag();
+    await page.locator('[data-action="alignment-apply"]').click();
+    const committedAfterDrag = await snapshot();
+    assert.ok(Math.abs(committedAfterDrag.maskTransform.x - 48 / viewScale) < 1e-9);
+    assert.ok(Math.abs(committedAfterDrag.maskTransform.y - 24 / viewScale) < 1e-9);
+    assert.equal(committedAfterDrag.maskTransform.scale, committedBeforeDrag.maskTransform.scale);
+    assert.equal(committedAfterDrag.maskTransform.rotation, committedBeforeDrag.maskTransform.rotation);
+    await checkImmutable(committedBeforeDrag, 'pointer alignment');
+    report.cases.push({ type: 'alignment-pointer', result: 'pass' });
 
     // Explicit Project Save, browser reload and persistent Recovery must not
     // depend on whichever display unit was active while the editor was open.
