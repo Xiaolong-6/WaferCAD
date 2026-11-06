@@ -1,77 +1,65 @@
 {
   "version": 2,
   "provenance": "developer-reported",
-  "scope": "full",
+  "scope": "draft",
   "status": "pass",
   "source": {
-    "digest": "88236cf46dfe0b209fe82a60723bb645a101f685ce77cb1bb28921f8b9cc6a3d",
-    "fileCount": 1304
+    "digest": "5abb91a98b624152e39fb80282220db63580e8d8b735a593ed4853876d2afd36",
+    "fileCount": 1306
   },
-  "sourceRevision": "e7af30e1a28bbe27533e44fe83bb3d3388bd5d07",
-  "planDigest": "9e40e14c41649069d23911dc155328f17e554f0307619aef8493378a2f26b4b3",
+  "sourceRevision": "0136d7a45c9eb04e6efef4e1acfdc2b3f6c2ed93",
+  "planDigest": "a45061373e4a9c9e6f414d7b3b2e48cab7e2bd0feb4378633d0ff24a1a396899",
   "environment": {
     "node": "v22.16.0",
     "platform": "linux",
     "dependencies": {
       "eslint": "10.11.0",
-      "prettier": "3.9.9",
-      "three": "0.179.1"
+      "prettier": "3.9.9"
     }
   },
-  "startedAt": "2026-11-06T13:19:05.308Z",
+  "startedAt": "2026-11-06T14:33:27.114Z",
   "checks": [
     {
       "id": "lint",
       "command": "npm",
-      "args": [
-        "run",
-        "lint"
-      ],
+      "args": ["run", "lint"],
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 7559,
+      "durationMs": 5740,
       "logDigest": "7e083cff9d323606d09accd3389828279cc52091b6c62b45c8100c1ced589c7c"
     },
     {
       "id": "format",
       "command": "npm",
-      "args": [
-        "run",
-        "format:check"
-      ],
+      "args": ["run", "format:check"],
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 20428,
+      "durationMs": 17214,
       "logDigest": "1230617af071df8c1efeb12bcd6d41c3aa159e1cd0841cc546fbae4c8c56f867"
     },
     {
       "id": "docs",
       "command": "npm",
-      "args": [
-        "run",
-        "docs:check"
-      ],
+      "args": ["run", "docs:check"],
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 559,
+      "durationMs": 435,
       "logDigest": "f41d9b5846a8a95a7941fcd7428a4ff7e341b07bc5f5ab28e615f71d70bb7447"
     },
     {
       "id": "node",
-      "command": "npm",
-      "args": [
-        "test"
-      ],
+      "command": "node",
+      "args": ["--test", "site/tests/ci-test-plan.test.mjs", "site/tests/ci-development-gates.test.mjs", "site/tests/ci-workflow-architecture.test.mjs", "site/tests/local-verification.test.mjs", "site/tests/documentation-suite.test.mjs"],
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 286010,
-      "logDigest": "fec029b9c2f69d641138d8f779621b6e11254a52190df4df3e4a98cbfde89ee3"
+      "durationMs": 1840,
+      "logDigest": "10a30dd4cbe125b3d236942db67e08a05bba78c52ebd077cabc2b4fc501fb2c0"
     }
   ],
-  "finishedAt": "2026-11-06T13:24:19.869Z",
-  "transcriptDigest": "71c5b2fd13bb42eec2975b805b4c1305ae22b8582d19e5926de3773eed6098d6"
+  "finishedAt": "2026-11-06T14:33:52.346Z",
+  "transcriptDigest": "29c379b6f1a0ab773ac0b90949ba18c57ebc775b8cbc5545623a140739e374c1"
 }
