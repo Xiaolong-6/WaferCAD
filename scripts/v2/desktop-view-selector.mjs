@@ -9,6 +9,16 @@ export async function selectScientificView(page, name, width) {
     const action = name === 'section' ? 'mobile-section' : 'view:' + name;
     await page.locator('.p-nav [data-action="' + action + '"]').click();
   } else {
+    const temporaryFocus = await page.evaluate(
+      () => window.WaferCadV2Workstation.snapshot().ui.temporaryFocus,
+    );
+    if (temporaryFocus && temporaryFocus !== name) {
+      // Restore the user's preserved dock layout through the real Mask control
+      // before attempting to maximize a currently hidden scientific panel.
+      await page
+        .locator('#' + temporaryFocus + 'Panel [data-action="maximize:' + temporaryFocus + '"]')
+        .click();
+    }
     const previous = await page.evaluate(
       () => window.WaferCadV2Workstation.snapshot().ui.desktopLayout?.maximized,
     );
