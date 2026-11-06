@@ -114,9 +114,7 @@ function processArea(
     limiter = request?.maskRoi
       ? maskRoiApi.maskRoiWorldGeometry(request.maskRoi, roiTransform, 96)
       : null,
-    localRoiBounds = request?.maskRoi
-      ? maskCullingApi.maskRoiLocalBounds(request.maskRoi)
-      : null;
+    localRoiBounds = request?.maskRoi ? maskCullingApi.maskRoiLocalBounds(request.maskRoi) : null;
 
   // Reuse the exact single-cell Draw Mask within each physical array
   // instance, avoiding both redundant geometry and File Mask re-rounding.
