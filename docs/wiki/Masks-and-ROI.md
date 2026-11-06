@@ -18,6 +18,8 @@ _This illustrates actual data selection and clipping, **not a screenshot**. Revi
 
 Import GDSII (`.gds`, `.gdsii`) or OASIS (`.oas`, `.oasis`). Hierarchical **Cells** and global **Layers** are independent selections. The layout keeps its physical database units on import; alignment may change X/Y translation, scale and rotation. Zero-width linework is visible but not an operable area.
 
+Choose **Alignment** from the Mask view toolbar while **File** is selected. Drag the mask on the canvas to coarse-position it over the fixed substrate; offset fields show the updated physical coordinates. Adjust X/Y, scale, and rotation numerically if needed. **Apply** commits the mask transform for subsequent Process/Export; **Cancel**, closing the editor, or Escape discards the draft. **Reset** returns the draft to the identity transform, and still requires Apply. The left Mask inspector intentionally has no second Transform editor.
+
 ## Draw masks
 
 The Draw source keeps independently editable Rectangle, Circle, Polygon, Ring, and Ring Sector objects. A double-click completes a Polygon, and existing shapes can be dragged or edited numerically. Switching File ↔ Draw does not replace the original file layout. Draw shapes combine by union for Process selection.
