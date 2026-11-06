@@ -92,7 +92,8 @@ export function createMaskRuntime({
     fitMaskToContent: readOnly,
     getViewportMargin: (_kind, width, height) =>
       readOnly ? Math.max(8, Math.round(Math.min(width, height) * 0.08)) : 34,
-    maskPoint,
+    // Keep the camera fitted to committed geometry while an Alignment draft moves.
+    maskPoint: (point) => maskLocalToWorld(point, state.maskTransform),
     formatXY: units.format,
     xyToDisplay: units.toDisplay,
     xyFromDisplay: units.parse,
