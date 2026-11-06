@@ -5465,11 +5465,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
       reportProgress(0.08, 'Allocating morphology mesh');
       const svgOptionsNormalized = normalizeSvgExportOptions(svgOptions),
         roughBudget = SVG_TRIANGLE_BUDGETS[svgOptionsNormalized.detail],
-        roughTasks = prepareMorphologyExportTasks(
-          THREE,
-          roughCaps,
-          format === 'svg' ? { totalTriangleBudget: Math.floor(roughBudget * 0.7) } : {},
-        ),
+        roughTasks =
+          format === 'svg'
+            ? prepareMorphologyExportTasks(THREE, roughCaps, {
+                totalTriangleBudget: Math.floor(roughBudget * 0.7),
+              })
+            : prepareMorphologyExportTasks(THREE, roughCaps),
         capCount = Math.max(1, surfacePlan.caps.length),
         exportBoundaryProfiles = new Map();
       let roughMeshDataByCap = null;
@@ -5605,6 +5606,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
             mapZ: zState.mapZ,
             zScale: zState.scale,
             opacity: getInspection()?.opacity ?? 1,
+            background: `#${renderer.getClearColor(new THREE.Color()).getHexString()}`,
             signal,
             onProgress: reportProgress,
           });
