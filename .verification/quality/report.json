@@ -4,7 +4,7 @@
   "scope": "draft",
   "status": "pass",
   "source": {
-    "digest": "8fe7434a8ef6f410cc413a7fdd1be85086ac10413995c9efa6eed0871d5fd7dc",
+    "digest": "ccac9b34b8b7390db8f0203d5c4bf7947bc645e246b0db1a8393b709fa5985fb",
     "fileCount": 1302
   },
   "sourceRevision": "71ba6a2bc9f0c204b4dc828f57fb93d46e5e7918",
@@ -17,7 +17,7 @@
       "prettier": "3.9.9"
     }
   },
-  "startedAt": "2026-11-06T10:45:24.412Z",
+  "startedAt": "2026-11-06T11:04:12.895Z",
   "checks": [
     {
       "id": "lint",
@@ -29,7 +29,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 5650,
+      "durationMs": 5434,
       "logDigest": "7e083cff9d323606d09accd3389828279cc52091b6c62b45c8100c1ced589c7c"
     },
     {
@@ -42,7 +42,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 15078,
+      "durationMs": 15151,
       "logDigest": "1230617af071df8c1efeb12bcd6d41c3aa159e1cd0841cc546fbae4c8c56f867"
     },
     {
@@ -55,7 +55,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 371,
+      "durationMs": 397,
       "logDigest": "f41d9b5846a8a95a7941fcd7428a4ff7e341b07bc5f5ab28e615f71d70bb7447"
     },
     {
@@ -72,10 +72,10 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 1709,
-      "logDigest": "5e89c0f42e3ff2ce5b501776d66cd2d957622a22a0ebe2b2953e7b1811de4a83"
+      "durationMs": 1647,
+      "logDigest": "7dd00ae57e20b4981944ed0ffc4fa4de88b8f6a97dd654b30bc443188d0f8e13"
     }
   ],
-  "finishedAt": "2026-11-06T10:45:47.224Z",
-  "transcriptDigest": "db2fc3450b4bb95262d0ee8377c96264a785e64d004527f5e90556424626a721"
+  "finishedAt": "2026-11-06T11:04:35.526Z",
+  "transcriptDigest": "b80d554a6e2c49b690838dae37609dc51589d6baa9bc90e88a8bd252fc9176c0"
 }
