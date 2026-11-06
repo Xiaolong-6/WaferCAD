@@ -29,6 +29,7 @@ flowchart TD
   Preview --> Screen["Temporary preview frame"]
   Mesh --> Screen
   Exact --> GLB["Physical GLB / CPU morphology"]
+  GLB --> SVG["3D vector SVG / camera-projected CPU facets"]
   Mesh --> PNG["Exact-frame-gated WYSIWYG PNG"]
 ```
 
@@ -106,6 +107,18 @@ Main ROI limits 3D inspection and GLB clipping; Section A–B samples
 its **own** XY line and does not automatically follow the ROI perimeter.
 The Mask ROI instead constrains Process selection. Do not infer a
 process etch from a 3D crop.
+
+3D SVG uses the same canonical physical surface ownership and camera-independent
+CPU Rough/Pyramid morphology as GLB, then projects facets through the active
+3D camera into editable SVG paths. In **As viewed**, only its derived
+projection uses the 3D display Z mapping; **Physical** projects unscaled
+physical Z. This does not alter saved material, GLB metre units or interactive
+renderer meshes. The three detail tiers enforce bounded triangle budgets and
+must fail without a file when exceeded; ROI is the supported remedy. SVG is
+a static vector illustration, with camera-relative facet shading and
+back-to-front approximate visibility, **not** a depth-buffer-equivalent
+WebGL snapshot: fine overlays, borders, translucency and GPU far-field
+shader appearance can differ from PNG. Do not embed bitmap data as SVG.
 
 Where a material kernel supports physical GLB export, the output is
 derived from exact canonical material ownership and camera-independent
