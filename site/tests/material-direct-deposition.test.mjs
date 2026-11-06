@@ -659,8 +659,9 @@ test('sidewall receiving support requires a finite shared edge, not a corner tan
   assert.equal(materialGeometriesShareBoundaryEdge(receiver, physicalGap), false);
   const opening = [[v.rectMulti(8, 8)[0][0], v.rectMulti(2, 2)[0][0]]];
   assert.equal(
-    materialGeometriesShareBoundaryEdge(opening, v.rectMulti(1, 1, 1.5, 0)),
+    materialGeometriesShareBoundaryEdge(opening, v.rectMulti(0.5, 0.5)),
     false,
+    'a floating polygon inside a lithographic opening has no receiving edge',
   );
   assert.equal(
     materialGeometriesShareBoundaryEdge(opening, v.rectMulti(1, 1, 1.5, 1)),
