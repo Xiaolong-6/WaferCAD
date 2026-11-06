@@ -153,12 +153,21 @@
   const customRgbEditor = ({ key, rgb, preview }) =>
     el(
       'div',
-      { class: 'v2-legend-custom-editor', 'data-custom-key': key, role: 'group', 'aria-label': 'Custom RGB color' },
+      {
+        class: 'v2-legend-custom-editor',
+        'data-custom-key': key,
+        role: 'group',
+        'aria-label': 'Custom RGB color',
+      },
       el('strong', { class: 'v2-legend-custom-title' }, 'Custom RGB'),
       el(
         'div',
         { class: 'v2-legend-custom-preview-row' },
-        el('span', { class: 'v2-legend-custom-preview', style: `background-color:${preview}`, 'aria-hidden': 'true' }),
+        el('span', {
+          class: 'v2-legend-custom-preview',
+          style: `background-color:${preview}`,
+          'aria-hidden': 'true',
+        }),
         el('output', { class: 'v2-legend-custom-hex', 'aria-live': 'polite' }, preview),
       ),
       el(
@@ -186,8 +195,24 @@
       el(
         'div',
         { class: 'v2-legend-custom-actions' },
-        el('button', { type: 'button', class: 'v2-legend-custom-cancel', 'data-action': `legend-custom-cancel:${key}` }, 'Cancel'),
-        el('button', { type: 'button', class: 'v2-legend-custom-apply', 'data-action': `legend-custom-apply:${key}` }, 'Apply'),
+        el(
+          'button',
+          {
+            type: 'button',
+            class: 'v2-legend-custom-cancel',
+            'data-action': `legend-custom-cancel:${key}`,
+          },
+          'Cancel',
+        ),
+        el(
+          'button',
+          {
+            type: 'button',
+            class: 'v2-legend-custom-apply',
+            'data-action': `legend-custom-apply:${key}`,
+          },
+          'Apply',
+        ),
       ),
     );
 
@@ -239,7 +264,11 @@
         paletteOpen === key
           ? el(
               'div',
-              { class: 'v2-legend-palette', role: 'group', 'aria-label': `Colors for ${item.name}` },
+              {
+                class: 'v2-legend-palette',
+                role: 'group',
+                'aria-label': `Colors for ${item.name}`,
+              },
               ...palette.map((option) =>
                 el(
                   'button',
@@ -250,7 +279,7 @@
                     'data-color': option,
                     'aria-label': option,
                     'data-help': 'section.color.option',
-                   },
+                  },
                   el('span', { class: 'v2-legend-swatch', style: `background-color:${option}` }),
                 ),
               ),
