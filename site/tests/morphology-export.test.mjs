@@ -206,3 +206,42 @@ test('morphology export rejects geometry whose base mesh exceeds the hard cap', 
     /triangle hard cap/i,
   );
 });
+
+test('morphology GLB local-origin export preserves 1 nm XY detail at large coordinates', () => {
+  const x = 50000, y = -50000, z = 1, delta = 0.001;
+  const a = [x, y, z], b = [x + delta, y, z], c = [x, y + delta, z];
+  const input = {
+    z,
+    normal: 1,
+    profileNormal: 1,
+    exportOrigin: [x, y, z],
+    closeToIdeal: false,
+    appearance: {
+      kind: 'rough',
+      morphology: 'pyramid',
+      featureSize: 0.002,
+      meanHeight: 0.0005,
+      etchDepth: 0.0005,
+      polarity: 'normal',
+      featureCv: 0,
+      heightCv: 0,
+      seed: 24,
+    },
+    lodZones: [{
+      baseTriangles: [[a, b, c]],
+      maxEdge: delta * Math.SQRT2,
+      lodContext: { distance: 1, viewportWidth: 16, viewportHeight: 16, maxDepth: 0 },
+      triangleBudget: 1,
+    }],
+  };
+  const first = roughMeshDataFromPreparedCap(input);
+  const second = roughMeshDataFromPreparedCap(input);
+  assert.deepEqual(first.positions, second.positions);
+  assert.equal(first.positions.length, 9);
+  const xs = [first.positions[0], first.positions[3], first.positions[6]];
+  assert.ok(Math.max(...xs) - Math.min(...xs) > 0.00099);
+  assert.ok(Math.abs(x + first.positions[3] - b[0]) < 1e-9);
+  assert.ok(Math.abs(y + first.positions[7] - c[1]) < 1e-9);
+  // Without rebasing, Float32 at 50 mm cannot resolve a 1 nm shift.
+  assert.equal(Math.fround(a[0]), Math.fround(b[0]));
+});
