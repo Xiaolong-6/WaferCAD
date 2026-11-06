@@ -98,10 +98,7 @@ export function drawShapeMayIntersectRoi(shape, roiBounds) {
     const [x, y] = shape.c.map(Number);
     if (!Number.isFinite(x) || !Number.isFinite(y)) return true;
     const r = Math.abs(radius);
-    return overlap(
-      { minX: x - r, minY: y - r, maxX: x + r, maxY: y + r },
-      roiBounds,
-    );
+    return overlap({ minX: x - r, minY: y - r, maxX: x + r, maxY: y + r }, roiBounds);
   }
   return true;
 }
