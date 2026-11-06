@@ -1,6 +1,7 @@
 name: Daily integrated regression (one schedule)
 
-# Exactly one daily full regression. PR updates never trigger this workflow.
+# One daily controller; only rerun full suites when main is new or the prior full verdict is unverified.
+# PR updates never trigger this workflow.
 on:
   schedule:
     - cron: '30 2 * * *'
@@ -14,13 +15,87 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  plan:
+    name: Schedule only changed or unverified main
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      full: ${{ steps.decide.outputs.full }}
+    steps:
+      - name: Check last scheduled SHA and exact full verdict
+        id: decide
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const full = (reason) => {
+              core.info('Run full daily CI: ' + reason);
+              core.setOutput('full', 'true');
+            };
+            if (context.eventName !== 'schedule') {
+              full('manual dispatch always runs');
+              return;
+            }
+            try {
+              const { owner, repo } = context.repo;
+              const response = await github.rest.actions.listWorkflowRuns({
+                owner, repo, workflow_id: 'daily-full.yml',
+                branch: 'main', event: 'schedule', per_page: 30,
+              });
+              const history = response.data.workflow_runs.filter(
+                (run) => run.id !== context.runId && run.status === 'completed',
+              );
+              const latest = history[0];
+              if (!latest || latest.head_sha !== context.sha || latest.conclusion !== 'success') {
+                full('main changed, last scheduled run failed, or no previous completed run');
+                return;
+              }
+              let previouslyVerified = false;
+              // Skipped successful controllers may follow a real full pass.
+              // Walk only contiguous successful runs on this exact SHA; never
+              // trust the status of a skipped controller as test evidence.
+              for (const run of history) {
+                if (run.head_sha !== context.sha || run.conclusion !== 'success') break;
+                const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, {
+                  owner, repo, run_id: run.id, per_page: 100,
+                });
+                const passed = (name) => jobs.some(
+                  (job) => job.name === name && job.conclusion === 'success',
+                );
+                if (passed('Full lint, format, docs and all Node tests / quality') &&
+                    passed('Daily full regression verdict')) {
+                  previouslyVerified = true;
+                  core.info('Reuse complete daily evidence from run ' + run.id + ' for ' + context.sha);
+                  break;
+                }
+              }
+              if (!previouslyVerified) {
+                full('no proven full daily run found within the last 30 scheduled runs');
+                return;
+              }
+              core.setOutput('full', 'false');
+              await core.summary.addHeading('Unchanged main — daily full CI omitted')
+                .addRaw('Exact SHA: ' + context.sha + '. Last scheduled controller succeeded; an earlier full daily run on this SHA passed both full Quality and the fail-closed daily verdict.')
+                .write();
+            } catch (error) {
+              // API failures must never silently skip mandatory scientific suites.
+              core.warning('Unable to verify prior full daily CI: ' + error.message);
+              full('GitHub Actions history unavailable');
+            }
+
   quality:
+    needs: plan
+    if: ${{ needs.plan.outputs.full == 'true' }}
     name: Full lint, format, docs and all Node tests
     uses: ./.github/workflows/quality.yml
     permissions:
       contents: read
 
   browser:
+    needs: plan
+    if: ${{ needs.plan.outputs.full == 'true' }}
     name: Full Chromium regression matrix
     uses: ./.github/workflows/browser-regression.yml
     with:
@@ -31,18 +106,24 @@ jobs:
       actions: read
 
   main-mask:
+    needs: plan
+    if: ${{ needs.plan.outputs.full == 'true' }}
     name: Real Main/Mask/Section browser acceptance
     uses: ./.github/workflows/ui-v2-main-mask.yml
     permissions:
       contents: read
 
   stage-c:
+    needs: plan
+    if: ${{ needs.plan.outputs.full == 'true' }}
     name: Workstation and M4 project acceptance
     uses: ./.github/workflows/ui-v2-stage-c-m4.yml
     permissions:
       contents: read
 
   recipe:
+    needs: plan
+    if: ${{ needs.plan.outputs.full == 'true' }}
     name: Process Recipe and transactional safety
     uses: ./.github/workflows/process-recipe-safety.yml
     with:
@@ -51,30 +132,40 @@ jobs:
       contents: read
 
   history-recovery:
+    needs: plan
+    if: ${{ needs.plan.outputs.full == 'true' }}
     name: Real Origin History and Recovery transactions
     uses: ./.github/workflows/v2-history-recovery-lease.yml
     permissions:
       contents: read
 
   physical-science:
+    needs: plan
+    if: ${{ needs.plan.outputs.full == 'true' }}
     name: Physical facet scientific invariants
     uses: ./.github/workflows/physical-facet-science.yml
     permissions:
       contents: read
 
   example-replay:
+    needs: plan
+    if: ${{ needs.plan.outputs.full == 'true' }}
     name: Example recipe and scientific geometry replay
     uses: ./.github/workflows/example-recipe-reconstruction.yml
     permissions:
       contents: read
 
   renderer-isolation:
+    needs: plan
+    if: ${{ needs.plan.outputs.full == 'true' }}
     name: Full array renderer isolation
     uses: ./.github/workflows/v2-array-renderer-isolation.yml
     permissions:
       contents: read
 
   worker-fault:
+    needs: plan
+    if: ${{ needs.plan.outputs.full == 'true' }}
     name: Process Worker fault parity
     uses: ./.github/workflows/v2-worker-fault-parity.yml
     permissions:
@@ -83,7 +174,7 @@ jobs:
   verdict:
     name: Daily full regression verdict
     if: ${{ always() }}
-    needs: [quality, browser, main-mask, stage-c, recipe, history-recovery, physical-science, example-replay, renderer-isolation, worker-fault]
+    needs: [plan, quality, browser, main-mask, stage-c, recipe, history-recovery, physical-science, example-replay, renderer-isolation, worker-fault]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -112,12 +203,23 @@ jobs:
       - name: Fail on any missing, skipped or failed mandatory group
         env:
           RESULTS: ${{ toJSON(needs) }}
+          FULL: ${{ needs.plan.outputs.full }}
         shell: bash
         run: |
           node - <<'NODE'
           const group = JSON.parse(process.env.RESULTS);
+          if (group.plan?.result !== 'success' ||
+              !['true', 'false'].includes(process.env.FULL)) {
+            console.error('Missing or failed daily SHA plan');
+            process.exitCode = 1;
+          }
           for (const [name, job] of Object.entries(group)) {
+            if (name === 'plan') continue;
             console.log(`${name}: ${job.result}`);
-            if (job.result !== 'success') process.exitCode = 1;
+            if (process.env.FULL === 'true') {
+              if (job.result !== 'success') process.exitCode = 1;
+            } else if (process.env.FULL === 'false') {
+              if (job.result !== 'skipped') process.exitCode = 1;
+            }
           }
           NODE
