@@ -33,7 +33,7 @@ export function rgbToHsv(rgb) {
     if (maximum === red) hue = ((green - blue) / delta) % 6;
     else if (maximum === green) hue = (blue - red) / delta + 2;
     else hue = (red - green) / delta + 4;
-    hue = ((hue * 60) % 360 + 360) % 360;
+    hue = (((hue * 60) % 360) + 360) % 360;
   }
   return [hue, maximum ? delta / maximum : 0, maximum];
 }
@@ -132,7 +132,10 @@ export function bindLegendColorPicker(picker, { onChange }) {
   });
   bindPointer(brightness, (event) => {
     const rect = brightness.getBoundingClientRect();
-    state.setHsv(...state.hsv.slice(0, 2), 1 - clamp((event.clientY - rect.top) / rect.height, 0, 1));
+    state.setHsv(
+      ...state.hsv.slice(0, 2),
+      1 - clamp((event.clientY - rect.top) / rect.height, 0, 1),
+    );
     sync();
   });
   field.addEventListener('keydown', (event) => {
@@ -150,8 +153,7 @@ export function bindLegendColorPicker(picker, { onChange }) {
     const [h, s, v] = state.hsv;
     const step = event.shiftKey ? 0.1 : 0.01;
     if (event.key === 'ArrowUp' || event.key === 'ArrowRight') state.setHsv(h, s, v + step);
-    else if (event.key === 'ArrowDown' || event.key === 'ArrowLeft')
-      state.setHsv(h, s, v - step);
+    else if (event.key === 'ArrowDown' || event.key === 'ArrowLeft') state.setHsv(h, s, v - step);
     else if (event.key === 'Home') state.setHsv(h, s, 0);
     else if (event.key === 'End') state.setHsv(h, s, 1);
     else return;
