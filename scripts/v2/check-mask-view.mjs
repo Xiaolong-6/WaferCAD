@@ -311,7 +311,11 @@ try {
       );
       assert.deepEqual((await snapshot()).drawMask, beforeSource);
       const alignmentButton = page.locator('[data-action="mask-alignment-settings"]');
-      assert.equal(await alignmentButton.isDisabled(), true, 'Draw mode cannot edit File alignment');
+      assert.equal(
+        await alignmentButton.isDisabled(),
+        true,
+        'Draw mode cannot edit File alignment',
+      );
       if (!(await sourceButton.isVisible()))
         await page.getByRole('button', { name: 'Mask more tools' }).click();
       await sourceButton.click();
