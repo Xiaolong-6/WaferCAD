@@ -4,10 +4,10 @@
   "scope": "full",
   "status": "pass",
   "source": {
-    "digest": "fdb49aa96e43e2b57b6a9ec2fd828919ec03ead0ea6ab8c144a39b92109871ab",
+    "digest": "f1d9489558ec5d99f9cc1998f6718720459f6aee69db7a32ab2df20ed12a3fd7",
     "fileCount": 1302
   },
-  "sourceRevision": "9b666a2a2478af6b2104ea1d4f4eaca957689345",
+  "sourceRevision": "226f4d5802c19602d10baa1435b9fa1d07172bd8",
   "planDigest": "9e40e14c41649069d23911dc155328f17e554f0307619aef8493378a2f26b4b3",
   "environment": {
     "node": "v24.22.1",
@@ -18,7 +18,7 @@
       "three": "0.179.1"
     }
   },
-  "startedAt": "2026-11-06T11:39:50.483Z",
+  "startedAt": "2026-11-06T11:49:35.819Z",
   "checks": [
     {
       "id": "lint",
@@ -30,7 +30,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 16466,
+      "durationMs": 15327,
       "logDigest": "d46391803643bd553cf3c7de1bbada8ee5dd156a742fdb8a9656b12d4c141ba7"
     },
     {
@@ -43,7 +43,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 46261,
+      "durationMs": 65962,
       "logDigest": "7af202ff04a2f06f11b43384352ea678f21e2248c50db67cb4d00c4a92fa69a7"
     },
     {
@@ -56,7 +56,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 1563,
+      "durationMs": 926,
       "logDigest": "1e627212c7b5262641740228701bae70509a7801fc55cd31b12a1e2105ac058d"
     },
     {
@@ -68,10 +68,10 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 483734,
-      "logDigest": "94f3d936d84a1613707f3c5f93ce4110890b64e407715671dc1b156b84ef2e39"
+      "durationMs": 331280,
+      "logDigest": "81b4764b26acfa7e0d065c992e33df02469bb49ff5eae091b324ee5a040f2569"
     }
   ],
-  "finishedAt": "2026-11-06T11:48:58.536Z",
-  "transcriptDigest": "4db225fe5c8c1ff20036c5a5026d9a55aaa40f10563815e2e02106a40643b77d"
+  "finishedAt": "2026-11-06T11:56:29.323Z",
+  "transcriptDigest": "efaeead2ad5605518d48b1b3658608d671b685c64ab198242f0bfe553e867336"
 }

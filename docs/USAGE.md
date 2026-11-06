@@ -47,8 +47,10 @@ Use the **Mask source** control in the current Workstation Mask header to choose
 
 - imported vector layout above the neutral dashed active-face structure reference;
 - global layer/datatype selection and hierarchy browsing;
-- X/Y/scale/rotation alignment;
+- **Alignment** in the Mask view toolbar: drag the File mask to move it in X/Y while the substrate stays fixed, refine X/Y/scale/rotation in the floating editor, then **Apply** to commit or **Cancel** to discard. **Reset** restores the identity transform in the draft only;
 - Mask Opacity for visual alignment.
+
+Alignment is available in File mode only. Draw shapes remain in their physical coordinates. The left Mask inspector contains Cell and Layers browsing, not a duplicate transform editor. Pointer previews do not modify the source GDS/OAS, physical Process model, or persistent alignment until Apply.
 
 **Draw** mode keeps the imported file untouched and exposes a project-local temporary-mask toolbar directly over the Mask canvas:
 
