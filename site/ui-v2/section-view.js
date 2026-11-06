@@ -14,6 +14,7 @@ import { bindPlanGestures } from './view-kit/plan-gestures.js';
 import { createDisplayUnits, syncDisplayUnitFields } from './view-kit/display-units.js';
 import { mountToolPopover } from './view-kit/tool-popover.js';
 import { STRUCTURE_PALETTES } from '../controllers/layer-legend-controller.js';
+import { hexToRgb, rgbToHex } from './legend-rgb.js';
 import {
   setLayerVisible,
   setImplantVisible,
@@ -121,6 +122,7 @@ export function createSectionView({ store, main, workstation }) {
   let legendOpen = !preview && state.sectionLayersVisible !== false,
     legendPalette = 'balanced',
     paletteOpen = null,
+    customColorDraft = null,
     legend;
   if (preview) {
     body.dataset.legendOpen = 'false';
@@ -342,6 +344,30 @@ export function createSectionView({ store, main, workstation }) {
     panel.querySelector('[data-slot="view.section.readout"]').textContent =
       hooks.get('sectionMeta').textContent;
   }
+  function closeLegendPalette() {
+    paletteOpen = null;
+    customColorDraft = null;
+  }
+  function recolorLegendEntity(kind, id, color) {
+    const layer = kind === 'layer' && state.model.layers.find((item) => String(item.id) === id);
+    const implant = kind === 'annotation' && state.model.implants?.find((item) => String(item.id) === id);
+    const electrical =
+      kind === 'annotation' &&
+      state.model.electricalRegions?.find((item) => String(item.id) === id);
+    const item = layer || implant || electrical;
+    const recolor = layer
+      ? recolorLayer
+      : implant
+        ? recolorImplant
+        : electrical
+          ? recolorElectricalRegion
+          : null;
+    if (!item || !recolor(state.model, item.id, color)) return false;
+    closeLegendPalette();
+    renderLegend();
+    store.renderAll();
+    return true;
+  }
   function renderLegend() {
     if (preview) return;
     // A rebuilt or hidden layer cannot remain the focus of an unrelated model.
@@ -365,7 +391,31 @@ export function createSectionView({ store, main, workstation }) {
       open: legendDisplayed(),
       paletteName: legendPalette,
       paletteOpen,
+      customColor: customColorDraft,
     });
+    const customEditor = next.querySelector('.v2-legend-custom-editor');
+    if (customEditor) {
+      const inputs = [...customEditor.querySelectorAll('[data-rgb-channel]')];
+      const apply = customEditor.querySelector('.v2-legend-custom-apply');
+      const previewSwatch = customEditor.querySelector('.v2-legend-custom-preview');
+      const previewHex = customEditor.querySelector('.v2-legend-custom-hex');
+      const updateDraft = () => {
+        if (customColorDraft?.key !== customEditor.dataset.customKey) return;
+        const rgb = inputs.map((input) => input.value);
+        const hex = rgbToHex(rgb);
+        customColorDraft.rgb = rgb;
+        apply.disabled = !hex;
+        inputs.forEach((input) =>
+          input.setAttribute('aria-invalid', String(!rgbToHex([input.value, 0, 0]))),
+        );
+        if (hex) {
+          customColorDraft.preview = hex;
+          previewSwatch.style.backgroundColor = hex;
+          previewHex.textContent = hex;
+        }
+      };
+      inputs.forEach((input) => input.addEventListener('input', updateDraft));
+    }
     next.querySelector('.v2-legend-palette-select').onchange = (event) => {
       legendPalette = event.target.value;
       const colors =
@@ -377,7 +427,7 @@ export function createSectionView({ store, main, workstation }) {
       state.model.layers.forEach((layer, index) =>
         recolorLayer(state.model, layer.id, colors[index % colors.length]),
       );
-      paletteOpen = null;
+      closeLegendPalette();
       store.renderAll();
     };
     next.querySelectorAll('[data-layer-id], [data-annotation-id]').forEach((row) => {
@@ -491,14 +541,15 @@ export function createSectionView({ store, main, workstation }) {
   });
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && paletteOpen) {
-      paletteOpen = null;
+      if (customColorDraft) customColorDraft = null;
+      else closeLegendPalette();
       renderLegend();
     }
   });
   document.addEventListener('click', (event) => {
     if (preview) return;
     if (paletteOpen && !event.target.closest('.v2-legend-palette-anchor')) {
-      paletteOpen = null;
+      closeLegendPalette();
       renderLegend();
     }
     const trigger = event.target.closest('[data-action]');
@@ -557,28 +608,41 @@ export function createSectionView({ store, main, workstation }) {
       workstation.overlays.close('popover');
     } else if (action.startsWith('legend-palette:')) {
       const key = action.slice('legend-palette:'.length);
-      paletteOpen = paletteOpen === key ? null : key;
+      const wasOpen = paletteOpen === key;
+      closeLegendPalette();
+      paletteOpen = wasOpen ? null : key;
       renderLegend();
+    } else if (action.startsWith('legend-custom:')) {
+      const key = action.slice('legend-custom:'.length);
+      const [kind, id] = key.split(':');
+      const item =
+        kind === 'layer'
+          ? state.model.layers.find((entry) => String(entry.id) === id)
+          : (state.model.implants || []).find((entry) => String(entry.id) === id) ||
+            (state.model.electricalRegions || []).find((entry) => String(entry.id) === id);
+      if (item) {
+        const rgb = hexToRgb(item.color) || [128, 128, 128];
+        customColorDraft = { key, rgb, preview: rgbToHex(rgb) };
+        paletteOpen = key;
+        renderLegend();
+        legend.querySelector('.v2-legend-custom-field input')?.focus();
+      }
+    } else if (action.startsWith('legend-custom-cancel:')) {
+      customColorDraft = null;
+      renderLegend();
+    } else if (action.startsWith('legend-custom-apply:')) {
+      const key = action.slice('legend-custom-apply:'.length);
+      if (customColorDraft?.key === key) {
+        const [kind, id] = key.split(':');
+        const color = rgbToHex(customColorDraft.rgb);
+        if (color) recolorLegendEntity(kind, id, color);
+      }
     } else if (action.startsWith('legend-set:') || action.startsWith('legend-random:')) {
       const [, kind, id] = action.split(':');
       const color =
-        trigger.dataset.color || window.WaferCadV2LegendPalette[Math.floor(Math.random() * 20)];
-      const item =
-        state.model.layers.find((item) => String(item.id) === id) ||
-        state.model.implants?.find((item) => String(item.id) === id) ||
-        state.model.electricalRegions?.find((item) => String(item.id) === id);
-      if (item) {
-        const fn =
-          kind === 'layer'
-            ? recolorLayer
-            : state.model.implants?.includes(item)
-              ? recolorImplant
-              : recolorElectricalRegion;
-        fn(state.model, item.id, color);
-        paletteOpen = null;
-        renderLegend();
-        store.renderAll();
-      }
+        trigger.dataset.color ||
+        window.WaferCadV2LegendPalette[Math.floor(Math.random() * 20)];
+      recolorLegendEntity(kind, id, color);
     }
   });
   new ResizeObserver(render).observe(canvas);
@@ -590,7 +654,7 @@ export function createSectionView({ store, main, workstation }) {
     detail,
     collapse,
     resetTransient() {
-      paletteOpen = null;
+      closeLegendPalette();
       local.selectedEntity = null;
       store.views.get('three')?.runtime.highlightLayer?.(null);
       workstation.overlays.closeFloatings();
