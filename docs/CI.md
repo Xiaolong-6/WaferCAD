@@ -27,6 +27,21 @@ Recovery contracts. The only daily cron is `30 2 * * *`: Finland local time
 04:30 winter (UTC+2), 05:30 summer (UTC+3). Legacy archived research and
 large paper-specific one-offs remain explicitly manual, not duplicated daily.
 
+**Unchanged-main nightly reuse (2026-11-06):** The single scheduled
+`daily-full.yml` controller first checks the most recent *completed*
+scheduled run on `main`. It runs every full group if main's SHA changed,
+the latest run failed/cancelled, the API is unavailable or no previous
+successful full run on that exact SHA can be proven. Otherwise it skips
+the expensive suites, records why, and still runs the fail-closed
+daily verdict, which requires every unselected group to be `skipped`.
+Verification requires a real successful Full Quality job and successful
+daily aggregate verdict in an uninterrupted chain of completed successful
+scheduled runs on the same SHA (last 30 runs). A successful *skipped*
+nightly run is never itself scientific test evidence. Manual dispatch
+always executes the full inventory, even on an unchanged SHA.
+The existing 02:30 UTC cadence, release checks, Ready gates and
+75-minute accounting warning remain unchanged.
+
 **Source identity:** A midnight pass at commit `abc123` says nothing about a
 new Kernel commit `def456`. The Ready planner routes changed paths using the
 base/head diff; a fixed `Ready impact verdict` fails if a selected owner gate
