@@ -300,11 +300,9 @@ function segmentsSharePositiveEdge(a, b, c, d, tolerance) {
   const dx = b[0] - a[0];
   const dy = b[1] - a[1];
   const length = Math.hypot(dx, dy);
-  if (length <= tolerance || Math.hypot(d[0] - c[0], d[1] - c[1]) <= tolerance)
-    return false;
+  if (length <= tolerance || Math.hypot(d[0] - c[0], d[1] - c[1]) <= tolerance) return false;
   const perpendicular = (p) => Math.abs(dx * (p[1] - a[1]) - dy * (p[0] - a[0]));
-  if (perpendicular(c) > tolerance * length || perpendicular(d) > tolerance * length)
-    return false;
+  if (perpendicular(c) > tolerance * length || perpendicular(d) > tolerance * length) return false;
   const along = (p) => ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / length;
   const lo = Math.min(along(c), along(d));
   const hi = Math.max(along(c), along(d));
