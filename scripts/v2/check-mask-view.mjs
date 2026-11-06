@@ -311,14 +311,26 @@ try {
       );
       assert.deepEqual((await snapshot()).drawMask, beforeSource);
       const alignmentButton = page.locator('[data-action="mask-alignment-settings"]');
+      assert.equal(
+        await alignmentButton.isDisabled(),
+        true,
+        'Draw mode cannot edit File alignment',
+      );
+      if (!(await sourceButton.isVisible()))
+        await page.getByRole('button', { name: 'Mask more tools' }).click();
+      await sourceButton.click();
       if (!(await alignmentButton.isVisible()))
         await page.getByRole('button', { name: 'Mask more tools' }).click();
       await alignmentButton.click();
       await page.locator('#maskOffsetX').fill('0.0001');
       await page.locator('[data-action="alignment-apply"]').click();
       assert.equal((await snapshot()).maskTransform.x, 0.0001);
+      assert.equal(await page.locator('#maskAlignmentSettings').count(), 0);
       assert.deepEqual((await snapshot()).drawMask, beforeSource);
-      await page.getByRole('button', { name: 'Close Mask alignment', exact: true }).click();
+      if (!(await sourceButton.isVisible()))
+        await page.getByRole('button', { name: 'Mask more tools' }).click();
+      await sourceButton.click();
+      assert.equal((await snapshot()).sourceMode, 'draw');
       const exportButton = page.locator('[data-action="mask-export-menu"]');
       if (!(await exportButton.isVisible()))
         await page.getByRole('button', { name: 'Mask more tools' }).click();

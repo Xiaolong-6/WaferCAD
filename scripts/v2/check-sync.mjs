@@ -523,9 +523,23 @@ try {
         );
         assert.deepEqual((await snap()).model, beforeBase.model);
         const maskBefore = await snap();
-        await page.getByText('Transform', { exact: true }).click();
-        await page.locator('#v2-maskOffsetX').fill('0.125');
-        await page.locator('#v2-maskOffsetX').press('Tab');
+        assert.equal(
+          await page
+            .locator('[data-slot="panel.mask"] summary')
+            .filter({ hasText: 'Transform' })
+            .count(),
+          0,
+          'The duplicate left-side Transform editor is removed',
+        );
+        await view('mask');
+        await page.locator('[data-action="mask-alignment-settings"]').click();
+        await page.locator('#maskOffsetX').fill('0.125');
+        assert.deepEqual(
+          (await snap()).maskTransform,
+          maskBefore.maskTransform,
+          'Unapplied alignment stays out of canonical state',
+        );
+        await page.locator('[data-action="alignment-apply"]').click();
         assert.equal((await snap()).maskTransform.x, 0.125);
         assert.deepEqual((await snap()).roi, maskBefore.roi);
         await panel('history');

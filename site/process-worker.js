@@ -17,6 +17,7 @@ function modules() {
       import(versioned('./vector-geometry.js')),
       import(versioned('./draw-mask-geometry.js')),
       import(versioned('./mask-roi-geometry.js')),
+      import(versioned('./mask-roi-culling.js')),
       import(versioned('./advanced-process-operations.js')),
       import(versioned('./project-schema.js')),
       import(versioned('./model-array-process.js')),
@@ -30,6 +31,7 @@ function modules() {
         vectorApi,
         drawApi,
         maskRoiApi,
+        maskCullingApi,
         advancedApi,
         projectSchema,
         arrayProcess,
@@ -42,6 +44,7 @@ function modules() {
         vectorApi,
         drawApi,
         maskRoiApi,
+        maskCullingApi,
         advancedApi,
         projectSchema,
         arrayProcess,
@@ -94,6 +97,7 @@ function processArea(
   vectorApi,
   drawApi,
   maskRoiApi,
+  maskCullingApi,
   arrayApi,
   maskIndexApi,
 ) {
@@ -109,7 +113,8 @@ function processArea(
         : request?.maskTransform,
     limiter = request?.maskRoi
       ? maskRoiApi.maskRoiWorldGeometry(request.maskRoi, roiTransform, 96)
-      : null;
+      : null,
+    localRoiBounds = request?.maskRoi ? maskCullingApi.maskRoiLocalBounds(request.maskRoi) : null;
 
   // Reuse the exact single-cell Draw Mask within each physical array
   // instance, avoiding both redundant geometry and File Mask re-rounding.
@@ -154,13 +159,39 @@ function processArea(
   if (mode === 'full') {
     area = modelApi.fullFaceGeometry(model);
   } else {
-    const selected =
-      request?.maskSourceMode === 'draw'
-        ? drawApi.drawMaskGeometry(request.drawMask)
-        : fileMaskGeometry(request?.elements, request?.maskTransform, vectorApi);
-    if (vectorApi.isEmpty(selected)) return [];
-    const clipped = vectorApi.intersection(selected, model.boundary);
-    area = mode === 'invert' ? vectorApi.difference(model.boundary, clipped) : clipped;
+    // Cull source shapes before buffering or globally unioning them. The ROI
+    // is defined in the same mask-local frame as File elements; the shared
+    // alignment transform is applied only to retained elements.
+    const draw = request?.maskSourceMode === 'draw';
+    const all = draw ? request?.drawMask?.shapes || [] : request?.elements || [];
+    const scale = Number(request?.maskTransform?.scale) || 1;
+    const hasMaskArea =
+      request?.maskHasArea ??
+      (draw
+        ? all.some((shape) => Boolean(drawApi.normalizeDrawShape(shape)))
+        : all.some((element) => maskCullingApi.maskElementMayDefineArea(element, scale)));
+    if (!hasMaskArea) return [];
+    const nearby = localRoiBounds
+      ? all.filter((shape) =>
+          draw
+            ? maskCullingApi.drawShapeMayIntersectRoi(shape, localRoiBounds)
+            : maskCullingApi.maskElementMayIntersectRoi(shape, localRoiBounds, scale),
+        )
+      : all;
+    const selected = nearby.length
+      ? draw
+        ? drawApi.drawMaskGeometry({ ...request.drawMask, shapes: nearby })
+        : fileMaskGeometry(nearby, request?.maskTransform, vectorApi)
+      : [];
+    if (vectorApi.isEmpty(selected)) {
+      // Invert an existing but out-of-ROI Mask against the ROI domain.
+      // An actually empty source Mask still rejects both mask and invert.
+      if (mode !== 'invert' || !localRoiBounds) return [];
+      area = modelApi.fullFaceGeometry(model);
+    } else {
+      const clipped = vectorApi.intersection(selected, model.boundary);
+      area = mode === 'invert' ? vectorApi.difference(model.boundary, clipped) : clipped;
+    }
   }
   return limiter ? vectorApi.intersection(area, limiter) : area;
 }
@@ -176,6 +207,7 @@ self.onmessage = async (event) => {
       vectorApi,
       drawApi,
       maskRoiApi,
+      maskCullingApi,
       advancedApi,
       projectSchema,
       arrayProcess,
@@ -191,6 +223,7 @@ self.onmessage = async (event) => {
       vectorApi,
       drawApi,
       maskRoiApi,
+      maskCullingApi,
       arrayApi,
       maskIndexApi,
     );

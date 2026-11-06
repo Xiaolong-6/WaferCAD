@@ -602,8 +602,17 @@ export function createPlanRenderers({
     ctx.restore();
   }
 
+  const fileAlignmentPreviewCache = new WeakMap();
   function renderMask() {
-    const { model, activeFace, maskSourceMode, layout, maskOpacity, readOnlyPreview } = getState();
+    const {
+      model,
+      activeFace,
+      maskSourceMode,
+      layout,
+      maskOpacity,
+      readOnlyPreview,
+      alignmentDraft,
+    } = getState();
     const c = $('maskCanvas'),
       { ctx, w, h } = setupCanvas(c),
       v = viewport(w, h, 'mask'),
@@ -645,27 +654,93 @@ export function createPlanRenderers({
     if (maskSourceMode === 'draw') {
       getDrawMaskController()?.render(ctx, v, maskOpacity);
     } else {
-      ctx.save();
-      ctx.globalAlpha = presentation ? 1 : maskOpacity;
-      if (presentation) {
-        // Keep the physical File Mask unchanged. Presentation is an opt-in,
-        // display-only overlay with per-layer ordering and visual semantics.
-        const grouped = maskElementsByLayer(layout);
-        for (const style of presentation.layers) {
-          for (const element of grouped.get(`${style.layer}|${style.datatype}`) || []) {
-            if (selectedElement(element)) tracePresentedMask(ctx, element, v, style);
+      const drawFileGeometry = (target, view) => {
+        target.save();
+        target.globalAlpha = presentation ? 1 : maskOpacity;
+        if (presentation) {
+          // File source and presentation are unchanged; only the preview image moves.
+          const grouped = maskElementsByLayer(layout);
+          for (const style of presentation.layers) {
+            for (const element of grouped.get(`${style.layer}|${style.datatype}`) || []) {
+              if (selectedElement(element)) tracePresentedMask(target, element, view, style);
+            }
           }
-        }
-        if (presentation.showUnselected) {
-          for (const element of layout.elements || []) {
-            if (!selectedElement(element)) traceElement(ctx, element, v, false);
+          if (presentation.showUnselected) {
+            for (const element of layout.elements || []) {
+              if (!selectedElement(element)) traceElement(target, element, view, false);
+            }
           }
+        } else {
+          for (const e of layout.linework || []) traceElement(target, e, view, false);
+          for (const e of layout.elements || []) traceElement(target, e, view, selectedElement(e));
         }
+        target.restore();
+      };
+      if (!alignmentDraft) {
+        fileAlignmentPreviewCache.delete(c);
+        drawFileGeometry(ctx, v);
       } else {
-        for (const e of layout.linework || []) traceElement(ctx, e, v, false);
-        for (const e of layout.elements || []) traceElement(ctx, e, v, selectedElement(e));
+        // Rasterize the File overlay once, then move the image at pointer speed.
+        // Only a preview is rasterized; Apply and exports always use vector geometry.
+        const padX = Math.ceil(w * 0.5);
+        const padY = Math.ceil(h * 0.5);
+        const cacheWidth = Math.ceil(w + padX * 2);
+        const cacheHeight = Math.ceil(h + padY * 2);
+        const layerScope = [...(getState().selectedLayerKeys || [])].join('|');
+        const hoverKey = getState().hoveredLayerKey;
+        let cache = fileAlignmentPreviewCache.get(c);
+        const shiftedX = cache ? (alignmentDraft.x - cache.transform.x) * v.s : 0;
+        const shiftedY = cache ? -(alignmentDraft.y - cache.transform.y) * v.s : 0;
+        const reusable =
+          cache &&
+          cache.layout === layout &&
+          cache.presentation === presentation &&
+          cache.opacity === maskOpacity &&
+          cache.scope === layerScope &&
+          cache.hoverKey === hoverKey &&
+          cache.width === cacheWidth &&
+          cache.height === cacheHeight &&
+          cache.view.s === v.s &&
+          cache.view.cx === v.cx &&
+          cache.view.cy === v.cy &&
+          cache.transform.scale === alignmentDraft.scale &&
+          cache.transform.rotation === alignmentDraft.rotation &&
+          Math.abs(shiftedX) <= padX &&
+          Math.abs(shiftedY) <= padY;
+        if (cacheWidth * cacheHeight <= 4_000_000) {
+          if (!reusable) {
+            const image = document.createElement('canvas');
+            image.width = cacheWidth;
+            image.height = cacheHeight;
+            drawFileGeometry(image.getContext('2d'), {
+              ...v,
+              cx: v.cx + padX,
+              cy: v.cy + padY,
+            });
+            cache = {
+              image,
+              layout,
+              presentation,
+              opacity: maskOpacity,
+              scope: layerScope,
+              hoverKey,
+              width: cacheWidth,
+              height: cacheHeight,
+              view: { ...v },
+              transform: { ...alignmentDraft },
+            };
+            fileAlignmentPreviewCache.set(c, cache);
+          }
+          ctx.drawImage(
+            cache.image,
+            -padX + (alignmentDraft.x - cache.transform.x) * v.s,
+            -padY - (alignmentDraft.y - cache.transform.y) * v.s,
+          );
+        } else {
+          // Bound memory on maximized/HiDPI viewports.
+          drawFileGeometry(ctx, v);
+        }
       }
-      ctx.restore();
     }
 
     if (!readOnlyPreview) getMaskRoiController()?.render(ctx, v);

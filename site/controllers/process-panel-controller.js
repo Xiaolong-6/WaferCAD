@@ -1,4 +1,11 @@
 import { selectedMaskInstanceIndex } from '../mask-instance-index.js';
+import { normalizeDrawShape } from '../draw-mask-geometry.js';
+import {
+  drawShapeMayIntersectRoi,
+  maskElementMayDefineArea,
+  maskElementMayIntersectRoi,
+  maskRoiLocalBounds,
+} from '../mask-roi-culling.js';
 import { isArrayModel, referencedModelParts } from '../model-array.js';
 import { baseCoverageState, exposedLayerIds, hasMaterial, layerById } from '../model.js';
 import { validateProcessModel } from '../project-schema.js';
@@ -706,11 +713,22 @@ export function createProcessPanelController({
           : null;
 
     if (maskSourceMode === 'draw') {
+      const source = state.drawMask || { nextShapeId: 1, shapes: [] };
+      const bounds = maskRoi ? maskRoiLocalBounds(maskRoi) : null;
+      // Replayed array Draw masks may be repeated in template coordinates.
+      // Retain those sources; only whole-face and non-array inputs are pruned.
+      const shapes =
+        mode === 'full'
+          ? []
+          : bounds && !isArrayModel(getModel())
+            ? (source.shapes || []).filter((shape) => drawShapeMayIntersectRoi(shape, bounds))
+            : source.shapes || [];
       return {
         mode,
         maskSourceMode,
         maskRoi,
-        drawMask: structuredClone(state.drawMask || { nextShapeId: 1, shapes: [] }),
+        maskHasArea: (source.shapes || []).some((shape) => Boolean(normalizeDrawShape(shape))),
+        drawMask: structuredClone({ ...source, shapes }),
       };
     }
 
@@ -719,26 +737,37 @@ export function createProcessPanelController({
           ? maskContext.layerKeys
           : state.selectedLayerKeys || [],
       ),
-      scope = replayScopeCells(state, maskContext?.cell || null),
-      elements = (state.layout?.elements || [])
-        .filter(
-          (element) =>
-            scope.has(element.sourceCell) &&
-            selectedLayers.has(`${element.layer}|${element.datatype}`),
-        )
-        .map((element) => ({
-          kind: element.kind,
-          width: element.width,
-          points: element.points,
-        }));
+      transform = maskContext?.transform ||
+        state.maskTransform || { x: 0, y: 0, scale: 1, rotation: 0 },
+      scope = mode === 'full' ? null : replayScopeCells(state, maskContext?.cell || null),
+      selected =
+        mode === 'full'
+          ? []
+          : (state.layout?.elements || []).filter(
+              (element) =>
+                scope.has(element.sourceCell) &&
+                selectedLayers.has(`${element.layer}|${element.datatype}`),
+            ),
+      // Array replay rebuilds a deferred global index; never truncate it here.
+      bounds = maskRoi && !isArrayModel(getModel()) ? maskRoiLocalBounds(maskRoi) : null,
+      elements = (
+        bounds
+          ? selected.filter((element) =>
+              maskElementMayIntersectRoi(element, bounds, transform.scale),
+            )
+          : selected
+      ).map((element) => ({
+        kind: element.kind,
+        width: element.width,
+        points: element.points,
+      }));
 
     return {
       mode,
       maskSourceMode,
       maskRoi,
-      maskTransform: {
-        ...(maskContext?.transform || state.maskTransform || { x: 0, y: 0, scale: 1, rotation: 0 }),
-      },
+      maskHasArea: selected.some((element) => maskElementMayDefineArea(element, transform.scale)),
+      maskTransform: { ...transform },
       elements,
     };
   }
@@ -1281,6 +1310,19 @@ export function createProcessPanelController({
     const applyGate = await beforeApply();
     if (!applyGate) return;
 
+    const localRoiBounds = maskRoi && areaMode !== 'full' ? maskRoiLocalBounds(maskRoi) : null;
+    const arrayModel = isArrayModel(model);
+    const selectedFileElements =
+      maskSourceMode === 'file' && !arrayModel && areaMode !== 'full'
+        ? (layout.elements || []).filter(selectedElement)
+        : [];
+    const sourceDrawShapes = maskSourceMode === 'draw' ? drawMask?.shapes || [] : [];
+    const scopedDrawShapes =
+      areaMode === 'full'
+        ? []
+        : localRoiBounds && !(arrayModel && canonicalArrayRepeatDrawMask)
+          ? sourceDrawShapes.filter((shape) => drawShapeMayIntersectRoi(shape, localRoiBounds))
+          : sourceDrawShapes;
     const areaRequest = {
       mode: areaMode,
       maskSourceMode,
@@ -1288,17 +1330,32 @@ export function createProcessPanelController({
       ...(canonicalProcessGridUm == null ? {} : { processGridUm: canonicalProcessGridUm }),
       ...(canonicalArrayRepeatDrawMask ? { arrayRepeatDrawMask: true } : {}),
       ...(maskSourceMode === 'draw'
-        ? { drawMask: structuredClone(drawMask) }
+        ? {
+            maskHasArea: sourceDrawShapes.some((shape) => Boolean(normalizeDrawShape(shape))),
+            drawMask: structuredClone({ ...drawMask, shapes: scopedDrawShapes }),
+          }
         : {
             maskTransform: { ...maskTransform },
-            ...(isArrayModel(model)
+            ...(arrayModel && areaMode !== 'full'
               ? { maskIndex: selectedMaskInstanceIndex(layout, selectedElement, maskTransform) }
               : {}),
-            // Canonical arrays carry the selected, spatially indexed Mask.
-            // Do not also clone/transfer 60k raw elements to the worker.
-            elements: isArrayModel(model)
+            // A normal File process transfers only ROI candidates. The
+            // independent presence bit preserves invert-of-outside-ROI semantics.
+            ...(arrayModel
+              ? {}
+              : {
+                  maskHasArea: selectedFileElements.some((element) =>
+                    maskElementMayDefineArea(element, maskTransform.scale),
+                  ),
+                }),
+            elements: arrayModel
               ? []
-              : (layout.elements || []).filter(selectedElement).map((element) => ({
+              : (localRoiBounds
+                  ? selectedFileElements.filter((element) =>
+                      maskElementMayIntersectRoi(element, localRoiBounds, maskTransform.scale),
+                    )
+                  : selectedFileElements
+                ).map((element) => ({
                   kind: element.kind,
                   width: element.width,
                   points: element.points,

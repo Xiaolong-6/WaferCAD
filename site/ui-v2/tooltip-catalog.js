@@ -77,7 +77,7 @@
     ],
     'mask.alignment': [
       'Mask alignment',
-      'Position, scale or rotate mask geometry relative to the substrate.',
+      'In File mode, drag the mask for coarse XY alignment, refine coordinates, then Apply or Cancel.',
     ],
     'mask.opacity': [
       'Mask opacity',

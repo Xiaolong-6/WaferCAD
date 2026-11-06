@@ -41,6 +41,27 @@ export function minimumSegmentLength(pointGroups, extraSizes = []) {
   return Number.isFinite(minimum) ? minimum : null;
 }
 
+// Screen coordinates use +Y downward, while the physical Mask uses +Y upward.
+// A drag changes translation only, independent of mask rotation and scale.
+export function maskTransformAfterDrag(transform, dxPixels, dyPixels, pixelsPerMicrometre) {
+  const s = Number(pixelsPerMicrometre);
+  const dx = Number(dxPixels);
+  const dy = Number(dyPixels);
+  if (
+    !transform ||
+    !Number.isFinite(transform.x) ||
+    !Number.isFinite(transform.y) ||
+    !Number.isFinite(s) ||
+    !(s > 0) ||
+    !Number.isFinite(dx) ||
+    !Number.isFinite(dy)
+  )
+    return null;
+  const x = transform.x + dx / s;
+  const y = transform.y - dy / s;
+  return Number.isFinite(x) && Number.isFinite(y) ? { ...transform, x, y } : null;
+}
+
 export function zoomLimitForFeature(
   basePixelsPerUnit,
   minimumFeature,

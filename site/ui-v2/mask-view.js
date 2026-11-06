@@ -94,7 +94,18 @@ export async function createMaskView({ project, sharedState, workstation } = {})
   function sync() {
     syncDisplayUnitFields(document, units.key());
     if (!state) return;
+    if (runtime?.alignment?.isActive() && state.maskSourceMode !== 'file') {
+      runtime.alignment.cancel();
+      overlays?.closeFloating('maskAlignmentSettings', 'hidden');
+    }
     updateEmptyHint();
+    const alignmentButton = document.querySelector(
+      '#maskPanel [data-action="mask-alignment-settings"]',
+    );
+    if (alignmentButton) {
+      alignmentButton.disabled = state.maskSourceMode !== 'file';
+      alignmentButton.setAttribute('aria-pressed', String(runtime?.alignment?.isActive() || false));
+    }
     const opacity = Number.isFinite(state.maskOpacity) ? state.maskOpacity : 0.65;
     if (document.activeElement !== maskOpacityRange) maskOpacityRange.value = String(opacity);
     maskOpacityValue.textContent = `${Math.round(opacity * 100)}%`;
@@ -273,9 +284,15 @@ export async function createMaskView({ project, sharedState, workstation } = {})
     el(
       'span',
       { class: 'p-aux' },
-      'Alignment applies to the File source; Draw stays in physical coordinates.',
+      'Drag the File mask in the canvas for coarse positioning. Use these fields for precision alignment.',
     ),
-    button('Apply', 'alignment-apply', 'check', { primary: true }),
+    el(
+      'div',
+      { class: 'v2-floating-editor-actions' },
+      button('Reset', 'alignment-reset', 'undo'),
+      button('Cancel', 'alignment-cancel', 'close'),
+      button('Apply', 'alignment-apply', 'check', { primary: true }),
+    ),
   );
   const maskOpacityRange = el('input', {
     id: 'maskOpacityRange',
@@ -336,8 +353,8 @@ export async function createMaskView({ project, sharedState, workstation } = {})
     'maskExportDrawNote',
     el('p', { class: 'p-aux' }, 'Export Draw shapes; Mask ROI crops the output.'),
   );
-  function floating(id, title, content, trigger) {
-    overlays.mountFloating({ id, title, content, trigger });
+  function floating(id, title, content, trigger, onClose) {
+    overlays.mountFloating({ id, title, content, trigger, onClose });
   }
   function confirmAction({ title, message, confirmLabel, danger = false }) {
     return createDialogConfirmation({ overlays, el, button }).confirm({
@@ -529,7 +546,10 @@ export async function createMaskView({ project, sharedState, workstation } = {})
         return panel;
       },
       onShow() {},
-      onHide() {},
+      onHide() {
+        if (runtime?.alignment?.isActive())
+          overlays?.closeFloating('maskAlignmentSettings', 'hidden');
+      },
       destroy() {},
     });
     workstation?.mount(panel);
@@ -573,6 +593,10 @@ export async function createMaskView({ project, sharedState, workstation } = {})
       confirmAction,
       selectedMaskElement: workstation?.selectedMaskElement,
     });
+    alignmentForm.addEventListener('change', (event) => {
+      if (event.target.matches('input') && runtime.alignment.isActive())
+        runtime.alignment.updateTransform();
+    });
     const renderMask = runtime.render;
     runtime.render = (...args) => {
       updateEmptyHint();
@@ -592,6 +616,19 @@ export async function createMaskView({ project, sharedState, workstation } = {})
       )
         return;
       const action = trigger.dataset.action;
+      if (
+        runtime.alignment.isActive() &&
+        action !== 'mask-alignment-settings' &&
+        !action.startsWith('alignment-') &&
+        (action.startsWith('tool:') ||
+          action.startsWith('mask-roi') ||
+          action.startsWith('draw-') ||
+          action === 'draw-toggle' ||
+          action === 'mask-source' ||
+          action.startsWith('mask-source:'))
+      ) {
+        overlays.closeFloating('maskAlignmentSettings', 'hidden');
+      }
       if (action === 'fit:mask') runtime.fit();
       else if (action === 'tool:pan:mask') runtime.setPanEnabled(!state.panEnabled);
       else if (action === 'tool:zoom:mask') runtime.setZoomEnabled(!state.zoomEnabled);
@@ -632,10 +669,23 @@ export async function createMaskView({ project, sharedState, workstation } = {})
       } else if (action.startsWith('mask-roi:')) runtime.chooseRoiTool(action.split(':')[1]);
       else if (action === 'roi-apply') hooks.get('maskRoiSize').dispatchEvent(new Event('change'));
       else if (action === 'mask-alignment-settings') {
-        runtime.alignment.syncTransformInputs();
-        floating('maskAlignmentSettings', 'Mask alignment', alignmentForm, trigger);
-      } else if (action === 'alignment-apply') runtime.alignment.updateTransform();
-      else if (action === 'opacity:mask') {
+        if (runtime.alignment.isActive()) {
+          overlays.closeFloating('maskAlignmentSettings', 'hidden');
+        } else if (runtime.alignment.begin()) {
+          roiOpen = false;
+          floating('maskAlignmentSettings', 'Mask alignment', alignmentForm, trigger, () =>
+            runtime.alignment.cancel(),
+          );
+          syncDisplayUnitFields(alignmentForm, units.key());
+          runtime.alignment.syncTransformInputs();
+        }
+      } else if (action === 'alignment-apply') {
+        runtime.alignment.commit();
+        overlays.closeFloating('maskAlignmentSettings', 'hidden');
+      } else if (action === 'alignment-reset') runtime.alignment.reset();
+      else if (action === 'alignment-cancel') {
+        overlays.closeFloating('maskAlignmentSettings', 'hidden');
+      } else if (action === 'opacity:mask') {
         sync();
         mountToolPopover(overlays, { label: 'Mask opacity', content: opacityForm, trigger });
       } else if (action === 'mask-export-menu') {
