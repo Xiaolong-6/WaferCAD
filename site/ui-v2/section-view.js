@@ -14,7 +14,7 @@ import { bindPlanGestures } from './view-kit/plan-gestures.js';
 import { createDisplayUnits, syncDisplayUnitFields } from './view-kit/display-units.js';
 import { mountToolPopover } from './view-kit/tool-popover.js';
 import { STRUCTURE_PALETTES } from '../controllers/layer-legend-controller.js';
-import { hexToRgb, rgbToHex } from './legend-rgb.js';
+import { hexToRgb, parseRgbChannel, rgbToHex } from './legend-rgb.js';
 import {
   setLayerVisible,
   setImplantVisible,
@@ -406,7 +406,7 @@ export function createSectionView({ store, main, workstation }) {
         customColorDraft.rgb = rgb;
         apply.disabled = !hex;
         inputs.forEach((input) =>
-          input.setAttribute('aria-invalid', String(!rgbToHex([input.value, 0, 0]))),
+          input.setAttribute('aria-invalid', String(parseRgbChannel(input.value) === null)),
         );
         if (hex) {
           customColorDraft.preview = hex;
