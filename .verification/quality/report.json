@@ -4,10 +4,10 @@
   "scope": "full",
   "status": "pass",
   "source": {
-    "digest": "88236cf46dfe0b209fe82a60723bb645a101f685ce77cb1bb28921f8b9cc6a3d",
+    "digest": "66321cbbe370e65c84e601a192d667315f59102dee302334f2eba9f55e92ba37",
     "fileCount": 1304
   },
-  "sourceRevision": "e7af30e1a28bbe27533e44fe83bb3d3388bd5d07",
+  "sourceRevision": "51dcfa1ec350f1b6cff329cc28a1c80652ea15b5",
   "planDigest": "9e40e14c41649069d23911dc155328f17e554f0307619aef8493378a2f26b4b3",
   "environment": {
     "node": "v22.16.0",
@@ -18,7 +18,7 @@
       "three": "0.179.1"
     }
   },
-  "startedAt": "2026-11-06T13:19:05.308Z",
+  "startedAt": "2026-11-06T13:57:16.679Z",
   "checks": [
     {
       "id": "lint",
@@ -30,7 +30,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 7559,
+      "durationMs": 7033,
       "logDigest": "7e083cff9d323606d09accd3389828279cc52091b6c62b45c8100c1ced589c7c"
     },
     {
@@ -43,7 +43,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 20428,
+      "durationMs": 18810,
       "logDigest": "1230617af071df8c1efeb12bcd6d41c3aa159e1cd0841cc546fbae4c8c56f867"
     },
     {
@@ -56,7 +56,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 559,
+      "durationMs": 435,
       "logDigest": "f41d9b5846a8a95a7941fcd7428a4ff7e341b07bc5f5ab28e615f71d70bb7447"
     },
     {
@@ -68,10 +68,10 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 286010,
-      "logDigest": "fec029b9c2f69d641138d8f779621b6e11254a52190df4df3e4a98cbfde89ee3"
+      "durationMs": 250450,
+      "logDigest": "20ed6ffac4d675696433c2de619a36f9fd25ac4a9ad8d5071fe517bab2919f71"
     }
   ],
-  "finishedAt": "2026-11-06T13:24:19.869Z",
-  "transcriptDigest": "71c5b2fd13bb42eec2975b805b4c1305ae22b8582d19e5926de3773eed6098d6"
+  "finishedAt": "2026-11-06T14:01:53.412Z",
+  "transcriptDigest": "7dbe1490d206dbabd572f2e98a36a26ffaac4bc4dc95f18cc06b13bf41d681a9"
 }
