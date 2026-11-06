@@ -212,6 +212,7 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
           'div',
           {},
           choice('Sacrificial layer', 'liftoffTargetLayer', []),
+          input('Additional sacrificial materials · comma separated', 'liftoffAdditionalMaterials'),
           hook('liftoffTargetHint', el('small', { class: 'p-aux' })),
         ),
       ),
@@ -225,6 +226,19 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
         ]),
       ),
       row('directTiltRow', fields.input('Direct tilt θ · °', 'directTilt', 0, { kind: 'angle' })),
+      row(
+        'directGeometryRow',
+        choice('Direct surfaces', 'directGeometry', [
+          ['horizontal', 'Horizontal surfaces'],
+          ['undercuts', 'Horizontal surfaces beneath undercuts'],
+          ['material', 'Include sidewalls · experimental'],
+        ]),
+      ),
+      row('directHeightStepRow', fields.input('Sidewall Z slice · µm', 'directHeightStep', 0.025)),
+      row(
+        'directSurfaceMaterialRow',
+        input('Deposit only on material · optional', 'directSurfaceMaterial'),
+      ),
       row(
         'directAzimuthRow',
         fields.input('Direct azimuth φ · °', 'directAzimuth', 0, { kind: 'angle' }),
@@ -257,6 +271,7 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
         ]),
       ),
       row('continuousLateralRow', fields.input('Lateral reach · µm', 'continuousLateral', 0.07)),
+      row('developLateralRow', fields.input('Lateral development · µm', 'developLateral', 0)),
       row(
         'etchSurfaceRow',
         choice('Surface', 'etchSurfaceMode', [
@@ -428,6 +443,9 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
     'layerNameRow',
     'growthModeRow',
     'directTiltRow',
+    'directGeometryRow',
+    'directHeightStepRow',
+    'directSurfaceMaterialRow',
     'directAzimuthRow',
     'transferModeRow',
     'liftoffTargetRow',
@@ -438,6 +456,7 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
     'etchProfileRow',
     'continuousShapeRow',
     'continuousLateralRow',
+    'developLateralRow',
     'etchSurfaceRow',
     'roughFeatureRow',
     'roughFeatureCvRow',

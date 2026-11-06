@@ -234,7 +234,8 @@ self.onmessage = async (event) => {
       model,
       { ...params, area },
       (candidate, localParams) =>
-        arrayApi.isArrayModel(candidate)
+        arrayApi.isArrayModel(candidate) &&
+        !(localParams.type === 'liftoff' && localParams.sacrificialLayerIds)
           ? arrayProcess.applyArrayOperation(candidate, localParams, apply)
           : apply(candidate, localParams),
     );

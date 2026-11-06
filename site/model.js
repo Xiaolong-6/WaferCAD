@@ -1,4 +1,5 @@
 import { indexedIntersectionInputs } from './process-boundary-index.js';
+import { materialRegionCandidates } from './material-process-boolean.js';
 import { addQualitativeDopantRegion, resolveQualitativeDopantRegion } from './dopant-regions.js';
 import { adaptiveReleaseDepthBands } from './isotropic-release-oracle.js';
 import {
@@ -18,6 +19,9 @@ import {
 import { applyProcessFaces } from './process-face-execution.js';
 import { isFixedDirectGridSeam } from './direct-grid-seam.js';
 import { directIncidenceArea } from './direct-incidence-geometry.js';
+import { applyMaterialDirect } from './material-direct-deposition.js';
+import { shouldTileMaterialModel, tileMaterialModel } from './material-model-tiling.js';
+import { validateProcessModel } from './project-schema.js';
 import { isolatedDirectSidewallPlan } from './direct-sidewall-geometry.js';
 import { localGeometry } from './model-array-context.js';
 import { applyArrayOperation } from './model-array-process.js';
@@ -561,11 +565,17 @@ function partitionProcessRegions(
 ) {
   const out = [],
     operationCache = new WeakMap();
-  for (const region of regions || []) {
+  const source = regions || [],
+    query = materialRegionCandidates(source),
+    processed = new Map();
+  for (const [index, region] of source.entries()) {
     let geom = sanitizeProcessGeometry(region.geom);
     if (isEmpty(geom)) continue;
 
-    for (const previous of out) {
+    for (const previousIndex of query(geom)) {
+      if (previousIndex >= index) continue;
+      const previous = processed.get(previousIndex);
+      if (!previous) continue;
       const [left, right] = indexedIntersectionInputs(geom, previous.geom, operationCache);
       const overlap = intersection(left, right);
       if (isEmpty(overlap)) continue;
@@ -577,7 +587,11 @@ function partitionProcessRegions(
       if (isEmpty(geom)) break;
     }
 
-    if (!isEmpty(geom)) out.push({ ...region, geom });
+    if (!isEmpty(geom)) {
+      const result = { ...region, geom };
+      out.push(result);
+      processed.set(index, result);
+    }
   }
   return out;
 }
@@ -708,9 +722,17 @@ function reconcileFixedAngleOwnerSeams(model, inputCoverage) {
   // An incidence deposit changes vertical material Z ownership, not the
   // existing XY support. Reject genuine overlaps; repair only grid-thin
   // splits created by the Boolean process along pre-existing owner edges.
+  const query = materialRegionCandidates(model.regions),
+    operationCache = new WeakMap();
   for (let i = 0; i < model.regions.length; i++) {
-    for (let j = i + 1; j < model.regions.length; j++) {
-      const overlap = intersection(model.regions[i].geom, model.regions[j].geom);
+    for (const j of query(model.regions[i].geom)) {
+      if (j <= i) continue;
+      const [left, right] = indexedIntersectionInputs(
+        model.regions[i].geom,
+        model.regions[j].geom,
+        operationCache,
+      );
+      const overlap = intersection(left, right);
       if (!isEmpty(overlap) && !fixedIncidenceGridSeam(overlap)) {
         throw new Error('Fixed-angle Direct generated non-grid-width material overlap.');
       }
@@ -1462,7 +1484,10 @@ function applyOperationImpl(
     face = 'front',
     area,
     growth = 'direct',
+    arrayMaterialWorkingSet = false,
+    materialHaloRepaired = false,
     incidence = null,
+    surfaceLayerId = null,
     surface,
     color,
     tilt = 0,
@@ -1570,6 +1595,55 @@ function applyOperationImpl(
   // Preserve legacy Direct exactly unless fixed incidence was requested.
   if (incidence != null && (type !== 'add' || growth !== 'direct'))
     return { changed: false, error: 'Fixed incidence is available only for Direct Deposit.' };
+  if (incidence?.materialGeometry === true && surfaceLayerId != null)
+    return {
+      changed: false,
+      error: 'Surface-selective deposition cannot be combined with material Direct.',
+    };
+  if (
+    incidence?.materialGeometry === true &&
+    !arrayMaterialWorkingSet &&
+    face === 'front' &&
+    shouldTileMaterialModel(model)
+  ) {
+    const tiled = tileMaterialModel(model);
+    const result = applyArrayOperation(
+      tiled,
+      { type, name, thickness: amount, growth, face, incidence, area },
+      applyOperation,
+    );
+    if (result.changed) Object.assign(model, tiled);
+    return result;
+  }
+  if (incidence?.materialGeometry === true)
+    return applyMaterialDirect(
+      model,
+      {
+        type,
+        name,
+        thickness: amount,
+        growth,
+        face,
+        incidence,
+        materialHaloRepaired: arrayMaterialWorkingSet && materialHaloRepaired,
+      },
+      area,
+      {
+        createLayer,
+        normalizeStack,
+        geometryArea,
+        reconcileFixedAngleOwnerSeams,
+        assertInputPartition: validateProcessModel,
+        canonicalizeProcessPartition,
+        nodeRegions: nodeProcessPartitionEdges,
+        floatPartition: partitionProcessRegions,
+        roundRegions: (regions) =>
+          nodeProcessPartitionEdges(regions).map((r) => ({
+            ...r,
+            geom: sanitizeProcessGeometry(snapProcessGeometry(r.geom)),
+          })),
+      },
+    );
   // The prior XY support is an immutable conservation reference: ordinary
   // Direct deposition must neither punch through-Si holes nor add material
   // outside existing horizontal columns.
@@ -1590,6 +1664,26 @@ function applyOperationImpl(
       ? isolatedDirectSidewallPlan(model, intersection(area, model.boundary), incidence, amount)
       : [];
   let active = intersection(area, model.boundary);
+  if (surfaceLayerId != null) {
+    if (
+      type !== 'add' ||
+      growth !== 'direct' ||
+      incidence != null ||
+      !model.layers.some((l) => l.id === surfaceLayerId)
+    )
+      return {
+        changed: false,
+        error: 'Surface-selective deposition requires an existing material and normal Direct.',
+      };
+    active = intersection(
+      active,
+      unionGeometries(
+        model.regions
+          .filter((r) => surfaceSegment(r.stack, face)?.layerId === surfaceLayerId)
+          .map((r) => r.geom),
+      ),
+    );
+  }
   if (incidence != null) {
     const exposure = directIncidenceArea(model, active, incidence, {
       face,
@@ -1976,7 +2070,11 @@ export function applyOperation(model, params) {
       error: 'Opt-in adaptive isotropic release does not yet support array Model topology.',
     };
   }
-  if (isArrayModel(model) && params?.incidence != null)
+  if (
+    isArrayModel(model) &&
+    params?.incidence != null &&
+    params.incidence.materialGeometry !== true
+  )
     return { changed: false, error: 'Angled Direct does not yet support array model topology.' };
   if (isArrayModel(model)) return applyArrayOperation(model, params, applyOperation);
   const safeGeometryOperation =

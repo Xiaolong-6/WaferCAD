@@ -1,3 +1,8 @@
+import { applyPatternedDevelopment } from './material-direct-deposition.js';
+import { applyMaterialLiftOff } from './material-lift-off.js';
+import { applyArrayMaterialLiftOff } from './material-array-lift-off.js';
+import { isArrayModel } from './model-array.js';
+
 function isEmpty(vectorApi, geom) {
   return vectorApi.isEmpty(geom);
 }
@@ -419,6 +424,12 @@ function applyLiftOff(model, params, area, modelApi, vectorApi) {
 // Advanced operations live beside the existing kernel so old project/replay
 // semantics stay untouched while these newer manufacturing primitives mature.
 export function applyAdvancedProcessOperation(model, params, area, modelApi, vectorApi) {
+  if (params?.type === 'liftoff' && params?.sacrificialLayerIds)
+    return isArrayModel(model)
+      ? applyArrayMaterialLiftOff(model, params, area, modelApi)
+      : applyMaterialLiftOff(model, params, area, modelApi);
+  if (params?.type === 'etch' && params?.etchProfile === 'develop')
+    return applyPatternedDevelopment(model, params, area, modelApi);
   if (params?.type === 'liftoff') return applyLiftOff(model, params, area, modelApi, vectorApi);
   if (params?.type === 'etch' && params?.etchProfile === 'planarize') {
     return applyPlanarize(model, params, area, modelApi, vectorApi);

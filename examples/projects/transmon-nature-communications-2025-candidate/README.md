@@ -1,5 +1,214 @@
 # Tuokkola et al. (Nature Communications 2025): transmon GDS reconstruction
 
+## Fabrication implementation and explicit process assumptions
+
+`scripts/build-transmon-process.mjs` builds actual material checkpoints and an
+editable Recipe from the committed, full original-GDS `chip2` Mask candidate.
+It includes AZ lithography and Nb/Si etching, physical MMA/PMMA deposition and
+separately patterned development, all six Al doses, oxidation/cleaning records,
+multi-resist lift-off and final annealing. The three additional contact doses
+are 30/60/60 nm at 45° tilt and 180°/0°/180° planetary angle, following the
+[paper's fabrication methods](https://pmc.ncbi.nlm.nih.gov/articles/PMC12238396/).
+
+The full 10×10 mm chip2 model has 28 restorable checkpoints and preserves all
+39,487 author polygons in its File Mask. Its released material model retains
+Al from every dose at all 12 original junction locations, including four
+primary junctions with a geometric Al/AlOx/Al stack. The optional 40×40 µm Q2
+crop uses the same recipe. Native lossless storage preserves the fine material
+coordinates through export and History restore.
+
+Retained material and a vertical Al/AlOx/Al stack do not establish that the
+two junction electrodes reach different Nb pads. Check that first on the
+released local model (origin `0 0` for `--q2`; `1400 2513` in full chip2):
+
+```sh
+node scripts/transmon-q2-local-proof.mjs output/transmon/q2-undercut300-full-process.wafercad \
+  0 0 output/transmon/q2-terminal-proof.json
+```
+
+The gate requires a positive-area barrier between two different pad-connected
+metal components, no metallic bypass, and removal of both resists. The prior
+whole-chip model fails this check: the two sides of the modeled Q2 barrier are
+on the same metal component. Supplementary Fig. 2 shows the intended crossing,
+bandages and Nb-to-recess step at a junction of a different mask size. Use it
+to compare shape and continuity; it does not calibrate Q2 dimensions. Keep
+full-mask performance work separate until the local geometry passes.
+
+The local comparison traces a metal bypass after the first upper dose, Al2.
+The experimental wall oxide checkpoint adds an assumed 2 nm coating to free
+vertical Al1 surfaces after the existing horizontal oxide step. It leaves
+the published dose sequence and GDS fixed. Reproduce that checkpoint with:
+
+```sh
+node scripts/transmon-q2-oxide-candidate.mjs \
+  output/transmon/q2-undercut300-full-process.wafercad.checkpoints/017.model.json.gz \
+  output/transmon/q2-wall-oxide-stage17.model.json.gz 2
+```
+
+The core comparison after Al3 found separate Al1 and upper-electrode
+components with this coating. A diagnostic release after Al4 reproduced this
+in the interior, but the junction did not yet reach both Nb pads. Reports
+from that release show extra metal contacts at the outer cut edge of the
+40 µm simulation. The audit defaults to the complete window and records the
+width used. A final positional half-width in µm can be supplied after the
+report path for an explicit interior comparison that retains both Nb probes.
+
+A 48 µm process domain places the artificial cut edge outside the audited
+40 µm window. In that domain the 2 nm wall candidate completed all six doses
+and bilayer lift-off. The audited interior retained 0.02449035 µm² of geometric
+Al/AlOx/Al overlap with no direct Al1-to-upper-electrode contact, but neither
+junction electrode reached a Nb pad. The north lead lands on oxidized Al1,
+while the south lead stops about 30 nm short at the modeled Nb/Si step.
+Splitting the fifth dose and adding a 25–50 nm Si foot taper did not close
+the south gap in local controls. The north landing was hidden at the assumed
+ion-mill azimuths in a ray sample. The ion-mill to GDS alignment and the
+actual step profile are unresolved inputs, so the candidate remains a
+diagnostic and the terminal gate still fails.
+
+The contact study runs a second candidate from that same local source. The
+oxide removal model uses the horizontal material Direct ray query to locate
+accessible AlOx caps. The removal depth and the ion-beam azimuths in the GDS
+frame are explicit assumptions. The final evaporation tilt is independent
+of the first five doses. For example:
+
+```sh
+node scripts/transmon-q2-oxide-candidate.mjs --prepare-padded \
+  output/transmon/q2-prepared-stage19.model.json.gz 2
+node scripts/transmon-q2-contact-study.mjs \
+  output/transmon/q2-prepared-stage19.model.json.gz \
+  output/transmon/q2-contact-study-y35 90,270 35 2
+```
+
+Repeat the second command with the same input and output directory to resume
+validated stages and independent working sets. The result is a model and
+terminal audit for a sensitivity case with a 35° final tilt, compared with
+45° in the paper. The 90°/270° GDS azimuth pair tests a different mapping of
+the ion source, pending calibration of the chamber coordinate frames.
+
+With the alternate azimuth pair and a 35° Al6 tilt, the pad-to-pad barrier
+area after lift-off was 0.02449035 µm². The strict gate still rejected this
+version because Al1 and Al3 could touch at the edge of the rectangular oxide
+cap and wall. The report distinguishes this point or line contact from a
+positive-area metallic connection and includes a closed-contact witness.
+Use `--prepare-padded-rim` in the first command to add two inscribed bands
+within the assumed oxide radius around each exposed cap edge. In the 6 µm
+junction control, the rounded geometry separated the metal components after
+Al3 even when point contacts were included.
+
+The rounded-rim sensitivity case completed all six Al doses and bilayer
+lift-off over 48 × 48 µm. The 40 × 40 µm interior audit and the native project
+readback agreed on 0.02449221 µm² of pad-connected Al/AlOx/Al overlap. The lower
+electrode reaches north Nb and the upper electrode reaches south Nb, with
+zero shunted area and no point- or edge-contact path between the pads. Four
+metal components are fully separated from both pads, and five more reach
+south Nb only by zero-area contacts. The two largest separated components
+are an Al3 tip northwest of the crossing and an Al1 tip northeast of it.
+Their centerline gaps are about 30 nm and 150 nm, respectively. The Al1 gap
+exists before Al2, and the Al3 gap exists before the contact doses. An
+additional slit about 11 nm wide along the centerline is visible immediately
+southeast of the crossing. Supplementary Fig. 2 shows a continuous-looking
+crossing on another device from the same run. It does not resolve whether
+these gaps exist on Q2, so the morphology remains open.
+
+The released 35° local candidate is included as
+[`q2-local-rounded-oxide-35deg.wafercad.gz`](q2-local-rounded-oxide-35deg.wafercad.gz).
+Decompress it to open the project in WaferCAD. Run the audit directly against
+the compressed file to recover the geometry and coordinates of all nine
+metal components:
+
+```sh
+node scripts/transmon-q2-local-proof.mjs \
+  examples/projects/transmon-nature-communications-2025-candidate/q2-local-rounded-oxide-35deg.wafercad.gz \
+  0 0 q2-terminal-proof.json --trace-morphology
+```
+
+The file is the released model and the 18 local source mask elements. The
+full set of process checkpoints was generated separately. The final local
+replay reused a validated 6 µm native array after milling with a ray halo.
+Dense Al6 worksets were subdivided while retaining the original pre-dose
+occluders, then recombined before lift-off. The cold contact-study command
+above may encounter the shadow budget on the densest worksets.
+
+The result uses the assumed 300 nm undercut, 2 nm oxide, 90°/270° milling azimuths in the
+GDS frame, and 35° final evaporation tilt. The southern connection still
+failed at the paper's 45° tilt in the local step control.
+
+Paper planetary angles and GDS-frame azimuths have separate coordinate
+origins. The explicit default `--planetary-zero-deg 90` maps phi=0/180 to
+the Y-directed connecting-lead openings in the original GDS; software azimuth
+is `planetaryZeroDeg + phi`. This alignment is inferred from the layout,
+not an independently measured evaporator orientation. The Recipe stores the
+resulting GDS-frame angles and the exposure record explains the assumption.
+
+The default additional MMA lateral development is an explicitly **assumed
+300 nm**, because no measured lateral undercut was supplied or reported in
+the paper. It is editable as `etch({profile:"develop", lateral:"300 nm", ...})`
+and by `--mma-undercut-nm`. A zero-bias GDS wall model can connect resist
+topcoat to substrate-supported Al; the release guard must reject such metal
+bridges instead of inventing a fracture plane. The gas/metal geometry remains
+an idealized model, with surface-following resist coats and no calibrated
+spin, developer, adhesion or oxidation kinetics.
+
+Large unannotated rectangular material models use exact native array storage
+partitions. Repeated physical cells share templates; neighbor halos include
+the full exposed-height ray envelope. Array release propagates connectivity
+globally across shared cell faces before classifying waste or real bridges.
+No author polygon is discarded or resized. A projected sidewall film must
+touch a receiving material surface; a detached visible envelope cannot
+nucleate metal in free space.
+
+The focused primitive/Recipe regression command is
+`node --test site/tests/material-direct-deposition.test.mjs site/tests/advanced-process.test.mjs site/tests/process-recipe.test.mjs site/tests/process-recipe-preflight.test.mjs site/tests/history-liftoff-replay.test.mjs`.
+The separate cold-run process completion gate is
+`node --test scripts/transmon-process-regression.mjs`;
+do not substitute the passing horizontal-only case for it.
+
+Reproduce the Q2 process with its explicit geometry assumptions:
+
+```sh
+node scripts/build-transmon-process.mjs --q2 --height-step-um 0.05 \
+  --mma-undercut-nm 300 --oxide-thickness-nm 2 \
+  --output output/transmon/q2-undercut300-full-process.wafercad
+```
+
+Remove `--q2` to request the entire chip. `--horizontal-only` remains a
+separately labeled incomplete debugging scaffold. The builder fails rather
+than writing a final project if a required material operation fails.
+
+The CLI now keeps a resumable journal in `<output>.checkpoints` by default;
+`--checkpoint-dir <directory>` selects another location and `--no-checkpoints`
+requests a cold run. Repeat the same command after interruption. The journal
+checks the pinned source, runtime-code fingerprint, physical options,
+per-step input and parameters, and compressed-model hashes before restoring.
+Array working sets are saved only after strict validation, so an interrupted
+dose can reuse completed cells while the root operation remains transactional.
+Every restored cell is validated again. A code or option mismatch rejects
+stale reuse; use a new checkpoint directory to calculate a changed process.
+
+Restoration rebuilds all 28 History states and the complete Recipe. The report
+distinguishes calculated stages, journal restores and explicitly imported local
+models; restoring a previous result is not described as a fresh cold run.
+The owning recovery checks are
+`node --test site/tests/transmon-process-checkpoints.test.mjs` and
+`node --test --test-name-pattern="checkpoint resume" scripts/transmon-process-regression.mjs`.
+
+Node orchestration can calculate independent immutable material halos with
+`scripts/transmon-parallel-deposition.mjs`. Bounded workers save validated
+leaf results; the existing array owner revalidates them and commits the root
+only after every halo succeeds. Parallel completion and interruption recovery
+must equal ordinary sequential geometry. Exact template deduplication is shared
+with browser Workers, so stored polygon limits are preserved during replay.
+The owning checks are `site/tests/transmon-parallel-deposition.test.mjs` and
+`site/tests/material-array-compaction.test.mjs`.
+
+The 2 nm AlOx is an explicit illustrative geometric thickness, not a measured
+paper value or an oxidation model. It coats exposed horizontal Al1; wall and
+underside oxidation are not represented. GDS 2/0 etch polarity and 8/0 versus 8/1
+resist mapping remain hypotheses. Resist coats follow existing horizontal
+surfaces; spin/development kinetics, ion-milling removal depth and unspecified
+dicing-street geometry are not inferred. Cleaning, protective oxidation and
+dicing parameters without quantified geometry remain process records.
+
 ## Sources and target
 
 - Paper: https://doi.org/10.1038/s41467-025-61126-0
@@ -10,10 +219,10 @@
 
 ## Actual GDS baseline (Node.js 22; WaferCAD `site/gds.js` and `site/layout-io.js`)
 
-| Source | Cells | Boundary records | SREFs | Units | Result |
-| --- | ---: | ---: | ---: | --- | --- |
-| `sample.gds` | 79 | 39,304 | 371 | 1 nm DBU | Parse succeeds (~90 ms); whole root flatten **fails** at the preserved 120,000-object safety limit |
-| `Sample_design.gds` | 55 | 181 | 139 | 1 nm DBU | Root flatten succeeds: 1,693 shapes (~19 ms) |
+| Source              | Cells | Boundary records | SREFs | Units    | Result                                                                                             |
+| ------------------- | ----: | ---------------: | ----: | -------- | -------------------------------------------------------------------------------------------------- |
+| `sample.gds`        |    79 |           39,304 |   371 | 1 nm DBU | Parse succeeds (~90 ms); whole root flatten **fails** at the preserved 120,000-object safety limit |
+| `Sample_design.gds` |    55 |              181 |   139 | 1 nm DBU | Root flatten succeeds: 1,693 shapes (~19 ms)                                                       |
 
 The main file top cell is `2024-04-07_EITR2_1`. It references `chip0`, `chip1`, `chip2`, `chip3` at (-5000,+5000), (+5000,+5000), (-5000,-5000), (+5000,-5000) µm respectively, plus an auxiliary boolean cell. The reusable `Unnamed_b0465f83` contains 39,232 boundaries on GDS 2/0. A single chip root expands safely without changing global import limits.
 
@@ -44,7 +253,7 @@ These are intended scientific baselines, not completed process geometry:
 6. Second Al evaporation: 30 + 30 nm at 45° tilt, different planetary angles.
 7. Ar milling / Al bandage / lift-off and final structure.
 
-Supplementary Fig. S1(c) gives the Q2 Josephson junction mask size as 180 × 180 nm; Fig. S2(c) estimates a *fabricated* Q2 junction around 210 × 180 nm. These are different acceptance quantities.
+Supplementary Fig. S1(c) gives the Q2 Josephson junction mask size as 180 × 180 nm; Fig. S2(c) estimates a _fabricated_ Q2 junction around 210 × 180 nm. These are different acceptance quantities.
 
 ## Acceptance and known gaps
 
@@ -60,12 +269,11 @@ Supplementary Fig. S1(c) gives the Q2 Josephson junction mask size as 180 × 180
 
 The initial audit was run against an older offline source snapshot; the current `main` copies of `site/gds.js` and `site/layout-io.js` were independently checked to have the **same Git blob hashes** (`78afaeddfcb28887d6134853f9aaa436faf7da9b`, `7100985c7ad579daf6ca0e90adbbc0789cd85a39`). A complete latest-main local checkout and Chromium acceptance are still outstanding.
 
-
 ## Q2 original-GDS ROI and first native Nb Process replay
 
 **Status: source-backed research candidate, not a released Example.** The original dataset is published by the authors (Zenodo v4: https://zenodo.org/records/14651787). No original binary author GDS is checked into WaferCAD; obtain it from Zenodo.
 
-The `chip0`–`chip3` cells in the main GDS are *chip variants*, not transmons Q1–Q4. In author `chip2`, Q2 is the original SREF to `jj_width0p18` at **(1400, 2513) µm**, consistent with the 180 × 180 nm Q2 junction mask design in Supplementary Fig. S1. This has been checked against the source GDS cell hierarchy.
+The `chip0`–`chip3` cells in the main GDS are _chip variants_, not transmons Q1–Q4. In author `chip2`, Q2 is the original SREF to `jj_width0p18` at **(1400, 2513) µm**, consistent with the 180 × 180 nm Q2 junction mask design in Supplementary Fig. S1. This has been checked against the source GDS cell hierarchy.
 
 ```sh
 node scripts/transmon-gds-q2-roi.mjs \
@@ -81,7 +289,7 @@ node scripts/transmon-replay-nb-q2.mjs \
 
 The author ROI selection does **not redraw any polygons**: it copies original GDS polygon records whose untransformed bounding boxes intersect the Q2 search window. Polygons crossing the requested ROI remain whole. Source SREF to Q2 and dependent structures are preserved. The resulting source-local Q2 GDS has SHA-256 `12e40565bab2f6c0841b5c3d051fcf38cc1e3c9deda5eaa53ab06cd70782f5e5`, **7 cells, 45 polygons**: 28 on `2/0`, 8 on `8/0`, and 9 on `8/1`; WaferCAD's own layout parser imports it. The exported bounding box can exceed the requested ROI because source polygon geometry is not clipped.
 
-The initial reconstruction uses the `2/0` source patterns as Nb *removal* regions, based on correspondence with the shaded Nb-removal design shown in Supplementary Fig. S1. The interpretation is still subject to a final overlay/author-process check. The two `8/*` datatypes are reserved for EBL junction lithography; their exposure-dose assignments have **not** been proven.
+The initial reconstruction uses the `2/0` source patterns as Nb _removal_ regions, based on correspondence with the shaded Nb-removal design shown in Supplementary Fig. S1. The interpretation is still subject to a final overlay/author-process check. The two `8/*` datatypes are reserved for EBL junction lithography; their exposure-dose assignments have **not** been proven.
 
 ### Verified first process checkpoint
 
@@ -127,7 +335,7 @@ Local offline validation on the source snapshot: **3/3 new targeted tests passed
 
 ## Sampled oblique shadow visibility — research kernel, not process deposition
 
-`site/shadow-exposure-geometry.js` adds a generic 2D **substrate visibility** calculation for beams incident through sequential resist apertures. For a beam with polar tilt `θ` and in-plane azimuth `φ`, visibility at a substrate point requires the ray `(x, y) + z tan(θ)(cos φ, sin φ)` to remain inside the aperture at all *sampled* heights of every resist layer. This calculation intersects translated openings using WaferCAD's own polygon Boolean kernel. The sampling interval is explicit, and arbitrary nonconvex openings are not claimed to be solved exactly in the continuum limit.
+`site/shadow-exposure-geometry.js` adds a generic 2D **substrate visibility** calculation for beams incident through sequential resist apertures. For a beam with polar tilt `θ` and in-plane azimuth `φ`, visibility at a substrate point requires the ray `(x, y) + z tan(θ)(cos φ, sin φ)` to remain inside the aperture at all _sampled_ heights of every resist layer. This calculation intersects translated openings using WaferCAD's own polygon Boolean kernel. The sampling interval is explicit, and arbitrary nonconvex openings are not claimed to be solved exactly in the continuum limit.
 
 The source-backed research hypothesis for Tuokkola Q2 is PMMA upper openings = `8/1` and MMA lower undercut openings = union(`8/1`, `8/0`). Use author-reported 0.5 µm MMA + 0.4 µm PMMA; test `θ=45°`, `φ=-45°, +45°, -135°`. These designations are provisional because author GDS does not encode dose-to-layer semantics or evaporator-stage coordinate mapping.
 
@@ -159,7 +367,7 @@ node scripts/transmon-shadow-al-preview.mjs \
 
 Unlike precomputing all three XY footprints on a flat substrate, native Direct recalculates ballistic visibility against the **current** material stack for each Al dose. The substrate is 675 µm Si, the hypothetical resist aperture is 0.5 µm MMA plus 0.4 µm PMMA, and the fixed beams are 40 nm at (45°, −45°), 30 nm at (45°, +45°), and 30 nm at (45°, −135°). The 8/0 versus 8/1 resist interpretation remains **unverified**.
 
-An important correctness failure was reproduced: applying unsnapped fractional XY illumination footprints across all three original-GDS exposures returned successful native Process operations but later failed strict project schema because two material regions occupied the same XY area (~0.0000843 µm²). The repair is **restricted to opt-in angle/physical-aperture Direct**: canonicalize the calculated incoming footprint on the existing 0.1 nm physical persistence grid *before* partitioning the material columns. A further strict per-operation ownership gate rejects larger residual overlaps and uses the existing incidence transactional rollback; global tolerances and historical 0° Direct are unchanged. A coarse 75 nm height step is now rejected rather than allowed to generate invalid material ownership.
+An important correctness failure was reproduced: applying unsnapped fractional XY illumination footprints across all three original-GDS exposures returned successful native Process operations but later failed strict project schema because two material regions occupied the same XY area (~0.0000843 µm²). The repair is **restricted to opt-in angle/physical-aperture Direct**: canonicalize the calculated incoming footprint on the existing 0.1 nm physical persistence grid _before_ partitioning the material columns. A further strict per-operation ownership gate rejects larger residual overlaps and uses the existing incidence transactional rollback; global tolerances and historical 0° Direct are unchanged. A coarse 75 nm height step is now rejected rather than allowed to generate invalid material ownership.
 
 With the 37.5 nm sampling interval, the author GDS native Direct replay passes strict save / expansion / schema validation: three Al exposures, 8 distinct XY material regions, an optional separately identified hypothetical AlOx spacer, and a two-dose footprint overlap around **0.0322630 µm²**. At 18.75 nm the overlap agrees within 0.0001 µm². The earlier unsnapped multi-dose preview and the corrected native model are not physically calibrated evaporator or tunnel-barrier models. Sidewall flux, time-resolved thickness growth, deposition on already formed sidewalls, actual PMMA/MMA wall shape, real oxidation kinetics and full Workstation/History/Recovery acceptance remain open.
 
@@ -209,7 +417,6 @@ band is visible after correcting an initially misplaced ROI; this is native
 Three.js null-origin diagnostic evidence, **not** a full Workstation,
 Worker/History/Recovery or Section/3D quantitative acceptance.
 
-
 ## Fixed Direct: partial-Z sidewall deposition through upper rectangular openings
 
 The isolated rectangular-step Direct sidewall solver can now represent **height-limited**
@@ -230,7 +437,7 @@ intersected; nonrectangular masks still use the former exact fully visible
 or fully blocked check, while partially visible nonrectangular masks fail closed.
 
 This is deliberately not a general Josephson junction solver. The current
-2.5D representation assumes the entire rectangular wall *length* has
+2.5D representation assumes the entire rectangular wall _length_ has
 the same Z visibility; tangentially partial opening, openings intersecting
 the step wall, and competing material shadows remain unsupported. It does
 not yet solve the actual sub-µm Manhattan resist undercut/AlOx/sidewall
@@ -245,7 +452,6 @@ capture with zero page errors; two actual 0.2 µm uncoated intervals remain
 hard to resolve in the current 3D view, so final visual acceptance is
 **not passed**. Normal-origin Workstation/Worker/History/Recovery and
 the exact Git HEAD full release Quality gate remain unverified.
-
 
 ## Fixed-angle Direct: independent XY and Z sidewall bounds
 
@@ -287,7 +493,6 @@ model without page errors, but the 40 nm band was not distinctly
 recognizable under inspected views. **Visual acceptance and exact branch
 HEAD final Quality remain open.**
 
-
 ## Oblique fixed-direction Direct: conservative tangent–Z facet partition
 
 The experimental \`Direct\` sidewall solver has a new **geometry-only**
@@ -305,10 +510,10 @@ native 2.5D material Kernel stores constant-Z intervals over XY regions.
 into bounded slices and analytically intersects the worst-case aperture
 constraints at both tangent endpoints and both aperture heights. Every
 emitted XY/Z rectangle is **strictly inside** the ray-visible domain;
-missing corner triangles are a deliberate *under-approximation*, not
+missing corner triangles are a deliberate _under-approximation_, not
 silently deposited material.
 
-The unit contract is physical µm; material XY/Z vertices snap *inward* to
+The unit contract is physical µm; material XY/Z vertices snap _inward_ to
 the established 0.1 nm persistence grid. \`facetSliceUm\` (default
 0.05 µm) and \`maxFacetSlices\` (default 256) are explicit optional
 research controls. Coarser step sizes may visibly undercount coverage:
@@ -327,13 +532,13 @@ The analytic illuminated facet areas (µm²) increased monotonically when
 the tangent sampling step was halved:
 
 | Maximum tangent step (µm) | Conservative facet area (µm²) |
-| --- | ---: |
-| 0.20000 | 0.129660 |
-| 0.10000 | 0.196920 |
-| 0.05000 | 0.229245 |
-| 0.02500 | 0.245175 |
-| 0.01250 | 0.253245 |
-| 0.00625 | 0.255252 |
+| ------------------------- | ----------------------------: |
+| 0.20000                   |                      0.129660 |
+| 0.10000                   |                      0.196920 |
+| 0.05000                   |                      0.229245 |
+| 0.02500                   |                      0.245175 |
+| 0.01250                   |                      0.253245 |
+| 0.00625                   |                      0.255252 |
 
 These are intentionally **lower bounds** for this simplified science
 fixture, not the Q2 junction area or a calibrated Al deposition volume.
@@ -354,7 +559,6 @@ acceptance remains incomplete**. Managed null-origin mode does not
 establish Worker, History/Recovery, or synchronized Section/3D behavior.
 This is not yet the author's fully modeled Q2 Josephson junction.
 
-
 ## Analytic fixed-angle visibility bound for oblique Direct sidewalls
 
 The finite rectangular upper-aperture visibility problem is now solved by
@@ -362,7 +566,7 @@ intersecting linear half-planes in the native wall tangent/Z plane. This
 produces an **exact convex illuminated polygon and physical area** (within
 floating-point arithmetic), independent of the material-column partition.
 The 2.5D material representation still approximates this polygon with
-constant-Z XY strips; it is *not* an exact continuous oblique surface model.
+constant-Z XY strips; it is _not_ an exact continuous oblique surface model.
 
 A scientific-correctness failure in the earlier implementation was
 identified: independently rounding each tangent slice inward to the 0.1 nm
@@ -383,12 +587,12 @@ quantum nor global geometrical tolerances are weakened.
 **Measured rectangular science fixture**, 45° polar / 45° azimuth,
 a 2 µm long, 1 µm tall wall through a single upper opening:
 
-| Method | Area (µm²) | Underestimate |
-| --- | ---: | ---: |
-| Analytic half-plane polygon | 0.26134993 | 0% (reference) |
-| 50 nm fixed slices, grid-aligned | 0.22945964 | 12.20% |
-| Default adaptive 2% bound (121 patches) | 0.25719803 | 1.59% |
-| Explicit 1% bound (255 patches) | 0.25933813 | 0.77% |
+| Method                                  | Area (µm²) |  Underestimate |
+| --------------------------------------- | ---------: | -------------: |
+| Analytic half-plane polygon             | 0.26134993 | 0% (reference) |
+| 50 nm fixed slices, grid-aligned        | 0.22945964 |         12.20% |
+| Default adaptive 2% bound (121 patches) | 0.25719803 |          1.59% |
+| Explicit 1% bound (255 patches)         | 0.25933813 |          0.77% |
 
 Tests independently sample 360,000 rays to check the analytic polygon,
 check two successive aperture levels, XY seam ownership, rotation covariance,
@@ -405,7 +609,6 @@ Q2 junction manufacturing remain out of scope. The target branch does
 not yet have a complete exact-HEAD local checkout/normal-origin Chromium
 release acceptance for this change. Do not reuse a previous screenshot
 as evidence that this new material geometry passed Section/3D review.
-
 
 ### Native material ownership follow-up
 
@@ -435,7 +638,6 @@ Individual 40 nm facets could not be visually resolved in that view;
 Workstation / synchronized Section-3D / Worker / History / Recovery
 evaluation remains required before any merge.
 
-
 ## Integrated Q2 chip-pose geometry diagnostic (Nb/Si + three Al beams)
 
 The original \`chip2\` GDS places \`jj_width0p18\` at
@@ -447,15 +649,15 @@ physical MMA/PMMA openings must be anchored at that recessed face,
 not at the original wafer top. Both are material differences at the
 scale of a 180 nm nominal junction.
 
-Run the source-backed integrated *static geometry diagnostic*:
+Run the source-backed integrated _static geometry diagnostic_:
 
 \`\`\`sh
 WAFERCAD_TRANSMON_GDS=/path/to/author/sample.gds \
-  node --test site/tests/transmon-q2-integrated-diagnostic.test.mjs
+node --test site/tests/transmon-q2-integrated-diagnostic.test.mjs
 node scripts/transmon-q2-integrated-diagnostic.mjs \
-  --gds /path/to/author/sample.gds \
-  --output /tmp/Transmon-Q2-integrated-diagnostic.wafercad \
-  --report /tmp/Transmon-Q2-integrated-evidence.json
+--gds /path/to/author/sample.gds \
+--output /tmp/Transmon-Q2-integrated-diagnostic.wafercad \
+--report /tmp/Transmon-Q2-integrated-evidence.json
 \`\`\`
 
 The script uses one native material model for Si (675 µm), blanket
@@ -470,18 +672,18 @@ Al overlap, and recovery-safe compact serialization.
 
 **Locally validated research diagnostic (with optional oxide):**
 
-| Observable | Result |
-| --- | ---: |
-| Source GDS SHA-256 | \`6e9db7d506e17f82fd22250db9a380a420b2a1088bac4a33b8c747930e9d5c02\` |
-| Nb etched opening in 40 × 30 µm ROI | 760 µm² |
-| Exposed Si height | Z=337.45 µm |
-| Al dose 1 footprint | 1.990328 µm² |
-| Al dose 2 footprint | 2.556218 µm² |
-| Al dose 3 footprint | 2.564043 µm² |
-| First two dose overlap | 0.03226249 µm² |
-| Material layers / regions / process operations | 6 / 9 / 6 |
-| First-two overlap cross-section | x≈−5.01165 µm, y≈0 |
-| Strict project file validation and compact round-trip | passed |
+| Observable                                            |                                                               Result |
+| ----------------------------------------------------- | -------------------------------------------------------------------: |
+| Source GDS SHA-256                                    | \`6e9db7d506e17f82fd22250db9a380a420b2a1088bac4a33b8c747930e9d5c02\` |
+| Nb etched opening in 40 × 30 µm ROI                   |                                                              760 µm² |
+| Exposed Si height                                     |                                                          Z=337.45 µm |
+| Al dose 1 footprint                                   |                                                         1.990328 µm² |
+| Al dose 2 footprint                                   |                                                         2.556218 µm² |
+| Al dose 3 footprint                                   |                                                         2.564043 µm² |
+| First two dose overlap                                |                                                       0.03226249 µm² |
+| Material layers / regions / process operations        |                                                            6 / 9 / 6 |
+| First-two overlap cross-section                       |                                                   x≈−5.01165 µm, y≈0 |
+| Strict project file validation and compact round-trip |                                                               passed |
 
 At the overlap cross-section the simplified stack runs Si
 (Z=337.45) → Al 40 nm → hypothetical AlOx 2 nm → Al 30 nm →
@@ -619,7 +821,7 @@ site/tests/process-recipe.test.mjs` on Node 22.16.0, **20 passed,
 `e2ad535e83f0bd079eac489ef11dbf8152c481ff`; the restored 1,192-file
 source-only baseline was manifest-verified. The current full branch `model.js`
 and original-GDS replay are **not claimed to be exact-HEAD locally validated**.
-This independent Nb/process fixture is *not* a reproduction of the GDS Q2
+This independent Nb/process fixture is _not_ a reproduction of the GDS Q2
 junction or measured device physics.
 
 ### Fail-closed source-GDS acceptance entrypoint
@@ -689,26 +891,26 @@ validation, checks numerical seams against the 0.1 nm persistence grid
 using component width rather than a loose total-area tolerance, gives
 ambiguous cells to the taller exposed material, and repairs newly lost
 existing coverage using neighboring physical owners. It repeats the
-coverage proof *after* the existing partition quantization; wider overlaps
+coverage proof _after_ the existing partition quantization; wider overlaps
 still fail and roll back. Legacy Direct and opt-in isolated-sidewall
 modeling retain their previous paths.
 
 Actual author-source **Native Direct Process** replay with no assumed
 oxide yielded these geometries:
 
-| Quantity | Measured |
-| --- | ---: |
-| First Al, −45°, 40 nm (persisted XY area) | 1.990337 µm² |
-| Second Al, +45°, 30 nm (persisted XY area) | 2.548931 µm² |
-| Third Al, −135°, 30 nm (persisted XY area) | 2.551283 µm² |
-| First-two-Al common area | 0.03226303 µm² |
-| Three-Al common area | 0.03226055 µm² |
-| Final region count, no oxide | 9 |
+| Quantity                                      |        Measured |
+| --------------------------------------------- | --------------: |
+| First Al, −45°, 40 nm (persisted XY area)     |    1.990337 µm² |
+| Second Al, +45°, 30 nm (persisted XY area)    |    2.548931 µm² |
+| Third Al, −135°, 30 nm (persisted XY area)    |    2.551283 µm² |
+| First-two-Al common area                      |  0.03226303 µm² |
+| Three-Al common area                          |  0.03226055 µm² |
+| Final region count, no oxide                  |               9 |
 | Post-process XY area / original wafer XY area | 1200 / 1200 µm² |
-| Duplicate XY owner area / unowned Si area | 0 / 0 µm² |
-| Section vs 3D material Z slab mismatches | 0 |
+| Duplicate XY owner area / unowned Si area     |       0 / 0 µm² |
+| Section vs 3D material Z slab mismatches      |               0 |
 
-An explicitly *hypothetical* 2 nm AlOx spacer after the first Al also
+An explicitly _hypothetical_ 2 nm AlOx spacer after the first Al also
 completed the three native doses (6 layers, 9 regions), with
 `0.03226302 µm²` first-two-Al overlap. No oxidization kinetics or
 electrical Josephson transport is claimed.
@@ -731,7 +933,7 @@ a measured fabricated tunnel junction.
 The original `offline-native-app-capture.py --native-section-compare`
 required `--rough-cutline`, which also unconditionally queried a detailed
 rough 3D mesh. That caused a false diagnostic failure for Q2's entirely
-smooth Nb/Al geometry *after* the genuine production Section image had been
+smooth Nb/Al geometry _after_ the genuine production Section image had been
 rendered. The original runner now also accepts `--native-section-line`
 for a physical Section line without requiring unrelated roughness sampling:
 
@@ -790,7 +992,7 @@ scientific hypothesis, **not** something inferred from GDS metadata.
 An original-`sample.gds` regression requires the Q2 mask polygons and
 proves that both converter outputs have empty symmetric differences against
 the original hand-built source geometry. Local focused tests: 4/4 passed,
-zero skipped, Node 22. This is an independent *mask geometry bridge*;
+zero skipped, Node 22. This is an independent _mask geometry bridge_;
 ordinary Workstation Mask/Recipe UI has **not** yet been wired to author
 physical Z-resolved resist openings. A flat 2D mask alone still cannot
 justify oblique resist-shadow physics; the existing fail-closed UI
@@ -804,22 +1006,22 @@ geometry but **does not** represent arbitrary oblique deposition on vertical
 metal facets. In the native Direct operation, each dose is deposited onto
 ray-visible horizontal material at that step's actual surface height;
 previous Al doses can change the next exposure through height and shadowing.
-A nonzero 2D separation between two islands of the *same Al dose* is therefore
+A nonzero 2D separation between two islands of the _same Al dose_ is therefore
 possible without a Three.js or Border drawing error.
 
 An independent, read-only Shapely 2.1.2 cross-check decoded the published
 project's exact saved polygon templates and its 17 embedded original-GDS
-junction polygons. Using the documented *hypothetical* 500 nm MMA /
+junction polygons. Using the documented _hypothetical_ 500 nm MMA /
 400 nm PMMA aperture map and 45°/-135° Al3 beam yielded:
 
-| Q2 Al3 check | Result |
-| --- | ---: |
-| Flat-target sampled shadow, before earlier Al topography | 2.564029 µm²; 1 connected XY component |
-| Published, topography-dependent native Direct Al3 owner | 2.551283 µm²; 4 connected XY components |
-| Replayed native horizontal-surface and self-shadow visibility | 2.551449 µm² (0.0375 µm Z sampling step) |
-| Replayed vs saved XY intersection / union | 99.9744% |
-| Minimum plan-view gaps between central Al3 island and its two nearby arms | 0.029911 µm / 0.039952 µm |
-| Refined replay at 0.01875 / 0.009375 µm Z steps | 2.551436 / 2.551427 µm² |
+| Q2 Al3 check                                                              |                                   Result |
+| ------------------------------------------------------------------------- | ---------------------------------------: |
+| Flat-target sampled shadow, before earlier Al topography                  |   2.564029 µm²; 1 connected XY component |
+| Published, topography-dependent native Direct Al3 owner                   |  2.551283 µm²; 4 connected XY components |
+| Replayed native horizontal-surface and self-shadow visibility             | 2.551449 µm² (0.0375 µm Z sampling step) |
+| Replayed vs saved XY intersection / union                                 |                                 99.9744% |
+| Minimum plan-view gaps between central Al3 island and its two nearby arms |                0.029911 µm / 0.039952 µm |
+| Refined replay at 0.01875 / 0.009375 µm Z steps                           |                  2.551436 / 2.551427 µm² |
 
 The replay used the **pre-Al3 material stack** recovered by excluding only
 Al3 slabs from the final canonical region ownership. Independent native

@@ -8,15 +8,23 @@ export function remapHistoryReplayOperation(operation, params, layerIdMap) {
     remapLayerId = (id) => remappedId(id, layerIdMap);
 
   if (nextParams.targetLayerId) nextParams.targetLayerId = remapLayerId(nextParams.targetLayerId);
+  if (nextParams.surfaceLayerId)
+    nextParams.surfaceLayerId = remapLayerId(nextParams.surfaceLayerId);
   if (nextParams.sacrificialLayerId)
     nextParams.sacrificialLayerId = remapLayerId(nextParams.sacrificialLayerId);
   if (Array.isArray(nextParams.etchTargetLayerIds)) {
     nextParams.etchTargetLayerIds = nextParams.etchTargetLayerIds.map(remapLayerId);
   }
+  if (Array.isArray(nextParams.sacrificialLayerIds))
+    nextParams.sacrificialLayerIds = nextParams.sacrificialLayerIds.map(remapLayerId);
 
   if (nextOperation.targetLayerId) {
     nextOperation.targetLayerId = remapLayerId(nextOperation.targetLayerId);
   }
+  if (nextOperation.surfaceLayerId)
+    nextOperation.surfaceLayerId = remapLayerId(nextOperation.surfaceLayerId);
+  if (Array.isArray(nextOperation.sacrificialLayerIds))
+    nextOperation.sacrificialLayerIds = nextOperation.sacrificialLayerIds.map(remapLayerId);
   if (nextOperation.sacrificialLayerId) {
     nextOperation.sacrificialLayerId = remapLayerId(nextOperation.sacrificialLayerId);
   }

@@ -777,7 +777,13 @@ export function createProcessRecipeController({
     const bindSelect = (label, key, values, selected = p[key]) => {
       const select = selectInput(values, selected);
       attachCommit(select, () =>
-        updateStep(step.id, (target) => (target.params[key] = select.value)),
+        updateStep(
+          step.id,
+          (target) =>
+            (target.params[key] = ['materialGeometry', 'sidewalls'].includes(key)
+              ? select.value === 'true'
+              : select.value),
+        ),
       );
       grid.append(field(label, select));
       return select;
@@ -834,6 +840,7 @@ export function createProcessRecipeController({
 
       if (step.command === 'deposit') {
         bindText('Material', 'material');
+        bindText('Only on material (optional)', 'surfaceMaterial');
         bindLength('Thickness', 'thicknessUm', p.thicknessUm);
         bindSelect('Coverage', 'coverage', [
           { value: 'direct', label: 'Directional' },
@@ -841,6 +848,27 @@ export function createProcessRecipeController({
           { value: 'transfer', label: 'Transfer / Laminate' },
         ]);
         if (p.coverage === 'direct') {
+          bindSelect(
+            'Direct surfaces',
+            'materialGeometry',
+            [
+              { value: 'false', label: 'Horizontal surfaces' },
+              { value: 'true', label: 'Include horizontal undercut surfaces' },
+            ],
+            String(p.materialGeometry ?? false),
+          );
+          if (p.materialGeometry) {
+            bindSelect(
+              'Sidewall growth · experimental',
+              'sidewalls',
+              [
+                { value: 'false', label: 'Omit sidewall growth' },
+                { value: 'true', label: 'Include sidewall growth' },
+              ],
+              String(p.sidewalls ?? false),
+            );
+            bindLength('Sidewall Z slice', 'heightStepUm', p.heightStepUm ?? 0.025);
+          }
           bindText('Tilt θ (°)', 'tiltDeg', p.tiltDeg ?? 0, { type: 'number', step: 'any' });
           bindText('Azimuth φ (°)', 'azimuthDeg', p.azimuthDeg ?? 0, {
             type: 'number',
@@ -862,6 +890,18 @@ export function createProcessRecipeController({
         ]);
       } else if (step.command === 'liftoff') {
         bindText('Sacrificial layer', 'sacrificial');
+        const extra = textInput((p.additionalSacrificial || []).join(', '));
+        attachCommit(extra, () =>
+          updateStep(
+            step.id,
+            (target) =>
+              (target.params.additionalSacrificial = extra.value
+                .split(',')
+                .map((x) => x.trim())
+                .filter(Boolean)),
+          ),
+        );
+        grid.append(field('Additional sacrificial materials', extra));
       } else if (step.command === 'etch') {
         bindText('Target', 'target');
         bindLength(p.profile === 'planarize' ? 'Target Z' : 'Depth', 'thicknessUm', p.thicknessUm);
@@ -871,7 +911,10 @@ export function createProcessRecipeController({
           { value: 'continuous', label: 'Continuous release · experimental' },
           { value: 'planarize', label: 'Planarize' },
           { value: 'undercut', label: 'Undercut' },
+          { value: 'develop', label: 'Patterned development' },
         ]);
+        if (p.profile === 'develop')
+          bindLength('Lateral development', 'developLateralUm', p.developLateralUm ?? 0);
         if (p.profile === 'continuous') {
           const shapeSelect = selectInput(
             [
@@ -1416,6 +1459,15 @@ export function createProcessRecipeController({
         $('growthMode').value = p.coverage || 'direct';
         if ($('directTilt')) $('directTilt').value = String(p.tiltDeg ?? 0);
         if ($('directAzimuth')) $('directAzimuth').value = String(p.azimuthDeg ?? 0);
+        if ($('directGeometry'))
+          $('directGeometry').value = p.materialGeometry
+            ? p.sidewalls
+              ? 'material'
+              : 'undercuts'
+            : 'horizontal';
+        if ($('directHeightStep'))
+          $('directHeightStep').value = formatCanonicalLengthInput(p.heightStepUm ?? 0.025);
+        if ($('directSurfaceMaterial')) $('directSurfaceMaterial').value = p.surfaceMaterial || '';
         $('layerName').value = p.material;
         setThickness(p.thicknessUm);
         updateOperationUI();
@@ -1432,9 +1484,13 @@ export function createProcessRecipeController({
         $('operationType').value = 'liftoff';
         updateOperationUI();
         selectMaterialByName('liftoffTargetLayer', p.sacrificial);
+        if ($('liftoffAdditionalMaterials'))
+          $('liftoffAdditionalMaterials').value = (p.additionalSacrificial || []).join(', ');
       } else if (step.command === 'etch') {
         $('operationType').value = 'etch';
         $('etchProfile').value = p.profile || 'directional';
+        if ($('developLateral'))
+          $('developLateral').value = formatCanonicalLengthInput(p.developLateralUm ?? 0);
         if (p.profile === 'continuous') {
           $('continuousShape').value = p.continuousShape;
           $('continuousLateral').value = formatCanonicalLengthInput(p.continuousLateralUm);
@@ -1521,6 +1577,13 @@ export function createProcessRecipeController({
         step.command === 'extend' && p.face === 'both' ? bothMaterialId(p.material) : null,
       canonicalEtchTargetLayerId:
         step.command === 'etch' && p.face === 'both' && p.target ? bothMaterialId(p.target) : null,
+      canonicalSacrificialLayerIds:
+        // Multi-resist release preserves all material names in the Recipe.
+        step.command === 'liftoff' && p.additionalSacrificial?.length
+          ? [p.sacrificial, ...p.additionalSacrificial].map(bothMaterialId)
+          : null,
+      canonicalSurfaceLayerId:
+        step.command === 'deposit' && p.surfaceMaterial ? bothMaterialId(p.surfaceMaterial) : null,
     });
     const after = Number(getModel()?.processRevision || 0);
     if (step.command === 'record' && getModel()?.kernel === 'vector-continuous-etch-v1') {
@@ -1735,10 +1798,27 @@ export function createProcessRecipeController({
         command: 'deposit',
         params: {
           material: p.name || operation.name,
+          ...(p.surfaceLayerId
+            ? {
+                surfaceMaterial:
+                  getModel()?.layers?.find((l) => l.id === p.surfaceLayerId)?.name ||
+                  '[missing surface material]',
+              }
+            : {}),
           thickness: Number(p.thickness),
           coverage: p.growth || 'direct',
           ...(p.incidence
-            ? { tiltDeg: p.incidence.tiltDeg, azimuthDeg: p.incidence.azimuthDeg }
+            ? {
+                tiltDeg: p.incidence.tiltDeg,
+                azimuthDeg: p.incidence.azimuthDeg,
+                ...(p.incidence.materialGeometry
+                  ? {
+                      materialGeometry: true,
+                      sidewalls: p.incidence.sidewalls !== false,
+                      heightStepUm: p.incidence.heightStepUm,
+                    }
+                  : {}),
+              }
             : {}),
           placement: p.transferMode || operation.transferMode || 'follow',
           ...common,
@@ -1765,6 +1845,7 @@ export function createProcessRecipeController({
           target: targetName,
           [p.etchProfile === 'planarize' ? 'targetZ' : 'depth']: Number(p.targetZ ?? p.thickness),
           profile: p.etchProfile || 'directional',
+          ...(p.etchProfile === 'develop' ? { developLateralUm: p.developLateralUm ?? 0 } : {}),
           ...(p.etchProfile === 'continuous'
             ? {
                 shape: p.continuousShape || 'circular',
@@ -1782,7 +1863,17 @@ export function createProcessRecipeController({
       if (!layerName) return null;
       source = {
         command: 'liftoff',
-        params: { sacrificial: layerName, ...common },
+        params: {
+          sacrificial: layerName,
+          ...common,
+          ...(p.sacrificialLayerIds?.length
+            ? {
+                additionalSacrificial: p.sacrificialLayerIds
+                  .filter((id) => id !== layerId)
+                  .map((id) => getModel()?.layers?.find((l) => l.id === id)?.name || ''),
+              }
+            : {}),
+        },
       };
     } else if (operation.kind === 'implant') {
       source = {

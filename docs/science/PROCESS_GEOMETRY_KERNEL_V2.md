@@ -2,7 +2,7 @@
 
 Process Geometry Kernel v2 is WaferCAD's derived **surface-topology layer** for the existing vector 2.5D material model.
 
-It does not replace the stored region-stack model and it is not a general B-rep, mesh Boolean kernel, or TCAD process solver. The persisted model remains `vector-2.5d-v1` so existing project files keep the same schema and geometry meaning.
+It does not replace the stored region-stack model and it is not a general B-rep, mesh Boolean kernel, or TCAD process solver. Canonical leaves remain `vector-2.5d-v1`; exact translated templates may use the existing `vector-2.5d-array-v1` storage. Existing project files keep the same schema and geometry meaning.
 
 The v2 goal is narrower and more important: every process/view subsystem should agree on what is physically exposed, buried, void, or a genuine sidewall.
 
@@ -75,6 +75,53 @@ Equal-height computational partitions are neither type and cannot generate Confo
 
 The model layer receives those wall targets and performs the actual stack mutation.
 
+### Opt-in Direct on canonical material
+
+`incidence.materialGeometry: true` derives horizontal receiving caps,
+undercuts and occluders from the actual ordered material intervals. Parallel
+rays use GDS-frame azimuth measured from +X towards +Y. An equipment planetary
+angle requires an explicit coordinate mapping; it is not automatically the
+same azimuth. Internal material interfaces cannot cast shadows.
+
+Whole-face Front deposition adds material at the illuminated physical Z,
+including beneath overhangs, without replacing existing solids. Optional
+`sidewalls: true` adds projected vertical-facet bands with conservative
+visibility over explicit `heightStepUm` slices (0.0001–0.05 µm). Each visible
+band must touch a pre-dose receiving solid; isolated free-space envelopes
+cannot nucleate film. No in-dose kinetics or calibrated process chemistry is
+implied. Normal Direct and the older isolated-wall/aperture modes retain their
+separate contracts.
+
+Large unannotated rectangular models can use exact native array partitions
+with shared templates. Neighbor halos cover the exposed-height ray envelope;
+cell faces are storage boundaries, not masks. Cropped owners are jointly
+noded on the existing 0.1 nm persistence grid and retain strict schema checks.
+Transient integer clipping uses finer arithmetic, including exact full-range
+integer slope predicates; it does not broaden geometric tolerances.
+
+Material operations deduplicate equal unannotated array templates by exact
+physical geometry and stack metadata. Comparison may ignore local region IDs,
+local allocation counters, ring ordering and exactly collinear grid nodes;
+the retained representative model is unchanged. Instance IDs, positions,
+global material IDs and global allocation counters remain intact. Off-grid
+differences never qualify as equality. This reduces stored geometry without
+raising project budgets or changing any material boundary.
+
+Exact source-edge cancellation counts all directed occurrences before rejecting
+duplicate edges. Zero-area out-and-back spurs can cancel later occurrences;
+unbalanced duplicates still request ordinary Boolean fallback. Numerical
+contact and material ownership tolerances remain unchanged.
+
+### Patterned development
+
+`etchProfile: 'develop'` removes one selected non-base Front material through
+the patterned area, including buried sacrificial resist. Other materials and
+their original Z coordinates remain intact. Optional `developLateralUm`
+expands the opening by an explicit physical distance before clipping to the
+model domain. Circular fronts have at most 0.5 nm polygonal arc sag. The input
+Mask is never resized. This is ideal geometric development, without dose,
+developer transport or dissolution kinetics.
+
 ### Lift-off: ideal geometric support, not a solvent model
 
 Lift-off removes the selected sacrificial material interval and the outward
@@ -90,6 +137,16 @@ fracture or film-transport prediction. It produces geometric material changes;
 use the [Recipe reference](../wiki/Recipe-Code-Tutorial.md) for current syntax.
 The original implementation and revision-specific acceptance are preserved
 in the [Lift-off archive record](../archive/science/LIFTOFF_V1_2026-10-09.md).
+
+The opt-in multi-resist path (`sacrificialLayerIds`) instead classifies the
+global connected material components after the earliest selected resist.
+It removes resist-carried waste and preserves permanent-supported material.
+A component connecting horizontal resist topcoat to the permanent device
+rejects the operation; lateral resist contact alone does not establish that
+bridge. Unsupported deposited components also reject it. Array connectivity
+is propagated across every neighboring cell face before release, so local
+halos cannot sever a real bridge. Successful release filters the original
+stacks without clipping, dilating or re-creating their polygon boundaries.
 
 ### Owned material surfaces
 

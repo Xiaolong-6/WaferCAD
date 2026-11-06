@@ -46,6 +46,7 @@ export function createProcessPanelController({
   ensureProcessOption('etchProfile', 'planarize', 'Planarize / CMP');
   ensureProcessOption('etchProfile', 'undercut', 'Undercut release');
   ensureProcessOption('etchProfile', 'continuous', 'Continuous release · experimental');
+  ensureProcessOption('etchProfile', 'develop', 'Patterned development');
 
   // A legacy choice is available only while editing an existing v1 step.
   // New processes expose just Smooth / Rough / Pyramid.
@@ -62,7 +63,9 @@ export function createProcessPanelController({
 
   function selectedEtchProfile() {
     const value = $('etchProfile')?.value;
-    return ['directional', 'isotropic', 'continuous', 'planarize', 'undercut'].includes(value)
+    return ['directional', 'isotropic', 'continuous', 'planarize', 'undercut', 'develop'].includes(
+      value,
+    )
       ? value
       : 'directional';
   }
@@ -188,14 +191,25 @@ export function createProcessPanelController({
     select.innerHTML = '';
     const profile = selectedEtchProfile(),
       requiresMaterial =
-        profile === 'isotropic' || profile === 'undercut' || profile === 'continuous';
+        profile === 'isotropic' ||
+        profile === 'undercut' ||
+        profile === 'continuous' ||
+        profile === 'develop';
     select.add(new Option(requiresMaterial ? 'Select material…' : 'All exposed materials', ''));
 
     const model = getModel(),
       exposed = targetExposure(),
       targets = getActiveFace() === 'both' ? eligibleBothTargets(model, exposed) : exposed;
     for (const layer of model.layers) {
-      if (!targets.has(layer.id)) continue;
+      if (
+        profile === 'develop'
+          ? ['base', 'substrate'].includes(layer.id) ||
+            !referencedModelParts(model).some((part) =>
+              part.regions.some((r) => r.stack.some((s) => s.layerId === layer.id)),
+            )
+          : !targets.has(layer.id)
+      )
+        continue;
       select.add(new Option(layer.name, layer.id));
     }
     if ([...select.options].some((option) => option.value === previous)) select.value = previous;
@@ -247,6 +261,15 @@ export function createProcessPanelController({
     $('transferModeRow')?.classList.toggle('hidden', !transfer);
     $('directTiltRow')?.classList.toggle('hidden', t !== 'add' || growthMode !== 'direct');
     $('directAzimuthRow')?.classList.toggle('hidden', t !== 'add' || growthMode !== 'direct');
+    $('directGeometryRow')?.classList.toggle('hidden', t !== 'add' || growthMode !== 'direct');
+    $('directSurfaceMaterialRow')?.classList.toggle(
+      'hidden',
+      t !== 'add' || growthMode !== 'direct' || $('directGeometry')?.value !== 'horizontal',
+    );
+    $('directHeightStepRow')?.classList.toggle(
+      'hidden',
+      t !== 'add' || growthMode !== 'direct' || $('directGeometry')?.value !== 'material',
+    );
     $('operationAreaRow').classList.toggle('hidden', recordOnly);
     $('operationThicknessRow').classList.toggle('hidden', recordOnly || liftoff);
     $('recordProcessParams').classList.toggle('hidden', !recordOnly);
@@ -257,8 +280,14 @@ export function createProcessPanelController({
       continuousEtch = t === 'etch' && etchProfile === 'continuous',
       planarizeEtch = t === 'etch' && etchProfile === 'planarize',
       undercutEtch = t === 'etch' && etchProfile === 'undercut',
-      advancedEtch = isotropicEtch || continuousEtch || planarizeEtch || undercutEtch;
+      advancedEtch =
+        isotropicEtch ||
+        continuousEtch ||
+        planarizeEtch ||
+        undercutEtch ||
+        etchProfile === 'develop';
     $('continuousShapeRow')?.classList.toggle('hidden', !continuousEtch);
+    $('developLateralRow')?.classList.toggle('hidden', t !== 'etch' || etchProfile !== 'develop');
     $('continuousLateralRow')?.classList.toggle(
       'hidden',
       !continuousEtch || $('continuousShape')?.value === 'circular',
@@ -532,6 +561,18 @@ export function createProcessPanelController({
       $('growthMode').value = params.growth || operation.growth || 'direct';
       if ($('directTilt')) $('directTilt').value = String(params.incidence?.tiltDeg ?? 0);
       if ($('directAzimuth')) $('directAzimuth').value = String(params.incidence?.azimuthDeg ?? 0);
+      if ($('directGeometry'))
+        $('directGeometry').value = params.incidence?.materialGeometry
+          ? params.incidence.sidewalls === false
+            ? 'undercuts'
+            : 'material'
+          : 'horizontal';
+      if ($('directHeightStep'))
+        $('directHeightStep').value = formatLengthField(params.incidence?.heightStepUm ?? 0.025);
+      if ($('directSurfaceMaterial'))
+        $('directSurfaceMaterial').value = params.surfaceLayerId
+          ? layerById(getModel(), params.surfaceLayerId)?.name || '[missing surface material]'
+          : '';
       if ((params.growth || operation.growth) === 'transfer' && $('transferMode')) {
         // Missing transferMode identifies a legacy flat-bridge operation.
         $('transferMode').value = params.transferMode || operation.transferMode || 'flat';
@@ -549,6 +590,10 @@ export function createProcessPanelController({
         params.electricalRegionSource || operation.electricalRegionSource || 'induced';
     } else if (kind === 'etch') {
       $('etchProfile').value = params.etchProfile || operation.etchProfile || 'directional';
+      if ($('developLateral'))
+        $('developLateral').value = formatLengthField(
+          params.developLateralUm ?? operation.developLateralUm ?? 0,
+        );
       if ($('continuousShape'))
         $('continuousShape').value =
           params.continuousShape || operation.continuousShape || 'circular';
@@ -602,6 +647,14 @@ export function createProcessPanelController({
     if (kind === 'liftoff')
       $('liftoffTargetLayer').value =
         params.sacrificialLayerId || operation.sacrificialLayerId || '';
+    if ($('liftoffAdditionalMaterials'))
+      $('liftoffAdditionalMaterials').value =
+        kind === 'liftoff'
+          ? (params.sacrificialLayerIds || [])
+              .filter((id) => id !== params.sacrificialLayerId)
+              .map((id) => layerById(getModel(), id)?.name || '')
+              .join(', ')
+          : '';
     updateOperationUI();
     return true;
   }
@@ -925,6 +978,8 @@ export function createProcessPanelController({
     canonicalFace = null,
     canonicalTargetLayerId = null,
     canonicalEtchTargetLayerId = null,
+    canonicalSacrificialLayerIds = null,
+    canonicalSurfaceLayerId = null,
   } = {}) {
     let model = getModel();
     const activeFace = getActiveFace(),
@@ -994,7 +1049,10 @@ export function createProcessPanelController({
     }
     if (
       type === 'etch' &&
-      (etchProfile === 'isotropic' || etchProfile === 'undercut' || etchProfile === 'continuous') &&
+      (etchProfile === 'isotropic' ||
+        etchProfile === 'undercut' ||
+        etchProfile === 'continuous' ||
+        etchProfile === 'develop') &&
       !etchTargetLayerId
     ) {
       return status(
@@ -1078,6 +1136,12 @@ export function createProcessPanelController({
       if (canonicalFaceSurfaces) params.faceSurfaces = structuredClone(canonicalFaceSurfaces);
       params.etchProfile = etchProfile;
       params.etchTargetLayerIds = etchTargetLayerId ? [etchTargetLayerId] : [];
+      if (etchProfile === 'develop') {
+        const lateral = manualMicron($('developLateral')?.value ?? '0');
+        if (!Number.isFinite(lateral) || lateral < 0)
+          return status('Lateral development must be non-negative.', 'error');
+        params.developLateralUm = lateral;
+      }
       if (planarizeEtch) params.targetZ = thickness;
       if (etchProfile === 'continuous') {
         const shape = $('continuousShape')?.value || 'circular';
@@ -1098,6 +1162,22 @@ export function createProcessPanelController({
       }
     } else if (type === 'liftoff') {
       params.sacrificialLayerId = $('liftoffTargetLayer').value;
+      if (canonicalSacrificialLayerIds)
+        params.sacrificialLayerIds = [...canonicalSacrificialLayerIds];
+      else if ($('liftoffAdditionalMaterials')?.value.trim()) {
+        const additional = $('liftoffAdditionalMaterials')
+          .value.split(',')
+          .map((x) => x.trim())
+          .filter(Boolean);
+        const ids = [];
+        for (const name of additional) {
+          const layers = model.layers.filter((l) => l.name === name);
+          if (layers.length !== 1)
+            return status(`Sacrificial material "${name}" is missing or ambiguous.`, 'error');
+          ids.push(layers[0].id);
+        }
+        params.sacrificialLayerIds = [params.sacrificialLayerId, ...ids];
+      }
     } else if (type === 'implant') {
       const tilt = Number($('implantTilt').value);
       if (!Number.isFinite(tilt) || tilt < -80 || tilt > 80) {
@@ -1125,22 +1205,49 @@ export function createProcessPanelController({
       params.electricalRegionSource = $('electricalRegionSource').value;
     } else {
       params.growth = $('growthMode').value;
+      if (canonicalSurfaceLayerId) params.surfaceLayerId = canonicalSurfaceLayerId;
+      else if (
+        type === 'add' &&
+        params.growth === 'direct' &&
+        $('directGeometry')?.value === 'horizontal' &&
+        $('directSurfaceMaterial')?.value.trim()
+      ) {
+        const requested = $('directSurfaceMaterial').value.trim(),
+          matches = model.layers.filter((l) => l.name === requested);
+        if (matches.length !== 1)
+          return status(`Surface material "${requested}" is missing or ambiguous.`, 'error');
+        params.surfaceLayerId = matches[0].id;
+      }
       if (type === 'add' && params.growth === 'direct') {
         const theta = Number($('directTilt')?.value || 0);
         const phi = Number($('directAzimuth')?.value || 0);
         if (!Number.isFinite(theta) || theta < 0 || theta >= 89 || !Number.isFinite(phi))
           return status('Direct tilt must be 0–<89° and azimuth must be finite.', 'error');
-        if (theta > 0) {
+        const materialGeometry = ['material', 'undercuts'].includes($('directGeometry')?.value);
+        if (theta > 0 || materialGeometry) {
           if (areaMode !== 'full')
             return status(
               'Angled Direct with a 2D Mask needs a physical Z-resolved aperture. Use full face for topography shadowing.',
               'error',
             );
-          if (isArrayModel(model))
+          if (isArrayModel(model) && !materialGeometry)
             return status('Angled Direct on array templates is not yet supported.', 'error');
           if (processFace !== 'front')
             return status('Angled Direct currently supports Front only.', 'error');
-          params.incidence = { tiltDeg: theta, azimuthDeg: phi };
+          params.incidence = {
+            tiltDeg: theta,
+            azimuthDeg: phi,
+            ...(materialGeometry
+              ? {
+                  materialGeometry: true,
+                  sidewalls: $('directGeometry')?.value === 'material',
+                  heightStepUm:
+                    $('directGeometry')?.value === 'material'
+                      ? manualMicron($('directHeightStep')?.value)
+                      : 0.025,
+                }
+              : {}),
+          };
         }
       }
       if (type === 'add' && params.growth === 'transfer') {
@@ -1293,9 +1400,12 @@ export function createProcessPanelController({
       targetLayerId: targetLayerId || null,
       etchTargetLayerIds: type === 'etch' ? params.etchTargetLayerIds : null,
       etchProfile: type === 'etch' ? params.etchProfile : null,
+      developLateralUm: etchProfile === 'develop' ? params.developLateralUm : null,
       continuousShape: etchProfile === 'continuous' ? params.continuousShape : null,
       continuousLateralUm: etchProfile === 'continuous' ? params.continuousLateralUm : null,
       sacrificialLayerId: type === 'liftoff' ? params.sacrificialLayerId : null,
+      sacrificialLayerIds: type === 'liftoff' ? params.sacrificialLayerIds || null : null,
+      surfaceLayerId: params.surfaceLayerId || null,
       incidence: params.incidence ? structuredClone(params.incidence) : null,
       growth:
         type === 'etch' || type === 'liftoff' || type === 'implant' || type === 'electrical'
