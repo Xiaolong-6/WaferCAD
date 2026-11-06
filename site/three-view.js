@@ -109,7 +109,11 @@ import {
   selectFrontmostRoughCutlineSample,
 } from './three-z-display.js';
 import { geometryFromRoughCap, geometryFromRoughMeshData } from './rough-mesh-geometry.js';
-import { projectThreeMeshesToSvg, normalizeSvgExportOptions, SVG_TRIANGLE_BUDGETS } from './three-svg-export.js';
+import {
+  projectThreeMeshesToSvg,
+  normalizeSvgExportOptions,
+  SVG_TRIANGLE_BUDGETS,
+} from './three-svg-export.js';
 import {
   boundaryProfileFromPositions,
   boundaryProfileOverlapsEdge,
@@ -5284,13 +5288,19 @@ diffuseColor.a *= waferCadAlphaScale;`,
     scheduleFrame();
   }
 
-  async function exportGlb({ signal = null, onProgress = null, format = 'glb', svgOptions = {} } = {}) {
+  async function exportGlb({
+    signal = null,
+    onProgress = null,
+    format = 'glb',
+    svgOptions = {},
+  } = {}) {
     if (!ready || !THREE) throw new Error('3D view is unavailable.');
     const model = getModel();
     if (!model) throw new Error('No model to export.');
 
     const throwIfAborted = () => {
-        if (signal?.aborted) throw new DOMException(`3D ${format.toUpperCase()} export cancelled.`, 'AbortError');
+        if (signal?.aborted)
+          throw new DOMException(`3D ${format.toUpperCase()} export cancelled.`, 'AbortError');
       },
       reportProgress = (progress, label = '') => {
         throwIfAborted();
@@ -5348,7 +5358,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
             },
             onAbort = () => {
               if (!finish()) return;
-              reject(new DOMException(`3D ${format.toUpperCase()} export cancelled.`, 'AbortError'));
+              reject(
+                new DOMException(`3D ${format.toUpperCase()} export cancelled.`, 'AbortError'),
+              );
             };
 
           signal?.addEventListener?.('abort', onAbort, { once: true });
@@ -5402,7 +5414,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
       };
 
     reportProgress(0, 'Preparing exporter');
-    const gltfModule = format === 'glb' ? await import('three/addons/exporters/GLTFExporter.js') : null;
+    const gltfModule =
+      format === 'glb' ? await import('three/addons/exporters/GLTFExporter.js') : null;
     throwIfAborted();
 
     const exportGroup = new THREE.Group(),
@@ -5618,7 +5631,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
     }
   }
 
-  async function exportSvg({ signal = null, onProgress = null, mode = 'view', detail = 'high' } = {}) {
+  async function exportSvg({
+    signal = null,
+    onProgress = null,
+    mode = 'view',
+    detail = 'high',
+  } = {}) {
     return exportGlb({ signal, onProgress, format: 'svg', svgOptions: { mode, detail } });
   }
 
