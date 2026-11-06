@@ -109,6 +109,7 @@ import {
   selectFrontmostRoughCutlineSample,
 } from './three-z-display.js';
 import { geometryFromRoughCap, geometryFromRoughMeshData } from './rough-mesh-geometry.js';
+import { projectThreeMeshesToSvg, normalizeSvgExportOptions, SVG_TRIANGLE_BUDGETS } from './three-svg-export.js';
 import {
   boundaryProfileFromPositions,
   boundaryProfileOverlapsEdge,
@@ -5283,13 +5284,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
     scheduleFrame();
   }
 
-  async function exportGlb({ signal = null, onProgress = null } = {}) {
+  async function exportGlb({ signal = null, onProgress = null, format = 'glb', svgOptions = {} } = {}) {
     if (!ready || !THREE) throw new Error('3D view is unavailable.');
     const model = getModel();
     if (!model) throw new Error('No model to export.');
 
     const throwIfAborted = () => {
-        if (signal?.aborted) throw new DOMException('GLB export cancelled.', 'AbortError');
+        if (signal?.aborted) throw new DOMException(`3D ${format.toUpperCase()} export cancelled.`, 'AbortError');
       },
       reportProgress = (progress, label = '') => {
         throwIfAborted();
@@ -5347,7 +5348,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
             },
             onAbort = () => {
               if (!finish()) return;
-              reject(new DOMException('GLB export cancelled.', 'AbortError'));
+              reject(new DOMException(`3D ${format.toUpperCase()} export cancelled.`, 'AbortError'));
             };
 
           signal?.addEventListener?.('abort', onAbort, { once: true });
@@ -5401,7 +5402,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       };
 
     reportProgress(0, 'Preparing exporter');
-    const { GLTFExporter } = await import('three/addons/exporters/GLTFExporter.js');
+    const gltfModule = format === 'glb' ? await import('three/addons/exporters/GLTFExporter.js') : null;
     throwIfAborted();
 
     const exportGroup = new THREE.Group(),
@@ -5449,7 +5450,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
       await yieldToUi();
       reportProgress(0.08, 'Allocating morphology mesh');
-      const roughTasks = prepareMorphologyExportTasks(THREE, roughCaps),
+      const svgOptionsNormalized = normalizeSvgExportOptions(svgOptions),
+        roughBudget = SVG_TRIANGLE_BUDGETS[svgOptionsNormalized.detail],
+        roughTasks = prepareMorphologyExportTasks(
+          THREE,
+          roughCaps,
+          format === 'svg' ? { totalTriangleBudget: Math.floor(roughBudget * 0.7) } : {},
+        ),
         capCount = Math.max(1, surfacePlan.caps.length),
         exportBoundaryProfiles = new Map();
       let roughMeshDataByCap = null;
@@ -5569,8 +5576,30 @@ diffuseColor.a *= waferCadAlphaScale;`,
       }
 
       await yieldToUi();
+      if (format === 'svg') {
+        reportProgress(0.91, 'Projecting vector facets');
+        // GLB uses metres; SVG is a camera projection of the same physical
+        // micrometre meshes with the 3D view's presentation-only Z mapping.
+        // Neither transform is allowed to mutate the stored Process model.
+        exportGroup.scale.setScalar(1);
+        const viewport = currentViewport(),
+          zState = zDisplayState(model),
+          svg = projectThreeMeshesToSvg(THREE, exportGroup, camera, {
+            width: Math.min(16384, Math.round(viewport.width * 3)),
+            height: Math.min(16384, Math.round(viewport.height * 3)),
+            mode: svgOptionsNormalized.mode,
+            detail: svgOptionsNormalized.detail,
+            mapZ: zState.mapZ,
+            zScale: zState.scale,
+            opacity: getInspection()?.opacity ?? 1,
+            signal,
+            onProgress: reportProgress,
+          });
+        reportProgress(1, 'Complete');
+        return new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+      }
       reportProgress(0.91, 'Encoding GLB');
-      const exporter = new GLTFExporter();
+      const exporter = new gltfModule.GLTFExporter();
       const result = await new Promise((resolve, reject) =>
         exporter.parse(exportGroup, resolve, reject, {
           binary: true,
@@ -5587,6 +5616,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
         object.material?.dispose();
       }
     }
+  }
+
+  async function exportSvg({ signal = null, onProgress = null, mode = 'view', detail = 'high' } = {}) {
+    return exportGlb({ signal, onProgress, format: 'svg', svgOptions: { mode, detail } });
   }
 
   async function capturePng(scale = 3) {
@@ -5867,6 +5900,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     setGestureMode,
     updateZCollapse,
     exportGlb,
+    exportSvg,
     capturePng,
     refreshOrigin,
     get ready() {
