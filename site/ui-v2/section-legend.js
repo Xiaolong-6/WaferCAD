@@ -149,8 +149,126 @@
 
   const randomPalette = randomHarmoniousPalette;
   window.WaferCadV2RandomLegendPalette = randomPalette;
+  const colorPicker = ({ key, picker }) =>
+    el(
+      'div',
+      {
+        class: 'v2-legend-picker',
+        popover: 'manual',
+        role: 'dialog',
+        'aria-label': 'Select custom color',
+        'data-picker-color': picker.hex,
+        'data-picker-current': picker.current,
+      },
+      el(
+        'div',
+        { class: 'v2-legend-picker-header' },
+        el('strong', {}, 'Select custom color'),
+        el(
+          'button',
+          {
+            type: 'button',
+            'aria-label': 'Close color picker',
+            'data-action': 'legend-picker-cancel:' + key,
+          },
+          '×',
+        ),
+      ),
+      el(
+        'div',
+        { class: 'v2-legend-picker-work' },
+        el(
+          'div',
+          {
+            class: 'v2-legend-picker-field',
+            role: 'group',
+            tabindex: 0,
+            'data-picker-field': '',
+            'aria-label': 'Color field: left and right change hue; up and down change saturation',
+          },
+          el('span', { class: 'v2-legend-picker-marker', 'aria-hidden': 'true' }),
+        ),
+        el(
+          'div',
+          {
+            class: 'v2-legend-picker-brightness',
+            role: 'slider',
+            tabindex: 0,
+            'data-picker-brightness': '',
+            'aria-label': 'Brightness',
+            'aria-valuemin': 0,
+            'aria-valuemax': 100,
+            'aria-orientation': 'vertical',
+          },
+          el('span', {
+            class: 'v2-legend-picker-brightness-marker',
+            'aria-hidden': 'true',
+          }),
+        ),
+        el(
+          'div',
+          { class: 'v2-legend-picker-compare' },
+          el('span', {}, 'New'),
+          el('span', { class: 'v2-legend-picker-color', 'data-picker-new': '' }),
+          el('span', { class: 'v2-legend-picker-color', 'data-picker-current': '' }),
+          el('span', {}, 'Current'),
+        ),
+      ),
+      el('small', { class: 'v2-legend-picker-hint' }, 'Hue ↔ · Saturation ↕ · Brightness slider'),
+      el(
+        'div',
+        { class: 'v2-legend-picker-fields' },
+        ...['R', 'G', 'B'].map((label) =>
+          el(
+            'label',
+            {},
+            label,
+            el('input', {
+              type: 'number',
+              min: 0,
+              max: 255,
+              step: 1,
+              inputmode: 'numeric',
+              'data-picker-channel': label.toLowerCase(),
+              'aria-label': label + ' channel',
+            }),
+          ),
+        ),
+        el(
+          'label',
+          {},
+          'HEX',
+          el('input', {
+            type: 'text',
+            spellcheck: 'false',
+            maxlength: 7,
+            'data-picker-hex': '',
+            'aria-label': 'HEX color',
+          }),
+        ),
+      ),
+      el(
+        'div',
+        { class: 'v2-legend-picker-actions' },
+        el(
+          'button',
+          { type: 'button', 'data-action': 'legend-picker-cancel:' + key },
+          'Cancel',
+        ),
+        el(
+          'button',
+          {
+            type: 'button',
+            class: 'v2-legend-picker-ok',
+            'data-action': 'legend-picker-ok:' + key,
+          },
+          'OK',
+        ),
+      ),
+    );
+
   // The template only renders the draft; Section View owns input validation and commit.
-  const customRgbEditor = ({ key, rgb, preview }) =>
+  const customRgbEditor = ({ key, rgb, preview, picker }) =>
     el(
       'div',
       {
@@ -163,13 +281,19 @@
       el(
         'div',
         { class: 'v2-legend-custom-preview-row' },
-        el('span', {
+        el('button', {
+          type: 'button',
           class: 'v2-legend-custom-preview',
           style: `background-color:${preview}`,
-          'aria-hidden': 'true',
+          'data-action': 'legend-picker-open:' + key,
+          'aria-label': 'Open visual color picker',
+          'aria-haspopup': 'dialog',
+          'aria-expanded': String(Boolean(picker)),
+          title: 'Choose color visually',
         }),
         el('output', { class: 'v2-legend-custom-hex', 'aria-live': 'polite' }, preview),
       ),
+      picker ? colorPicker({ key, picker }) : null,
       el(
         'div',
         { class: 'v2-legend-custom-fields' },
