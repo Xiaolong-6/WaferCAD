@@ -149,12 +149,55 @@
 
   const randomPalette = randomHarmoniousPalette;
   window.WaferCadV2RandomLegendPalette = randomPalette;
+  // The template only renders the draft; Section View owns input validation and commit.
+  const customRgbEditor = ({ key, rgb, preview }) =>
+    el(
+      'div',
+      { class: 'v2-legend-custom-editor', 'data-custom-key': key, role: 'group', 'aria-label': 'Custom RGB color' },
+      el('strong', { class: 'v2-legend-custom-title' }, 'Custom RGB'),
+      el(
+        'div',
+        { class: 'v2-legend-custom-preview-row' },
+        el('span', { class: 'v2-legend-custom-preview', style: `background-color:${preview}`, 'aria-hidden': 'true' }),
+        el('output', { class: 'v2-legend-custom-hex', 'aria-live': 'polite' }, preview),
+      ),
+      el(
+        'div',
+        { class: 'v2-legend-custom-fields' },
+        ...['R', 'G', 'B'].map((label, index) =>
+          el(
+            'label',
+            { class: 'v2-legend-custom-field' },
+            el('span', {}, label),
+            el('input', {
+              type: 'number',
+              min: 0,
+              max: 255,
+              step: 1,
+              inputmode: 'numeric',
+              autocomplete: 'off',
+              value: rgb[index],
+              'data-rgb-channel': label.toLowerCase(),
+              'aria-label': `${label} channel, 0 to 255`,
+            }),
+          ),
+        ),
+      ),
+      el(
+        'div',
+        { class: 'v2-legend-custom-actions' },
+        el('button', { type: 'button', class: 'v2-legend-custom-cancel', 'data-action': `legend-custom-cancel:${key}` }, 'Cancel'),
+        el('button', { type: 'button', class: 'v2-legend-custom-apply', 'data-action': `legend-custom-apply:${key}` }, 'Apply'),
+      ),
+    );
+
   const row = (
     item,
     annotation = false,
     colors = {},
     paletteOpen = null,
     palette = palettes.balanced,
+    customColor = null,
   ) => {
     const key = `${annotation ? 'annotation' : 'layer'}:${item.id}`;
     const color = colors[key] || item.color;
@@ -196,7 +239,7 @@
         paletteOpen === key
           ? el(
               'div',
-              { class: 'v2-legend-palette', role: 'menu', 'aria-label': `Colors for ${item.name}` },
+              { class: 'v2-legend-palette', role: 'group', 'aria-label': `Colors for ${item.name}` },
               ...palette.map((option) =>
                 el(
                   'button',
@@ -207,8 +250,7 @@
                     'data-color': option,
                     'aria-label': option,
                     'data-help': 'section.color.option',
-                    role: 'menuitem',
-                  },
+                   },
                   el('span', { class: 'v2-legend-swatch', style: `background-color:${option}` }),
                 ),
               ),
@@ -216,9 +258,20 @@
                 'button',
                 {
                   type: 'button',
+                  class: 'v2-legend-custom-trigger',
+                  'data-action': `legend-custom:${key}`,
+                  'aria-label': 'Custom RGB color',
+                  'aria-pressed': String(customColor?.key === key),
+                },
+                '+',
+              ),
+              customColor?.key === key ? customRgbEditor(customColor) : null,
+              el(
+                'button',
+                {
+                  type: 'button',
                   class: 'v2-legend-random',
                   'data-action': `legend-random:${key}`,
-                  role: 'menuitem',
                 },
                 'Random color',
               ),
@@ -233,6 +286,7 @@
     colors = {},
     paletteOpen,
     paletteName = 'balanced',
+    customColor = null,
     open,
   }) => {
     const palette = palettes[paletteName] || palettes.balanced;
@@ -272,11 +326,11 @@
       el(
         'div',
         { class: 'v2-legend-list' },
-        layers.map((layer) => row(layer, false, colors, paletteOpen, palette)),
+        layers.map((layer) => row(layer, false, colors, paletteOpen, palette, customColor)),
         annotations.length
           ? el('strong', { class: 'v2-legend-group' }, `Annotations · ${annotations.length}`)
           : null,
-        annotations.map((item) => row(item, true, colors, paletteOpen, palette)),
+        annotations.map((item) => row(item, true, colors, paletteOpen, palette, customColor)),
       ),
     );
   };
