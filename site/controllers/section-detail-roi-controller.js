@@ -4,6 +4,7 @@ import {
   sectionDetailRoiFromPoints,
   translateSectionDetailRoi,
 } from '../section-detail-roi.js';
+import { SCIENTIFIC_CANVAS_BACKGROUND } from '../scientific-canvas-background.js';
 
 export function createSectionDetailRoiController({
   root = document,
@@ -87,7 +88,7 @@ export function createSectionDetailRoiController({
       dy = (height - dh) / 2;
 
     ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = '#fbfcfd';
+    ctx.fillStyle = SCIENTIFIC_CANVAS_BACKGROUND;
     ctx.fillRect(0, 0, width, height);
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
