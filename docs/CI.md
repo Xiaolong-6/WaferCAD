@@ -28,7 +28,7 @@ Recovery contracts. The only daily cron is `30 2 * * *`: Finland local time
 large paper-specific one-offs remain explicitly manual, not duplicated daily.
 
 **Unchanged-main nightly reuse (2026-11-06):** The single scheduled
-`daily-full.yml` controller first checks the most recent *completed*
+`daily-full.yml` controller first checks the most recent _completed_
 scheduled run on `main`. It runs every full group if main's SHA changed,
 the latest run failed/cancelled, the API is unavailable or no previous
 successful full run on that exact SHA can be proven. Otherwise it skips
@@ -36,7 +36,7 @@ the expensive suites, records why, and still runs the fail-closed
 daily verdict, which requires every unselected group to be `skipped`.
 Verification requires a real successful Full Quality job and successful
 daily aggregate verdict in an uninterrupted chain of completed successful
-scheduled runs on the same SHA (last 30 runs). A successful *skipped*
+scheduled runs on the same SHA (last 30 runs). A successful _skipped_
 nightly run is never itself scientific test evidence. Manual dispatch
 always executes the full inventory, even on an unchanged SHA.
 The existing 02:30 UTC cadence, release checks, Ready gates and
