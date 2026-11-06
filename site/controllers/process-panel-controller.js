@@ -668,8 +668,8 @@ export function createProcessPanelController({
         mode === 'full'
           ? []
           : bounds && !isArrayModel(getModel())
-            ? source.shapes.filter((shape) => drawShapeMayIntersectRoi(shape, bounds))
-            : source.shapes;
+            ? (source.shapes || []).filter((shape) => drawShapeMayIntersectRoi(shape, bounds))
+            : source.shapes || [];
       return {
         mode,
         maskSourceMode,
@@ -693,7 +693,8 @@ export function createProcessPanelController({
                 scope.has(element.sourceCell) &&
                 selectedLayers.has(`${element.layer}|${element.datatype}`),
             ),
-      bounds = maskRoi ? maskRoiLocalBounds(maskRoi) : null,
+      // Array replay rebuilds a deferred global index; never truncate it here.
+      bounds = maskRoi && !isArrayModel(getModel()) ? maskRoiLocalBounds(maskRoi) : null,
       elements = (bounds
         ? selected.filter((element) => maskElementMayIntersectRoi(element, bounds))
         : selected
