@@ -641,8 +641,7 @@ export function createSectionView({ store, main, workstation }) {
     } else if (action.startsWith('legend-set:') || action.startsWith('legend-random:')) {
       const [, kind, id] = action.split(':');
       const color =
-        trigger.dataset.color ||
-        window.WaferCadV2LegendPalette[Math.floor(Math.random() * 20)];
+        trigger.dataset.color || window.WaferCadV2LegendPalette[Math.floor(Math.random() * 20)];
       recolorLegendEntity(kind, id, color);
     }
   });
