@@ -99,7 +99,9 @@ export async function createMaskView({ project, sharedState, workstation } = {})
       overlays?.closeFloating('maskAlignmentSettings', 'hidden');
     }
     updateEmptyHint();
-    const alignmentButton = document.querySelector('#maskPanel [data-action="mask-alignment-settings"]');
+    const alignmentButton = document.querySelector(
+      '#maskPanel [data-action="mask-alignment-settings"]',
+    );
     if (alignmentButton) {
       alignmentButton.disabled = state.maskSourceMode !== 'file';
       alignmentButton.setAttribute('aria-pressed', String(runtime?.alignment?.isActive() || false));
@@ -668,12 +670,8 @@ export async function createMaskView({ project, sharedState, workstation } = {})
           overlays.closeFloating('maskAlignmentSettings', 'hidden');
         } else if (runtime.alignment.begin()) {
           roiOpen = false;
-          floating(
-            'maskAlignmentSettings',
-            'Mask alignment',
-            alignmentForm,
-            trigger,
-            () => runtime.alignment.cancel(),
+          floating('maskAlignmentSettings', 'Mask alignment', alignmentForm, trigger, () =>
+            runtime.alignment.cancel(),
           );
         }
       } else if (action === 'alignment-apply') {
