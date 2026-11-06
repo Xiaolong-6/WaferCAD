@@ -24,7 +24,7 @@
   --wc-danger-tint: #fff0f1;
   --wc-focus: #2b70b7;
   /* Plan-view colors are presentation-only and never modify material data. */
-  --wc-canvas-background: #fbfcfd;
+  --wc-canvas-background: #ffffff;
   --wc-canvas-grid-minor: #edf1f5;
   --wc-canvas-grid-major: #dbe2ea;
   --wc-canvas-grid-axis: #9fb0c1;
