@@ -27,7 +27,7 @@ function escapedAttribute(value) {
   })[character]);
 }
 
-function svgVertex(THREE, vector, camera, width, height) {
+function svgVertex(vector, camera, width, height) {
   const projected = vector.clone().project(camera);
   if (![projected.x, projected.y, projected.z].every(Number.isFinite)) return null;
   return [(projected.x * 0.5 + 0.5) * width, (-projected.y * 0.5 + 0.5) * height];
@@ -100,7 +100,6 @@ export function projectThreeMeshesToSvg(THREE, root, camera, {
   const faces = [];
   const instanceMatrix = new THREE.Matrix4();
   const worldMatrix = new THREE.Matrix4();
-  const viewVector = new THREE.Vector3();
   const light = new THREE.Vector3(-0.38, 0.62, 1).normalize();
   const normal = new THREE.Vector3();
   const edgeA = new THREE.Vector3();
@@ -148,7 +147,6 @@ export function projectThreeMeshesToSvg(THREE, root, camera, {
           // A clipped vertex is already in camera/view coordinates. Convert
           // back to world space because Three.Vector3.project expects world.
           const point = svgVertex(
-            THREE,
             vertex.clone().applyMatrix4(camera.matrixWorld),
             camera,
             w,
