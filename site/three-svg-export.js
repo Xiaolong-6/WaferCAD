@@ -67,6 +67,7 @@ export async function projectThreeMeshesToSvg(
     mapZ = (z) => z,
     zScale = 1,
     opacity = 1,
+    background = '#ffffff',
     signal = null,
     onProgress = null,
   } = {},
@@ -118,6 +119,9 @@ export async function projectThreeMeshesToSvg(
   const workColor = new THREE.Color();
   const colorCache = new Map();
   const alpha = Math.max(0.01, Math.min(1, Number(opacity) || 1));
+  // Only opaque RGB hex is accepted: never embed arbitrary markup or a URL in SVG.
+  if (!/^#[0-9a-fA-F]{6}$/.test(background))
+    throw new TypeError('SVG background must be an opaque six-digit RGB color.');
   const near = Math.max(1e-8, Number(camera.near) || 1e-6);
 
   for (let meshIndex = 0; meshIndex < meshes.length; meshIndex++) {
@@ -223,5 +227,5 @@ export async function projectThreeMeshesToSvg(
       `<path d="${path}" fill="${fill}" stroke="${fill}" stroke-width="0.45" stroke-linejoin="round" data-wafercad-layer="${layer}"/>`,
   );
   const transparency = alpha < 1 ? ` opacity="${svgNumber(alpha)}"` : '';
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img"><title>WaferCAD 3D vector view</title><desc>Projected material geometry; rough and pyramid surfaces are CPU-tessellated vector facets. Near-plane clipped and camera-sorted. No embedded bitmap.</desc><rect width="${w}" height="${h}" fill="#f5f7f9"/><g shape-rendering="geometricPrecision"${transparency}>${paths.join('')}</g></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img"><title>WaferCAD 3D vector view</title><desc>Projected material geometry; rough and pyramid surfaces are CPU-tessellated vector facets. Near-plane clipped and camera-sorted. No embedded bitmap.</desc><rect width="${w}" height="${h}" fill="${background}"/><g shape-rendering="geometricPrecision"${transparency}>${paths.join('')}</g></svg>`;
 }
