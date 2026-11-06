@@ -4,10 +4,10 @@
   "scope": "full",
   "status": "pass",
   "source": {
-    "digest": "d21e2e306da9c8800bf148c84f803bbbc0b4898fddbae23154fc301d1445bbc6",
-    "fileCount": 1300
+    "digest": "88236cf46dfe0b209fe82a60723bb645a101f685ce77cb1bb28921f8b9cc6a3d",
+    "fileCount": 1304
   },
-  "sourceRevision": "01397168c7199575e606c8fb0795f2eea7f6d494",
+  "sourceRevision": "e7af30e1a28bbe27533e44fe83bb3d3388bd5d07",
   "planDigest": "9e40e14c41649069d23911dc155328f17e554f0307619aef8493378a2f26b4b3",
   "environment": {
     "node": "v22.16.0",
@@ -18,7 +18,7 @@
       "three": "0.179.1"
     }
   },
-  "startedAt": "2026-10-30T14:32:29.706Z",
+  "startedAt": "2026-11-06T13:19:05.308Z",
   "checks": [
     {
       "id": "lint",
@@ -30,7 +30,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 5314,
+      "durationMs": 7559,
       "logDigest": "7e083cff9d323606d09accd3389828279cc52091b6c62b45c8100c1ced589c7c"
     },
     {
@@ -43,7 +43,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 15307,
+      "durationMs": 20428,
       "logDigest": "1230617af071df8c1efeb12bcd6d41c3aa159e1cd0841cc546fbae4c8c56f867"
     },
     {
@@ -56,7 +56,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 421,
+      "durationMs": 559,
       "logDigest": "f41d9b5846a8a95a7941fcd7428a4ff7e341b07bc5f5ab28e615f71d70bb7447"
     },
     {
@@ -68,10 +68,10 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 263828,
-      "logDigest": "0ddff3ca062c681301e5474b2cbd9bea1e9f565136359a20089e292b1b672222"
+      "durationMs": 286010,
+      "logDigest": "fec029b9c2f69d641138d8f779621b6e11254a52190df4df3e4a98cbfde89ee3"
     }
   ],
-  "finishedAt": "2026-10-30T14:37:14.580Z",
-  "transcriptDigest": "ba309859d3f81f843066f5f6bb02254ae8ef1dd384e93109a53f589aff59c0ba"
+  "finishedAt": "2026-11-06T13:24:19.869Z",
+  "transcriptDigest": "71c5b2fd13bb42eec2975b805b4c1305ae22b8582d19e5926de3773eed6098d6"
 }

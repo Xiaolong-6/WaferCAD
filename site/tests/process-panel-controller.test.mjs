@@ -959,3 +959,76 @@ test('invalid fixed Direct input is rejected before Worker and History', async (
   assert.equal(events.includes('run-worker'), false);
   assert.equal(events.includes('record-operation'), false);
 });
+
+test('Apply transports ROI-local File polygons without mutating the Mask', async () => {
+  const requests = [];
+  const controller = controllerForTask((_live, _model, _params, _label, request) => {
+    requests.push(request);
+    return { result: { changed: false } };
+  }, []);
+  const state = controller.__getMaskState();
+  state.maskRoi = { type: 'square', c: [0, 0], size: 2, rotation: 0 };
+  state.layout.elements = [
+    {
+      kind: 'polygon',
+      layer: 7,
+      points: [
+        [10, 10],
+        [11, 10],
+        [10, 11],
+      ],
+    },
+    {
+      kind: 'polygon',
+      layer: 7,
+      points: [
+        [0, 0],
+        [1, 0],
+        [0, 1],
+      ],
+    },
+  ];
+  controller.__root.getElementById('operationArea').value = 'invert';
+  await controller.applyOperation();
+  assert.equal(requests.at(-1).maskHasArea, true);
+  assert.equal(requests.at(-1).elements.length, 1);
+  assert.deepEqual(requests.at(-1).elements[0].points, state.layout.elements[1].points);
+  assert.equal(state.layout.elements.length, 2);
+  controller.__root.getElementById('operationArea').value = 'full';
+  await controller.applyOperation();
+  assert.deepEqual(requests.at(-1).elements, []);
+});
+
+test('Whole-face Array Apply skips unused Mask instance-index preparation', async () => {
+  const { createRectangularGridArrayModel } = await import('../model-array-construction.js');
+  const arrayModel = createRectangularGridArrayModel(
+    createModel({ shape: 'rect', width: 1, height: 1, thickness: 2 }),
+    { kind: 'rect-grid', rows: 2, columns: 2, pitchX: 1, pitchY: 1, activeSites: 4 },
+  );
+  let request;
+  const controller = controllerForTask(
+    (_live, _model, _params, _label, payload) => {
+      request = payload;
+      return { result: { changed: false } };
+    },
+    [],
+    { initialModel: arrayModel },
+  );
+  const state = controller.__getMaskState();
+  state.layout.elements = [
+    {
+      kind: 'polygon',
+      layer: 7,
+      datatype: 0,
+      sourceCell: 'TOP',
+      points: [
+        [0, 0],
+        [1, 0],
+        [0, 1],
+      ],
+    },
+  ];
+  await controller.applyOperation();
+  assert.equal(Object.hasOwn(request, 'maskIndex'), false);
+  assert.deepEqual(request.elements, []);
+});

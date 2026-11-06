@@ -47,8 +47,10 @@ Use the **Mask source** control in the current Workstation Mask header to choose
 
 - imported vector layout above the neutral dashed active-face structure reference;
 - global layer/datatype selection and hierarchy browsing;
-- X/Y/scale/rotation alignment;
+- **Alignment** in the Mask view toolbar: drag the File mask to move it in X/Y while the substrate stays fixed, refine X/Y/scale/rotation in the floating editor, then **Apply** to commit or **Cancel** to discard. **Reset** restores the identity transform in the draft only;
 - Mask Opacity for visual alignment.
+
+Alignment is available in File mode only. Draw shapes remain in their physical coordinates. The left Mask inspector contains Cell and Layers browsing, not a duplicate transform editor. Pointer previews do not modify the source GDS/OAS, physical Process model, or persistent alignment until Apply.
 
 **Draw** mode keeps the imported file untouched and exposes a project-local temporary-mask toolbar directly over the Mask canvas:
 
@@ -148,7 +150,7 @@ Z is physical and stored internally in µm. Deposit/Extend use Z as film thickne
 
 The Section A–B **Layers** legend is also the display manager for material layers, Implant annotations, and Electrical Region annotations.
 
-Each material row lets you edit the layer name, palette color, and **visibility**. Material visibility is inspection-only: hiding a layer removes it from Main / Section / 3D rendering and reveals the visible material below it, but does not delete process geometry, increment the process revision, or change what later Process operations act on. Physical material removal belongs in Process History through Etch/Release rather than the Layers legend.
+Each material row lets you edit the layer name, palette color, and **visibility**. Open its color swatch to choose a preset, or select **+** to enter custom RGB channels (0–255), preview the resulting HEX color, and Apply or Cancel. The same editor is available for Implant and Electrical Region colors; the draft does not affect rendering until Apply. Material visibility is inspection-only: hiding a layer removes it from Main / Section / 3D rendering and reveals the visible material below it, but does not delete process geometry, increment the process revision, or change what later Process operations act on. Physical material removal belongs in Process History through Etch/Release rather than the Layers legend.
 
 Implant and Electrical Region rows use the same palette system and expose independent visibility checkboxes. The built-in palettes and Random palette contain 20 colors; Random recolors material layers, implants, and Electrical Regions. Arbitrary color-picker input is not exposed in the Process form.
 

@@ -9,6 +9,7 @@ import { maskLocalToWorld } from '../mask-roi-geometry.js';
 import { drawShapeContainsPoint } from '../draw-mask-geometry.js';
 import { bindPlanGestures } from './view-kit/plan-gestures.js';
 import { createDisplayUnits } from './view-kit/display-units.js';
+import { maskTransformAfterDrag } from '../view-interactions.js';
 
 export function createMaskRuntime({
   state,
@@ -24,11 +25,21 @@ export function createMaskRuntime({
   let renderer,
     draw,
     roi,
+    alignment,
+    alignmentDraft = null,
+    alignmentOriginalPan = null,
+    alignmentDrag = null,
+    alignmentFrame = 0,
     exporting = false;
   const renderMask = () => {
     renderer?.renderMask();
     roi?.syncEditor();
     onChange();
+  };
+  const redrawAlignmentPreview = () => {
+    // Preview is renderer-only: never autosave a drag or change the Process mask.
+    renderer?.renderMask();
+    alignment?.syncTransformInputs();
   };
   const units = createDisplayUnits(() => state);
   const lengths = {
@@ -38,7 +49,7 @@ export function createMaskRuntime({
     manualMicron: units.parse,
     xyText: (value) => `${units.format(value)} ${units.label()}`,
   };
-  const maskPoint = (point) => maskLocalToWorld(point, state.maskTransform);
+  const maskPoint = (point) => maskLocalToWorld(point, alignmentDraft || state.maskTransform);
   const layerKey = (layer, datatype) => `${layer}|${datatype}`;
   // Same stable presentation palette as the legacy Mask; no geometry or layer ownership changes.
   const palette = [
@@ -82,7 +93,8 @@ export function createMaskRuntime({
     fitMaskToContent: readOnly,
     getViewportMargin: (_kind, width, height) =>
       readOnly ? Math.max(8, Math.round(Math.min(width, height) * 0.08)) : 34,
-    maskPoint,
+    // Keep the camera fitted to committed geometry while an Alignment draft moves.
+    maskPoint: (point) => maskLocalToWorld(point, state.maskTransform),
     formatXY: units.format,
     xyToDisplay: units.toDisplay,
     xyFromDisplay: units.parse,
@@ -132,7 +144,9 @@ export function createMaskRuntime({
       state.maskRoiAnchor = value;
     },
     getTransform: () =>
-      state.maskSourceMode === 'file' ? state.maskTransform : { x: 0, y: 0, scale: 1, rotation: 0 },
+      state.maskSourceMode === 'file'
+        ? alignmentDraft || state.maskTransform
+        : { x: 0, y: 0, scale: 1, rotation: 0 },
     canMoveBody: (point) =>
       !draw.getTool() &&
       !state.drawMask.shapes.some((shape) => drawShapeContainsPoint(shape, point)),
@@ -145,7 +159,8 @@ export function createMaskRuntime({
   renderer = createPlanRenderers({
     root,
     canvasTheme: true,
-    getState: () => state,
+    getState: () =>
+      alignmentDraft ? { ...state, maskTransform: alignmentDraft, alignmentDraft } : state,
     getDrawMaskController: () => draw,
     getMaskRoiController: () => roi,
     ...plan,
@@ -157,6 +172,104 @@ export function createMaskRuntime({
     selectedElement,
   });
   const canvas = root.getElementById('maskCanvas');
+  const endAlignmentDrag = () => {
+    if (!alignmentDrag) return;
+    if (alignmentFrame) cancelAnimationFrame(alignmentFrame);
+    alignmentFrame = 0;
+    const id = alignmentDrag.id;
+    alignmentDrag = null;
+    if (canvas.hasPointerCapture(id)) canvas.releasePointerCapture(id);
+  };
+  const applyAlignmentPointer = () => {
+    if (!alignmentDrag || !alignmentDraft) return;
+    const drag = alignmentDrag;
+    const next = maskTransformAfterDrag(
+      drag.transform,
+      drag.x - drag.startX,
+      drag.y - drag.startY,
+      drag.scale,
+    );
+    if (next) {
+      alignmentDraft = next;
+      redrawAlignmentPreview();
+    }
+  };
+  const consumeAlignmentPointer = (event) => {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  };
+  // Registered before the existing Pan, Draw and ROI capture handlers.
+  canvas.addEventListener(
+    'pointerdown',
+    (event) => {
+      if (!alignmentDraft || event.button !== 0) return;
+      if (!alignmentDrag) {
+        const rect = canvas.getBoundingClientRect();
+        const view = plan.viewport(rect.width, rect.height, 'mask');
+        if (view.s > 0) {
+          alignmentDrag = {
+            id: event.pointerId,
+            startX: event.clientX,
+            startY: event.clientY,
+            x: event.clientX,
+            y: event.clientY,
+            scale: view.s,
+            transform: { ...alignmentDraft },
+          };
+          canvas.setPointerCapture(event.pointerId);
+        }
+      }
+      consumeAlignmentPointer(event);
+    },
+    true,
+  );
+  canvas.addEventListener(
+    'pointermove',
+    (event) => {
+      if (!alignmentDraft) return;
+      if (alignmentDrag?.id === event.pointerId) {
+        alignmentDrag.x = event.clientX;
+        alignmentDrag.y = event.clientY;
+        if (!alignmentFrame) {
+          alignmentFrame = requestAnimationFrame(() => {
+            alignmentFrame = 0;
+            applyAlignmentPointer();
+          });
+        }
+      }
+      consumeAlignmentPointer(event);
+    },
+    true,
+  );
+  canvas.addEventListener(
+    'pointerup',
+    (event) => {
+      if (!alignmentDraft) return;
+      if (alignmentDrag?.id === event.pointerId) {
+        alignmentDrag.x = event.clientX;
+        alignmentDrag.y = event.clientY;
+        if (alignmentFrame) cancelAnimationFrame(alignmentFrame);
+        alignmentFrame = 0;
+        applyAlignmentPointer();
+        endAlignmentDrag();
+      }
+      consumeAlignmentPointer(event);
+    },
+    true,
+  );
+  canvas.addEventListener(
+    'pointercancel',
+    (event) => {
+      if (!alignmentDraft) return;
+      if (alignmentDrag?.id === event.pointerId) {
+        alignmentDraft = alignmentDrag.transform;
+        endAlignmentDrag();
+        redrawAlignmentPreview();
+      }
+      consumeAlignmentPointer(event);
+    },
+    true,
+  );
   bindPlanGestures({
     canvas,
     mouse: true,
@@ -169,16 +282,70 @@ export function createMaskRuntime({
     draw.bind();
     roi.bind();
   }
-  const alignment = createMaskImportController({
+  const alignmentFields = createMaskImportController({
     root,
-    getMaskTransform: () => state.maskTransform,
+    getMaskTransform: () => alignmentDraft || state.maskTransform,
     setMaskTransform: (value) => {
-      state.maskTransform = value;
+      if (alignmentDraft) alignmentDraft = value;
+      else state.maskTransform = value;
     },
     ...lengths,
-    renderMask,
+    renderMask: () => (alignmentDraft ? redrawAlignmentPreview() : renderMask()),
     status,
   });
+  const exitAlignment = () => {
+    endAlignmentDrag();
+    alignmentDraft = null;
+    if (alignmentOriginalPan !== null) state.panEnabled = alignmentOriginalPan;
+    alignmentOriginalPan = null;
+    canvas.style.cursor = '';
+    canvas.style.touchAction = '';
+    renderMask();
+  };
+  alignment = {
+    ...alignmentFields,
+    isActive: () => Boolean(alignmentDraft),
+    begin() {
+      if (readOnly || state.maskSourceMode !== 'file') return false;
+      if (alignmentDraft) return true;
+      alignmentOriginalPan = state.panEnabled;
+      state.panEnabled = false;
+      draw.setTool(null);
+      roi.clearDrawingMode();
+      alignmentDraft = { ...state.maskTransform };
+      canvas.style.cursor = 'move';
+      canvas.style.touchAction = 'none';
+      renderMask();
+      return true;
+    },
+    reset() {
+      if (!alignmentDraft) return;
+      alignmentDraft = { x: 0, y: 0, scale: 1, rotation: 0 };
+      redrawAlignmentPreview();
+    },
+    cancel() {
+      if (alignmentDraft) exitAlignment();
+    },
+    commit() {
+      if (!alignmentDraft) return false;
+      alignmentFields.updateTransform();
+      const next = { ...alignmentDraft };
+      // Keep the same view on screen when fitted bounds change at commit.
+      const rect = canvas.getBoundingClientRect();
+      const before = plan.viewport(rect.width, rect.height, 'mask');
+      state.maskTransform = next;
+      const after = plan.viewport(rect.width, rect.height, 'mask');
+      const current = state.planViews.mask;
+      if (before.s > 0 && after.s > 0) {
+        current.zoom *= before.s / after.s;
+        const adjusted = plan.viewport(rect.width, rect.height, 'mask');
+        current.panX += before.cx - adjusted.cx;
+        current.panY += before.cy - adjusted.cy;
+      }
+      exitAlignment();
+      return true;
+    },
+  };
   const runMaskLayoutExport = (request) => {
     if (exporting) {
       status('Another Mask export is running.');
@@ -205,7 +372,8 @@ export function createMaskRuntime({
     root,
     getState: () => state,
     ...plan,
-    maskPoint,
+    // Exports must use only the committed transform, never the drag preview.
+    maskPoint: (point) => maskLocalToWorld(point, state.maskTransform),
     layerKey,
     layerColor,
     selectedElement,
@@ -224,6 +392,7 @@ export function createMaskRuntime({
     render: renderMask,
     fit: () => plan.resetPlanView('mask'),
     setPanEnabled(value) {
+      if (alignmentDraft) alignment.cancel();
       state.panEnabled = value;
       renderMask();
     },
@@ -232,11 +401,13 @@ export function createMaskRuntime({
       renderMask();
     },
     chooseDrawTool(value) {
+      if (alignmentDraft) alignment.cancel();
       state.panEnabled = false;
       roi.clearDrawingMode();
       draw.setTool(value === 'select' ? null : value);
     },
     chooseRoiTool(value) {
+      if (alignmentDraft) alignment.cancel();
       state.panEnabled = false;
       draw.setTool(null);
       state.maskRoiTool = value === 'square' ? 'rect' : value;

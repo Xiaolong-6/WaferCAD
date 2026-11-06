@@ -4,7 +4,7 @@ Mask has two independent project-local sources: **File** and **Draw**. Switching
 
 ## File source
 
-File mode uses imported GDSII/OASIS hierarchy, Cells/Layers selection, and the explicit alignment transform. Imported layout geometry remains authoritative and immutable.
+File mode uses imported GDSII/OASIS hierarchy, Cells/Layers selection, and the explicit alignment transform. Imported layout geometry remains authoritative and immutable. The viewport Alignment editor owns all changes: XY drag and numerical edits produce a renderer-only draft; Apply commits the transform, while Cancel/close/Escape discard it. The drag uses the fixed viewport CSS-pixel-to-µm projection and leaves Scale/Rotation unchanged. Draft changes do not update the structural model, Process selection, exports, History, or persisted alignment. After Apply the existing selection/export consumers read the committed transform. File overlay translations may use a bounded raster cache during interactive preview; committed rendering and exports remain vector geometry. Draw source never inherits File alignment.
 
 ## Draw source
 
