@@ -67,6 +67,13 @@ test('Q2 proof distinguishes a pad-to-pad barrier from the same stack with a met
     shunted.bypassPath.map(({ layer }) => layer),
     ['Al1', 'Al3', 'Al2'],
   );
+  assert.ok(shunted.directJunctionLateralCount > 0);
+  assert.ok(
+    shunted.directJunctionContacts.some(
+      ({ pair, sameXY, sharedZUm }) =>
+        pair.join('/') === 'Al1/Al3' && !sameXY && sharedZUm[1] > sharedZUm[0],
+    ),
+  );
   assert.equal(shunted.probes[0].hits[0].component, shunted.probes[1].hits[0].component);
 });
 
@@ -97,4 +104,25 @@ test('Q2 morphology distinguishes a separated fragment from one touching a pad e
   assert.deepEqual(touching.closedContactTerminals, ['north Nb pad']);
   assert.deepEqual(separated.closedContactTerminals, []);
   assert.deepEqual(separated.slabs[0].zUm, [0.1, 0.13]);
+});
+
+test('Q2 contact audit retains a physical area and Z witness for remote horizontal Al bonds', async () => {
+  const model = fixture();
+  model.regions.push({
+    geom: rectangleGeometry({ minX: 2, maxX: 3, minY: 10, maxY: 11 }),
+    stack: [segment('Al1', 0, 0.04), segment('Al3', 0.04, 0.08)],
+  });
+  const report = await auditQ2ReleasedMaterial(model);
+  assert.equal(report.directJunctionContactCount, 1);
+  assert.equal(report.directJunctionHorizontalCount, 1);
+  assert.equal(report.directJunctionLateralCount, 0);
+  assert.deepEqual(report.directJunctionContacts[0], {
+    pair: ['Al1', 'Al3'],
+    sameXY: true,
+    bounds: [2, 10, 3, 11],
+    horizontalFaceAreaUm2: 1,
+    interfaceZUm: 0.04,
+  });
+  assert.equal(report.sandwichAreaUm2, 4);
+  assert.equal(report.terminalSandwichAreaUm2, 4);
 });

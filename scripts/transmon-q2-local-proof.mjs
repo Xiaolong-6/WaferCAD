@@ -141,8 +141,25 @@ export async function auditQ2ReleasedMaterial(
       adjacency[j].push(i);
     }
     const pair = [names.get(a.layerId), names.get(b.layerId)].sort();
-    if (pair[0] === 'Al1' && ['Al2', 'Al3'].includes(pair[1]))
-      directJunctionContacts.push({ pair, sameXY, bounds: a.piece.box });
+    if (pair[0] === 'Al1' && ['Al2', 'Al3'].includes(pair[1])) {
+      // This graph covers the whole 40 µm Q2 crop. Contact witnesses at a
+      // remote bandage or crop boundary must be distinguishable from those
+      // beside the tunnel barrier; neither is silently ignored as a shunt.
+      directJunctionContacts.push({
+        pair,
+        sameXY,
+        bounds: a.piece.box,
+        ...(sameXY
+          ? {
+              horizontalFaceAreaUm2: materialGeometryArea(a.piece.geom),
+              interfaceZUm: (a.z1 + b.z0) / 2,
+            }
+          : {
+              otherBounds: b.piece.box,
+              sharedZUm: [Math.max(a.z0, b.z0), Math.min(a.z1, b.z1)],
+            }),
+      });
+    }
   }
   const terminalNodes = [
     [x, y - 12],
@@ -341,7 +358,11 @@ export async function auditQ2ReleasedMaterial(
     shuntedSandwichAreaUm2,
     sandwichPatches: sandwichPatches.sort((a, b) => b.areaUm2 - a.areaUm2).slice(0, 8),
     directJunctionContactCount: directJunctionContacts.length,
-    directJunctionContacts: directJunctionContacts.slice(0, 6),
+    directJunctionHorizontalCount: directJunctionContacts.filter(({ sameXY }) => sameXY).length,
+    directJunctionLateralCount: directJunctionContacts.filter(({ sameXY }) => !sameXY).length,
+    // Preserve spatial evidence from the full model instead of returning only
+    // the earliest few contacts, which can conceal remote metal bandages.
+    directJunctionContacts: directJunctionContacts.slice(0, 64),
     detachedComponentCount: detached.length,
     detachedComponents: detached.slice(0, 6).map(({ volumeUm3, layers, bounds }) => ({
       volumeUm3,
