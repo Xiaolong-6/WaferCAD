@@ -37,10 +37,10 @@ function exportSvg(root, options = {}) {
   });
 }
 
-test('3D SVG exports editable geometric paths, not bitmap wrappers', () => {
+test('3D SVG exports editable geometric paths, not bitmap wrappers', async () => {
   const root = new THREE.Group();
   root.add(triangle([0, 0, 0], 'Si'));
-  const svg = exportSvg(root);
+  const svg = await exportSvg(root);
   assert.match(svg, /^<svg /);
   assert.match(svg, /<path d="M/);
   assert.match(svg, /data-wafercad-layer="Si"/);
@@ -48,27 +48,27 @@ test('3D SVG exports editable geometric paths, not bitmap wrappers', () => {
   assert.equal((svg.match(/<path /g) || []).length, 1);
 });
 
-test('Rough CPU vertex heights affect actual projected vector geometry', () => {
+test('Rough CPU vertex heights affect actual projected vector geometry', async () => {
   const flat = new THREE.Group();
   flat.add(triangle([0, 0, 0]));
   const rough = new THREE.Group();
   rough.add(triangle([0, 0.65, 0.11]));
-  assert.notEqual(exportSvg(flat), exportSvg(rough));
-  assert.notEqual(exportSvg(rough, { mode: 'view', mapZ: (z) => z * 3 }), exportSvg(rough, {
+  assert.notEqual(await exportSvg(flat), await exportSvg(rough));
+  assert.notEqual(await exportSvg(rough, { mode: 'view', mapZ: (z) => z * 3 }), await exportSvg(rough, {
     mode: 'physical',
     mapZ: (z) => z * 3,
   }));
 });
 
-test('parallel layer surfaces are painted back-to-front', () => {
+test('parallel layer surfaces are painted back-to-front', async () => {
   const root = new THREE.Group();
   root.add(triangle([-1, -1, -1], 'behind'));
   root.add(triangle([1, 1, 1], 'front'));
-  const svg = exportSvg(root);
+  const svg = await exportSvg(root);
   assert.ok(svg.indexOf('data-wafercad-layer="behind"') < svg.indexOf('data-wafercad-layer="front"'));
 });
 
-test('instanced material templates are projected at all translations', () => {
+test('instanced material templates are projected at all translations', async () => {
   const base = triangle();
   const root = new THREE.Group();
   const mesh = new THREE.InstancedMesh(base.geometry, base.material, 2);
@@ -76,11 +76,11 @@ test('instanced material templates are projected at all translations', () => {
   mesh.setMatrixAt(0, matrix.identity());
   mesh.setMatrixAt(1, matrix.makeTranslation(2, 0, 0));
   root.add(mesh);
-  const svg = exportSvg(root);
+  const svg = await exportSvg(root);
   assert.equal((svg.match(/<path /g) || []).length, 2);
 });
 
-test('SVG quality budget fails closed rather than silently dropping facets', () => {
+test('SVG quality budget fails closed rather than silently dropping facets', async () => {
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute(
     'position',
@@ -88,10 +88,10 @@ test('SVG quality budget fails closed rather than silently dropping facets', () 
   );
   const root = new THREE.Group();
   root.add(new THREE.Mesh(geometry, new THREE.MeshBasicMaterial()));
-  assert.throws(() => exportSvg(root, { detail: 'standard' }), /smaller 3D ROI/);
+  await assert.rejects(exportSvg(root, { detail: 'standard' }), /smaller 3D ROI/);
 });
 
-test('SVG options normalize to stable defaults and abort before work', () => {
+test('SVG options normalize to stable defaults and abort before work', async () => {
   assert.deepEqual(normalizeSvgExportOptions({ detail: 'invalid', mode: 'invalid' }), {
     detail: 'high',
     mode: 'view',
@@ -100,5 +100,5 @@ test('SVG options normalize to stable defaults and abort before work', () => {
   root.add(triangle());
   const aborter = new AbortController();
   aborter.abort();
-  assert.throws(() => exportSvg(root, { signal: aborter.signal }), /cancelled/i);
+  await assert.rejects(exportSvg(root, { signal: aborter.signal }), /cancelled/i);
 });
