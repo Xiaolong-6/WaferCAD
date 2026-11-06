@@ -5,6 +5,7 @@ import { gunzipSync } from 'node:zlib';
 import { resolve } from 'node:path';
 import { loadGeometryKernel } from './process-benchmarks.mjs';
 import { auditQ2ReleasedMaterial } from './transmon-q2-local-proof.mjs';
+import { assertNominalTransmonDoses } from './transmon-paper-dose-contract.mjs';
 
 await loadGeometryKernel();
 const { readProjectFile } = await import('../site/project-io.js');
@@ -35,20 +36,7 @@ assert.equal(project.snapshotBranches.nodes.length, 28);
 assert.equal(project.processRecipe.steps.length, 27);
 assert.equal(project.snapshotBranches.cursorNodeId, 'transmon-process-27');
 assert.deepEqual(project.snapshotBranches.nodes.at(-1).state.model, project.model);
-const doses = project.processRecipe.steps.filter(
-  (step) => step.command === 'deposit' && /^Al[1-6]/.test(step.params.material),
-);
-assert.deepEqual(
-  doses.map((step) => [step.params.material, step.params.thicknessUm, step.params.azimuthDeg]),
-  [
-    ['Al1', 0.04, 45],
-    ['Al2', 0.03, 135],
-    ['Al3', 0.03, -45],
-    ['Al4 contact', 0.03, 270],
-    ['Al5 contact', 0.06, 90],
-    ['Al6 contact', 0.06, 270],
-  ],
-);
+assertNominalTransmonDoses(project.processRecipe.steps);
 const materialNames = new Map(project.model.layers.map((layer) => [layer.id, layer.name]));
 const sacrificial = new Set(
   project.model.layers
