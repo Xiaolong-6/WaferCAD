@@ -5584,7 +5584,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         exportGroup.scale.setScalar(1);
         const viewport = currentViewport(),
           zState = zDisplayState(model),
-          svg = projectThreeMeshesToSvg(THREE, exportGroup, camera, {
+          svg = await projectThreeMeshesToSvg(THREE, exportGroup, camera, {
             width: Math.min(16384, Math.round(viewport.width * 3)),
             height: Math.min(16384, Math.round(viewport.height * 3)),
             mode: svgOptionsNormalized.mode,
