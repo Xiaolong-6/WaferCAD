@@ -528,6 +528,30 @@ export function createSectionView({ store, main, workstation }) {
     else body.append(next);
     legend = next;
     syncLegendPlacement();
+    // Native popover top layer escapes the Layers scroll pane without a second portal.
+    const palettePopover = legend.querySelector('.v2-legend-palette[popover]');
+    if (palettePopover && legendDisplayed() && typeof palettePopover.showPopover === 'function') {
+      palettePopover.showPopover();
+      const trigger = legend.querySelector('.v2-legend-palette-trigger[aria-expanded="true"]');
+      if (trigger) {
+        const rect = trigger.getBoundingClientRect();
+        const margin = 8;
+        const gap = 4;
+        const width = palettePopover.offsetWidth;
+        const height = palettePopover.offsetHeight;
+        const below = rect.bottom + gap;
+        const above = rect.top - height - gap;
+        const left = Math.max(margin, Math.min(rect.left, window.innerWidth - width - margin));
+        const top =
+          below + height + margin <= window.innerHeight
+            ? below
+            : above >= margin
+              ? above
+              : Math.max(margin, Math.min(below, window.innerHeight - height - margin));
+        palettePopover.style.left = `${left}px`;
+        palettePopover.style.top = `${top}px`;
+      }
+    }
     legendResizer.setAttribute(
       'aria-valuenow',
       String(Math.round(legend.getBoundingClientRect().width)),

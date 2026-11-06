@@ -79,6 +79,10 @@ test('Section legend shares the custom RGB entry between layers and annotations'
       '#112233',
     );
     assert.equal(nodes.filter((node) => node.attrs.class === 'v2-legend-swatch-choice').length, 20);
+    assert.equal(
+      nodes.find((node) => node.attrs.class === 'v2-legend-palette')?.attrs.popover,
+      'manual',
+    );
   }
   assert.equal(
     render('layer:film', null).filter((node) => node.attrs['data-rgb-channel']).length,

@@ -266,6 +266,7 @@
               'div',
               {
                 class: 'v2-legend-palette',
+                popover: 'manual',
                 role: 'group',
                 'aria-label': `Colors for ${item.name}`,
               },

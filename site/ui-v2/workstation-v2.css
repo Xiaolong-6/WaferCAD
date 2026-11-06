@@ -190,6 +190,17 @@ html[data-ui='v2'] {
   background: var(--wc-surface);
   box-shadow: var(--wc-shadow-2);
 }
+.v2-legend-palette[popover] {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  max-height: calc(100dvh - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.v2-legend-palette[popover]:not(:popover-open) {
+  display: none;
+}
 .v2-legend-swatch-choice {
   display: grid;
   width: 32px;
