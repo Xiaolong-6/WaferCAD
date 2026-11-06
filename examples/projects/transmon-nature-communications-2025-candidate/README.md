@@ -1,5 +1,15 @@
 # Tuokkola et al. (Nature Communications 2025): transmon GDS reconstruction
 
+> **Current geometry status (2026-11-06):** The checked-in 35° rounded-oxide
+> Q2 project is a historical sensitivity candidate generated before the
+> finite-area metal contact corrections in `43de8c1`. Its earlier
+> terminal-connected barrier area is readback evidence for that saved
+> geometry, **not** evidence that the revised lift-off algorithm reproduces
+> the same final model. Rebuild from the original source Mask and repeat the
+> local terminal, morphology and full-chip tests on the corrected kernel.
+> The paper's 45° Al6 condition and the unresolved detached tips are not
+> accepted as reconstructed fabrication geometry.
+
 ## Fabrication implementation and explicit process assumptions
 
 `scripts/build-transmon-process.mjs` builds actual material checkpoints and an
