@@ -250,11 +250,7 @@
       el(
         'div',
         { class: 'v2-legend-picker-actions' },
-        el(
-          'button',
-          { type: 'button', 'data-action': 'legend-picker-cancel:' + key },
-          'Cancel',
-        ),
+        el('button', { type: 'button', 'data-action': 'legend-picker-cancel:' + key }, 'Cancel'),
         el(
           'button',
           {
