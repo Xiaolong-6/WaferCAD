@@ -695,9 +695,10 @@ export function createProcessPanelController({
             ),
       // Array replay rebuilds a deferred global index; never truncate it here.
       bounds = maskRoi && !isArrayModel(getModel()) ? maskRoiLocalBounds(maskRoi) : null,
-      elements = (bounds
-        ? selected.filter((element) => maskElementMayIntersectRoi(element, bounds))
-        : selected
+      elements = (
+        bounds
+          ? selected.filter((element) => maskElementMayIntersectRoi(element, bounds))
+          : selected
       ).map((element) => ({
         kind: element.kind,
         width: element.width,
