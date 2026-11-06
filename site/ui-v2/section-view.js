@@ -407,7 +407,6 @@ export function createSectionView({ store, main, workstation }) {
         const hex = rgbToHex(rgb);
         customColorDraft.rgb = rgb;
         apply.disabled = !hex;
-        previewSwatch.disabled = !hex;
         inputs.forEach((input) =>
           input.setAttribute('aria-invalid', String(parseRgbChannel(input.value) === null)),
         );
@@ -693,7 +692,10 @@ export function createSectionView({ store, main, workstation }) {
       }
     } else if (action.startsWith('legend-picker-open:')) {
       const key = action.slice('legend-picker-open:'.length);
-      const color = customColorDraft?.key === key ? rgbToHex(customColorDraft.rgb) : null;
+      const color =
+        customColorDraft?.key === key
+          ? rgbToHex(customColorDraft.rgb) || customColorDraft.preview
+          : null;
       if (color) {
         customColorDraft.picker = { hex: color, current: color };
         renderLegend();
