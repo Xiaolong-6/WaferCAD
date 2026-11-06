@@ -28,7 +28,7 @@ For concrete dimensions and expected results, follow the [10-minute hands-on tut
 ## Four synchronized views
 
 - **Mask** — switch between imported **File** masks (GDSII/OASIS hierarchy, global layer/datatype selection and alignment) and project-local **Draw** masks (Rectangle/Circle/Polygon/Ring/Ring Sector), with adjustable opacity above the current active-face topography outline and filtered **SVG/GDSII/OASIS** export; an active Mask ROI crops every export format.
-- **3D** — vector extrusion of the current structure with global opacity, transparency-aware interface borders, geometry-displaced rough/pyramid surfaces, conformal display shells that preserve inherited rough interfaces, depth-gradient Implant overlays, opaque ROI cut-face visibility for buried implants, **Fast / Quality** render-mesh modes with temporary Interactive LOD during camera motion, morphology-aware physical GLB export with a bounded tessellation budget, and 3× PNG capture.
+- **3D** — vector extrusion of the current structure with global opacity, transparency-aware interface borders, geometry-displaced rough/pyramid surfaces, conformal display shells that preserve inherited rough interfaces, depth-gradient Implant overlays, opaque ROI cut-face visibility for buried implants, **Fast / Quality** render-mesh modes with temporary Interactive LOD during camera motion, morphology-aware physical GLB export, bounded camera-projected vector SVG export with Rough/Pyramid facets, and 3× PNG capture.
 - **Main** — front/back surface view with XY axes, an A–B coordinate editor, SVG export, and in-page maximize.
 - **Section A–B** — cross-section generated from the same vector geometry model, with Auto/1:1 scaling, SVG export, and in-page maximize.
 
