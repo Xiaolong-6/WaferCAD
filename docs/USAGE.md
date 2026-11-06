@@ -150,7 +150,7 @@ Z is physical and stored internally in µm. Deposit/Extend use Z as film thickne
 
 The Section A–B **Layers** legend is also the display manager for material layers, Implant annotations, and Electrical Region annotations.
 
-Each material row lets you edit the layer name, palette color, and **visibility**. Material visibility is inspection-only: hiding a layer removes it from Main / Section / 3D rendering and reveals the visible material below it, but does not delete process geometry, increment the process revision, or change what later Process operations act on. Physical material removal belongs in Process History through Etch/Release rather than the Layers legend.
+Each material row lets you edit the layer name, palette color, and **visibility**. Open its color swatch to choose a preset, or select **+** to enter custom RGB channels (0–255), preview the resulting HEX color, and Apply or Cancel. The same editor is available for Implant and Electrical Region colors; the draft does not affect rendering until Apply. Material visibility is inspection-only: hiding a layer removes it from Main / Section / 3D rendering and reveals the visible material below it, but does not delete process geometry, increment the process revision, or change what later Process operations act on. Physical material removal belongs in Process History through Etch/Release rather than the Layers legend.
 
 Implant and Electrical Region rows use the same palette system and expose independent visibility checkboxes. The built-in palettes and Random palette contain 20 colors; Random recolors material layers, implants, and Electrical Regions. Arbitrary color-picker input is not exposed in the Process form.
 
