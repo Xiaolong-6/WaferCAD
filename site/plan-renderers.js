@@ -559,8 +559,7 @@ export function createPlanRenderers({
           }
         } else {
           for (const e of layout.linework || []) traceElement(target, e, view, false);
-          for (const e of layout.elements || [])
-            traceElement(target, e, view, selectedElement(e));
+          for (const e of layout.elements || []) traceElement(target, e, view, selectedElement(e));
         }
         target.restore();
       };
