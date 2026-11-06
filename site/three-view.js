@@ -4,7 +4,11 @@ import { buildContinuousRectMeshCaps } from './continuous-etch-roi-mesh-cap.js';
 import { isArrayModel, resolveArrayModel, geometryBounds, arrayParts } from './model-array.js';
 import { annotationDepthFraction, IMPLANT_DEPTH_GRADIENT } from './annotation-rendering.js';
 import { threeRenderPolicy } from './render-quality-policy.js';
-import { glbCapLocalOrigin, glbLocalFloat32Positions, glbSidewallLocalOrigin } from './glb-export-precision.js';
+import {
+  glbCapLocalOrigin,
+  glbLocalFloat32Positions,
+  glbSidewallLocalOrigin,
+} from './glb-export-precision.js';
 import {
   electricalDisplaySolidForLod,
   transparentArrayPresentationLod,
@@ -1928,7 +1932,10 @@ export function createThreeView({
     }
 
     const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.BufferAttribute(glbLocalFloat32Positions(positions, exportOrigin), 3));
+    geometry.setAttribute(
+      'position',
+      new THREE.BufferAttribute(glbLocalFloat32Positions(positions, exportOrigin), 3),
+    );
     geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
     if (
       parts.some(
