@@ -1244,7 +1244,6 @@ try {
     'detail',
     'settings:detail',
     'export:section:svg',
-    'export:section:png',
   ];
   assert.equal(
     await evaluate(`(() => {
