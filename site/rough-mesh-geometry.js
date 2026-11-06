@@ -11,7 +11,10 @@ import {
   roughDisplayProfileOffsetAtPoint,
 } from './surface-rendering.js';
 import { triangulatePolygon } from './polygon-triangulation.js';
-import { glbLocalFloat32Positions, glbWorldAtFloat32Precision } from './glb-export-precision.js';
+import {
+  glbLocalFloat32Positions,
+  glbWorldAtFloat32Precision,
+} from './glb-export-precision.js';
 
 function triangleNormal(a, b, c) {
   const ux = b[0] - a[0],
@@ -97,9 +100,7 @@ export function roughBoundaryEdgesFromTriangles(triangles) {
 function roughPoint(point, z, profileNormal, appearance, exportOrigin = null) {
   const x = glbWorldAtFloat32Precision(point[0], 0, exportOrigin),
     y = glbWorldAtFloat32Precision(point[1], 1, exportOrigin),
-    physicalZ =
-      z +
-      profileNormal * roughDisplayProfileOffsetAtPoint(x, y, appearance);
+    physicalZ = z + profileNormal * roughDisplayProfileOffsetAtPoint(x, y, appearance);
   return [x, y, glbWorldAtFloat32Precision(physicalZ, 2, exportOrigin)];
 }
 
@@ -191,7 +192,9 @@ export function roughMeshDataFromPreparedCap({
     keyForPoint = (point) => {
       let key = pointKeys.get(point);
       if (key == null) {
-        key = `${glbWorldAtFloat32Precision(point[0], 0, exportOrigin)},${glbWorldAtFloat32Precision(point[1], 1, exportOrigin)}`;
+        const x = glbWorldAtFloat32Precision(point[0], 0, exportOrigin),
+          y = glbWorldAtFloat32Precision(point[1], 1, exportOrigin);
+        key = `${x},${y}`;
         pointKeys.set(point, key);
       }
       return key;
