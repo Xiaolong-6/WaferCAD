@@ -571,15 +571,13 @@ export function createSectionView({ store, main, workstation }) {
         const margin = 8;
         const gap = 8;
         const right = rect.right + gap;
-        const left = right + width + margin <= window.innerWidth
-          ? right
-          : rect.left - width - gap >= margin
-            ? rect.left - width - gap
-            : Math.max(margin, (window.innerWidth - width) / 2);
-        const top = Math.max(
-          margin,
-          Math.min(rect.top - 20, window.innerHeight - height - margin),
-        );
+        const left =
+          right + width + margin <= window.innerWidth
+            ? right
+            : rect.left - width - gap >= margin
+              ? rect.left - width - gap
+              : Math.max(margin, (window.innerWidth - width) / 2);
+        const top = Math.max(margin, Math.min(rect.top - 20, window.innerHeight - height - margin));
         pickerPopover.style.left = `${left}px`;
         pickerPopover.style.top = `${top}px`;
       }
