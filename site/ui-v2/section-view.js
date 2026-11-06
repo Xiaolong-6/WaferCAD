@@ -350,7 +350,8 @@ export function createSectionView({ store, main, workstation }) {
   }
   function recolorLegendEntity(kind, id, color) {
     const layer = kind === 'layer' && state.model.layers.find((item) => String(item.id) === id);
-    const implant = kind === 'annotation' && state.model.implants?.find((item) => String(item.id) === id);
+    const implant =
+      kind === 'annotation' && state.model.implants?.find((item) => String(item.id) === id);
     const electrical =
       kind === 'annotation' &&
       state.model.electricalRegions?.find((item) => String(item.id) === id);
