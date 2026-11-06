@@ -255,21 +255,6 @@ export function createProjectMaskPanels({
     hook('maskCellLabel', el('p', { class: 'p-aux' })),
     el('details', { open: true }, el('summary', {}, 'Cell'), tree),
     el('details', { open: true }, el('summary', {}, 'Layers'), list),
-    el(
-      'details',
-      {},
-      el('summary', {}, 'Transform'),
-      el(
-        'div',
-        { class: 'p-form' },
-        fields.input('Offset X · µm', 'maskOffsetX', state.maskTransform.x),
-        fields.input('Offset Y · µm', 'maskOffsetY', state.maskTransform.y),
-        fields.input('Scale', 'maskScale', state.maskTransform.scale, { kind: 'number' }),
-        fields.input('Rotation · °', 'maskRotation', state.maskTransform.rotation, {
-          kind: 'angle',
-        }),
-      ),
-    ),
   );
   hook('maskOffsetXUnit', el('span'));
   hook('maskOffsetYUnit', el('span'));
