@@ -959,3 +959,42 @@ test('invalid fixed Direct input is rejected before Worker and History', async (
   assert.equal(events.includes('run-worker'), false);
   assert.equal(events.includes('record-operation'), false);
 });
+
+test('Apply transports ROI-local File polygons without mutating the Mask', async () => {
+  const requests = [];
+  const controller = controllerForTask((_live, _model, _params, _label, request) => {
+    requests.push(request);
+    return { result: { changed: false } };
+  }, []);
+  const state = controller.__getMaskState();
+  state.maskRoi = { type: 'square', c: [0, 0], size: 2, rotation: 0 };
+  state.layout.elements = [
+    {
+      kind: 'polygon',
+      layer: 7,
+      points: [
+        [10, 10],
+        [11, 10],
+        [10, 11],
+      ],
+    },
+    {
+      kind: 'polygon',
+      layer: 7,
+      points: [
+        [0, 0],
+        [1, 0],
+        [0, 1],
+      ],
+    },
+  ];
+  controller.__root.getElementById('operationArea').value = 'invert';
+  await controller.applyOperation();
+  assert.equal(requests.at(-1).maskHasArea, true);
+  assert.equal(requests.at(-1).elements.length, 1);
+  assert.deepEqual(requests.at(-1).elements[0].points, state.layout.elements[1].points);
+  assert.equal(state.layout.elements.length, 2);
+  controller.__root.getElementById('operationArea').value = 'full';
+  await controller.applyOperation();
+  assert.deepEqual(requests.at(-1).elements, []);
+});
