@@ -29,6 +29,9 @@ export function createMaskImportController({
   }
 
   function syncTransformInputs() {
+    // The native Mask viewport owns Alignment. The legacy form is optional.
+    if (!['maskOffsetX', 'maskOffsetY', 'maskScale', 'maskRotation'].every((id) => $(id)))
+      return;
     const transform = getMaskTransform();
     $('maskOffsetX').value = formatLengthField(transform.x);
     $('maskOffsetY').value = formatLengthField(transform.y);
@@ -62,6 +65,8 @@ export function createMaskImportController({
   }
 
   function updateTransform() {
+    if (!['maskOffsetX', 'maskOffsetY', 'maskScale', 'maskRotation'].every((id) => $(id)))
+      return;
     const current = getMaskTransform();
     const xChanged = displayLengthDraftChanged(
       $('maskOffsetX').value,
@@ -94,8 +99,10 @@ export function createMaskImportController({
     $('gdsInput').onchange = openFile;
 
     for (const id of ['maskOffsetX', 'maskOffsetY', 'maskScale', 'maskRotation']) {
-      $(id).oninput = updateTransform;
-      $(id).addEventListener('change', syncTransformInputs);
+      const field = $(id);
+      if (!field) continue;
+      field.oninput = updateTransform;
+      field.addEventListener('change', syncTransformInputs);
     }
   }
 
