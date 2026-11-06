@@ -211,6 +211,114 @@ html[data-ui='v2'] {
   width: 20px;
   height: 20px;
 }
+.v2-legend-custom-trigger {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  padding: 0;
+  border: 1px dashed var(--wc-border-strong);
+  border-radius: var(--wc-radius-sm);
+  background: var(--wc-surface);
+  color: var(--wc-text);
+  font-size: 19px;
+  line-height: 1;
+  cursor: pointer;
+}
+.v2-legend-custom-trigger:hover,
+.v2-legend-custom-trigger:focus-visible,
+.v2-legend-custom-trigger[aria-pressed='true'] {
+  color: var(--wc-accent);
+  border-color: var(--wc-accent);
+  background: var(--wc-accent-tint);
+}
+.v2-legend-custom-editor {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding-top: 7px;
+  border-top: 1px solid var(--wc-border);
+  color: var(--wc-text);
+}
+.v2-legend-custom-title {
+  font-size: 11px;
+}
+.v2-legend-custom-preview-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.v2-legend-custom-preview {
+  width: 28px;
+  height: 24px;
+  border: 1px solid var(--wc-border-strong);
+  border-radius: var(--wc-radius-sm);
+}
+.v2-legend-custom-hex {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.v2-legend-custom-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+.v2-legend-custom-field {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  color: var(--wc-muted);
+  font-size: 11px;
+}
+.v2-legend-custom-field input {
+  width: 100%;
+  min-width: 0;
+  height: 29px;
+  padding: 3px 2px;
+  border: 1px solid var(--wc-border-strong);
+  border-radius: var(--wc-radius-sm);
+  background: var(--wc-surface);
+  color: var(--wc-text);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.v2-legend-custom-field input[aria-invalid='true'] {
+  border-color: var(--wc-danger, #ba4550);
+}
+.v2-legend-custom-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+.v2-legend-custom-actions button {
+  min-width: 0;
+  min-height: 30px;
+  padding: 4px 2px;
+  border: 1px solid var(--wc-border-strong);
+  border-radius: var(--wc-radius-sm);
+  background: var(--wc-surface);
+  color: var(--wc-text);
+  font-size: 11px;
+  cursor: pointer;
+}
+.v2-legend-custom-actions .v2-legend-custom-apply {
+  color: var(--wc-accent);
+  border-color: var(--wc-accent);
+  background: var(--wc-accent-tint);
+}
+.v2-legend-custom-actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+@media (pointer: coarse) {
+  .v2-legend-custom-field input,
+  .v2-legend-custom-actions button {
+    min-height: 44px;
+  }
+}
 .v2-legend-random {
   grid-column: 1 / -1;
   min-height: 36px;
