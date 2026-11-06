@@ -208,8 +208,13 @@ test('morphology export rejects geometry whose base mesh exceeds the hard cap', 
 });
 
 test('morphology GLB local-origin export preserves 1 nm XY detail at large coordinates', () => {
-  const x = 50000, y = -50000, z = 1, delta = 0.001;
-  const a = [x, y, z], b = [x + delta, y, z], c = [x, y + delta, z];
+  const x = 50000,
+    y = -50000,
+    z = 1,
+    delta = 0.001;
+  const a = [x, y, z],
+    b = [x + delta, y, z],
+    c = [x, y + delta, z];
   const input = {
     z,
     normal: 1,
@@ -227,12 +232,14 @@ test('morphology GLB local-origin export preserves 1 nm XY detail at large coord
       heightCv: 0,
       seed: 24,
     },
-    lodZones: [{
-      baseTriangles: [[a, b, c]],
-      maxEdge: delta * Math.SQRT2,
-      lodContext: { distance: 1, viewportWidth: 16, viewportHeight: 16, maxDepth: 0 },
-      triangleBudget: 1,
-    }],
+    lodZones: [
+      {
+        baseTriangles: [[a, b, c]],
+        maxEdge: delta * Math.SQRT2,
+        lodContext: { distance: 1, viewportWidth: 16, viewportHeight: 16, maxDepth: 0 },
+        triangleBudget: 1,
+      },
+    ],
   };
   const first = roughMeshDataFromPreparedCap(input);
   const second = roughMeshDataFromPreparedCap(input);
