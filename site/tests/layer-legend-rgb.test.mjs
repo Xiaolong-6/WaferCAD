@@ -75,9 +75,19 @@ test('Section legend shares the custom RGB entry between layers and annotations'
       nodes.filter((node) => node.attrs['data-rgb-channel']).map((node) => node.attrs.value),
       [17, 34, 51],
     );
-    assert.equal(nodes.filter((node) => node.attrs.class === 'v2-legend-custom-hex')[0].children[0], '#112233');
+    assert.equal(
+      nodes.filter((node) => node.attrs.class === 'v2-legend-custom-hex')[0].children[0],
+      '#112233',
+    );
     assert.equal(nodes.filter((node) => node.attrs.class === 'v2-legend-swatch-choice').length, 20);
   }
-  assert.equal(render('layer:film', null).filter((node) => node.attrs['data-rgb-channel']).length, 0);
-  assert.equal(render(null, null).filter((node) => node.attrs['data-action']?.startsWith('legend-custom:')).length, 0);
+  assert.equal(
+    render('layer:film', null).filter((node) => node.attrs['data-rgb-channel']).length,
+    0,
+  );
+  assert.equal(
+    render(null, null).filter((node) => node.attrs['data-action']?.startsWith('legend-custom:'))
+      .length,
+    0,
+  );
 });
