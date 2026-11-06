@@ -373,7 +373,8 @@ export function createMaskRuntime({
     root,
     getState: () => state,
     ...plan,
-    maskPoint,
+    // Exports must use only the committed transform, never the drag preview.
+    maskPoint: (point) => maskLocalToWorld(point, state.maskTransform),
     layerKey,
     layerColor,
     selectedElement,
