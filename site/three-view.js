@@ -4,6 +4,7 @@ import { buildContinuousRectMeshCaps } from './continuous-etch-roi-mesh-cap.js';
 import { isArrayModel, resolveArrayModel, geometryBounds, arrayParts } from './model-array.js';
 import { annotationDepthFraction, IMPLANT_DEPTH_GRADIENT } from './annotation-rendering.js';
 import { threeRenderPolicy } from './render-quality-policy.js';
+import { glbCapLocalOrigin, glbLocalFloat32Positions, glbSidewallLocalOrigin } from './glb-export-precision.js';
 import {
   electricalDisplaySolidForLod,
   transparentArrayPresentationLod,
@@ -1670,11 +1671,18 @@ export function createThreeView({
     return [minX, minY, maxX, maxY].every(Number.isFinite) ? { minX, minY, maxX, maxY } : null;
   }
 
-  function geometryFromSolid({ slabs, caps }, displayTolerance = 0) {
+  function geometryFromSolid({ slabs, caps }, displayTolerance = 0, localOrigin = null) {
     const positions = [],
       normals = [];
     const triangle = (a, b, c, normal) => {
-      positions.push(...a, ...b, ...c);
+      if (localOrigin) {
+        for (const point of [a, b, c])
+          positions.push(
+            point[0] - localOrigin[0],
+            point[1] - localOrigin[1],
+            point[2] - localOrigin[2],
+          );
+      } else positions.push(...a, ...b, ...c);
       normals.push(...normal, ...normal, ...normal);
     };
     for (const { z, normal, polys } of caps)
@@ -1828,6 +1836,7 @@ export function createThreeView({
     boundaryProfiles = null,
     appearanceByCapIndex = null,
     exportPolicy = null,
+    exportOrigin = null,
   ) {
     const positions = [],
       normals = [],
@@ -1918,7 +1927,7 @@ export function createThreeView({
     }
 
     const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('position', new THREE.BufferAttribute(glbLocalFloat32Positions(positions, exportOrigin), 3));
     geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
     if (
       parts.some(
@@ -5419,7 +5428,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           metalness: 0.015,
           side: THREE.DoubleSide,
         }),
-      addExportMesh = (geometry, layerId, suffix = '', translations = null) => {
+      addExportMesh = (geometry, layerId, suffix = '', translations = null, origin = null) => {
         if (!geometry?.getAttribute?.('position')?.count) {
           geometry?.dispose?.();
           return null;
@@ -5438,6 +5447,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           });
         }
         mesh.name = `${layer?.name || layerId || 'Layer'}${suffix}`;
+        if (origin) mesh.position.set(...origin);
         exportGroup.add(mesh);
         disposable.push(mesh);
         return mesh;
@@ -5468,7 +5478,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
       // mesh policy, so GLB does not fall back to ideal flat canonical caps.
       for (let capIndex = 0; capIndex < surfacePlan.caps.length; capIndex++) {
         throwIfAborted();
-        const cap = surfacePlan.caps[capIndex];
+        const cap = surfacePlan.caps[capIndex],
+          origin = glbCapLocalOrigin(cap);
         if (cap.appearance?.kind === 'rough') {
           const task = roughTasks.find((entry) => entry.cap === cap),
             meshData = roughMeshDataByCap?.get(cap) || null;
@@ -5520,13 +5531,15 @@ diffuseColor.a *= waferCadAlphaScale;`,
           }
         } else {
           const mesh = addExportMesh(
-            geometryFromSolid({
-              slabs: [],
-              caps: [{ z: cap.z, normal: cap.normal, polys: cap.polys }],
-            }),
+            geometryFromSolid(
+               { slabs: [], caps: [{ z: cap.z, normal: cap.normal, polys: cap.polys }] },
+               0,
+               origin,
+             ),
             cap.layerId,
             '',
             cap.instanceTranslations,
+          origin,
           );
           if (mesh) {
             mesh.userData.wafercadLayerId = cap.layerId || null;
@@ -5546,10 +5559,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
       for (const sidewall of surfacePlan.sidewalls) {
         if (sidewall.instanceTranslations) {
           addExportMesh(
-            geometryFromSidewallParts(sidewall.parts || [sidewall], 0, exportBoundaryProfiles, null, physicalExportPolicy),
+            geometryFromSidewallParts(sidewall.parts || [sidewall], 0, exportBoundaryProfiles, null, physicalExportPolicy, glbSidewallLocalOrigin(sidewall.parts || [sidewall])),
             sidewall.layerId,
             ' · sidewalls',
             sidewall.instanceTranslations,
+          glbSidewallLocalOrigin(sidewall.parts || [sidewall]),
           );
           continue;
         }
@@ -5562,9 +5576,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
       for (const [layerId, parts] of sidewallsByLayer) {
         throwIfAborted();
         addExportMesh(
-          geometryFromSidewallParts(parts, 0, exportBoundaryProfiles, null, physicalExportPolicy),
+          geometryFromSidewallParts(parts, 0, exportBoundaryProfiles, null, physicalExportPolicy, glbSidewallLocalOrigin(parts)),
           layerId,
           ' · sidewalls',
+        null,
+        glbSidewallLocalOrigin(parts),
         );
         sidewallIndex++;
         reportProgress(0.79 + 0.1 * (sidewallIndex / sidewallGroupCount), 'Building sidewalls');
