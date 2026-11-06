@@ -684,6 +684,8 @@ export function createProcessPanelController({
           ? maskContext.layerKeys
           : state.selectedLayerKeys || [],
       ),
+      transform = maskContext?.transform ||
+        state.maskTransform || { x: 0, y: 0, scale: 1, rotation: 0 },
       scope = mode === 'full' ? null : replayScopeCells(state, maskContext?.cell || null),
       selected =
         mode === 'full'
@@ -697,7 +699,9 @@ export function createProcessPanelController({
       bounds = maskRoi && !isArrayModel(getModel()) ? maskRoiLocalBounds(maskRoi) : null,
       elements = (
         bounds
-          ? selected.filter((element) => maskElementMayIntersectRoi(element, bounds))
+          ? selected.filter((element) =>
+              maskElementMayIntersectRoi(element, bounds, transform.scale),
+            )
           : selected
       ).map((element) => ({
         kind: element.kind,
@@ -709,10 +713,8 @@ export function createProcessPanelController({
       mode,
       maskSourceMode,
       maskRoi,
-      maskHasArea: selected.some(maskElementMayDefineArea),
-      maskTransform: {
-        ...(maskContext?.transform || state.maskTransform || { x: 0, y: 0, scale: 1, rotation: 0 }),
-      },
+      maskHasArea: selected.some((element) => maskElementMayDefineArea(element, transform.scale)),
+      maskTransform: { ...transform },
       elements,
     };
   }
@@ -1234,12 +1236,16 @@ export function createProcessPanelController({
             // independent presence bit preserves invert-of-outside-ROI semantics.
             ...(arrayModel
               ? {}
-              : { maskHasArea: selectedFileElements.some(maskElementMayDefineArea) }),
+              : {
+                  maskHasArea: selectedFileElements.some((element) =>
+                    maskElementMayDefineArea(element, maskTransform.scale),
+                  ),
+                }),
             elements: arrayModel
               ? []
               : (localRoiBounds
                   ? selectedFileElements.filter((element) =>
-                      maskElementMayIntersectRoi(element, localRoiBounds),
+                      maskElementMayIntersectRoi(element, localRoiBounds, maskTransform.scale),
                     )
                   : selectedFileElements
                 ).map((element) => ({

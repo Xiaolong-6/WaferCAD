@@ -145,3 +145,22 @@ test('Mask alignment does not move ROI filtering into world-coordinate input spa
   );
   assert.equal(visits(), 4);
 });
+
+test('a File mask path below the physical buffer tolerance cannot enable Invert', () => {
+  const { selection } = makeSelection({
+    elements: [
+      {
+        kind: 'path',
+        layer: 1,
+        width: 0.01,
+        points: [
+          [20, 20],
+          [30, 30],
+        ],
+      },
+    ],
+    roi: { type: 'square', c: [0, 0], size: 10, rotation: 0 },
+    transform: { x: 0, y: 0, scale: 1e-6, rotation: 0 },
+  });
+  assert.deepEqual(selection.operationAreaGeometry('invert'), []);
+});

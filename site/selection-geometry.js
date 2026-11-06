@@ -26,7 +26,7 @@ export function createSelectionGeometry({ getState, selectedElement, maskPoint }
       geoms = [];
     for (const element of layout.elements || []) {
       if (!selectedElement(element)) continue;
-      if (localRoiBounds && !maskElementMayIntersectRoi(element, localRoiBounds)) continue;
+      if (!maskElementMayIntersectRoi(element, localRoiBounds, maskTransform.scale)) continue;
       if (element.kind === 'polygon') {
         geoms.push([[element.points.map(maskPoint)]]);
       } else if (element.kind === 'path' && element.width > 0) {
@@ -94,15 +94,18 @@ export function createSelectionGeometry({ getState, selectedElement, maskPoint }
     } else {
       const selected = activeMaskGeometry(localRoiBounds);
       if (isEmpty(selected)) {
+        if (mode !== 'invert' || !localRoiBounds) return [];
         // An existing mask entirely outside the ROI inverts to the ROI itself.
         // A truly empty mask must still reject both mask and invert.
         const hasMaskArea =
           maskSourceMode === 'draw'
             ? (drawMask?.shapes || []).some((shape) => Boolean(normalizeDrawShape(shape)))
             : (layout.elements || []).some(
-                (element) => selectedElement(element) && maskElementMayDefineArea(element),
+                (element) =>
+                  selectedElement(element) &&
+                  maskElementMayDefineArea(element, maskTransform.scale),
               );
-        if (mode !== 'invert' || !localRoiBounds || !hasMaskArea) return [];
+        if (!hasMaskArea) return [];
         area = fullFaceGeometry(model);
       } else {
         area = mode === 'invert' ? difference(model.boundary, selected) : selected;

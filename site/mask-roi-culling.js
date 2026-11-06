@@ -2,6 +2,7 @@
 // Mask ROI are stored in mask-local coordinates; alignment applies to both.
 // This rejects only disjoint bounds, never alters source polygons or precision.
 import { normalizeMaskRoi } from './mask-roi-geometry.js';
+import { EPS } from './polygon-boolean.js';
 
 function overlap(a, b) {
   if (!a || !b) return true; // Invalid inputs fail open to the exact geometry kernel.
@@ -65,19 +66,24 @@ export function maskRoiLocalBounds(roi) {
   };
 }
 
-export function maskElementMayDefineArea(element) {
+export function maskElementMayDefineArea(element, scale = 1) {
   return (
     (element?.kind === 'polygon' && element.points?.length >= 3) ||
-    (element?.kind === 'path' && element.points?.length >= 2 && Number(element.width) > 0)
+    (element?.kind === 'path' &&
+      element.points?.length >= 2 &&
+      (Number(element.width) * Math.abs(scale)) / 2 > EPS)
   );
 }
 
-export function maskElementMayIntersectRoi(element, roiBounds) {
+export function maskElementMayIntersectRoi(element, roiBounds, scale = 1) {
   if (!roiBounds) return true;
-  const margin =
+  const radius =
     element?.kind === 'path' && Number.isFinite(Number(element.width))
       ? Math.abs(Number(element.width)) / 2
       : 0;
+  // The world-space segment bands overlap their round end caps slightly.
+  // Include that extension in mask-local coordinates before rejecting a path.
+  const margin = radius ? radius + Math.max((EPS * 10) / Math.abs(scale), radius * 1e-6) : 0;
   return overlap(pointBounds(element?.points, margin), roiBounds);
 }
 

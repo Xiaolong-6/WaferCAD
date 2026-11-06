@@ -164,17 +164,18 @@ function processArea(
     // alignment transform is applied only to retained elements.
     const draw = request?.maskSourceMode === 'draw';
     const all = draw ? request?.drawMask?.shapes || [] : request?.elements || [];
+    const scale = Number(request?.maskTransform?.scale) || 1;
     const hasMaskArea =
       request?.maskHasArea ??
       (draw
         ? all.some((shape) => Boolean(drawApi.normalizeDrawShape(shape)))
-        : all.some(maskCullingApi.maskElementMayDefineArea));
+        : all.some((element) => maskCullingApi.maskElementMayDefineArea(element, scale)));
     if (!hasMaskArea) return [];
     const nearby = localRoiBounds
       ? all.filter((shape) =>
           draw
             ? maskCullingApi.drawShapeMayIntersectRoi(shape, localRoiBounds)
-            : maskCullingApi.maskElementMayIntersectRoi(shape, localRoiBounds),
+            : maskCullingApi.maskElementMayIntersectRoi(shape, localRoiBounds, scale),
         )
       : all;
     const selected = nearby.length
