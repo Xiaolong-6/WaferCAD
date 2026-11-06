@@ -5336,6 +5336,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
               closeToIdeal: !task.cap.buried,
               sidewallBoundaryIntervals: task.cap.sidewallBoundaryIntervals,
               profileNormal: task.cap.profileNormal,
+              exportOrigin: glbCapLocalOrigin(task.cap),
               lodZones: task.lodZones.map((zone) => ({
                 baseTriangles: zone.baseTriangles,
                 maxEdge: zone.maxEdge,
@@ -5496,13 +5497,14 @@ diffuseColor.a *= waferCadAlphaScale;`,
                   sidewallBoundaryIntervals: cap.sidewallBoundaryIntervals,
                   profileNormal: cap.profileNormal,
                   lodZones: task.lodZones,
+                exportOrigin: origin,
                 });
             const roughBorderVertexCount = Math.floor(
               (geometry.userData?.roughBorderPositions?.length || 0) / 3,
             );
             exportBoundaryProfiles.set(
               capIndex,
-              boundaryProfileFromPositions(geometry.userData.roughBoundaryPositions),
+              boundaryProfileFromPositions(geometry.userData.roughBoundaryPositions, origin),
             );
             // Renderer-only LOD/debug metadata can include large typed arrays.
             // Keep GLB extras compact and publish only the stable export contract
@@ -5513,6 +5515,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
               cap.layerId,
               ' · morphology',
               cap.instanceTranslations,
+            origin,
             );
             if (mesh) {
               mesh.userData.wafercadMorphology = cap.appearance.morphology || 'rough';
