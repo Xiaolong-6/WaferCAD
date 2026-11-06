@@ -375,6 +375,15 @@ try {
         assert.ok(Math.abs(bytes.readUInt32BE(16) - Math.round(box.width * 3)) <= 2);
         assert.ok(Math.abs(bytes.readUInt32BE(20) - Math.round(box.height * 3)) <= 2);
         await command('three-export-menu');
+        const svgEvent = page.waitForEvent('download', { timeout: 120000 });
+        await page.locator('[data-action="export:three:svg"]').click();
+        const svgDownload = await svgEvent;
+        const svg = (await readFile(await svgDownload.path())).toString();
+        assert.equal(svgDownload.suggestedFilename(), 'wafercad-3d.svg');
+        assert.match(svg, /^<svg /);
+        assert.match(svg, /<path d="M/);
+        assert.doesNotMatch(svg, /<image|data:image\/|base64/i);
+        await command('three-export-menu');
         const glbEvent = page.waitForEvent('download', { timeout: 120000 });
         await page.locator('[data-action="export:three:glb"]').click();
         const glb = await glbEvent,
@@ -393,6 +402,7 @@ try {
         assert.deepEqual((await snapshot()).roi, roi);
         report.exports = {
           pngBytes: bytes.length,
+          svgBytes: svg.length,
           glbBytes: buffer.length,
           physicalMetres: true,
         };
