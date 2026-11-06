@@ -11,10 +11,7 @@ import {
   roughDisplayProfileOffsetAtPoint,
 } from './surface-rendering.js';
 import { triangulatePolygon } from './polygon-triangulation.js';
-import {
-  glbLocalFloat32Positions,
-  glbWorldAtFloat32Precision,
-} from './glb-export-precision.js';
+import { glbLocalFloat32Positions, glbWorldAtFloat32Precision } from './glb-export-precision.js';
 
 function triangleNormal(a, b, c) {
   const ux = b[0] - a[0],
