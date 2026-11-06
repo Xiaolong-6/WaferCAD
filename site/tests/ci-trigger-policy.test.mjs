@@ -93,3 +93,15 @@ test('daily runner budget is an alert, while mandatory suites remain fail-closed
   assert.match(daily, /Fail on any missing, skipped or failed mandatory group/);
   assert.match(daily, /job\.result !== 'success'/);
 });
+
+test('unchanged-main daily reuse preserves verified full evidence and fail-closed verdict', () => {
+  const daily = sources()['daily-full.yml'];
+  assert.match(daily, /workflow_id: 'daily-full\\.yml'/);
+  assert.match(daily, /context\\.eventName !== 'schedule'/);
+  assert.match(daily, /latest\\.head_sha !== context\\.sha \\|\\| latest\\.conclusion !== 'success'/);
+  assert.match(daily, /passed\\('Full lint, format, docs and all Node tests \\/ quality'\\)/);
+  assert.match(daily, /passed\\('Daily full regression verdict'\\)/);
+  assert.match(daily, /full\\('GitHub Actions history unavailable'\\)/);
+  assert.match(daily, /if: \\$\\{\\{ needs\\.plan\\.outputs\\.full == 'true' \\}\\}/);
+  assert.match(daily, /if \\(job\\.result !== 'skipped'\\) process\\.exitCode = 1/);
+});
