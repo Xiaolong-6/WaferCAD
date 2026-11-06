@@ -193,6 +193,36 @@ try {
       const color = page.getByRole('button', { name: 'Choose color for ITO', exact: true });
       await color.click();
       assert.equal(await page.locator('.v2-legend-palette').count(), 1);
+      await page.getByRole('button', { name: 'Custom RGB color', exact: true }).click();
+      const custom = page.locator('.v2-legend-custom-editor');
+      const beforePicker = (await snapshot()).model;
+      const openPicker = page.getByRole('button', { name: 'Open visual color picker' });
+      await openPicker.click();
+      const picker = page.getByRole('dialog', { name: 'Select custom color' });
+      assert.equal(await picker.isVisible(), true);
+      const bounds = await picker.locator('[data-picker-field]').boundingBox();
+      assert.ok(bounds && bounds.width > 50 && bounds.height > 50);
+      await page.mouse.click(bounds.x + bounds.width * 0.35, bounds.y + bounds.height * 0.4);
+      await picker.locator('[data-picker-hex]').fill('#invalid');
+      assert.equal(await picker.locator('.v2-legend-picker-ok').isDisabled(), true);
+      await picker.getByRole('button', { name: 'Cancel', exact: true }).click();
+      assert.equal(await picker.count(), 0);
+      assert.deepEqual((await snapshot()).model, beforePicker, 'Picker Cancel is draft-only');
+      await openPicker.click();
+      await picker.locator('[data-picker-hex]').fill('#123456');
+      await picker.getByRole('button', { name: 'OK', exact: true }).click();
+      assert.equal(await custom.locator('[data-rgb-channel="r"]').inputValue(), '18');
+      assert.equal(await custom.locator('[data-rgb-channel="g"]').inputValue(), '52');
+      assert.equal(await custom.locator('[data-rgb-channel="b"]').inputValue(), '86');
+      assert.deepEqual((await snapshot()).model, beforePicker, 'Picker OK is not Layer Apply');
+      await custom.locator('.v2-legend-custom-apply').click();
+      assert.equal(
+        (await snapshot()).model.layers.find((item) => item.name === 'ITO')?.color,
+        '#123456',
+        'Only Custom RGB Apply recolors the model',
+      );
+      await color.click();
+      assert.equal(await page.locator('.v2-legend-palette').count(), 1);
       await color.click();
       assert.equal(await page.locator('.v2-legend-palette').count(), 0);
       await color.click();
