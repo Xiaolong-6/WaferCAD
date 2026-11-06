@@ -208,7 +208,16 @@ try {
       await picker.getByRole('button', { name: 'Cancel', exact: true }).click();
       assert.equal(await picker.count(), 0);
       assert.deepEqual((await snapshot()).model, beforePicker, 'Picker Cancel is draft-only');
+      const previousValidColor = await custom.locator('.v2-legend-custom-hex').textContent();
+      await custom.locator('[data-rgb-channel="r"]').fill('999');
+      assert.equal(await custom.locator('.v2-legend-custom-apply').isDisabled(), true);
+      assert.equal(await openPicker.isEnabled(), true, 'Invalid RGB cannot lock the visual picker');
       await openPicker.click();
+      assert.equal(
+        await picker.getAttribute('data-picker-current'),
+        previousValidColor,
+        'The picker recovers from the last valid color',
+      );
       await picker.locator('[data-picker-hex]').fill('#123456');
       await picker.getByRole('button', { name: 'OK', exact: true }).click();
       assert.equal(await custom.locator('[data-rgb-channel="r"]').inputValue(), '18');
