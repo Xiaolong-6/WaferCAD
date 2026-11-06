@@ -90,9 +90,9 @@ try {
       await page.locator('#maskPanel').waitFor({ state: 'visible' });
       await waitForPaint(page);
       const planBackground = (view) =>
-        page.locator(`#${view}Panel .v2-plan-stage`).evaluate(
-          (stage) => getComputedStyle(stage).backgroundColor,
-        );
+        page
+          .locator(`#${view}Panel .v2-plan-stage`)
+          .evaluate((stage) => getComputedStyle(stage).backgroundColor);
       assert.equal(await planBackground('mask'), 'rgb(255, 255, 255)');
       await command('mask-roi-toggle');
       assert.equal(await page.locator('#maskRoiTools').isVisible(), true);
@@ -132,9 +132,9 @@ try {
       await waitForPaint(page);
       const sectionCanvas = page.locator('#sectionCanvas');
       assert.equal(
-        await page.locator('#sectionPanel .v2-section-body .p-science').evaluate(
-          (stage) => getComputedStyle(stage).backgroundColor,
-        ),
+        await page
+          .locator('#sectionPanel .v2-section-body .p-science')
+          .evaluate((stage) => getComputedStyle(stage).backgroundColor),
         'rgb(255, 255, 255)',
       );
       assert.deepEqual(
