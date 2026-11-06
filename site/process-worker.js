@@ -18,7 +18,7 @@ function modules() {
       import(versioned('./draw-mask-geometry.js')),
       import(versioned('./mask-roi-geometry.js')),
       import(versioned('./mask-roi-culling.js')),
-      import(versioned('./advanced-process-operations.js')), 
+      import(versioned('./advanced-process-operations.js')),
       import(versioned('./project-schema.js')),
       import(versioned('./model-array-process.js')),
       import(versioned('./model-array.js')),
