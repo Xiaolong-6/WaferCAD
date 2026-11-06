@@ -4,10 +4,10 @@
   "scope": "full",
   "status": "pass",
   "source": {
-    "digest": "ccac9b34b8b7390db8f0203d5c4bf7947bc645e246b0db1a8393b709fa5985fb",
+    "digest": "fdb49aa96e43e2b57b6a9ec2fd828919ec03ead0ea6ab8c144a39b92109871ab",
     "fileCount": 1302
   },
-  "sourceRevision": "e695c20985e9bb989a77c097776521dfb97bd3cf",
+  "sourceRevision": "9b666a2a2478af6b2104ea1d4f4eaca957689345",
   "planDigest": "9e40e14c41649069d23911dc155328f17e554f0307619aef8493378a2f26b4b3",
   "environment": {
     "node": "v24.22.1",
@@ -18,7 +18,7 @@
       "three": "0.179.1"
     }
   },
-  "startedAt": "2026-11-06T11:20:47.897Z",
+  "startedAt": "2026-11-06T11:39:50.483Z",
   "checks": [
     {
       "id": "lint",
@@ -30,7 +30,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 9453,
+      "durationMs": 16466,
       "logDigest": "d46391803643bd553cf3c7de1bbada8ee5dd156a742fdb8a9656b12d4c141ba7"
     },
     {
@@ -43,7 +43,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 47653,
+      "durationMs": 46261,
       "logDigest": "7af202ff04a2f06f11b43384352ea678f21e2248c50db67cb4d00c4a92fa69a7"
     },
     {
@@ -56,7 +56,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 6587,
+      "durationMs": 1563,
       "logDigest": "1e627212c7b5262641740228701bae70509a7801fc55cd31b12a1e2105ac058d"
     },
     {
@@ -68,10 +68,10 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 762298,
-      "logDigest": "9be1cffb755cd2001359c04f149e5ac68d716ad4768f1ec2f9f6f0460781bbf3"
+      "durationMs": 483734,
+      "logDigest": "94f3d936d84a1613707f3c5f93ce4110890b64e407715671dc1b156b84ef2e39"
     }
   ],
-  "finishedAt": "2026-11-06T11:34:33.897Z",
-  "transcriptDigest": "d88b560ee98c4fe4c7f6e014d57b0e88459c1c37ead50e089093c2ab87dbc111"
+  "finishedAt": "2026-11-06T11:48:58.536Z",
+  "transcriptDigest": "4db225fe5c8c1ff20036c5a5026d9a55aaa40f10563815e2e02106a40643b77d"
 }
