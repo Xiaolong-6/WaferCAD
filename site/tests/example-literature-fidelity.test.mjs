@@ -78,11 +78,15 @@ test('Basiri-Esfahani microdisk preserves process chronology and a real void', a
   assert.equal(steps[7].params.target, steps[5].params.material);
   assert.equal(steps[8].params.profile, 'isotropic');
   assert.equal(steps[8].params.thicknessUm, 36);
-  assert.match(
+  const historyDicingNote =
     project.snapshotBranches.nodes.find((node) => node.id === 'process-microdisk-07b')?.operation
-      ?.note || '',
-    /local model crop is unchanged/i,
+      ?.note || '';
+  assert.equal(
+    historyDicingNote,
+    steps[6].params.note,
+    'Mechanical dicing provenance must match between History and Recipe',
   );
+  assert.match(historyDicingNote, /local 400 × 400 µm validation crop/i);
   for (const id of ['07a', '07b', '07']) {
     assert.ok(
       project.snapshots.some((snapshot) => snapshot.historyNodeId === `process-microdisk-${id}`),
