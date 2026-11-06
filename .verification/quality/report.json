@@ -4,10 +4,10 @@
   "scope": "full",
   "status": "pass",
   "source": {
-    "digest": "5cecc4b03b0ecddb3b17a8d9197d50347af2f57e83427dacf43b29eb306e7e39",
-    "fileCount": 1306
+    "digest": "f3de6dd5be84f3cabc99ad5578c389eca78b154bd6aafb032cd1e4727baaaf79",
+    "fileCount": 1307
   },
-  "sourceRevision": "55a94aa0b80cf8d158105826dcae7c063922f226",
+  "sourceRevision": "94282b8a55acede012cf82201be19bbcb685dfa4",
   "planDigest": "9e40e14c41649069d23911dc155328f17e554f0307619aef8493378a2f26b4b3",
   "environment": {
     "node": "v22.16.0",
@@ -18,7 +18,7 @@
       "three": "0.179.1"
     }
   },
-  "startedAt": "2026-11-06T17:58:25.336Z",
+  "startedAt": "2026-11-06T18:18:57.689Z",
   "checks": [
     {
       "id": "lint",
@@ -30,7 +30,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 6641,
+      "durationMs": 5943,
       "logDigest": "7e083cff9d323606d09accd3389828279cc52091b6c62b45c8100c1ced589c7c"
     },
     {
@@ -43,7 +43,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 18019,
+      "durationMs": 16010,
       "logDigest": "1230617af071df8c1efeb12bcd6d41c3aa159e1cd0841cc546fbae4c8c56f867"
     },
     {
@@ -56,7 +56,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 436,
+      "durationMs": 402,
       "logDigest": "f41d9b5846a8a95a7941fcd7428a4ff7e341b07bc5f5ab28e615f71d70bb7447"
     },
     {
@@ -68,10 +68,10 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 266424,
-      "logDigest": "7e8c2eb2bae55ce676436bf2c68ef8d71ff6dd16148fbec1c57d1928e87f6b1f"
+      "durationMs": 245220,
+      "logDigest": "69e61fa63f5fa9591847cd7d538831080e9c39f06042f09efd8ac3759658555e"
     }
   ],
-  "finishedAt": "2026-11-06T18:03:16.858Z",
-  "transcriptDigest": "5f564d370650c64678f36b17cadf67b75713fb7377d18b7f79abe9f2dd45c6f4"
+  "finishedAt": "2026-11-06T18:23:25.265Z",
+  "transcriptDigest": "d4d8ed7398659b0933b5af51fbc17746ba851ccf7a27888e2b2eb960a710b59c"
 }
