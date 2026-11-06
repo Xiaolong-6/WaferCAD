@@ -143,9 +143,12 @@ global connected material components after the earliest selected resist.
 It removes resist-carried waste and preserves permanent-supported material.
 A component connecting horizontal resist topcoat to the permanent device
 rejects the operation; lateral resist contact alone does not establish that
-bridge. Unsupported deposited components also reject it. Array connectivity
-is propagated across every neighboring cell face before release, so local
-halos cannot sever a real bridge. Successful release filters the original
+bridge. Unsupported deposited components also reject it. Lateral connectivity requires
+positive-length common XY edges **and** positive overlapping Z intervals:
+a point tangent or a zero-height contact line cannot attach deposited metal.
+The same finite-area face criterion applies across native array tile boundaries.
+Array connectivity is propagated across every neighboring cell face before
+release, so local halos cannot sever a real bridge. Successful release filters the original
 stacks without clipping, dilating or re-creating their polygon boundaries.
 
 ### Owned material surfaces

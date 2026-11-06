@@ -86,3 +86,35 @@ test('a membrane supported by resist in a different tile is removed as one compo
   const resolved = resolveArrayModel(tiled);
   assert.ok(resolved.regions.every((r) => r.stack.every((s) => s.layerId === 'base')));
 });
+ 
+test('cross-tile lift-off ignores zero-area face tangencies before deduplicating real contacts', async () => {
+  const { crossContacts } = await import('../material-array-lift-off.js');
+  const a = {
+    ports: [{ axis: 0, position: 1, lo: 0, hi: 1, z0: 0, z1: 1, component: 0, role: 0 }],
+  };
+  const port = (lo, hi, z0, z1) => ({
+    axis: 0,
+    position: 0,
+    lo,
+    hi,
+    z0,
+    z1,
+    component: 1,
+    role: 0,
+  });
+  const query = (ports) => ({
+    sides: [{ axis: 0, position: 0, query: () => ports }],
+  });
+  const vertex = port(1, 2, 0.4, 0.8);
+  const zeroHeight = port(0.5, 1.5, 1, 1.2);
+  const realFace = port(0.5, 1.5, 0.5, 1.2);
+  assert.deepEqual(crossContacts(a, query([vertex]), 1, 0), []);
+  assert.deepEqual(crossContacts(a, query([zeroHeight]), 1, 0), []);
+  assert.equal(crossContacts(a, query([realFace]), 1, 0).length, 1);
+  assert.equal(
+    crossContacts(a, query([vertex, zeroHeight, realFace]), 1, 0).length,
+    1,
+    'a rejected tangent cannot consume the dedup key of a real face contact',
+  );
+  assert.deepEqual(crossContacts(a, query([port(1.1, 2, 0.5, 1)]), 1, 0), []);
+});

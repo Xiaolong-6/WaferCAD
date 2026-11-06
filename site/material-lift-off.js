@@ -1,6 +1,6 @@
 import { difference, isEmpty } from './vector-geometry.js';
 import {
-  materialGeometriesTouch,
+  materialGeometriesShareBoundaryEdge,
   materialBoundsQuery,
   materialGeometryBounds,
 } from './material-process-boolean.js';
@@ -114,13 +114,18 @@ export function analyzeMaterialLiftOff(
       if (e.index >= index) continue;
       if (++candidates > 10000000) throw Error('Material Lift-off adjacency budget exceeded.');
       const q = e.piece;
-      if (!materialGeometriesTouch(p.geom, q.geom, EPS)) continue;
+      if (!materialGeometriesShareBoundaryEdge(p.geom, q.geom, EPS)) continue;
       let firstOther = 0;
       for (let i = 0; i < p.stack.length; i++) {
         const a = p.stack[i];
         while (firstOther < q.stack.length && q.stack[firstOther].z1 < a.z0 - EPS) firstOther++;
-        for (let j = firstOther; j < q.stack.length && q.stack[j].z0 <= a.z1 + EPS; j++)
-          contact(p, i, q, j, false);
+        for (let j = firstOther; j < q.stack.length && q.stack[j].z0 <= a.z1 + EPS; j++) {
+          const b = q.stack[j];
+          // A lateral joint requires finite shared sidewall area, not a
+          // height-only contact line at the top or bottom of a slab.
+          if (Math.min(a.z1, b.z1) - Math.max(a.z0, b.z0) > EPS)
+            contact(p, i, q, j, false);
+        }
       }
     }
   }

@@ -96,7 +96,7 @@ function boundaryPorts(model, analysis, componentIndex) {
     side.query = materialBoundsQuery(side.ports, (p) => [p.lo, p.z0, p.hi, p.z1]);
   return { ports, sides: [...sides.values()] };
 }
-function crossContacts(a, b, dx, dy) {
+export function crossContacts(a, b, dx, dy) {
   const edges = [],
     seen = new Set(),
     offset = [dx, dy];
@@ -112,6 +112,13 @@ function crossContacts(a, b, dx, dy) {
         p.z1 + EPS,
       ])) {
         if (p.role && q.role) continue;
+        // A shared tile face must have finite extent in both its edge axis
+        // and Z. Corner/height tangencies cannot join material components.
+        if (
+          Math.min(p.hi, q.hi + shift) - Math.max(p.lo, q.lo + shift) <= EPS ||
+          Math.min(p.z1, q.z1) - Math.max(p.z0, q.z0) <= EPS
+        )
+          continue;
         const key = JSON.stringify([p.component, p.role, q.component, q.role]);
         if (seen.has(key)) continue;
         seen.add(key);
