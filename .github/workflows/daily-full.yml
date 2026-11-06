@@ -44,12 +44,12 @@ jobs:
                 owner, repo, workflow_id: 'daily-full.yml',
                 branch: 'main', event: 'schedule', per_page: 30,
               });
-              const history = response.data.workflow_runs.filter(
-                (run) => run.id !== context.runId && run.status === 'completed',
-              );
+              const history = response.data.workflow_runs.filter((run) => run.id !== context.runId);
               const latest = history[0];
-              if (!latest || latest.head_sha !== context.sha || latest.conclusion !== 'success') {
-                full('main changed, last scheduled run failed, or no previous completed run');
+              if (!latest || latest.status !== 'completed' ||
+                  latest.head_sha !== context.sha || latest.conclusion !== 'success') {
+                // A queued or running predecessor must not be silently ignored.
+                full('main changed, last scheduled run incomplete/failed, or no prior run');
                 return;
               }
               let previouslyVerified = false;

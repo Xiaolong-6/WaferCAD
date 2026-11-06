@@ -14,7 +14,7 @@ its owning unit tests; **do not** restore broad automatic `pull_request`,
 | Ordinary development | None                                                                                                                                                                   | Focused Node/scientific tests and real Chromium screenshots            | No waiting on GitHub                                                 |
 | Draft PR push        | Proof-only Quality or verified-base diff Quality; small release policy contract; Ready router skips                                                                    | `node scripts/local-verification.mjs run draft` or matching full proof | Not merge-ready                                                      |
 | Ready for Review     | Full Quality proof or verified-base diff Quality plus selected Ready owner gates                                                                                       | Full proof and actual app/browser inspection                           | All selected gates must pass on the candidate tree                   |
-| Daily at 02:30 UTC   | `daily-full.yml`: actual full lint/format/docs/Node + full Browser + Process/Recipe + scientific examples/facets + UI/Renderer + normal-Origin History/Recovery/Worker | None required to start the nightly run                                 | Informative for its exact SHA, never a substitute for a newer PR SHA |
+| Daily at 02:30 UTC   | `daily-full.yml`: full scientific/Browser/Quality inventory on changed or unverified SHA; otherwise a proven unchanged-SHA skip with a fail-closed verdict | None required to start the nightly run                                 | Informative for its exact SHA, never a substitute for a newer PR SHA |
 | Main release         | Unchanged fail-closed `pages.yml` exact release-tree checks and deploy verdict                                                                                         | Human approval and correct source-bound proof                          | Required prior to publication                                        |
 
 **Budget:** GitHub quota is approximately 3,000 Runner minutes/month. The
@@ -28,10 +28,9 @@ Recovery contracts. The only daily cron is `30 2 * * *`: Finland local time
 large paper-specific one-offs remain explicitly manual, not duplicated daily.
 
 **Unchanged-main nightly reuse (2026-11-06):** The single scheduled
-`daily-full.yml` controller first checks the most recent _completed_
-scheduled run on `main`. It runs every full group if main's SHA changed,
-the latest run failed/cancelled, the API is unavailable or no previous
-successful full run on that exact SHA can be proven. Otherwise it skips
+`daily-full.yml` controller checks the most recent scheduled run on `main`. It runs every full group if main's SHA changed,
+the latest run failed/cancelled/is still running, the API is unavailable
+or no previous successful full run on that exact SHA can be proven. Otherwise it skips
 the expensive suites, records why, and still runs the fail-closed
 daily verdict, which requires every unselected group to be `skipped`.
 Verification requires a real successful Full Quality job and successful
@@ -47,9 +46,9 @@ new Kernel commit `def456`. The Ready planner routes changed paths using the
 base/head diff; a fixed `Ready impact verdict` fails if a selected owner gate
 fails, cancels, or is missing. Missing local Quality proof triggers a strictly owned diff Quality path only when
 the main base has independently verified full proof. Unknown/high-risk diffs
-fail closed; they never fall back to the remote 1,197-test inventory. The nightly run deliberately
-executes full checks irrespective of committed proof; publication continues to
-be fail-closed at the exact release tree.
+fail closed; they never fall back to the remote 1,197-test inventory. A scheduled
+nightly runs full tests unless a previous full run on the exact SHA succeeded
+without later failures; publication stays fail-closed on its exact release tree.
 
 **Developer commands:**
 
@@ -119,8 +118,8 @@ shared or unknown v2 Workstation source is also changed, the complete
 Workstation is selected and the standalone 3D entry is suppressed. Full daily
 and production acceptance retain their existing complete Workstation coverage.
 
-**This optimization applies only to PR Quality.** The scheduled daily job
-continues actual full Quality, Ready runs real risk-selected browser/science
+**Incremental PR Quality is distinct from unchanged-SHA nightly reuse.** When
+selected for full, nightly runs actual Quality; Ready runs risk-selected browser/science
 acceptance, and the main Pages release continues its unchanged full Quality
 proof-or-execution and fail-closed publication chain. The 75-minute nightly
 budget target remains a **warning**, while failed mandatory tests still fail.
@@ -173,8 +172,8 @@ source changes during a run cannot retain an old passing report.
 compressed transcript against the proposed merge tree. **Missing, incomplete,
 failed, stale or incompatible PR proof fails closed without running application
 Quality in CI.** Developers regenerate the matching Draft or Full report locally
-and commit both receipt files. The scheduled nightly and explicitly dispatched
-Quality runs execute the actual `npm run check` suite using locked dependencies,
+and commit both receipt files. Nightlies selected for full and explicitly dispatched Quality runs execute
+the actual `npm run check` suite using locked dependencies,
 regardless of existing proof. A tolerated failed evidence probe is never a pass.
 
 The default PR checkout checks the proposed merge tree. For full Main release
@@ -309,8 +308,8 @@ Typical ownership: Process/Model changes select scientific/geometry
 checks; History, Recovery and Worker changes select the corresponding
 transaction and normal-origin suites; UI, Renderer and Example changes
 select actual-browser owners. Dependency/runner infrastructure changes
-may require broader gates. The 02:30 UTC daily controller performs the
-independent full inventory at its tested SHA. The old automatic Draft
+may require broader gates. The 02:30 UTC daily controller performs its independent full inventory
+only for a changed or unverified main SHA. The old automatic Draft
 Browser routing and fallback policy is historical and **must not** be
 reintroduced via workflow path triggers. See the
 [authoritative execution table](#authoritative-execution-strategy-effective-2026-10-22).
@@ -372,7 +371,7 @@ Draft-trigger rules were retired by the 2026-10-22 policy.
 
 - Quality and release Quality validate local evidence without installing npm or repeating the local Node/lint/format/docs gate.
 - Browser PR jobs do not repeat the locally executed Node gate certified by `Quality`.
-- The daily full integration controller intentionally reruns the full Node suite on its tested SHA. Ready Quality is proof-only; release gates follow their own exact-source verification and selected execution paths.
+- The daily controller reruns full Node checks on changed or unverified SHAs; it skips repeated full acceptance only for a previously successful scheduled exact SHA. Ready Quality remains proof-only and release gates stay independent.
 - Chromium and npm downloads remain cached.
 - Normal targeted suites share one Chromium job to avoid repeated setup cost.
 - Human-review screenshot galleries are not a Draft default; they are reserved for explicitly selected Ready, daily or manual full runs.

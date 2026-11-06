@@ -1,7 +1,13 @@
 import { selectedMaskInstanceIndex, deferredArrayMaskArea } from './mask-instance-index.js';
 import { isArrayModel } from './model-array.js';
 import { fullFaceGeometry } from './model.js';
-import { drawMaskGeometry } from './draw-mask-geometry.js';
+import { drawMaskGeometry, normalizeDrawShape } from './draw-mask-geometry.js';
+import {
+  drawShapeMayIntersectRoi,
+  maskElementMayDefineArea,
+  maskElementMayIntersectRoi,
+  maskRoiLocalBounds,
+} from './mask-roi-culling.js';
 import { maskRoiWorldGeometry } from './mask-roi-geometry.js';
 import { sectorBoundaryPoints } from './roi-editor.js';
 import {
@@ -15,11 +21,12 @@ import {
 } from './vector-geometry.js';
 
 export function createSelectionGeometry({ getState, selectedElement, maskPoint }) {
-  function selectedFileMaskGeometry() {
+  function selectedFileMaskGeometry(localRoiBounds = null) {
     const { layout, maskTransform } = getState(),
       geoms = [];
     for (const element of layout.elements || []) {
       if (!selectedElement(element)) continue;
+      if (!maskElementMayIntersectRoi(element, localRoiBounds, maskTransform.scale)) continue;
       if (element.kind === 'polygon') {
         geoms.push([[element.points.map(maskPoint)]]);
       } else if (element.kind === 'path' && element.width > 0) {
@@ -37,10 +44,21 @@ export function createSelectionGeometry({ getState, selectedElement, maskPoint }
     return isEmpty(merged) ? [] : merged;
   }
 
-  function activeMaskGeometry() {
-    const { model, maskSourceMode, drawMask } = getState(),
-      selected =
-        maskSourceMode === 'draw' ? drawMaskGeometry(drawMask) : selectedFileMaskGeometry();
+  function activeMaskGeometry(localRoiBounds = null) {
+    const { model, maskSourceMode, drawMask } = getState();
+    const selected =
+      maskSourceMode === 'draw'
+        ? drawMaskGeometry(
+            localRoiBounds
+              ? {
+                  ...drawMask,
+                  shapes: (drawMask?.shapes || []).filter((shape) =>
+                    drawShapeMayIntersectRoi(shape, localRoiBounds),
+                  ),
+                }
+              : drawMask,
+          )
+        : selectedFileMaskGeometry(localRoiBounds);
     return isEmpty(selected) ? [] : intersection(selected, model.boundary);
   }
 
@@ -53,8 +71,9 @@ export function createSelectionGeometry({ getState, selectedElement, maskPoint }
   }
 
   function operationAreaGeometry(mode) {
-    const { model, layout, maskTransform, maskSourceMode } = getState();
+    const { model, layout, maskTransform, maskSourceMode, maskRoi, drawMask } = getState();
     const limiter = maskRoiGeometry();
+    const localRoiBounds = limiter ? maskRoiLocalBounds(maskRoi) : null;
     if (isArrayModel(model) && maskSourceMode === 'file') {
       return deferredArrayMaskArea(
         {
@@ -73,9 +92,24 @@ export function createSelectionGeometry({ getState, selectedElement, maskPoint }
     if (mode === 'full') {
       area = fullFaceGeometry(model);
     } else {
-      const selected = activeMaskGeometry();
-      if (isEmpty(selected)) return [];
-      area = mode === 'invert' ? difference(model.boundary, selected) : selected;
+      const selected = activeMaskGeometry(localRoiBounds);
+      if (isEmpty(selected)) {
+        if (mode !== 'invert' || !localRoiBounds) return [];
+        // An existing mask entirely outside the ROI inverts to the ROI itself.
+        // A truly empty mask must still reject both mask and invert.
+        const hasMaskArea =
+          maskSourceMode === 'draw'
+            ? (drawMask?.shapes || []).some((shape) => Boolean(normalizeDrawShape(shape)))
+            : (layout.elements || []).some(
+                (element) =>
+                  selectedElement(element) &&
+                  maskElementMayDefineArea(element, maskTransform.scale),
+              );
+        if (!hasMaskArea) return [];
+        area = fullFaceGeometry(model);
+      } else {
+        area = mode === 'invert' ? difference(model.boundary, selected) : selected;
+      }
     }
     return limiter ? intersection(area, limiter) : area;
   }
