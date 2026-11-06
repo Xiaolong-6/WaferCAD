@@ -188,7 +188,10 @@ try {
     );
     await page.locator('.p-nav [data-action="domain:mask"]').click();
     assert.equal(
-      await page.locator('[data-slot="panel.mask"] summary').filter({ hasText: 'Transform' }).count(),
+      await page
+        .locator('[data-slot="panel.mask"] summary')
+        .filter({ hasText: 'Transform' })
+        .count(),
       0,
       'There must be only one Alignment editor',
     );
@@ -228,7 +231,10 @@ try {
     assert.ok(Math.abs(committedAfterDrag.maskTransform.x - 48 / viewScale) < 1e-9);
     assert.ok(Math.abs(committedAfterDrag.maskTransform.y - 24 / viewScale) < 1e-9);
     assert.equal(committedAfterDrag.maskTransform.scale, committedBeforeDrag.maskTransform.scale);
-    assert.equal(committedAfterDrag.maskTransform.rotation, committedBeforeDrag.maskTransform.rotation);
+    assert.equal(
+      committedAfterDrag.maskTransform.rotation,
+      committedBeforeDrag.maskTransform.rotation,
+    );
     await checkImmutable(committedBeforeDrag, 'pointer alignment');
     report.cases.push({ type: 'alignment-pointer', result: 'pass' });
 
