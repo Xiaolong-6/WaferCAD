@@ -273,10 +273,7 @@ try {
         await page.locator('.v2-section-floating [data-action="export:section:svg"]').count(),
         1,
       );
-      assert.equal(
-        await page.locator('.v2-section-floating button').count(),
-        1,
-      );
+      assert.equal(await page.locator('.v2-section-floating button').count(), 1);
       const download = page.waitForEvent('download');
       await page.locator('[data-action="export:section:svg"]').click();
       assert.ok((await download).suggestedFilename().endsWith('.svg'));
