@@ -1,6 +1,9 @@
 import { canonicalLineInterval, lineIntervalKey } from './line-intervals.js';
 import { roughDisplayProfileOffsetAtPoint } from './surface-rendering.js';
-import { glbWorldBoundaryPositions, glbWorldAtFloat32Precision } from './glb-export-precision.js';
+import {
+  glbWorldBoundaryPositions,
+  glbWorldAtFloat32Precision,
+} from './glb-export-precision.js';
 
 // These are renderer coordinates, never canonical material geometry. Retain the
 // actual Float32 cap endpoints instead of evaluating another morphology curve.
@@ -42,7 +45,10 @@ function matchingSegments(profile, line) {
 }
 
 function profileZ(segments, line, t, fallback, origin = null) {
-  const epsilon = Math.max(1e-10, (origin ? Math.abs(line.length) : Math.abs(t)) * 2 ** -22);
+  const epsilon = Math.max(
+    1e-10,
+    (origin ? Math.abs(line.length) : Math.abs(t)) * 2 ** -22,
+  );
   for (const segment of segments) {
     const a = line.ux * segment.p[0] + line.uy * segment.p[1],
       b = line.ux * segment.q[0] + line.uy * segment.q[1];
@@ -55,7 +61,12 @@ function profileZ(segments, line, t, fallback, origin = null) {
 
 export function sidewallBoundarySamples(
   part,
-  { lowerProfile = null, upperProfile = null, fallbackSegments = null, positionOrigin = null } = {},
+  {
+    lowerProfile = null,
+    upperProfile = null,
+    fallbackSegments = null,
+    positionOrigin = null,
+  } = {},
 ) {
   const line = part.line || canonicalLineInterval(part.p, part.q);
   if (!line) return [];
@@ -115,8 +126,20 @@ export function sidewallBoundarySamples(
     .sort((a, b) => (a[0] - b[0]) * (line.forward ? 1 : -1))
     .map(([t, point]) => ({
       point,
-      lowerZ: profileZ(lower, line, t, () => displaced(point, part.z0, part.lowerSurface), positionOrigin),
-      upperZ: profileZ(upper, line, t, () => displaced(point, part.z1, part.upperSurface), positionOrigin),
+      lowerZ: profileZ(
+        lower,
+        line,
+        t,
+        () => displaced(point, part.z0, part.lowerSurface),
+        positionOrigin,
+      ),
+      upperZ: profileZ(
+        upper,
+        line,
+        t,
+        () => displaced(point, part.z1, part.upperSurface),
+        positionOrigin,
+      ),
     }));
   return result;
 }
