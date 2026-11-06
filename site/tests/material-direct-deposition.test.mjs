@@ -251,6 +251,8 @@ test('a sidewall film connecting floor metal to resist topcoat is rejected as a 
       area: v.rectMulti(2, 2),
     });
   const al = apply(m, { type: 'add', name: 'Al', thickness: 0.04, area: m.boundary });
+  // The wall must extend through the Al topcoat (Z=1.9–1.94 µm),
+  // not merely touch its underside at one zero-area edge.
   const wall = v.rectMulti(0.04, 2, -0.98, 0);
   m.regions = m.regions.flatMap((r) => {
     const hit = v.intersection(r.geom, wall),
@@ -260,7 +262,7 @@ test('a sidewall film connecting floor metal to resist topcoat is rejected as a 
       {
         id: `wall-${r.id}`,
         geom: hit,
-        stack: api.normalizeStack([...r.stack, { layerId: al.layerId, z0: 1.04, z1: 1.9 }]),
+        stack: api.normalizeStack([...r.stack, { layerId: al.layerId, z0: 1.04, z1: 1.94 }]),
       },
     ].filter((p) => p.geom.length);
   });
@@ -270,6 +272,23 @@ test('a sidewall film connecting floor metal to resist topcoat is rejected as a 
   assert.equal(result.changed, false);
   assert.match(result.error, /bridge/);
   assert.deepEqual(m, before);
+
+  // Zero-height lateral contact is diagnostically suspicious, but cannot
+  // establish a finite metal-to-metal face in the release ownership graph.
+  const tangent = structuredClone(before);
+  const wallFilm = tangent.regions
+    .flatMap(({ stack }) => stack)
+    .find(({ layerId, z0, z1 }) => layerId === al.layerId && z0 === 1 && z1 === 1.94);
+  assert.ok(wallFilm);
+  wallFilm.z1 = 1.9;
+  validateProcessModel(tangent);
+  const tangentResult = apply(tangent, {
+    type: 'liftoff',
+    sacrificialLayerIds: ids,
+    area: tangent.boundary,
+  });
+  assert.equal(tangentResult.changed, true, tangentResult.error);
+  assert.equal(tangentResult.removedComponents, 1);
 });
 
 test('closed material contact detects a shared wall but preserves a real gap and a resist opening', async () => {
@@ -707,9 +726,10 @@ test('lift-off graph rejects point-only and zero-height metal support without lo
   assert.equal(contact(edge, 1, 1.2, true), true);
   assert.equal(contact(edge, 0.5, 0.8, true), true);
   assert.throws(
-    () => analyzeMaterialLiftOff({ layers, regions: [] }, ['resist'], {
-      traceClosedTangencies: true,
-    }),
+    () =>
+      analyzeMaterialLiftOff({ layers, regions: [] }, ['resist'], {
+        traceClosedTangencies: true,
+      }),
     /require contact tracing/,
   );
 });
