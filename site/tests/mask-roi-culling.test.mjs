@@ -13,8 +13,7 @@ const {
   maskRoiLocalBounds,
 } = await import('../mask-roi-culling.js');
 const { maskRoiWorldGeometry, maskLocalToWorld } = await import('../mask-roi-geometry.js');
-const { difference, intersection, isEmpty, rectMulti } =
-  await import('../vector-geometry.js');
+const { difference, intersection, isEmpty, rectMulti } = await import('../vector-geometry.js');
 
 function polygon(x, y, width = 1) {
   return {
@@ -65,7 +64,17 @@ test('conservative local ROI bounds retain rotated-square corners and path width
     true,
     'a path can overlap the ROI even when its centerline does not',
   );
-  assert.equal(maskElementMayDefineArea({ kind: 'path', width: 0, points: [[0, 0], [1, 1]] }), false);
+  assert.equal(
+    maskElementMayDefineArea({
+      kind: 'path',
+      width: 0,
+      points: [
+        [0, 0],
+        [1, 1],
+      ],
+    }),
+    false,
+  );
   assert.equal(
     drawShapeMayIntersectRoi({ type: 'ring-sector', c: [20, 20], innerR: 1, outerR: 2 }, bounds),
     false,
@@ -79,7 +88,9 @@ test('conservative local ROI bounds retain rotated-square corners and path width
 test('File Mask ROI eliminates outside polygon transformations before union', () => {
   const roi = { type: 'square', c: [0, 0], size: 2, rotation: 0 };
   const elements = [
-    ...Array.from({ length: 1200 }, (_, i) => polygon(7 + (i % 25) / 10, 7 + Math.floor(i / 25) / 10, 0.04)),
+    ...Array.from({ length: 1200 }, (_, i) =>
+      polygon(7 + (i % 25) / 10, 7 + Math.floor(i / 25) / 10, 0.04),
+    ),
     polygon(0, 0),
   ];
   const { model, selection, visits } = makeSelection({ elements, roi });
@@ -117,6 +128,10 @@ test('Mask alignment does not move ROI filtering into world-coordinate input spa
   const worldSquare = maskRoiWorldGeometry(roi, transform);
   const selected = selection.operationAreaGeometry('mask');
   const center = [[polygon(0, 0).points.map((point) => maskLocalToWorld(point, transform))]];
-  samePhysicalArea(selected, intersection(intersection(center, model.boundary), worldSquare), 'transformed');
+  samePhysicalArea(
+    selected,
+    intersection(intersection(center, model.boundary), worldSquare),
+    'transformed',
+  );
   assert.equal(visits(), 4);
 });
