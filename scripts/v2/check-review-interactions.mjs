@@ -200,9 +200,20 @@ try {
       await openPicker.click();
       const picker = page.getByRole('dialog', { name: 'Select custom color' });
       assert.equal(await picker.isVisible(), true);
+      const pickerRect = await picker.boundingBox();
+      assert.ok(pickerRect, 'Visual picker must have measurable bounds');
+      assert.ok(pickerRect.x >= 0 && pickerRect.x + pickerRect.width <= width + 1);
+      assert.ok(pickerRect.y >= 0 && pickerRect.y + pickerRect.height <= 961);
+      await page.screenshot({
+        path: resolve(output, `review-${width}${hasTouch ? '-touch' : ''}-rgb-picker-open.png`),
+      });
       const bounds = await picker.locator('[data-picker-field]').boundingBox();
       assert.ok(bounds && bounds.width > 50 && bounds.height > 50);
+      const initialPickerColor = await picker.locator('[data-picker-hex]').inputValue();
       await page.mouse.click(bounds.x + bounds.width * 0.35, bounds.y + bounds.height * 0.4);
+      const colorAfterPointer = await picker.locator('[data-picker-hex]').inputValue();
+      assert.match(colorAfterPointer, /^#[0-9A-F]{6}$/i);
+      assert.notEqual(colorAfterPointer, initialPickerColor, 'Pointer selection updates HEX');
       await picker.locator('[data-picker-hex]').fill('#invalid');
       assert.equal(await picker.locator('.v2-legend-picker-ok').isDisabled(), true);
       await picker.getByRole('button', { name: 'Cancel', exact: true }).click();
