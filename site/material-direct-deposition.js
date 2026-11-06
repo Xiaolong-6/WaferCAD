@@ -20,6 +20,14 @@ import { nodeMaterialProcessInputs } from './material-process-noding.js';
 import { unionMaterialTiles } from './material-tile-union.js';
 
 const EPS = 1e-8;
+// Revalidate wall polygons after shared-grid noding. Each retained fragment
+// must independently touch the original receiving solid along a finite edge;
+// point-only tangencies are not a surface on which material can nucleate.
+export function retainSupportedWallFragments(geometry, receiver) {
+  return geometry.filter((polygon) =>
+    materialGeometriesShareBoundaryEdge([polygon], receiver, EPS),
+  );
+}
 // Only for validated, disjoint source regions after shared-grid noding.
 const unionSourceTiles = (geometries) =>
   unionMaterialTiles(geometries) ?? unionMaterialSweeps(geometries);
@@ -372,10 +380,8 @@ export function applyMaterialDirect(model, params, area, api, traceHorizontalCap
         // Clip visibility at the receiving wall, not just in its projected
         // film envelope. An occluder can sever that envelope from the solid;
         // the detached remainder has no surface on which Al can nucleate.
-        const visible = shadows(band, z0, z1).filter((p) =>
-          materialGeometriesShareBoundaryEdge([p], occupancy, EPS),
-        );
-        if (!isEmpty(visible)) patches.push({ geom: visible, z0, z1 });
+        const visible = retainSupportedWallFragments(shadows(band, z0, z1), occupancy);
+        if (!isEmpty(visible)) patches.push({ geom: visible, z0, z1, receiver: occupancy });
       }
     }
   if (!patches.length) return { changed: false, error: 'No ray-visible material surface.' };
@@ -385,7 +391,14 @@ export function applyMaterialDirect(model, params, area, api, traceHorizontalCap
     { sourceCount: candidate.regions.length },
   );
   candidate.regions.forEach((r, i) => (r.geom = noded[i]));
-  patches.forEach((p, i) => (p.geom = noded[candidate.regions.length + i]));
+  patches.forEach((p, i) => {
+    const nodedGeom = noded[candidate.regions.length + i];
+    // Snap rounding may split one supported wall strip into a detached
+    // triangle. Recheck each stored polygon against its original receiving
+    // solid at this Z interval; a point tangent cannot nucleate a film.
+    p.geom = p.receiver ? retainSupportedWallFragments(nodedGeom, p.receiver) : nodedGeom;
+    delete p.receiver;
+  });
   const layer = api.createLayer(candidate, params.name);
   candidate.regions = insert(candidate, patches, layer.id, api);
   const coverage = originalCoverage ?? uniteSource(model.regions.map((r) => r.geom));

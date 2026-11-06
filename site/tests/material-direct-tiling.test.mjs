@@ -304,3 +304,47 @@ test('successive diagonal beams keep cropped tile owners disjoint at an oblique 
     validateProcessModel(model);
   }
 });
+
+test('post-noding sidewall fragments require finite attachment even at the 0.1 nm lattice', async () => {
+  const { retainSupportedWallFragments } = await import('../material-direct-deposition.js');
+  const receiving = v.rectMulti(2, 2);
+  const wall = v.rectMulti(0.2, 1, 1.1, 0)[0];
+  const supportedGridTriangle = [
+    [
+      [1, 0],
+      [1, 0.0001],
+      [1.0001, 0],
+      [1, 0],
+    ],
+  ];
+  const detachedGridTriangle = [
+    [
+      [1, 1],
+      [1.0001, 1],
+      [1, 1.0001],
+      [1, 1],
+    ],
+  ];
+  const detachedLargerTriangle = [
+    [
+      [1.0001, 0],
+      [1.0049, 0],
+      [1.0001, 0.0049],
+      [1.0001, 0],
+    ],
+  ];
+  const portions = [wall, supportedGridTriangle, detachedGridTriangle, detachedLargerTriangle];
+  assert.deepEqual(retainSupportedWallFragments(portions, receiving), [
+    wall,
+    supportedGridTriangle,
+  ]);
+  assert.deepEqual(retainSupportedWallFragments([...portions].reverse(), receiving), [
+    supportedGridTriangle,
+    wall,
+  ]);
+  assert.equal(portions.length, 4, 'the filter must not mutate source geometry');
+  const receivingWithHole = [[v.rectMulti(4, 4)[0][0], v.rectMulti(2, 2)[0][0]]];
+  assert.deepEqual(retainSupportedWallFragments([supportedGridTriangle], receivingWithHole), [
+    supportedGridTriangle,
+  ]);
+});
