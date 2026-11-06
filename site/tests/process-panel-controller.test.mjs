@@ -998,3 +998,37 @@ test('Apply transports ROI-local File polygons without mutating the Mask', async
   await controller.applyOperation();
   assert.deepEqual(requests.at(-1).elements, []);
 });
+
+test('Whole-face Array Apply skips unused Mask instance-index preparation', async () => {
+  const { createRectangularGridArrayModel } = await import('../model-array-construction.js');
+  const arrayModel = createRectangularGridArrayModel(
+    createModel({ shape: 'rect', width: 1, height: 1, thickness: 2 }),
+    { kind: 'rect-grid', rows: 2, columns: 2, pitchX: 1, pitchY: 1, activeSites: 4 },
+  );
+  let request;
+  const controller = controllerForTask(
+    (_live, _model, _params, _label, payload) => {
+      request = payload;
+      return { result: { changed: false } };
+    },
+    [],
+    { initialModel: arrayModel },
+  );
+  const state = controller.__getMaskState();
+  state.layout.elements = [
+    {
+      kind: 'polygon',
+      layer: 7,
+      datatype: 0,
+      sourceCell: 'TOP',
+      points: [
+        [0, 0],
+        [1, 0],
+        [0, 1],
+      ],
+    },
+  ];
+  await controller.applyOperation();
+  assert.equal(Object.hasOwn(request, 'maskIndex'), false);
+  assert.deepEqual(request.elements, []);
+});
