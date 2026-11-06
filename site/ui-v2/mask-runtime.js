@@ -9,6 +9,7 @@ import { maskLocalToWorld } from '../mask-roi-geometry.js';
 import { drawShapeContainsPoint } from '../draw-mask-geometry.js';
 import { bindPlanGestures } from './view-kit/plan-gestures.js';
 import { createDisplayUnits } from './view-kit/display-units.js';
+import { maskTransformAfterDrag } from '../view-interactions.js';
 
 export function createMaskRuntime({
   state,
@@ -182,12 +183,13 @@ export function createMaskRuntime({
   const applyAlignmentPointer = () => {
     if (!alignmentDrag || !alignmentDraft) return;
     const drag = alignmentDrag;
-    const next = {
-      ...drag.transform,
-      x: drag.transform.x + (drag.x - drag.startX) / drag.scale,
-      y: drag.transform.y - (drag.y - drag.startY) / drag.scale,
-    };
-    if (Number.isFinite(next.x) && Number.isFinite(next.y)) {
+    const next = maskTransformAfterDrag(
+      drag.transform,
+      drag.x - drag.startX,
+      drag.y - drag.startY,
+      drag.scale,
+    );
+    if (next) {
       alignmentDraft = next;
       redrawAlignmentPreview();
     }
