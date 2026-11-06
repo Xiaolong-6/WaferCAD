@@ -36,10 +36,9 @@ test('Section legend shares the custom RGB entry between layers and annotations'
     children: children.flat().filter((child) => child != null),
   });
   const mockWindow = { WaferCadV2Components: { el } };
-  runInNewContext(
-    readFileSync(new URL('../ui-v2/section-legend.js', import.meta.url), 'utf8'),
-    { window: mockWindow },
-  );
+  runInNewContext(readFileSync(new URL('../ui-v2/section-legend.js', import.meta.url), 'utf8'), {
+    window: mockWindow,
+  });
   const entries = [
     { id: 'base', name: 'Si', color: '#6C8EBF' },
     { id: 'film', name: 'SiO2', color: '#ABCDEF' },
