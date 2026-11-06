@@ -15,6 +15,7 @@ import { createDisplayUnits, syncDisplayUnitFields } from './view-kit/display-un
 import { mountToolPopover } from './view-kit/tool-popover.js';
 import { STRUCTURE_PALETTES } from '../controllers/layer-legend-controller.js';
 import { hexToRgb, parseRgbChannel, rgbToHex } from './legend-rgb.js';
+import { bindLegendColorPicker } from './legend-color-picker.js';
 import {
   setLayerVisible,
   setImplantVisible,
@@ -406,6 +407,7 @@ export function createSectionView({ store, main, workstation }) {
         const hex = rgbToHex(rgb);
         customColorDraft.rgb = rgb;
         apply.disabled = !hex;
+        previewSwatch.disabled = !hex;
         inputs.forEach((input) =>
           input.setAttribute('aria-invalid', String(parseRgbChannel(input.value) === null)),
         );
@@ -416,6 +418,15 @@ export function createSectionView({ store, main, workstation }) {
         }
       };
       inputs.forEach((input) => input.addEventListener('input', updateDraft));
+      const picker = customEditor.querySelector('.v2-legend-picker');
+      if (picker) {
+        bindLegendColorPicker(picker, {
+          onChange: (color) => {
+            if (customColorDraft?.picker && customColorDraft.key === customEditor.dataset.customKey)
+              customColorDraft.picker.hex = color;
+          },
+        });
+      }
     }
     next.querySelector('.v2-legend-palette-select').onchange = (event) => {
       legendPalette = event.target.value;
@@ -551,6 +562,28 @@ export function createSectionView({ store, main, workstation }) {
         palettePopover.style.left = `${left}px`;
         palettePopover.style.top = `${top}px`;
       }
+      const pickerPopover = legend.querySelector('.v2-legend-picker[popover]');
+      if (pickerPopover && typeof pickerPopover.showPopover === 'function') {
+        pickerPopover.showPopover();
+        const swatch = legend.querySelector('.v2-legend-custom-preview');
+        const rect = swatch.getBoundingClientRect();
+        const width = pickerPopover.offsetWidth;
+        const height = pickerPopover.offsetHeight;
+        const margin = 8;
+        const gap = 8;
+        const right = rect.right + gap;
+        const left = right + width + margin <= window.innerWidth
+          ? right
+          : rect.left - width - gap >= margin
+            ? rect.left - width - gap
+            : Math.max(margin, (window.innerWidth - width) / 2);
+        const top = Math.max(
+          margin,
+          Math.min(rect.top - 20, window.innerHeight - height - margin),
+        );
+        pickerPopover.style.left = `${left}px`;
+        pickerPopover.style.top = `${top}px`;
+      }
     }
     legendResizer.setAttribute(
       'aria-valuenow',
@@ -566,9 +599,15 @@ export function createSectionView({ store, main, workstation }) {
   });
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && paletteOpen) {
-      if (customColorDraft) customColorDraft = null;
-      else closeLegendPalette();
-      renderLegend();
+      if (customColorDraft?.picker) {
+        customColorDraft.picker = null;
+        renderLegend();
+        legend.querySelector('.v2-legend-custom-preview')?.focus();
+      } else {
+        if (customColorDraft) customColorDraft = null;
+        else closeLegendPalette();
+        renderLegend();
+      }
     }
   });
   document.addEventListener('click', (event) => {
@@ -651,6 +690,32 @@ export function createSectionView({ store, main, workstation }) {
         paletteOpen = key;
         renderLegend();
         legend.querySelector('.v2-legend-custom-field input')?.focus();
+      }
+    } else if (action.startsWith('legend-picker-open:')) {
+      const key = action.slice('legend-picker-open:'.length);
+      const color = customColorDraft?.key === key ? rgbToHex(customColorDraft.rgb) : null;
+      if (color) {
+        customColorDraft.picker = { hex: color, current: color };
+        renderLegend();
+        legend.querySelector('[data-picker-field]')?.focus();
+      }
+    } else if (action.startsWith('legend-picker-cancel:')) {
+      if (customColorDraft?.key === action.slice('legend-picker-cancel:'.length)) {
+        customColorDraft.picker = null;
+        renderLegend();
+        legend.querySelector('.v2-legend-custom-preview')?.focus();
+      }
+    } else if (action.startsWith('legend-picker-ok:')) {
+      if (customColorDraft?.key === action.slice('legend-picker-ok:'.length)) {
+        const color = customColorDraft.picker?.hex;
+        const rgb = hexToRgb(color);
+        if (rgb) {
+          customColorDraft.rgb = rgb;
+          customColorDraft.preview = color;
+          customColorDraft.picker = null;
+          renderLegend();
+          legend.querySelector('.v2-legend-custom-preview')?.focus();
+        }
       }
     } else if (action.startsWith('legend-custom-cancel:')) {
       customColorDraft = null;
