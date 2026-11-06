@@ -201,7 +201,7 @@ jobs:
     # Without an explicit status function, any intentionally skipped upstream
     # job can silently skip both staging and deployment while leaving CI green.
     if: ${{ always() && !cancelled() && github.ref == 'refs/heads/main' && needs.release-evidence.outputs.mode != 'superseded' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
       WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
