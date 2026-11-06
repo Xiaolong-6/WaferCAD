@@ -1,9 +1,6 @@
 import { canonicalLineInterval, lineIntervalKey } from './line-intervals.js';
 import { roughDisplayProfileOffsetAtPoint } from './surface-rendering.js';
-import {
-  glbWorldBoundaryPositions,
-  glbWorldAtFloat32Precision,
-} from './glb-export-precision.js';
+import { glbWorldBoundaryPositions, glbWorldAtFloat32Precision } from './glb-export-precision.js';
 
 // These are renderer coordinates, never canonical material geometry. Retain the
 // actual Float32 cap endpoints instead of evaluating another morphology curve.
@@ -34,8 +31,8 @@ function matchingSegments(profile, line) {
   return profile.segments.filter(({ p, q }) => {
     const tolerance = Math.max(
       1e-10,
-      ...[...p.slice(0, 2), ...q.slice(0, 2)].map((value, axis) =>
-        Math.abs(value - (profile.origin?.[axis % 2] || 0)) * 2 ** -22,
+      ...[...p.slice(0, 2), ...q.slice(0, 2)].map(
+        (value, axis) => Math.abs(value - (profile.origin?.[axis % 2] || 0)) * 2 ** -22,
       ),
     );
     return [p, q].every(
@@ -45,10 +42,7 @@ function matchingSegments(profile, line) {
 }
 
 function profileZ(segments, line, t, fallback, origin = null) {
-  const epsilon = Math.max(
-    1e-10,
-    (origin ? Math.abs(line.length) : Math.abs(t)) * 2 ** -22,
-  );
+  const epsilon = Math.max(1e-10, (origin ? Math.abs(line.length) : Math.abs(t)) * 2 ** -22);
   for (const segment of segments) {
     const a = line.ux * segment.p[0] + line.uy * segment.p[1],
       b = line.ux * segment.q[0] + line.uy * segment.q[1];
@@ -61,12 +55,7 @@ function profileZ(segments, line, t, fallback, origin = null) {
 
 export function sidewallBoundarySamples(
   part,
-  {
-    lowerProfile = null,
-    upperProfile = null,
-    fallbackSegments = null,
-    positionOrigin = null,
-  } = {},
+  { lowerProfile = null, upperProfile = null, fallbackSegments = null, positionOrigin = null } = {},
 ) {
   const line = part.line || canonicalLineInterval(part.p, part.q);
   if (!line) return [];
@@ -102,10 +91,13 @@ export function sidewallBoundarySamples(
     for (let index = 1; index < count; index++) {
       const fraction = index / count,
         t = pT + (qT - pT) * fraction;
-      samples.set(t, roundXY([
-        part.p[0] + (part.q[0] - part.p[0]) * fraction,
-        part.p[1] + (part.q[1] - part.p[1]) * fraction,
-      ]));
+      samples.set(
+        t,
+        roundXY([
+          part.p[0] + (part.q[0] - part.p[0]) * fraction,
+          part.p[1] + (part.q[1] - part.p[1]) * fraction,
+        ]),
+      );
     }
   }
   for (const segment of [...lower, ...upper]) {
