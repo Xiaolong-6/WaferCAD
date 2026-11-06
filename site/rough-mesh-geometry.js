@@ -11,6 +11,7 @@ import {
   roughDisplayProfileOffsetAtPoint,
 } from './surface-rendering.js';
 import { triangulatePolygon } from './polygon-triangulation.js';
+import { glbLocalFloat32Positions, glbWorldAtFloat32Precision } from './glb-export-precision.js';
 
 function triangleNormal(a, b, c) {
   const ux = b[0] - a[0],
@@ -93,20 +94,13 @@ export function roughBoundaryEdgesFromTriangles(triangles) {
   return [...entries.values()].filter((entry) => entry.count === 1).map((entry) => entry.edge);
 }
 
-function roughPoint(point, z, profileNormal, appearance) {
-  return [
-    Math.fround(point[0]),
-    Math.fround(point[1]),
-    Math.fround(
+function roughPoint(point, z, profileNormal, appearance, exportOrigin = null) {
+  const x = glbWorldAtFloat32Precision(point[0], 0, exportOrigin),
+    y = glbWorldAtFloat32Precision(point[1], 1, exportOrigin),
+    physicalZ =
       z +
-        profileNormal *
-          roughDisplayProfileOffsetAtPoint(
-            Math.fround(point[0]),
-            Math.fround(point[1]),
-            appearance,
-          ),
-    ),
-  ];
+      profileNormal * roughDisplayProfileOffsetAtPoint(x, y, appearance);
+  return [x, y, glbWorldAtFloat32Precision(physicalZ, 2, exportOrigin)];
 }
 
 // Edge samples are already sorted by the canonical line parameter. A given
@@ -182,6 +176,7 @@ export function roughMeshDataFromPreparedCap({
   profileNormal = normal,
   analyticNormals = true,
   gpuDisplacement = false,
+  exportOrigin = null,
 }) {
   const zones = Array.isArray(lodZones) && lodZones.length ? lodZones : [{ polys, lodContext }],
     positions = [],
@@ -196,7 +191,7 @@ export function roughMeshDataFromPreparedCap({
     keyForPoint = (point) => {
       let key = pointKeys.get(point);
       if (key == null) {
-        key = `${Math.fround(point[0])},${Math.fround(point[1])}`;
+        key = `${glbWorldAtFloat32Precision(point[0], 0, exportOrigin)},${glbWorldAtFloat32Precision(point[1], 1, exportOrigin)}`;
         pointKeys.set(point, key);
       }
       return key;
@@ -210,12 +205,12 @@ export function roughMeshDataFromPreparedCap({
   // bound transient memory on large detailed rough surfaces.
   const roughSampleCache = new Map();
   const roughSample = (point) => {
-    const x = Math.fround(point[0]),
-      y = Math.fround(point[1]),
+    const x = glbWorldAtFloat32Precision(point[0], 0, exportOrigin),
+      y = glbWorldAtFloat32Precision(point[1], 1, exportOrigin),
       key = `${x},${y}`;
     let sample = roughSampleCache.get(key);
     if (!sample) {
-      sample = { point: roughPoint([x, y, z], z, profileNormal, appearance) };
+      sample = { point: roughPoint([x, y, z], z, profileNormal, appearance, exportOrigin) };
       if (roughSampleCache.size < 131072) {
         roughSampleCache.set(key, sample);
       }
@@ -246,7 +241,9 @@ export function roughMeshDataFromPreparedCap({
     globalTAtLocal = (line, t) =>
       line.forward ? line.t0 + (line.t1 - line.t0) * t : line.t1 - (line.t1 - line.t0) * t,
     pushTriangle = (a, b, c) => {
-      [a, b, c] = [a, b, c].map((point) => point.map(Math.fround));
+      [a, b, c] = [a, b, c].map((point) =>
+        point.map((value, axis) => glbWorldAtFloat32Precision(value, axis, exportOrigin)),
+      );
       const faceNormal = triangleNormal(a, b, c);
       if (faceNormal.every((value) => value === 0)) {
         skippedDegenerateTriangles++;
@@ -423,7 +420,7 @@ export function roughMeshDataFromPreparedCap({
     for (const [, point] of samples) {
       const key = keyForPoint(point);
       if (!boundaryPoints.has(key)) {
-        const value = roughPoint(point, z, profileNormal, appearance);
+        const value = roughPoint(point, z, profileNormal, appearance, exportOrigin);
         boundaryPoints.set(key, value);
         if (!boundaryByX.has(value[0])) boundaryByX.set(value[0], new Map());
         boundaryByX.get(value[0]).set(value[1], value);
@@ -520,11 +517,11 @@ export function roughMeshDataFromPreparedCap({
     smoothCapNormals(positions, normals, gpuDisplace);
   }
   return {
-    positions: new Float32Array(positions),
+    positions: glbLocalFloat32Positions(positions, exportOrigin),
     normals: new Float32Array(normals),
     gpuDisplace: gpuDisplacement ? new Float32Array(gpuDisplace) : new Float32Array(),
-    roughBorderPositions: new Float32Array(roughBorderPositions),
-    roughBoundaryPositions: new Float32Array(roughBoundaryPositions),
+    roughBorderPositions: glbLocalFloat32Positions(roughBorderPositions, exportOrigin),
+    roughBoundaryPositions: glbLocalFloat32Positions(roughBoundaryPositions, exportOrigin),
     metadata: {
       roughGpuDisplacement: Boolean(gpuDisplacement),
       roughConformingExtraTriangles: conformingExtraTriangles,
@@ -587,6 +584,7 @@ export function geometryFromRoughCap(
     profileNormal = normal,
     analyticNormals = true,
     gpuDisplacement = false,
+    exportOrigin = null,
   },
 ) {
   const sourceZones =
@@ -624,6 +622,7 @@ export function geometryFromRoughCap(
       profileNormal,
       analyticNormals,
       gpuDisplacement,
+      exportOrigin,
     });
   return geometryFromRoughMeshData(THREE, data);
 }
