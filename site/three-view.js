@@ -1887,6 +1887,7 @@ export function createThreeView({
                 lowerProfile,
                 upperProfile,
                 fallbackSegments: segments,
+                positionOrigin: exportOrigin,
               })
             : Array.from({ length: segments + 1 }, (_, index) => {
                 const point = pointAt(index / segments);
