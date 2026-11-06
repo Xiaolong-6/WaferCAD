@@ -197,61 +197,77 @@ export function createMaskRuntime({
     event.stopImmediatePropagation();
   };
   // Registered before the existing Pan, Draw and ROI capture handlers.
-  canvas.addEventListener('pointerdown', (event) => {
-    if (!alignmentDraft || event.button !== 0) return;
-    if (!alignmentDrag) {
-      const rect = canvas.getBoundingClientRect();
-      const view = plan.viewport(rect.width, rect.height, 'mask');
-      if (view.s > 0) {
-        alignmentDrag = {
-          id: event.pointerId,
-          startX: event.clientX,
-          startY: event.clientY,
-          x: event.clientX,
-          y: event.clientY,
-          scale: view.s,
-          transform: { ...alignmentDraft },
-        };
-        canvas.setPointerCapture(event.pointerId);
+  canvas.addEventListener(
+    'pointerdown',
+    (event) => {
+      if (!alignmentDraft || event.button !== 0) return;
+      if (!alignmentDrag) {
+        const rect = canvas.getBoundingClientRect();
+        const view = plan.viewport(rect.width, rect.height, 'mask');
+        if (view.s > 0) {
+          alignmentDrag = {
+            id: event.pointerId,
+            startX: event.clientX,
+            startY: event.clientY,
+            x: event.clientX,
+            y: event.clientY,
+            scale: view.s,
+            transform: { ...alignmentDraft },
+          };
+          canvas.setPointerCapture(event.pointerId);
+        }
       }
-    }
-    consumeAlignmentPointer(event);
-  }, true);
-  canvas.addEventListener('pointermove', (event) => {
-    if (!alignmentDraft) return;
-    if (alignmentDrag?.id === event.pointerId) {
-      alignmentDrag.x = event.clientX;
-      alignmentDrag.y = event.clientY;
-      if (!alignmentFrame) {
-        alignmentFrame = requestAnimationFrame(() => {
-          alignmentFrame = 0;
-          applyAlignmentPointer();
-        });
+      consumeAlignmentPointer(event);
+    },
+    true,
+  );
+  canvas.addEventListener(
+    'pointermove',
+    (event) => {
+      if (!alignmentDraft) return;
+      if (alignmentDrag?.id === event.pointerId) {
+        alignmentDrag.x = event.clientX;
+        alignmentDrag.y = event.clientY;
+        if (!alignmentFrame) {
+          alignmentFrame = requestAnimationFrame(() => {
+            alignmentFrame = 0;
+            applyAlignmentPointer();
+          });
+        }
       }
-    }
-    consumeAlignmentPointer(event);
-  }, true);
-  canvas.addEventListener('pointerup', (event) => {
-    if (!alignmentDraft) return;
-    if (alignmentDrag?.id === event.pointerId) {
-      alignmentDrag.x = event.clientX;
-      alignmentDrag.y = event.clientY;
-      if (alignmentFrame) cancelAnimationFrame(alignmentFrame);
-      alignmentFrame = 0;
-      applyAlignmentPointer();
-      endAlignmentDrag();
-    }
-    consumeAlignmentPointer(event);
-  }, true);
-  canvas.addEventListener('pointercancel', (event) => {
-    if (!alignmentDraft) return;
-    if (alignmentDrag?.id === event.pointerId) {
-      alignmentDraft = alignmentDrag.transform;
-      endAlignmentDrag();
-      redrawAlignmentPreview();
-    }
-    consumeAlignmentPointer(event);
-  }, true);
+      consumeAlignmentPointer(event);
+    },
+    true,
+  );
+  canvas.addEventListener(
+    'pointerup',
+    (event) => {
+      if (!alignmentDraft) return;
+      if (alignmentDrag?.id === event.pointerId) {
+        alignmentDrag.x = event.clientX;
+        alignmentDrag.y = event.clientY;
+        if (alignmentFrame) cancelAnimationFrame(alignmentFrame);
+        alignmentFrame = 0;
+        applyAlignmentPointer();
+        endAlignmentDrag();
+      }
+      consumeAlignmentPointer(event);
+    },
+    true,
+  );
+  canvas.addEventListener(
+    'pointercancel',
+    (event) => {
+      if (!alignmentDraft) return;
+      if (alignmentDrag?.id === event.pointerId) {
+        alignmentDraft = alignmentDrag.transform;
+        endAlignmentDrag();
+        redrawAlignmentPreview();
+      }
+      consumeAlignmentPointer(event);
+    },
+    true,
+  );
   bindPlanGestures({
     canvas,
     mouse: true,
