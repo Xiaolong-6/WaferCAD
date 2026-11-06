@@ -296,6 +296,45 @@ export function materialGeometriesTouch(a, b, tolerance = 1e-8) {
       if (segmentsTouch(edge.a, edge.b, other.a, other.b, tolerance)) return true;
   return false;
 }
+function segmentsSharePositiveEdge(a, b, c, d, tolerance) {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const length = Math.hypot(dx, dy);
+  if (length <= tolerance || Math.hypot(d[0] - c[0], d[1] - c[1]) <= tolerance)
+    return false;
+  const perpendicular = (p) => Math.abs(dx * (p[1] - a[1]) - dy * (p[0] - a[0]));
+  if (perpendicular(c) > tolerance * length || perpendicular(d) > tolerance * length)
+    return false;
+  const along = (p) => ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / length;
+  const lo = Math.min(along(c), along(d));
+  const hi = Math.max(along(c), along(d));
+  return Math.min(length, hi) - Math.max(0, lo) > tolerance;
+}
+
+/**
+ * Positive-length contact with an actual receiving surface.
+ * Unlike closed-set contact, a point-only tangent cannot support a
+ * physically deposited sidewall film. Preserve the original contact
+ * tolerance, ring boundaries (including holes), and indexed broad phase.
+ */
+export function materialGeometriesShareBoundaryEdge(a, b, tolerance = 1e-8) {
+  if (!a?.length || !b?.length) return false;
+  const expand = (box) => [
+    box[0] - tolerance,
+    box[1] - tolerance,
+    box[2] + tolerance,
+    box[3] + tolerance,
+  ];
+  if (!overlapBounds(expand(bounds(a)), bounds(b))) return false;
+  let left = contactIndex(a);
+  let right = contactIndex(b);
+  if (left.edges.length > right.edges.length) [left, right] = [right, left];
+  for (const edge of left.edges)
+    for (const { item: other } of queryBoundsTree(right.tree, expand(edge.box)))
+      if (segmentsSharePositiveEdge(edge.a, edge.b, other.a, other.b, tolerance)) return true;
+  return false;
+}
+
 function paths(geometry, scale = SCALE) {
   if (scale === SCALE && pathCache.has(geometry)) return pathCache.get(geometry);
   const result = (geometry || []).flatMap((polygon) =>

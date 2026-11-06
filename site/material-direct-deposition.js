@@ -8,7 +8,7 @@ import {
   materialGeometryBounds,
   materialBoundsQuery,
   offsetMaterialOpening,
-  materialGeometriesTouch,
+  materialGeometriesShareBoundaryEdge,
 } from './material-process-boolean.js';
 import { validateMaterialThicknessUm } from './process-numerical-contract.js';
 import {
@@ -373,7 +373,7 @@ export function applyMaterialDirect(model, params, area, api, traceHorizontalCap
         // film envelope. An occluder can sever that envelope from the solid;
         // the detached remainder has no surface on which Al can nucleate.
         const visible = shadows(band, z0, z1).filter((p) =>
-          materialGeometriesTouch([p], occupancy, EPS),
+          materialGeometriesShareBoundaryEdge([p], occupancy, EPS),
         );
         if (!isEmpty(visible)) patches.push({ geom: visible, z0, z1 });
       }

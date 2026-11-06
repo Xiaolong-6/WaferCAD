@@ -642,3 +642,29 @@ test('a hole touching its parent at every vertex is assigned by exact edge midpo
   assert.equal(api.geometryArea(v.difference(reference, result)), 0);
   assert.equal(api.geometryArea(v.difference(result, reference)), 0);
 });
+
+test('sidewall receiving support requires a finite shared edge, not a corner tangent', async () => {
+  const { materialGeometriesTouch, materialGeometriesShareBoundaryEdge } =
+    await import('../material-process-boolean.js');
+  const receiver = v.rectMulti(2, 2);
+  const corner = v.rectMulti(1, 1, 1.5, 1.5);
+  const fullEdge = v.rectMulti(1, 1, 1.5, 0);
+  const splitEdge = v.rectMulti(1, 0.5, 1.5, 0.25);
+  const physicalGap = v.rectMulti(1, 1, 1.500001, 0);
+  assert.equal(materialGeometriesTouch(receiver, corner), true);
+  assert.equal(materialGeometriesShareBoundaryEdge(receiver, corner), false);
+  assert.equal(materialGeometriesShareBoundaryEdge(receiver, fullEdge), true);
+  assert.equal(materialGeometriesShareBoundaryEdge(receiver, splitEdge), true);
+  assert.equal(materialGeometriesShareBoundaryEdge(fullEdge, receiver), true);
+  assert.equal(materialGeometriesShareBoundaryEdge(receiver, physicalGap), false);
+  const opening = [[v.rectMulti(8, 8)[0][0], v.rectMulti(2, 2)[0][0]]];
+  assert.equal(
+    materialGeometriesShareBoundaryEdge(opening, v.rectMulti(1, 1, 1.5, 0)),
+    false,
+  );
+  assert.equal(
+    materialGeometriesShareBoundaryEdge(opening, v.rectMulti(1, 1, 1.5, 1)),
+    true,
+    'a receiving wall inside a hole is still a real edge',
+  );
+});
