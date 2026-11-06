@@ -193,6 +193,60 @@ try {
       const color = page.getByRole('button', { name: 'Choose color for ITO', exact: true });
       await color.click();
       assert.equal(await page.locator('.v2-legend-palette').count(), 1);
+      await page.getByRole('button', { name: 'Custom RGB color', exact: true }).click();
+      const custom = page.locator('.v2-legend-custom-editor');
+      const beforePicker = (await snapshot()).model;
+      const openPicker = page.getByRole('button', { name: 'Open visual color picker' });
+      await openPicker.click();
+      const picker = page.getByRole('dialog', { name: 'Select custom color' });
+      assert.equal(await picker.isVisible(), true);
+      const pickerRect = await picker.boundingBox();
+      assert.ok(pickerRect, 'Visual picker must have measurable bounds');
+      assert.ok(pickerRect.x >= 0 && pickerRect.x + pickerRect.width <= width + 1);
+      assert.ok(pickerRect.y >= 0 && pickerRect.y + pickerRect.height <= 961);
+      await page.screenshot({
+        path: resolve(output, `review-${width}${hasTouch ? '-touch' : ''}-rgb-picker-open.png`),
+      });
+      const bounds = await picker.locator('[data-picker-field]').boundingBox();
+      assert.ok(bounds && bounds.width > 50 && bounds.height > 50);
+      await page.mouse.click(bounds.x + bounds.width * 0.35, bounds.y + bounds.height * 0.4);
+      const firstPointerColor = await picker.locator('[data-picker-hex]').inputValue();
+      assert.match(firstPointerColor, /^#[0-9A-F]{6}$/i);
+      await page.mouse.click(bounds.x + bounds.width * 0.75, bounds.y + bounds.height * 0.2);
+      assert.notEqual(
+        await picker.locator('[data-picker-hex]').inputValue(),
+        firstPointerColor,
+        'Two distinct hue/saturation selections must update HEX',
+      );
+      await picker.locator('[data-picker-hex]').fill('#invalid');
+      assert.equal(await picker.locator('.v2-legend-picker-ok').isDisabled(), true);
+      await picker.getByRole('button', { name: 'Cancel', exact: true }).click();
+      assert.equal(await picker.count(), 0);
+      assert.deepEqual((await snapshot()).model, beforePicker, 'Picker Cancel is draft-only');
+      const previousValidColor = await custom.locator('.v2-legend-custom-hex').textContent();
+      await custom.locator('[data-rgb-channel="r"]').fill('999');
+      assert.equal(await custom.locator('.v2-legend-custom-apply').isDisabled(), true);
+      assert.equal(await openPicker.isEnabled(), true, 'Invalid RGB cannot lock the visual picker');
+      await openPicker.click();
+      assert.equal(
+        await picker.getAttribute('data-picker-current'),
+        previousValidColor,
+        'The picker recovers from the last valid color',
+      );
+      await picker.locator('[data-picker-hex]').fill('#123456');
+      await picker.getByRole('button', { name: 'OK', exact: true }).click();
+      assert.equal(await custom.locator('[data-rgb-channel="r"]').inputValue(), '18');
+      assert.equal(await custom.locator('[data-rgb-channel="g"]').inputValue(), '52');
+      assert.equal(await custom.locator('[data-rgb-channel="b"]').inputValue(), '86');
+      assert.deepEqual((await snapshot()).model, beforePicker, 'Picker OK is not Layer Apply');
+      await custom.locator('.v2-legend-custom-apply').click();
+      assert.equal(
+        (await snapshot()).model.layers.find((item) => item.name === 'ITO')?.color,
+        '#123456',
+        'Only Custom RGB Apply recolors the model',
+      );
+      await color.click();
+      assert.equal(await page.locator('.v2-legend-palette').count(), 1);
       await color.click();
       assert.equal(await page.locator('.v2-legend-palette').count(), 0);
       await color.click();
