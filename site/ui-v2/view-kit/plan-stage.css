@@ -1,7 +1,7 @@
 /* Shared planar canvas surface; views supply canvas and readout hooks. */
 .v2-plan-stage {
   position: relative;
-  background: var(--wc-canvas-background, #fbfcfd);
+  background: var(--wc-canvas-background, #ffffff);
 }
 .v2-plan-stage > canvas {
   position: absolute;
