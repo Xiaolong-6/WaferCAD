@@ -524,7 +524,10 @@ try {
         assert.deepEqual((await snap()).model, beforeBase.model);
         const maskBefore = await snap();
         assert.equal(
-          await page.locator('[data-slot="panel.mask"] summary').filter({ hasText: 'Transform' }).count(),
+          await page
+            .locator('[data-slot="panel.mask"] summary')
+            .filter({ hasText: 'Transform' })
+            .count(),
           0,
           'The duplicate left-side Transform editor is removed',
         );
