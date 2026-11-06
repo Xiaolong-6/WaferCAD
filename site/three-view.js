@@ -1827,6 +1827,7 @@ export function createThreeView({
     displayTolerance = 0,
     boundaryProfiles = null,
     appearanceByCapIndex = null,
+    exportPolicy = null,
   ) {
     const positions = [],
       normals = [],
@@ -1838,7 +1839,7 @@ export function createThreeView({
           (Number(surface.profileNormal) || 1) *
             roughDisplayProfileOffsetAtPoint(point[0], point[1], surface.appearance)
         : z;
-    const policy = renderPolicy(false);
+    const policy = exportPolicy || renderPolicy(false);
 
     for (const part of displayTolerance > 0
       ? simplifyDisplaySidewallParts(parts, displayTolerance)
@@ -5405,7 +5406,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
     throwIfAborted();
 
     const exportGroup = new THREE.Group(),
-      disposable = [];
+      disposable = [],
+      physicalExportPolicy = threeRenderPolicy({ fast: false, interactive: false });
     exportGroup.name = 'WaferCAD';
     // glTF uses metres. Canonical WaferCAD geometry is stored in micrometres.
     exportGroup.scale.setScalar(1e-6);
@@ -5536,6 +5538,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           }
         }
         reportProgress(0.58 + 0.2 * ((capIndex + 1) / capCount), 'Building surfaces');
+        if (capIndex % 8 === 7) await yieldToUi();
       }
 
       throwIfAborted();
@@ -5543,7 +5546,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       for (const sidewall of surfacePlan.sidewalls) {
         if (sidewall.instanceTranslations) {
           addExportMesh(
-            geometryFromSidewallParts(sidewall.parts || [sidewall], 0, exportBoundaryProfiles),
+            geometryFromSidewallParts(sidewall.parts || [sidewall], 0, exportBoundaryProfiles, null, physicalExportPolicy),
             sidewall.layerId,
             ' · sidewalls',
             sidewall.instanceTranslations,
@@ -5559,7 +5562,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       for (const [layerId, parts] of sidewallsByLayer) {
         throwIfAborted();
         addExportMesh(
-          geometryFromSidewallParts(parts, 0, exportBoundaryProfiles),
+          geometryFromSidewallParts(parts, 0, exportBoundaryProfiles, null, physicalExportPolicy),
           layerId,
           ' · sidewalls',
         );
