@@ -10,7 +10,15 @@ import {
 
 test('GLB local Float32 positions preserve nanometre features at large wafer coordinates', () => {
   const origin = glbCapLocalOrigin({
-    polys: [[[[50000, -50000], [50000.001, -50000], [50000.001, -49999.999]]]],
+    polys: [
+      [
+        [
+          [50000, -50000],
+          [50000.001, -50000],
+          [50000.001, -49999.999],
+        ],
+      ],
+    ],
     z: 0.0005,
   });
   const points = [50000, -50000, 0.0005, 50000.001, -49999.999, 0.0015];
@@ -21,14 +29,20 @@ test('GLB local Float32 positions preserve nanometre features at large wafer coo
   assert.ok(Math.abs(origin[1] + local[4] - points[4]) < 1e-9);
   assert.ok(Math.abs(origin[2] + local[5] - points[5]) < 1e-9);
   assert.equal(Math.fround(points[0]), Math.fround(points[3]));
-  assert.equal(glbWorldAtFloat32Precision(points[3], 0, origin), origin[0] + Math.fround(points[3] - origin[0]));
-  assert.deepEqual([...glbWorldBoundaryPositions(local, origin)], [
-    origin[0] + local[0],
-    origin[1] + local[1],
-    origin[2] + local[2],
-    origin[0] + local[3],
-    origin[1] + local[4],
-    origin[2] + local[5],
-  ]);
+  assert.equal(
+    glbWorldAtFloat32Precision(points[3], 0, origin),
+    origin[0] + Math.fround(points[3] - origin[0]),
+  );
+  assert.deepEqual(
+    [...glbWorldBoundaryPositions(local, origin)],
+    [
+      origin[0] + local[0],
+      origin[1] + local[1],
+      origin[2] + local[2],
+      origin[0] + local[3],
+      origin[1] + local[4],
+      origin[2] + local[5],
+    ],
+  );
   assert.deepEqual(glbSidewallLocalOrigin([{ p: [50000, -50000], z0: -1 }]), [50000, -50000, -1]);
 });
