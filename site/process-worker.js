@@ -187,7 +187,7 @@ function processArea(
     if (vectorApi.isEmpty(selected)) {
       // Invert an existing but out-of-ROI Mask against the ROI domain.
       // An actually empty source Mask still rejects both mask and invert.
-      if (mode !== 'invert' || !localRoiBounds || nearby.length) return [];
+      if (mode !== 'invert' || !localRoiBounds) return [];
       area = modelApi.fullFaceGeometry(model);
     } else {
       const clipped = vectorApi.intersection(selected, model.boundary);
