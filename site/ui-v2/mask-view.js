@@ -676,6 +676,8 @@ export async function createMaskView({ project, sharedState, workstation } = {})
           floating('maskAlignmentSettings', 'Mask alignment', alignmentForm, trigger, () =>
             runtime.alignment.cancel(),
           );
+          syncDisplayUnitFields(alignmentForm, units.key());
+          runtime.alignment.syncTransformInputs();
         }
       } else if (action === 'alignment-apply') {
         runtime.alignment.commit();

@@ -316,7 +316,6 @@ export function createMaskRuntime({
       canvas.style.cursor = 'move';
       canvas.style.touchAction = 'none';
       renderMask();
-      alignmentFields.syncTransformInputs();
       return true;
     },
     reset() {

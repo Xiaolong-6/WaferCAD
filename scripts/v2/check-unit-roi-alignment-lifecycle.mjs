@@ -121,8 +121,17 @@ try {
       report.cases.push({ type: 'roi-' + shape, units: ['nm', 'mm', 'um'] });
     }
 
-    await page.locator('[data-action="mask-alignment-settings"]').click();
-    await page.locator('#maskOffsetX').waitFor({ state: 'visible' });
+    const alignmentTrigger = page.locator('[data-action="mask-alignment-settings"]');
+    const alignmentDialog = page.locator('#maskAlignmentSettings');
+    const openAlignment = async () => {
+      await alignmentTrigger.click();
+      await alignmentDialog.waitFor({ state: 'visible' });
+    };
+    const applyAlignment = async () => {
+      await alignmentDialog.getByRole('button', { name: 'Apply', exact: true }).click();
+      await alignmentDialog.waitFor({ state: 'detached' });
+    };
+    await openAlignment();
     for (const [id, value] of [
       ['maskOffsetX', '1.2346'],
       ['maskOffsetY', '-0.125'],
@@ -131,8 +140,13 @@ try {
     ]) {
       await page.locator('#' + id).fill(value);
     }
-    await page.locator('[data-action="alignment-apply"]').click();
+    await applyAlignment();
     const aligned = await snapshot();
+    assert.deepEqual(aligned.maskTransform, { x: 1.2346, y: -0.125, scale: 1.25, rotation: 31.5 });
+    await unit('nm');
+    await openAlignment();
+    assert.ok(Math.abs(Number(await page.locator('#maskOffsetX').inputValue()) - 1234.6) < 1e-8);
+    await unit('um');
     const offsetX = Number(await page.locator('#maskOffsetX').inputValue());
     const scale = await page.locator('#maskScale').inputValue();
     const angle = await page.locator('#maskRotation').inputValue();
@@ -160,14 +174,15 @@ try {
       assert.deepEqual((await snapshot()).maskRoi, aligned.maskRoi);
       await checkImmutable(aligned, 'alignment unit ' + key);
     }
-    await page.locator('[data-action="alignment-apply"]').click();
+    await applyAlignment();
     assert.deepEqual(
       (await snapshot()).maskTransform,
       aligned.maskTransform,
       'Alignment untouched Apply must not quantize physical offsets',
     );
+    await openAlignment();
     await page.locator('#maskOffsetX').fill(String(offsetX + 0.001));
-    await page.locator('[data-action="alignment-apply"]').click();
+    await applyAlignment();
     const changed = await snapshot();
     assert.ok(Math.abs(changed.maskTransform.x - aligned.maskTransform.x - 0.001) < 1e-10);
     assert.equal(
@@ -179,7 +194,6 @@ try {
     assert.equal(changed.maskTransform.rotation, aligned.maskTransform.rotation);
     await checkImmutable(aligned, 'alignment intentional edit');
     report.cases.push({ type: 'alignment', units: ['nm', 'mm', 'um'] });
-    await page.getByRole('button', { name: 'Close Mask alignment', exact: true }).click();
 
     // Use a real GDS source to verify drag previews do not modify canonical geometry.
     await page.locator('#gdsInput').setInputFiles('site/samples/klayout/gds-basic-instances.gds');
@@ -196,15 +210,22 @@ try {
       'There must be only one Alignment editor',
     );
     const committedBeforeDrag = await snapshot();
-    const alignmentTrigger = page.locator('[data-action="mask-alignment-settings"]');
-    await alignmentTrigger.click();
-    const canvasRect = await canvas.boundingBox();
+    await openAlignment();
     const viewScale = await page.evaluate(() => {
       const v = window.WaferCadV2Mask.projection();
       return v.s;
     });
-    const x0 = canvasRect.x + canvasRect.width * 0.5;
-    const y0 = canvasRect.y + canvasRect.height * 0.5;
+    const start = await canvas.evaluate((node) => {
+      const rect = node.getBoundingClientRect();
+      for (const fraction of [0.7, 0.4, 0.2]) {
+        const x = Math.round(rect.left + rect.width * fraction);
+        const y = Math.round(rect.top + rect.height * 0.7);
+        if (document.elementFromPoint(x, y) === node) return [x, y];
+      }
+      return null;
+    });
+    assert.ok(start, 'The floating editor leaves the Mask canvas available to drag');
+    const [x0, y0] = start;
     const drag = async () => {
       await page.mouse.move(x0, y0);
       await page.mouse.down();
@@ -224,9 +245,15 @@ try {
     );
     await page.locator('[data-action="alignment-cancel"]').click();
     assert.deepEqual((await snapshot()).maskTransform, committedBeforeDrag.maskTransform);
-    await alignmentTrigger.click();
+    await openAlignment();
     await drag();
-    await page.locator('[data-action="alignment-apply"]').click();
+    await page.keyboard.press('Escape');
+    await alignmentDialog.waitFor({ state: 'detached' });
+    assert.deepEqual((await snapshot()).maskTransform, committedBeforeDrag.maskTransform);
+    await openAlignment();
+    await drag();
+    await page.screenshot({ path: resolve(out, 'alignment-draft.png') });
+    await applyAlignment();
     const committedAfterDrag = await snapshot();
     assert.ok(Math.abs(committedAfterDrag.maskTransform.x - 48 / viewScale) < 1e-9);
     assert.ok(Math.abs(committedAfterDrag.maskTransform.y - 24 / viewScale) < 1e-9);
