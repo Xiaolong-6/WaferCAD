@@ -622,10 +622,6 @@ export function createSectionView({ store, main, workstation }) {
           'div',
           { class: 'p-form v2-section-floating' },
           button('SVG', 'export:section:svg', 'export'),
-          button('PNG · Pending', null, 'export', {
-            disabled: true,
-            title: 'PNG is pending implementation',
-          }),
         ),
       });
     else if (action === 'export:section:svg') {
