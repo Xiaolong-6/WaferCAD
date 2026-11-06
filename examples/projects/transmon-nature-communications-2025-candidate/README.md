@@ -10,6 +10,42 @@
 > The paper's 45° Al6 condition and the unresolved detached tips are not
 > accepted as reconstructed fabrication geometry.
 
+## Post-noding wall support and nominal 45° Q2 replay (2026-11-06)
+
+The material Direct kernel now rechecks **each polygon after 0.1 nm shared-grid
+noding** against its original physical wall receiver, requiring positive-length
+contact at the same height. This prevents sub-grid point-only shadows from
+creating free-floating Al. It does not enlarge mask features, introduce
+artificial bridges, or remove a polygon merely because its area is small.
+
+A reproducible local run on the unmodified original chip2 Mask generated the
+40 × 40 µm Q2 stage-18 project, then replayed Al3 (45° at GDS azimuth −45°).
+The former result contained 10 unsupported Al3 connected components, including
+four one-grid triangles near (−2.915, −1.943) µm; the corrected result contained
+**zero**. The Al3 volume changed from 47.93748995 to 47.93735335 µm³
+(−0.000285%). Through Al4 at 45°, the corrected model had **zero unsupported
+components** rather than five. This evidence is tied to the corrected kernel
+commit; it is not a fabrication measurement.
+
+For a process-performance control, the corrected stage-21 model was partitioned
+into 49 native 6 µm cells. The ordinary seam repair preserved process-model
+schema and material ownership; the largest material-volume difference after
+counting all repeated instances was 7.11 × 10⁻⁶ µm³. All 44 Al5 and 44 Al6
+working sets completed with zero failures, with the final Al6 tilt fixed at
+the paper's **45°**. Strict two-resist lift-off succeeded, removing 21
+resist-carried components. The final geometric audit returned an Al/AlOx/Al
+sandwich area of 0.025186145 µm² but **zero terminal-connected barrier area**;
+the entire sandwich was shunted in its local metal graph and four metal
+components were detached from both Nb terminals. The correct scientific
+status is therefore **replayed but electrically/geometrically unaccepted**.
+
+The nominal full-chip Recipe still deposits only _horizontal_ illustrative
+AlOx on Al1 and does not model exposed sidewall oxidation or a calibrated Ar
+mill. Direct Al1–Al2/Al3 metal contacts are present in the terminal trace.
+A separate, explicitly assumed conformal/rounded-rim AlOx sensitivity run is
+needed before attributing any shunt to device physics. This must not be
+silently folded into the nominal paper-parameter model.
+
 ## Fabrication implementation and explicit process assumptions
 
 `scripts/build-transmon-process.mjs` builds actual material checkpoints and an

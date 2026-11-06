@@ -88,9 +88,15 @@ including beneath overhangs, without replacing existing solids. Optional
 `sidewalls: true` adds projected vertical-facet bands with conservative
 visibility over explicit `heightStepUm` slices (0.0001–0.05 µm). Each visible
 band must touch a pre-dose receiving solid; isolated free-space envelopes
-cannot nucleate film. No in-dose kinetics or calibrated process chemistry is
-implied. Normal Direct and the older isolated-wall/aperture modes retain their
-separate contracts.
+cannot nucleate film. After shared-grid noding, **each resulting wall polygon**
+rechecks finite-length contact with that original receiver at the same Z
+interval. A previously supported strip may split into a vertex-only triangle
+on the 0.1 nm grid; that fragment has no material receiving face and cannot
+be retained as a deposit. This is a support-topology check, **not** an area
+threshold, blanket sliver removal or relaxed contact tolerance. Horizontal
+caps retain their separate exposure rule. No in-dose kinetics or calibrated
+process chemistry is implied. Normal Direct and the older isolated-wall/aperture
+modes retain their separate contracts.
 
 Large unannotated rectangular models can use exact native array partitions
 with shared templates. Neighbor halos cover the exposed-height ray envelope;
