@@ -89,6 +89,11 @@ try {
       await selectScientificView(page, 'mask', width);
       await page.locator('#maskPanel').waitFor({ state: 'visible' });
       await waitForPaint(page);
+      const planBackground = (view) =>
+        page.locator(`#${view}Panel .v2-plan-stage`).evaluate(
+          (stage) => getComputedStyle(stage).backgroundColor,
+        );
+      assert.equal(await planBackground('mask'), 'rgb(255, 255, 255)');
       await command('mask-roi-toggle');
       assert.equal(await page.locator('#maskRoiTools').isVisible(), true);
       await page.locator('[data-action="mask-roi-tool:square"]').click();
@@ -107,6 +112,7 @@ try {
       await page.locator('#clearMaskRoiBtn').click();
       await page.getByRole('button', { name: 'Close Mask ROI settings', exact: true }).click();
       await selectScientificView(page, 'main', width);
+      assert.equal(await planBackground('main'), 'rgb(255, 255, 255)');
       // Slice input uses the Main controller; inspect the real Section's reslice after changing A/B.
       await command('roi');
       await command('slice-coordinates');
@@ -125,6 +131,19 @@ try {
       await selectScientificView(page, 'section', width);
       await waitForPaint(page);
       const sectionCanvas = page.locator('#sectionCanvas');
+      assert.equal(
+        await page.locator('#sectionPanel .v2-section-body .p-science').evaluate(
+          (stage) => getComputedStyle(stage).backgroundColor,
+        ),
+        'rgb(255, 255, 255)',
+      );
+      assert.deepEqual(
+        await sectionCanvas.evaluate((canvas) =>
+          Array.from(canvas.getContext('2d').getImageData(0, 0, 1, 1).data),
+        ),
+        [255, 255, 255, 255],
+        'Section top-left background pixel must be opaque white',
+      );
       assert.ok(Number(await sectionCanvas.getAttribute('data-x-px-per-um')) > 0);
       const span = Number(
         (await page.locator('[data-slot="view.section.readout"]').innerText()).split(' ')[0],
