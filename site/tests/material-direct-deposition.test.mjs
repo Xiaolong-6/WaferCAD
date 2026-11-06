@@ -673,7 +673,7 @@ test('sidewall receiving support requires a finite shared edge, not a corner tan
 test('lift-off graph rejects point-only and zero-height metal support without losing a real sidewall', async () => {
   const { analyzeMaterialLiftOff, LIFT_PERMANENT } = await import('../material-lift-off.js');
   const layers = ['base', 'nb', 'resist', 'al'].map((id) => ({ id }));
-  const contact = (metalArea, z0, z1) => {
+  const contact = (metalArea, z0, z1, traceClosedTangencies = false) => {
     const model = {
       layers,
       regions: [
@@ -691,7 +691,10 @@ test('lift-off graph rejects point-only and zero-height metal support without lo
         },
       ],
     };
-    const analysis = analyzeMaterialLiftOff(model, ['resist']);
+    const analysis = analyzeMaterialLiftOff(model, ['resist'], {
+      traceContacts: traceClosedTangencies,
+      traceClosedTangencies,
+    });
     const metalNode = analysis.nodes.findIndex((node) => node.layerId === 'al');
     assert.ok(metalNode >= 0);
     return Boolean(analysis.nodeFlags[metalNode] & LIFT_PERMANENT);
@@ -700,4 +703,13 @@ test('lift-off graph rejects point-only and zero-height metal support without lo
   assert.equal(contact(v.rectMulti(1, 1, 1.5, 1.5), 0.5, 0.8), false);
   assert.equal(contact(edge, 1, 1.2), false);
   assert.equal(contact(edge, 0.5, 0.8), true);
+  assert.equal(contact(v.rectMulti(1, 1, 1.5, 1.5), 0.5, 0.8, true), true);
+  assert.equal(contact(edge, 1, 1.2, true), true);
+  assert.equal(contact(edge, 0.5, 0.8, true), true);
+  assert.throws(
+    () => analyzeMaterialLiftOff({ layers, regions: [] }, ['resist'], {
+      traceClosedTangencies: true,
+    }),
+    /require contact tracing/,
+  );
 });

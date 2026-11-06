@@ -1,6 +1,7 @@
 import { difference, isEmpty } from './vector-geometry.js';
 import {
   materialGeometriesShareBoundaryEdge,
+  materialGeometriesTouch,
   materialBoundsQuery,
   materialGeometryBounds,
 } from './material-process-boolean.js';
@@ -22,14 +23,18 @@ function validateSacrificial(model, ids) {
 /** Analyze the original canonical partition, without Boolean dissolves or
  * sub-grid buffer polygons. One XY adjacency is reused for every Z interval;
  * all contacts retain the ordinary 1e-8 µm numerical contact tolerance.
+ * The optional closed-contact graph is diagnostic only: physical lift-off
+ * and its array owner always require finite-area lateral interfaces.
  */
 export function analyzeMaterialLiftOff(
   model,
   ids,
-  { traceContacts = false, requireAllSacrificial = true } = {},
+  { traceContacts = false, requireAllSacrificial = true, traceClosedTangencies = false } = {},
 ) {
   if (!validateSacrificial(model, ids))
     throw Error('Material Lift-off needs distinct non-base sacrificial layers.');
+  if (traceClosedTangencies && !traceContacts)
+    throw Error('Closed-contact diagnostics require contact tracing.');
   const sacrificial = new Set(ids);
   const first = Math.min(...ids.map((id) => model.layers.findIndex((l) => l.id === id)));
   const permanent = new Set(model.layers.slice(0, first).map((l) => l.id));
@@ -114,7 +119,12 @@ export function analyzeMaterialLiftOff(
       if (e.index >= index) continue;
       if (++candidates > 10000000) throw Error('Material Lift-off adjacency budget exceeded.');
       const q = e.piece;
-      if (!materialGeometriesShareBoundaryEdge(p.geom, q.geom, EPS)) continue;
+      if (
+        !(traceClosedTangencies
+          ? materialGeometriesTouch(p.geom, q.geom, EPS)
+          : materialGeometriesShareBoundaryEdge(p.geom, q.geom, EPS))
+      )
+        continue;
       let firstOther = 0;
       for (let i = 0; i < p.stack.length; i++) {
         const a = p.stack[i];
@@ -123,7 +133,8 @@ export function analyzeMaterialLiftOff(
           const b = q.stack[j];
           // A lateral joint requires finite shared sidewall area, not a
           // height-only contact line at the top or bottom of a slab.
-          if (Math.min(a.z1, b.z1) - Math.max(a.z0, b.z0) > EPS) contact(p, i, q, j, false);
+          if (traceClosedTangencies || Math.min(a.z1, b.z1) - Math.max(a.z0, b.z0) > EPS)
+            contact(p, i, q, j, false);
         }
       }
     }

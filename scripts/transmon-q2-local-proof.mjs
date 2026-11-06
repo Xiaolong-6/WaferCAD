@@ -92,7 +92,10 @@ export async function auditQ2ReleasedMaterial(
   const graph = analyzeMaterialLiftOff(
     { ...model, layers: [{ id: marker }, ...conductors], regions: metal },
     [marker],
-    { requireAllSacrificial: false, traceContacts: true },
+    // Keep the conservative closed-contact warning graph independent of
+    // physically conducting metal. The local union below only joins finite
+    // XY edges with positive Z span; never use this option for real lift-off.
+    { requireAllSacrificial: false, traceContacts: true, traceClosedTangencies: true },
   );
   const parents = Int32Array.from(graph.nodes, (_, i) => i);
   const root = (i) => {

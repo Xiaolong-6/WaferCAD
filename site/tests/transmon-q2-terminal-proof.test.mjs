@@ -47,6 +47,8 @@ test('Q2 proof distinguishes a pad-to-pad barrier from the same stack with a met
   assert.equal(good.sandwichAreaUm2, 4);
   assert.equal(good.terminalSandwichAreaUm2, 4);
   assert.equal(good.shuntedSandwichAreaUm2, 0);
+  assert.equal(good.metallicShort, false);
+  assert.equal(good.potentialTouch, false);
   assert.equal(good.geometryAccepted, true);
 
   const shunted = await auditQ2ReleasedMaterial(fixture(0), {
