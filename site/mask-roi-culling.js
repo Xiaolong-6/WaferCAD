@@ -68,9 +68,7 @@ export function maskRoiLocalBounds(roi) {
 export function maskElementMayDefineArea(element) {
   return (
     (element?.kind === 'polygon' && element.points?.length >= 3) ||
-    (element?.kind === 'path' &&
-      element.points?.length >= 2 &&
-      Number(element.width) > 0)
+    (element?.kind === 'path' && element.points?.length >= 2 && Number(element.width) > 0)
   );
 }
 
