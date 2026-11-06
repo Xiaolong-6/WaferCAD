@@ -23,15 +23,13 @@ export function glbWorldAtFloat32Precision(value, axis, origin = null) {
 export function glbLocalFloat32Positions(positions, origin = null) {
   if (!origin) return new Float32Array(positions);
   const result = new Float32Array(positions.length);
-  for (let i = 0; i < positions.length; i++)
-    result[i] = positions[i] - origin[i % 3];
+  for (let i = 0; i < positions.length; i++) result[i] = positions[i] - origin[i % 3];
   return result;
 }
 
 export function glbWorldBoundaryPositions(positions, origin = null) {
   if (!origin) return positions;
   const result = new Float64Array(positions.length);
-  for (let i = 0; i < positions.length; i++)
-    result[i] = positions[i] + origin[i % 3];
+  for (let i = 0; i < positions.length; i++) result[i] = positions[i] + origin[i % 3];
   return result;
 }
