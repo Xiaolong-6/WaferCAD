@@ -140,12 +140,22 @@ async function scheduledDecision({
   let listCalls = 0;
   const core = {
     info() {},
-    warning(message) { warnings.push(message); },
-    setOutput(key, value) { output.push([key, value]); },
+    warning(message) {
+      warnings.push(message);
+    },
+    setOutput(key, value) {
+      output.push([key, value]);
+    },
     summary: {
-      addHeading() { return this; },
-      addRaw() { return this; },
-      async write() { summaryWritten = true; },
+      addHeading() {
+        return this;
+      },
+      addRaw() {
+        return this;
+      },
+      async write() {
+        summaryWritten = true;
+      },
     },
   };
   const github = {
@@ -157,9 +167,11 @@ async function scheduledDecision({
           assert.equal(options.branch, 'main');
           assert.equal(options.event, 'schedule');
           if (failList) throw Error('history unavailable');
-          return { data: {
-            workflow_runs: [historicalRun(100, null, sameSha, 'in_progress'), ...history],
-          } };
+          return {
+            data: {
+              workflow_runs: [historicalRun(100, null, sameSha, 'in_progress'), ...history],
+            },
+          };
         },
         listJobsForWorkflowRun: () => {},
       },
@@ -171,10 +183,13 @@ async function scheduledDecision({
   };
   await dailyDecisionScript(sources()['daily-full.yml']).runInNewContext({
     context: {
-      eventName: event, repo: { owner: 'Xiaolong-6', repo: 'WaferCAD' },
-      sha: sameSha, runId: 100,
+      eventName: event,
+      repo: { owner: 'Xiaolong-6', repo: 'WaferCAD' },
+      sha: sameSha,
+      runId: 100,
     },
-    core, github,
+    core,
+    github,
   });
   assert.equal(output.length, 1, 'emit one nightly decision');
   assert.equal(output[0][0], 'full');
@@ -184,13 +199,24 @@ async function scheduledDecision({
 test('nightly decision gates every required job and preserves fail-closed verdict', () => {
   const daily = sources()['daily-full.yml'];
   const names = [
-    'quality', 'browser', 'main-mask', 'stage-c', 'recipe',
-    'history-recovery', 'physical-science', 'example-replay',
-    'renderer-isolation', 'worker-fault',
+    'quality',
+    'browser',
+    'main-mask',
+    'stage-c',
+    'recipe',
+    'history-recovery',
+    'physical-science',
+    'example-replay',
+    'renderer-isolation',
+    'worker-fault',
   ];
   for (const name of names) {
-    const condition = '  ' + name + ':\n    needs: plan\n    if: ' +
-      '$' + "{{ needs.plan.outputs.full == 'true' }}";
+    const condition =
+      '  ' +
+      name +
+      ':\n    needs: plan\n    if: ' +
+      '$' +
+      "{{ needs.plan.outputs.full == 'true' }}";
     assert.ok(daily.includes(condition), 'missing guarded mandatory group: ' + name);
   }
   assert.match(daily, /cron: '30 2 \* \* \*'/);
@@ -203,19 +229,71 @@ test('nightly decision gates every required job and preserves fail-closed verdic
 for (const scenario of [
   { name: 'manual always runs full', event: 'workflow_dispatch', full: 'true', listCalls: 0 },
   { name: 'no history runs full', full: 'true' },
-  { name: 'new main SHA runs full', history: [historicalRun(99, 'success', otherSha)], full: 'true' },
+  {
+    name: 'new main SHA runs full',
+    history: [historicalRun(99, 'success', otherSha)],
+    full: 'true',
+  },
   { name: 'latest failure retries full', history: [historicalRun(99, 'failure')], full: 'true' },
-  { name: 'latest cancellation retries full', history: [historicalRun(99, 'cancelled')], full: 'true' },
-  { name: 'latest queued run cannot be ignored', history: [historicalRun(99, null, sameSha, 'queued')], full: 'true' },
-  { name: 'latest running run cannot be ignored', history: [historicalRun(99, null, sameSha, 'in_progress')], full: 'true' },
-  { name: 'Quality without verdict is not enough', history: [historicalRun(99)], jobs: { 99: fullJobs.slice(0, 1) }, full: 'true' },
-  { name: 'skipped verdict without Quality is not enough', history: [historicalRun(99)], jobs: { 99: skippedJobs }, full: 'true' },
-  { name: 'same-SHA full success permits skip', history: [historicalRun(99)], jobs: { 99: fullJobs }, full: 'false' },
-  { name: 'successful skipped runs inherit preceding full proof', history: [historicalRun(99), historicalRun(98)], jobs: { 99: skippedJobs, 98: fullJobs }, full: 'false' },
-  { name: 'intervening failure invalidates proof', history: [historicalRun(99), historicalRun(98, 'failure'), historicalRun(97)], jobs: { 99: skippedJobs, 97: fullJobs }, full: 'true' },
-  { name: 'intervening SHA change invalidates proof', history: [historicalRun(99), historicalRun(98, 'success', otherSha)], jobs: { 99: skippedJobs, 98: fullJobs }, full: 'true' },
+  {
+    name: 'latest cancellation retries full',
+    history: [historicalRun(99, 'cancelled')],
+    full: 'true',
+  },
+  {
+    name: 'latest queued run cannot be ignored',
+    history: [historicalRun(99, null, sameSha, 'queued')],
+    full: 'true',
+  },
+  {
+    name: 'latest running run cannot be ignored',
+    history: [historicalRun(99, null, sameSha, 'in_progress')],
+    full: 'true',
+  },
+  {
+    name: 'Quality without verdict is not enough',
+    history: [historicalRun(99)],
+    jobs: { 99: fullJobs.slice(0, 1) },
+    full: 'true',
+  },
+  {
+    name: 'skipped verdict without Quality is not enough',
+    history: [historicalRun(99)],
+    jobs: { 99: skippedJobs },
+    full: 'true',
+  },
+  {
+    name: 'same-SHA full success permits skip',
+    history: [historicalRun(99)],
+    jobs: { 99: fullJobs },
+    full: 'false',
+  },
+  {
+    name: 'successful skipped runs inherit preceding full proof',
+    history: [historicalRun(99), historicalRun(98)],
+    jobs: { 99: skippedJobs, 98: fullJobs },
+    full: 'false',
+  },
+  {
+    name: 'intervening failure invalidates proof',
+    history: [historicalRun(99), historicalRun(98, 'failure'), historicalRun(97)],
+    jobs: { 99: skippedJobs, 97: fullJobs },
+    full: 'true',
+  },
+  {
+    name: 'intervening SHA change invalidates proof',
+    history: [historicalRun(99), historicalRun(98, 'success', otherSha)],
+    jobs: { 99: skippedJobs, 98: fullJobs },
+    full: 'true',
+  },
   { name: 'history API failure runs full', failList: true, full: 'true', warning: true },
-  { name: 'jobs API failure runs full', failJobs: true, history: [historicalRun(99)], full: 'true', warning: true },
+  {
+    name: 'jobs API failure runs full',
+    failJobs: true,
+    history: [historicalRun(99)],
+    full: 'true',
+    warning: true,
+  },
 ]) {
   test('nightly scenario: ' + scenario.name, async () => {
     const result = await scheduledDecision(scenario);
