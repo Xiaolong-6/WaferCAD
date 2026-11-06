@@ -58,7 +58,14 @@ test('conservative local ROI bounds retain rotated-square corners and path width
   assert.equal(maskElementMayIntersectRoi(polygon(0, 2), bounds), true);
   assert.equal(
     maskElementMayIntersectRoi(
-      { kind: 'path', width: 0.6, points: [[bounds.maxX + 0.1, 1], [bounds.maxX + 0.1, 3]] },
+      {
+        kind: 'path',
+        width: 0.6,
+        points: [
+          [bounds.maxX + 0.1, 1],
+          [bounds.maxX + 0.1, 3],
+        ],
+      },
       bounds,
     ),
     true,
@@ -79,10 +86,7 @@ test('conservative local ROI bounds retain rotated-square corners and path width
     drawShapeMayIntersectRoi({ type: 'ring-sector', c: [20, 20], innerR: 1, outerR: 2 }, bounds),
     false,
   );
-  assert.equal(
-    drawShapeMayIntersectRoi({ type: 'circle', c: [0, 0], r: 5 }, bounds),
-    true,
-  );
+  assert.equal(drawShapeMayIntersectRoi({ type: 'circle', c: [0, 0], r: 5 }, bounds), true);
 });
 
 test('File Mask ROI eliminates outside polygon transformations before union', () => {
@@ -98,11 +102,7 @@ test('File Mask ROI eliminates outside polygon transformations before union', ()
   const center = rectMulti(1, 1);
   samePhysicalArea(selection.operationAreaGeometry('mask'), center, 'selected');
   assert.equal(visits(), 4, 'only the in-ROI polygon may reach the expensive transform/union path');
-  samePhysicalArea(
-    selection.operationAreaGeometry('invert'),
-    difference(domain, center),
-    'invert',
-  );
+  samePhysicalArea(selection.operationAreaGeometry('invert'), difference(domain, center), 'invert');
   samePhysicalArea(selection.operationAreaGeometry('full'), domain, 'full');
 });
 
@@ -113,7 +113,17 @@ test('existing File mask wholly outside the ROI inverts to its entire process do
   assert.deepEqual(selection.operationAreaGeometry('mask'), []);
   assert.equal(visits(), 0);
   samePhysicalArea(selection.operationAreaGeometry('invert'), domain, 'empty local candidates');
-  state.layout.elements = [{ kind: 'path', layer: 1, width: 0, points: [[10, 10], [11, 11]] }];
+  state.layout.elements = [
+    {
+      kind: 'path',
+      layer: 1,
+      width: 0,
+      points: [
+        [10, 10],
+        [11, 11],
+      ],
+    },
+  ];
   assert.deepEqual(selection.operationAreaGeometry('invert'), [], 'truly empty operable source');
 });
 
