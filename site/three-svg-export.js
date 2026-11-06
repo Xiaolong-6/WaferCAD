@@ -18,13 +18,17 @@ function svgNumber(value) {
 }
 
 function escapedAttribute(value) {
-  return String(value ?? '').replace(/[&"<>'"]/g, (character) => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&apos;',
-  })[character]);
+  return String(value ?? '').replace(
+    /[&"<>'"]/g,
+    (character) =>
+      ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&apos;',
+      })[character],
+  );
 }
 
 function svgVertex(vector, camera, width, height) {
@@ -51,17 +55,22 @@ function clipNear(vertices, near) {
   return result;
 }
 
-export async function projectThreeMeshesToSvg(THREE, root, camera, {
-  width,
-  height,
-  mode = 'view',
-  detail = 'high',
-  mapZ = (z) => z,
-  zScale = 1,
-  opacity = 1,
-  signal = null,
-  onProgress = null,
-} = {}) {
+export async function projectThreeMeshesToSvg(
+  THREE,
+  root,
+  camera,
+  {
+    width,
+    height,
+    mode = 'view',
+    detail = 'high',
+    mapZ = (z) => z,
+    zScale = 1,
+    opacity = 1,
+    signal = null,
+    onProgress = null,
+  } = {},
+) {
   if (!THREE || !root || !camera) throw new Error('3D geometry and camera are required.');
   const options = normalizeSvgExportOptions({ mode, detail });
   const maximum = SVG_TRIANGLE_BUDGETS[options.detail];
@@ -157,12 +166,7 @@ export async function projectThreeMeshesToSvg(THREE, root, camera, {
         for (const vertex of clipped) {
           // A clipped vertex is already in camera/view coordinates. Convert
           // back to world space because Three.Vector3.project expects world.
-          const point = svgVertex(
-            vertex.clone().applyMatrix4(camera.matrixWorld),
-            camera,
-            w,
-            h,
-          );
+          const point = svgVertex(vertex.clone().applyMatrix4(camera.matrixWorld), camera, w, h);
           if (!point) break;
           projected.push(point);
         }
@@ -180,33 +184,43 @@ export async function projectThreeMeshesToSvg(THREE, root, camera, {
         edgeA.subVectors(view[1], view[0]);
         edgeB.subVectors(view[2], view[0]);
         normal.crossVectors(edgeA, edgeB).normalize();
+        // Opaque material faces behind the camera-facing side must not appear
+        // through the front wafer surface in a static vector projection.
+        if (normal.z <= 0) continue;
         // Camera-relative diffuse lighting makes real rough facets readable,
         // without any raster textures, noise overlays, or triangular strokes.
-        const illumination = Math.round(
-          (0.50 + 0.42 * Math.abs(normal.dot(light))) * 24,
-        ) / 24;
+        const illumination = Math.round((0.5 + 0.42 * Math.abs(normal.dot(light))) * 24) / 24;
         const cacheKey = `${baseColor.getHexString()}:${illumination}`;
         if (!colorCache.has(cacheKey))
           colorCache.set(
             cacheKey,
             `#${workColor.copy(baseColor).multiplyScalar(illumination).getHexString()}`,
           );
-        const points = projected.map((point) =>
-          `${svgNumber(point[0])} ${svgNumber(point[1])}`,
-        );
+        const points = projected.map((point) => `${svgNumber(point[0])} ${svgNumber(point[1])}`);
         const path = `M${points.join('L')}Z`;
-        const depth = clipped.reduce((sum, vertex) => sum - vertex.z, 0) / clipped.length;
-        faces.push({ path, depth, fill: colorCache.get(cacheKey), layer });
+        const depth = Math.max(...clipped.map((vertex) => -vertex.z));
+        const zPriority = world.reduce((sum, vertex) => sum + vertex.z, 0) / world.length;
+        faces.push({ path, depth, zPriority, fill: colorCache.get(cacheKey), layer });
       }
     }
-    onProgress?.(0.92 + 0.07 * ((meshIndex + 1) / Math.max(1, meshes.length)), 'Projecting vector facets');
+    onProgress?.(
+      0.92 + 0.07 * ((meshIndex + 1) / Math.max(1, meshes.length)),
+      'Projecting vector facets',
+    );
   }
   checkAbort();
-  // Back-to-front compositing respects normal wafer stack occlusion. This is a
-  // static vector projection, not a GLB/3D interchange format or a depth buffer.
-  faces.sort((a, b) => b.depth - a.depth);
-  const paths = faces.map(({ path, fill, layer }) =>
-    `<path d="${path}" fill="${fill}" data-wafercad-layer="${layer}"/>`,
+  // Elevation ownership for the top/back wafer view prevents buried material
+  // triangles covering the corresponding front surface. Depth is a tie-breaker
+  // for equal-height facets. This is not general triangle-triangle occlusion.
+  const above = camera.getWorldDirection(new THREE.Vector3()).z < 0;
+  faces.sort(
+    (a, b) => (above ? a.zPriority - b.zPriority : b.zPriority - a.zPriority) || b.depth - a.depth,
+  );
+  // Match each facet's own fill with its outline to prevent anti-aliased seams,
+  // without exposing mesh wireframes or adding black triangle edges.
+  const paths = faces.map(
+    ({ path, fill, layer }) =>
+      `<path d="${path}" fill="${fill}" stroke="${fill}" stroke-width="0.45" stroke-linejoin="round" data-wafercad-layer="${layer}"/>`,
   );
   const transparency = alpha < 1 ? ` opacity="${svgNumber(alpha)}"` : '';
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img"><title>WaferCAD 3D vector view</title><desc>Projected material geometry; rough and pyramid surfaces are CPU-tessellated vector facets. Near-plane clipped and camera-sorted. No embedded bitmap.</desc><rect width="${w}" height="${h}" fill="#f5f7f9"/><g shape-rendering="geometricPrecision"${transparency}>${paths.join('')}</g></svg>`;
