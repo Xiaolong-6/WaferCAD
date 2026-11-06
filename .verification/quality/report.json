@@ -1,24 +1,23 @@
 {
   "version": 2,
   "provenance": "developer-reported",
-  "scope": "full",
+  "scope": "draft",
   "status": "pass",
   "source": {
-    "digest": "d21e2e306da9c8800bf148c84f803bbbc0b4898fddbae23154fc301d1445bbc6",
-    "fileCount": 1300
+    "digest": "8fe7434a8ef6f410cc413a7fdd1be85086ac10413995c9efa6eed0871d5fd7dc",
+    "fileCount": 1302
   },
-  "sourceRevision": "01397168c7199575e606c8fb0795f2eea7f6d494",
-  "planDigest": "9e40e14c41649069d23911dc155328f17e554f0307619aef8493378a2f26b4b3",
+  "sourceRevision": "71ba6a2bc9f0c204b4dc828f57fb93d46e5e7918",
+  "planDigest": "a45061373e4a9c9e6f414d7b3b2e48cab7e2bd0feb4378633d0ff24a1a396899",
   "environment": {
     "node": "v22.16.0",
     "platform": "linux",
     "dependencies": {
       "eslint": "10.11.0",
-      "prettier": "3.9.9",
-      "three": "0.179.1"
+      "prettier": "3.9.9"
     }
   },
-  "startedAt": "2026-10-30T14:32:29.706Z",
+  "startedAt": "2026-11-06T10:45:24.412Z",
   "checks": [
     {
       "id": "lint",
@@ -30,7 +29,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 5314,
+      "durationMs": 5650,
       "logDigest": "7e083cff9d323606d09accd3389828279cc52091b6c62b45c8100c1ced589c7c"
     },
     {
@@ -43,7 +42,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 15307,
+      "durationMs": 15078,
       "logDigest": "1230617af071df8c1efeb12bcd6d41c3aa159e1cd0841cc546fbae4c8c56f867"
     },
     {
@@ -56,22 +55,27 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 421,
+      "durationMs": 371,
       "logDigest": "f41d9b5846a8a95a7941fcd7428a4ff7e341b07bc5f5ab28e615f71d70bb7447"
     },
     {
       "id": "node",
-      "command": "npm",
+      "command": "node",
       "args": [
-        "test"
+        "--test",
+        "site/tests/ci-test-plan.test.mjs",
+        "site/tests/ci-development-gates.test.mjs",
+        "site/tests/ci-workflow-architecture.test.mjs",
+        "site/tests/local-verification.test.mjs",
+        "site/tests/documentation-suite.test.mjs"
       ],
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 263828,
-      "logDigest": "0ddff3ca062c681301e5474b2cbd9bea1e9f565136359a20089e292b1b672222"
+      "durationMs": 1709,
+      "logDigest": "5e89c0f42e3ff2ce5b501776d66cd2d957622a22a0ebe2b2953e7b1811de4a83"
     }
   ],
-  "finishedAt": "2026-10-30T14:37:14.580Z",
-  "transcriptDigest": "ba309859d3f81f843066f5f6bb02254ae8ef1dd384e93109a53f589aff59c0ba"
+  "finishedAt": "2026-11-06T10:45:47.224Z",
+  "transcriptDigest": "db2fc3450b4bb95262d0ee8377c96264a785e64d004527f5e90556424626a721"
 }
