@@ -4,10 +4,10 @@
   "scope": "full",
   "status": "pass",
   "source": {
-    "digest": "a3c12f6a4b7a12fecd14761821ca977fcb3294266fb5f34bc331c29c0f3a16fd",
-    "fileCount": 1307
+    "digest": "2f78bf31ba8a7a4032534d473cdf7c8cad41773b98860b896496679e02d3eff3",
+    "fileCount": 1310
   },
-  "sourceRevision": "1a49e0c55bcd2cdf2ff4942f97e0b8146425a674",
+  "sourceRevision": "dd0968207ac325d2dcba8e9b9edf4fee4a0ae5e9",
   "planDigest": "9e40e14c41649069d23911dc155328f17e554f0307619aef8493378a2f26b4b3",
   "environment": {
     "node": "v22.16.0",
@@ -18,7 +18,7 @@
       "three": "0.179.1"
     }
   },
-  "startedAt": "2026-11-06T18:10:31.893Z",
+  "startedAt": "2026-11-07T06:30:29.205Z",
   "checks": [
     {
       "id": "lint",
@@ -30,7 +30,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 5806,
+      "durationMs": 7561,
       "logDigest": "7e083cff9d323606d09accd3389828279cc52091b6c62b45c8100c1ced589c7c"
     },
     {
@@ -43,7 +43,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 16065,
+      "durationMs": 20644,
       "logDigest": "1230617af071df8c1efeb12bcd6d41c3aa159e1cd0841cc546fbae4c8c56f867"
     },
     {
@@ -56,7 +56,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 379,
+      "durationMs": 668,
       "logDigest": "f41d9b5846a8a95a7941fcd7428a4ff7e341b07bc5f5ab28e615f71d70bb7447"
     },
     {
@@ -68,10 +68,10 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 245089,
-      "logDigest": "6bdbebd72591bf48acf98f3674215002ebdd9973f48d83c3df2fc66811e279aa"
+      "durationMs": 356204,
+      "logDigest": "e159dde5b2361debe2e2c8666398f02de7373d6216f1b7bdcbf90bf3514a0a59"
     }
   ],
-  "finishedAt": "2026-11-06T18:14:59.236Z",
-  "transcriptDigest": "9ba22ddf2e6b826358c432523d1cba670315c2933750ace996a5ac982a1ede8a"
+  "finishedAt": "2026-11-07T06:36:54.286Z",
+  "transcriptDigest": "86ef1f84323ebbfc9dd3a1bb937b618d67caf6ff7fd1ec49c1af0aab23d245bc"
 }
