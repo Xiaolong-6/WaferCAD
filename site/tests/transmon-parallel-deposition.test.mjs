@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve, sep } from 'node:path';
 import { gzipSync, gunzipSync } from 'node:zlib';
@@ -65,30 +65,30 @@ test('parallel material halos commit the exact sequential result and retain comp
   );
   assert.deepEqual(model, initial);
   assert.ok(cache.size > 0);
+  const plan = JSON.parse(readFileSync(join(directory, 'material-plan.json')));
+  assert.equal(plan.format, 'WaferCAD-material-plan-v1');
+  assert.ok(plan.jobs.length > 1);
   cache.clear();
-  let planned = 0;
+  // A file changed after planning must never be silently used as a valid
+  // cached halo. Restore the original bytes before resuming the real work.
+  const path = join(directory, `${plan.jobs[0].id}.job.json.gz`);
+  const bytes = readFileSync(path);
+  const job = JSON.parse(gunzipSync(bytes));
+  job.entry.params.incidence.heightStepUm = 1;
+  writeFileSync(path, gzipSync(JSON.stringify(job)));
   await assert.rejects(
-    applyParallelMaterialDeposition(model, params, {
-      ...options,
-      onProgress: (progress) => {
-        if (progress.phase !== 'planned') return;
-        planned = progress.pending;
-        const path = join(
-          directory,
-          readdirSync(directory).find((file) => file.endsWith('.job.json.gz')),
-        );
-        const job = JSON.parse(gunzipSync(readFileSync(path)));
-        job.entry.params.incidence.heightStepUm = 1;
-        writeFileSync(path, gzipSync(JSON.stringify(job)));
-      },
-    }),
-    (error) =>
-      error instanceof AggregateError && error.errors.length === 1 && /Z slice/.test(error.message),
+    applyParallelMaterialDeposition(model, params, options),
+    /Cached material working-set input changed/,
   );
   assert.deepEqual(model, initial);
-  assert.ok(planned > 1);
-  assert.equal(cache.size, planned - 1);
-  const result = await applyParallelMaterialDeposition(model, params, options);
+  writeFileSync(path, bytes);
+  const phases = [];
+  const result = await applyParallelMaterialDeposition(model, params, {
+    ...options,
+    onProgress: ({ phase }) => phases.push(phase),
+  });
+  assert.ok(phases.includes('plan-restored'), 'unchanged input must reuse saved halo planning');
+  assert.equal(cache.size, plan.jobs.length);
   assert.deepEqual(result, outcome);
   assert.deepEqual(model, expected);
   validateProcessModel(model);
@@ -100,7 +100,12 @@ test('parallel material halos commit the exact sequential result and retain comp
       incidence: { ...params.incidence, azimuthDeg },
     };
     const sequential = applyArrayOperation(expected, next, api.applyOperation);
-    const parallel = await applyParallelMaterialDeposition(model, next, options);
+    const dosePhases = [];
+    const parallel = await applyParallelMaterialDeposition(model, next, {
+      ...options,
+      onProgress: ({ phase }) => dosePhases.push(phase),
+    });
+    assert.ok(!dosePhases.includes('plan-restored'), 'a new dose must invalidate the prior plan');
     assert.deepEqual(parallel, sequential);
     assert.deepEqual(model, expected);
     validateProcessModel(model);

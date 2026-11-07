@@ -241,8 +241,16 @@ The owning recovery checks are
 Node orchestration can calculate independent immutable material halos with
 `scripts/transmon-parallel-deposition.mjs`. Bounded workers save validated
 leaf results; the existing array owner revalidates them and commits the root
-only after every halo succeeds. Parallel completion and interruption recovery
-must equal ordinary sequential geometry. Exact template deduplication is shared
+only after every halo succeeds. In the worker job directory, the driver now
+atomically stores a `material-plan.json` only after all input halos have been
+constructed. Its source-code, model and dose fingerprints and the SHA-256 of
+every compressed working-set input must match before a restart may skip that
+expensive **planning** pass. Unfinished cells still execute on the same physical
+material Worker; corrupt inputs fail closed, and the final root operation
+rebuilds and validates every restored cell. A changed source, model or dose
+invalidates the plan. The plan is a performance cache, not a replacement for
+saved process checkpoints or scientific evidence. Parallel completion and
+interruption recovery must equal ordinary sequential geometry. Exact template deduplication is shared
 with browser Workers, so stored polygon limits are preserved during replay.
 The owning checks are `site/tests/transmon-parallel-deposition.test.mjs` and
 `site/tests/material-array-compaction.test.mjs`.

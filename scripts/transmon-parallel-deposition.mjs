@@ -1,9 +1,10 @@
 import { Worker, isMainThread, parentPort } from 'node:worker_threads';
-import { mkdirSync, readFileSync, writeFileSync, renameSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from 'node:fs';
+import { createHash, randomUUID } from 'node:crypto';
 import { resolve, join } from 'node:path';
 import { gzipSync, gunzipSync } from 'node:zlib';
 import { loadGeometryKernel } from './process-benchmarks.mjs';
-import { transmonValueHash } from './transmon-process-checkpoints.mjs';
+import { transmonProcessFingerprint, transmonValueHash } from './transmon-process-checkpoints.mjs';
 
 await loadGeometryKernel();
 const api = await import('../site/model.js');
@@ -91,22 +92,48 @@ export async function applyParallelMaterialDeposition(
     throw Error('Parallel Transmon deposition does not accept annotation-bearing models.');
   const directory = resolve(jobDirectory);
   mkdirSync(directory, { recursive: true });
+  // Computing already validated halos can cost more than the actual worker
+  // replay on dense Q2 meshes. A plan may be reused only for byte-identical
+  // source, complete input model and dose parameters; worker outputs remain
+  // independently verified by the caller's checkpoint store and final owner.
+  const planPath = join(directory, 'material-plan.json');
+  const fingerprint = transmonValueHash({
+    format: 'WaferCAD-material-plan-v1',
+    code: transmonProcessFingerprint(),
+    model: transmonValueHash(model),
+    params: transmonValueHash(params),
+  });
+  const sha = (bytes) => createHash('sha256').update(bytes).digest('hex');
   const jobs = [];
-  const parts = new Map(arrayParts(model).map((p) => [p.id, p]));
-  let currentPart;
-  const unchanged = () => ({ result: { changed: false }, leaf: null, addedDopants: [] });
-  applyArrayOperation(model, params, () => ({ changed: false }), {
-    onWorkingSet: (set) => {
-      currentPart = parts.get(set.partId);
-    },
-    restoreWorkingSet: (entry) => (hasWorkingSet(entry) ? unchanged() : null),
-    saveWorkingSet: (entry) => {
-      const id = transmonValueHash(entry),
-        file = join(directory, `${id}.job.json.gz`);
-      const temporary = `${file}.${process.pid}.tmp`;
-      writeFileSync(
-        temporary,
-        gzipSync(
+  const stored = existsSync(planPath) ? JSON.parse(readFileSync(planPath, 'utf8')) : null;
+  if (stored?.fingerprint === fingerprint && stored.format === 'WaferCAD-material-plan-v1') {
+    if (!Array.isArray(stored.jobs)) throw Error('Malformed material working-set plan.');
+    for (const saved of stored.jobs) {
+      if (!/^[a-f0-9]{64}$/.test(saved?.id) || !/^[a-f0-9]{64}$/.test(saved?.fileSha256))
+        throw Error('Malformed material working-set identity.');
+      const file = join(directory, `${saved.id}.job.json.gz`);
+      const bytes = readFileSync(file);
+      if (sha(bytes) !== saved.fileSha256)
+        throw Error('Cached material working-set input changed.');
+      const job = JSON.parse(gunzipSync(bytes, { maxOutputLength: 512 * 1024 * 1024 }));
+      if (transmonValueHash(job.entry) !== saved.id)
+        throw Error('Cached material working-set entry changed.');
+      if (!hasWorkingSet(job.entry)) jobs.push({ id: saved.id, file });
+    }
+    onProgress({ phase: 'plan-restored', pending: jobs.length, workers });
+  } else {
+    const parts = new Map(arrayParts(model).map((p) => [p.id, p]));
+    let currentPart;
+    const unchanged = () => ({ result: { changed: false }, leaf: null, addedDopants: [] });
+    applyArrayOperation(model, params, () => ({ changed: false }), {
+      onWorkingSet: (set) => {
+        currentPart = parts.get(set.partId);
+      },
+      restoreWorkingSet: (entry) => (hasWorkingSet(entry) ? unchanged() : null),
+      saveWorkingSet: (entry) => {
+        const id = transmonValueHash(entry),
+          file = join(directory, `${id}.job.json.gz`);
+        const bytes = gzipSync(
           JSON.stringify({
             entry,
             hasDopantRegions: Object.hasOwn(currentPart.model, 'dopantRegions'),
@@ -114,12 +141,24 @@ export async function applyParallelMaterialDeposition(
             ownerCoverage: materialOwnerCoverage(currentPart.model),
           }),
           { level: 1 },
-        ),
-      );
-      renameSync(temporary, file);
-      jobs.push({ id, file });
-    },
-  });
+        );
+        const temporary = `${file}.${process.pid}.${randomUUID()}.tmp`;
+        writeFileSync(temporary, bytes);
+        renameSync(temporary, file);
+        jobs.push({ id, file, fileSha256: sha(bytes) });
+      },
+    });
+    // Publish only after planning has completed for all cells. An interrupted
+    // planner can never leave a partially reusable plan.
+    const plan = JSON.stringify({
+      format: 'WaferCAD-material-plan-v1',
+      fingerprint,
+      jobs: jobs.map(({ id, fileSha256 }) => ({ id, fileSha256 })),
+    });
+    const temporary = `${planPath}.${process.pid}.${randomUUID()}.tmp`;
+    writeFileSync(temporary, plan);
+    renameSync(temporary, planPath);
+  }
   globalThis.gc?.();
   onProgress({ phase: 'planned', pending: jobs.length, workers });
   const active = [],
