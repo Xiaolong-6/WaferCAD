@@ -56,12 +56,15 @@ multi-resist lift-off and final annealing. The three additional contact doses
 are 30/60/60 nm at 45° tilt and 180°/0°/180° planetary angle, following the
 [paper's fabrication methods](https://pmc.ncbi.nlm.nih.gov/articles/PMC12238396/).
 
-The full 10×10 mm chip2 model has 28 restorable checkpoints and preserves all
-39,487 author polygons in its File Mask. Its released material model retains
-Al from every dose at all 12 original junction locations, including four
-primary junctions with a geometric Al/AlOx/Al stack. The optional 40×40 µm Q2
-crop uses the same recipe. Native lossless storage preserves the fine material
-coordinates through export and History restore.
+The full 10×10 mm chip2 **Mask-only source** preserves all 39,487 author
+polygons. A previous exploratory full-chip material run produced 28 process
+checkpoints and modeled Al at all 12 original junction locations, including
+four primary geometric Al/AlOx/Al stacks. **That material run is not an
+accepted or committed full-chip output of this PR**: its Q2 contact proof
+failed, and its separately generated History/Recovery checkpoints are not
+portable release evidence. The 40×40 µm Q2 crop uses the same provisional
+Recipe assumptions. Fine-coordinate lossless storage is supported, but
+whole-chip material/History/Recovery acceptance remains outstanding.
 
 Retained material and a vertical Al/AlOx/Al stack do not establish that the
 two junction electrodes reach different Nb pads. Check that first on the

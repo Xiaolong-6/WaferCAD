@@ -8,6 +8,7 @@ import {
   geometryPointCount,
 } from './model-array.js';
 import { robustDifference, robustIntersection } from './polygon-boolean.js';
+import { provablyDisjointGridGeometry } from './geometry-grid-separation.js';
 import { normalizeProcessRecipe } from './process-recipe.js';
 import {
   CONTINUOUS_ETCH_MODEL_KERNEL,
@@ -698,7 +699,10 @@ function validateModelGeometry(model, cache) {
           robustIntersection,
           radialProof,
         );
-        if (overlapArea > areaTolerance) {
+        if (
+          overlapArea > areaTolerance &&
+          !provablyDisjointGridGeometry(previous.region.geom, current.region.geom)
+        ) {
           fail(
             `model.regions[${current.index}].geom`,
             `overlaps model.regions[${previous.index}].geom.`,
