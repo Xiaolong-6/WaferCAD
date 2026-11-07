@@ -123,7 +123,16 @@ shader appearance can differ from PNG. Do not embed bitmap data as SVG.
 Where a material kernel supports physical GLB export, the output is
 derived from exact canonical material ownership and camera-independent
 deterministic geometry; unsupported special owners must fail explicitly
-rather than exporting a display proxy. 3D PNG exports the **visible
+rather than exporting a display proxy. GLB uses a fixed,
+camera-independent sidewall tessellation policy. Its Float32 POSITION
+buffers are stored relative to per-mesh physical origins, with those
+origins carried by glTF node transforms; importers must apply mesh-node
+transforms and the parent `1e-6` metre scale before comparing model
+coordinates. This mitigates nanometre precision loss on large-offset
+features without modifying Process or History. Float32 precision is
+still finite across the full span of any single mesh/instance transform.
+Morphology sidewall profiles must be decoded to physical coordinates
+before boundary reconciliation. 3D PNG exports the **visible
 exact 3D frame** at native 3× capture resolution; it reflects selected
 opacity, borders, origin, scale and current rough LOD. It is a
 presentation snapshot, not a measurement or material export.
