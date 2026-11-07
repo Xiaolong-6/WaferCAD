@@ -1,10 +1,10 @@
 // Transport-only framing for exact Process Geometry Kernel surface plans.
 // Stream bounded collections; never round coordinates or publish partial plans.
 const CAP_BATCH = 24;
-const POLYGON_BATCH = 12;
+const POLYGON_BATCH = 128;
 const POINT_BUDGET = 4096;
-const SIDEWALL_BATCH = 64;
-const BORDER_BATCH = 128;
+const SIDEWALL_BATCH = 256;
+const BORDER_BATCH = 512;
 
 export function shouldStreamSurfacePlan(plan) {
   if (!plan || !Array.isArray(plan.caps) || !Array.isArray(plan.sidewalls)) return false;
@@ -60,28 +60,55 @@ export function* surfacePlanStreamPackets(plan) {
         batch = [];
         pointCount = 0;
         yield { id: 1, type: 'stream-big-poly-start', capIndex, polyIndex, ringCount: poly.length };
-        for (let ringIndex = 0; ringIndex < poly.length; ringIndex++) {
-          const ring = poly[ringIndex];
-          yield {
+        let bufferedRings = [];
+        let bufferedPoints = 0;
+        let bufferedStart = 0;
+        const flushRings = () => {
+          const packet = {
             id: 1,
-            type: 'stream-big-ring-start',
+            type: 'stream-big-rings',
             capIndex,
             polyIndex,
-            ringIndex,
-            pointCount: ring.length,
+            startRingIndex: bufferedStart,
+            rings: bufferedRings,
           };
-          for (let startIndex = 0; startIndex < ring.length; startIndex += POINT_BUDGET) {
+          bufferedRings = [];
+          bufferedPoints = 0;
+          return packet;
+        };
+        for (let ringIndex = 0; ringIndex < poly.length; ringIndex++) {
+          const ring = poly[ringIndex];
+          if (ring.length > POINT_BUDGET) {
+            if (bufferedRings.length) yield flushRings();
             yield {
               id: 1,
-              type: 'stream-big-ring-points',
+              type: 'stream-big-ring-start',
               capIndex,
               polyIndex,
               ringIndex,
-              startIndex,
-              points: ring.slice(startIndex, startIndex + POINT_BUDGET),
+              pointCount: ring.length,
             };
+            for (let startIndex = 0; startIndex < ring.length; startIndex += POINT_BUDGET) {
+              yield {
+                id: 1,
+                type: 'stream-big-ring-points',
+                capIndex,
+                polyIndex,
+                ringIndex,
+                startIndex,
+                points: ring.slice(startIndex, startIndex + POINT_BUDGET),
+              };
+            }
+            continue;
           }
+          if (bufferedRings.length && bufferedPoints + ring.length > POINT_BUDGET) {
+            yield flushRings();
+          }
+          if (!bufferedRings.length) bufferedStart = ringIndex;
+          bufferedRings.push(ring);
+          bufferedPoints += ring.length;
         }
+        if (bufferedRings.length) yield flushRings();
         yield { id: 1, type: 'stream-big-poly-done', capIndex, polyIndex };
         continue;
       }
@@ -190,6 +217,24 @@ export function createSurfacePlanStreamReceiver() {
           ringOpen: false,
           expectedPoints: 0,
         };
+      } else if (packet.type === 'stream-big-rings') {
+        if (
+          !bigPolygon ||
+          bigPolygon.ringOpen ||
+          packet.capIndex !== bigPolygon.capIndex ||
+          packet.polyIndex !== bigPolygon.polyIndex ||
+          packet.startRingIndex !== bigPolygon.ringsFinished ||
+          !Array.isArray(packet.rings) ||
+          !packet.rings.length ||
+          packet.rings.length + bigPolygon.ringsFinished > bigPolygon.ringCount ||
+          packet.rings.some((ring) => !Array.isArray(ring) || ring.length > POINT_BUDGET) ||
+          packet.rings.reduce((sum, ring) => sum + ring.length, 0) > POINT_BUDGET
+        ) {
+          throw new Error('Invalid large polygon ring batch');
+        }
+        const poly = plan.caps[bigPolygon.capIndex].polys[bigPolygon.polyIndex];
+        poly.push(...packet.rings);
+        bigPolygon.ringsFinished += packet.rings.length;
       } else if (packet.type === 'stream-big-ring-start') {
         if (
           !bigPolygon ||

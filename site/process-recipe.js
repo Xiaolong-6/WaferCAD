@@ -183,6 +183,14 @@ function normalizeStep(command, input, index = 0) {
   if (command === 'deposit') {
     params.material = cleanText(params.material || params.name);
     if (!params.material) throw new Error('deposit.material is required.');
+    if (params.surfaceMaterial != null) {
+      params.surfaceMaterial = cleanText(params.surfaceMaterial);
+      if (
+        params.surfaceMaterial &&
+        (params.materialGeometry || normalizeCoverage(params.coverage || params.mode) !== 'direct')
+      )
+        throw new Error('Surface-selective deposition requires normal Direct.');
+    }
     params.thicknessUm = Number.isFinite(Number(params.thicknessUm))
       ? Number(params.thicknessUm)
       : recipeLengthUm(params.thickness, 'deposit.thickness');
@@ -190,6 +198,26 @@ function normalizeStep(command, input, index = 0) {
     const thicknessError = validateMaterialThicknessUm(params.thicknessUm, 'deposit.thickness');
     if (thicknessError) throw new Error(thicknessError);
     params.coverage = normalizeCoverage(params.coverage || params.mode, { allowTransfer: true });
+    if (params.materialGeometry != null && typeof params.materialGeometry !== 'boolean')
+      throw new Error('deposit.materialGeometry must be boolean.');
+    if (params.materialGeometry) {
+      if (params.sidewalls != null && typeof params.sidewalls !== 'boolean')
+        throw new Error('deposit.sidewalls must be boolean.');
+      params.sidewalls ??= false;
+      if (
+        params.coverage !== 'direct' ||
+        normalizeProcessFace(params.face) !== 'front' ||
+        normalizeArea(params.area) !== 'full'
+      )
+        throw new Error('Material Direct requires front-face Direct on the whole face.');
+      params.heightStepUm = Number(params.heightStepUm ?? 0.025);
+      if (
+        !Number.isFinite(params.heightStepUm) ||
+        params.heightStepUm < 0.0001 ||
+        params.heightStepUm > 0.05
+      )
+        throw new Error('deposit.heightStepUm must be within 0.0001–0.05 µm.');
+    }
     if (params.tiltDeg != null || params.azimuthDeg != null) {
       const tilt = Number(params.tiltDeg ?? 0);
       const azimuth = Number(params.azimuthDeg ?? 0);
@@ -239,7 +267,9 @@ function normalizeStep(command, input, index = 0) {
   } else if (command === 'etch') {
     params.profile = cleanText(params.profile, 'directional').toLowerCase();
     if (
-      !['directional', 'isotropic', 'planarize', 'undercut', 'continuous'].includes(params.profile)
+      !['directional', 'isotropic', 'planarize', 'undercut', 'continuous', 'develop'].includes(
+        params.profile,
+      )
     ) {
       throw new Error(`Unsupported etch profile "${params.profile}".`);
     }
@@ -255,11 +285,27 @@ function normalizeStep(command, input, index = 0) {
       if (thicknessError) throw new Error(thicknessError);
     }
     params.target = cleanText(params.target);
-    if (['isotropic', 'undercut', 'continuous'].includes(params.profile) && !params.target) {
+    if (
+      ['isotropic', 'undercut', 'continuous', 'develop'].includes(params.profile) &&
+      !params.target
+    ) {
       throw new Error(`etch.target is required for ${params.profile}.`);
     }
     params.area = normalizeArea(params.area);
     params.face = normalizeProcessFace(params.face);
+    if (params.profile === 'develop' && params.face !== 'front')
+      throw new Error('Patterned development requires Front.');
+    if (params.profile === 'develop') {
+      params.developLateralUm = Number.isFinite(Number(params.developLateralUm))
+        ? Number(params.developLateralUm)
+        : recipeLengthUm(params.lateral ?? 0, 'etch.lateral');
+      if (!Number.isFinite(params.developLateralUm) || params.developLateralUm < 0)
+        throw new Error('Development lateral reach must be non-negative.');
+      if (params.developLateralUm > 0) {
+        const error = validateMaterialThicknessUm(params.developLateralUm, 'etch.lateral');
+        if (error) throw new Error(error);
+      }
+    }
     if (params.profile === 'continuous') {
       if (params.face === 'both') throw new Error('Continuous Etch requires Front or Back.');
       params.continuousShape = cleanText(
@@ -318,6 +364,12 @@ function normalizeStep(command, input, index = 0) {
     delete params.targetZ;
     delete params.thickness;
   } else if (command === 'liftoff') {
+    if (
+      params.additionalSacrificial != null &&
+      (!Array.isArray(params.additionalSacrificial) ||
+        params.additionalSacrificial.some((x) => typeof x !== 'string' || !x.trim()))
+    )
+      throw new Error('liftoff.additionalSacrificial must be material names.');
     params.sacrificial = cleanText(params.sacrificial || params.material);
     if (!params.sacrificial) throw new Error('liftoff.sacrificial is required.');
     params.area = normalizeArea(params.area);
@@ -720,8 +772,14 @@ export function serializeProcessRecipe(recipeValue) {
       };
       if (step.command === 'deposit') {
         add('material', p.material);
+        add('surfaceMaterial', p.surfaceMaterial);
         add('thickness', displayLength(p.thicknessUm));
         add('coverage', p.coverage === 'direct' ? 'directional' : p.coverage);
+        if (p.materialGeometry) {
+          add('materialGeometry', true, true);
+          add('sidewalls', p.sidewalls, true);
+          add('heightStepUm', p.heightStepUm, true);
+        }
         if (p.tiltDeg != null) {
           add('tiltDeg', p.tiltDeg, true);
           add('azimuthDeg', p.azimuthDeg, true);
@@ -735,6 +793,8 @@ export function serializeProcessRecipe(recipeValue) {
         add('target', p.target);
         add(p.profile === 'planarize' ? 'targetZ' : 'depth', displayLength(p.thicknessUm));
         add('profile', p.profile);
+        if (p.profile === 'develop' && p.developLateralUm > 0)
+          add('lateral', displayLength(p.developLateralUm));
         if (p.profile === 'continuous') {
           add('shape', p.continuousShape);
           if (p.continuousShape !== 'circular')
@@ -744,6 +804,8 @@ export function serializeProcessRecipe(recipeValue) {
         if (p.faceSurfaces) add('faceSurfaces', JSON.stringify(p.faceSurfaces), true);
       } else if (step.command === 'liftoff') {
         add('sacrificial', p.sacrificial);
+        if (p.additionalSacrificial?.length)
+          add('additionalSacrificial', JSON.stringify(p.additionalSacrificial), true);
       } else if (step.command === 'implant') {
         add('name', p.name);
         add('depth', displayLength(p.depthUm));

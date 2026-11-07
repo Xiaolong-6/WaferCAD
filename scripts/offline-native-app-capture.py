@@ -640,6 +640,47 @@ def run(args):
                 if mode != 'https-origin':
                     raise RuntimeError('Stable rough UI acceptance requires normal HTTPS Origin')
                 report['stableRoughUi'] = check_stable_rough_ui(page, out)
+            if args.inmemory_mask_project:
+                mask_path = args.inmemory_mask_project.resolve()
+                if not mask_path.is_file() or mask_path.suffix != '.wafercad':
+                    raise ValueError('Native Mask diagnostic requires an existing .wafercad file')
+                # Validate through the same strict project reader as native 3D.
+                model_path = out / 'validated-mask-model.json'
+                subprocess.run(
+                    ['node', str(root / 'scripts/offline-native-project-export.mjs'),
+                     str(mask_path), str(model_path)],
+                    cwd=root, check=True, capture_output=True, text=True, timeout=90)
+                validated = json.loads(model_path.read_text(encoding='utf-8'))
+                project = json.loads(mask_path.read_text(encoding='utf-8'))
+                assert validated['inputSha256'] == snapshot_sha(mask_path)
+                layout = project.get('layout') or {}
+                selected = project.get('selectedLayerKeys') or []
+                expression = (root / 'scripts/offline-native-mask-view.js').read_text(
+                    encoding='utf-8')
+                views = (
+                    ('overview-2-0', selected, None, 1),
+                    ('square-grid-2-0', ['2|0'], [-3000, 1500], 35),
+                    ('keyhole-2-0', ['2|0'], [4500, 1650], 350),
+                    ('junction-8-1', ['8|1'], [4500, 1650], 650),
+                )
+                report['nativeMask'] = {'sourceSha256': snapshot_sha(mask_path),
+                                        'visualOnly': mode != 'https-origin', 'views': {}}
+                for index, (label, layers, center, zoom) in enumerate(views):
+                    # Transfer the 39k polygon layout exactly once; otherwise
+                    # Playwright serialization masquerades as slow zoom redraw.
+                    data = page.evaluate(expression, {
+                        'model': validated['model'] if index == 0 else None,
+                        'layout': layout if index == 0 else None,
+                        'selectedLayerKeys': layers, 'center': center, 'zoom': zoom,
+                    })
+                    image_path = out / (label + '.png')
+                    page.locator('#wc-offline-mask-capture').screenshot(
+                        path=str(image_path), animations='disabled', timeout=60000)
+                    report['nativeMask']['views'][label] = {
+                        **data, 'file': image_path.name, 'sha256': snapshot_sha(image_path)}
+                    page.locator('#wc-offline-mask-stage').evaluate('(el) => el.remove()')
+                    (out / 'mask-progress.json').write_text(json.dumps(report['nativeMask'], indent=2))
+                report['limitations'].append('Mask project was passed to the production Canvas renderer read-only; Worker Open, Mask layer UI, hit testing, persistence and normal-origin work remain unverified.')
             if args.inmemory_demo or args.inmemory_project:
                 model_input = {'model': None, 'demo': args.inmemory_demo,
                                'roiBounds': args.inmemory_roi, 'zBreak': args.inmemory_z_break,
@@ -1049,6 +1090,8 @@ def main():
     model_group = parser.add_mutually_exclusive_group()
     model_group.add_argument('--inmemory-demo', action='store_true',
                              help='Render a production three-material in-memory model in isolated ThreeView')
+    parser.add_argument('--inmemory-mask-project', type=Path,
+                        help='Inspect a strictly validated source file using the real read-only production Mask Canvas renderer')
     model_group.add_argument('--inmemory-project', type=Path,
                              help='Strictly parse a real .wafercad in Node and render its model in isolated ThreeView')
     parser.add_argument('--inmemory-roi', help='xMin,yMin,xMax,yMax in physical micrometres; for --inmemory-project')

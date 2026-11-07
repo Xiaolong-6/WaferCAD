@@ -89,7 +89,12 @@ export function localGeometry(geometry, part, domain, polygonBoundsCache = new W
   });
   return translateGeometry(intersection(polygons, domain), -part.x, -part.y);
 }
-export function arrayContext(model, part, parts, { annotations = true, clipBounds = null } = {}) {
+export function arrayContext(
+  model,
+  part,
+  parts,
+  { annotations = true, clipBounds = null, intersect = intersection, unite = unionGeometries } = {},
+) {
   let points = 0;
   const charge = (g) => {
     points += geometryPointCount(g);
@@ -110,7 +115,7 @@ export function arrayContext(model, part, parts, { annotations = true, clipBound
   const clip = clipBounds ? rectangleGeometry(clipBounds) : null;
   const moved = (g, p) => {
     const translated = translateGeometry(g, p.x - part.x, p.y - part.y);
-    return clip ? intersection(translated, clip) : translated;
+    return clip ? intersect(translated, clip) : translated;
   };
   const out = {
     ...model,
@@ -135,14 +140,14 @@ export function arrayContext(model, part, parts, { annotations = true, clipBound
       groups.get(key).geoms.push(moved(r.geom, p));
     }
   }
-  out.boundary = unionGeometries(domains);
+  out.boundary = unite(domains);
   const b = geometryBounds(out.boundary);
   out.width = b.width;
   out.height = b.height;
   const materialGroups = [...groups.values()]
     .map((g) => ({
       stack: g.stack,
-      geom: unionGeometries(g.geoms),
+      geom: unite(g.geoms),
     }))
     .filter((g) => g.geom.length);
   out.regions = materialGroups.map((g, index) => ({
@@ -172,14 +177,14 @@ export function arrayContext(model, part, parts, { annotations = true, clipBound
           ...a,
           patches: [...patches.values()].map((g) => ({
             ...g.meta,
-            geom: unionGeometries(g.geoms),
+            geom: unite(g.geoms),
           })),
         };
       });
     }
   return out;
 }
-export function cropContext(context, domain) {
+export function cropContext(context, domain, { intersect = intersection } = {}) {
   const b = geometryBounds(domain);
   return {
     ...context,
@@ -187,20 +192,20 @@ export function cropContext(context, domain) {
     width: b.width,
     height: b.height,
     regions: context.regions.flatMap((r, index) => {
-      const geom = intersection(r.geom, domain);
+      const geom = intersect(r.geom, domain);
       return geom.length ? [{ ...r, id: `region-${index + 1}`, geom }] : [];
     }),
     implants: (context.implants || []).map((a) => ({
       ...a,
       patches: a.patches.flatMap((p) => {
-        const geom = intersection(p.geom, domain);
+        const geom = intersect(p.geom, domain);
         return geom.length ? [{ ...p, geom }] : [];
       }),
     })),
     electricalRegions: (context.electricalRegions || []).map((a) => ({
       ...a,
       patches: a.patches.flatMap((p) => {
-        const geom = intersection(p.geom, domain);
+        const geom = intersect(p.geom, domain);
         return geom.length ? [{ ...p, geom }] : [];
       }),
     })),

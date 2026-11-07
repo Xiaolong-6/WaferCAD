@@ -13,17 +13,52 @@ import {
   localGeometry,
 } from './model-array-context.js';
 import { bufferMulti, intersection } from './vector-geometry.js';
+import { materialShadowRadius } from './material-model-tiling.js';
+import {
+  intersection as intersectMaterial,
+  unionGeometries as unionMaterialGeometries,
+  unionMaterialSweeps,
+} from './material-process-boolean.js';
+import { synchronizeMaterialPartition } from './material-process-noding.js';
+import { compactMaterialArrayStorage } from './material-array-compaction.js';
+import { unionMaterialTiles } from './material-tile-union.js';
+import {
+  materialOwnerCoverage,
+  partitionMaterialProcess,
+  repairMaterialHaloPartition,
+} from './material-process-partition.js';
 
 const COUNTERS = ['nextLayerId', 'nextRegionId', 'nextImplantId', 'nextElectricalRegionId'];
 const NO_CHANGE =
   /not exposed|None of the selected|no eligible|contains no material|contains no sacrificial layer to lift off|No material remains|does not remove material|No exposed|not remove the selected|did not remove|does not overlap/i;
-export function applyArrayOperation(model, params, apply) {
+export function applyArrayOperation(
+  model,
+  params,
+  apply,
+  {
+    onWorkingSet = () => {},
+    validateWorkingSet = () => {},
+    restoreWorkingSet = () => null,
+    saveWorkingSet = () => {},
+  } = {},
+) {
   const area = params.area,
     maskBoundsCache = new WeakMap();
+  const development = params.etchProfile === 'develop' && Number(params.developLateralUm) > 0;
   const lateral =
-    params.growth === 'conformal' || ['isotropic', 'undercut'].includes(params.etchProfile);
-  const radius = lateral ? Math.max(0, Number(params.thickness) || 0) : 0;
-  const reach = ['isotropic', 'undercut'].includes(params.etchProfile) ? radius : 0;
+    development ||
+    params.incidence?.materialGeometry === true ||
+    params.growth === 'conformal' ||
+    ['isotropic', 'undercut'].includes(params.etchProfile);
+  const radius =
+    params.incidence?.materialGeometry === true
+      ? materialShadowRadius(model, params)
+      : development
+        ? Number(params.developLateralUm)
+        : lateral
+          ? Math.max(0, Number(params.thickness) || 0)
+          : 0;
+  const reach = development || ['isotropic', 'undercut'].includes(params.etchProfile) ? radius : 0;
   const areaBounds = geometryBounds(area);
   const bounds = {
       minX: areaBounds.minX - reach,
@@ -103,6 +138,12 @@ export function applyArrayOperation(model, params, apply) {
           maxY: b.maxY + margin,
         }
       : null;
+    if (clipBounds && params.incidence?.materialGeometry) {
+      for (const key of ['minX', 'minY'])
+        clipBounds[key] = Number((Math.floor(clipBounds[key] * 10000) / 10000).toFixed(4));
+      for (const key of ['maxX', 'maxY'])
+        clipBounds[key] = Number((Math.ceil(clipBounds[key] * 10000) / 10000).toFixed(4));
+    }
     const localDomain = lateral
       ? intersection(
           model.boundary,
@@ -115,26 +156,87 @@ export function applyArrayOperation(model, params, apply) {
     if (!localArea.length) continue;
     const neighborhoodId = neighborhoodKey(part, neighbors);
     let contextEntry = contexts.get(neighborhoodId);
+    const buildContext = () => {
+      const unannotated = ['implants', 'electricalRegions', 'dopantRegions'].every(
+        (key) => !(model[key] || []).length,
+      );
+      const context = arrayContext(model, part, neighbors, {
+        clipBounds,
+        ...(params.incidence?.materialGeometry
+          ? {
+              intersect: intersectMaterial,
+              unite: unannotated
+                ? (geometries) =>
+                    unionMaterialTiles(geometries, { gridScale: 10000000 }) ??
+                    unionMaterialSweeps(geometries)
+                : unionMaterialSweeps,
+            }
+          : {}),
+      });
+      let repaired = false;
+      if (params.incidence?.materialGeometry) {
+        context.regions = synchronizeMaterialPartition(context.regions);
+        repaired = repairMaterialHaloPartition(context, () => {
+          const coverage = neighbors.map((neighbor) =>
+            intersectMaterial(
+              translateGeometry(
+                materialOwnerCoverage(neighbor.model),
+                neighbor.x - part.x,
+                neighbor.y - part.y,
+              ),
+              context.boundary,
+            ),
+          );
+          return (
+            unionMaterialTiles(coverage, { gridScale: 10000000 }) ??
+            unionMaterialGeometries(coverage)
+          );
+        });
+      }
+      return { context, repaired };
+    };
     if (!contextEntry) {
-      const context = arrayContext(model, part, neighbors, { clipBounds });
-      contextEntry = { context, key: JSON.stringify(context) };
+      const { context, repaired } = buildContext();
+      contextEntry = { context, repaired, key: JSON.stringify(context) };
       contexts.set(neighborhoodId, contextEntry);
     }
     const key = contextEntry.key + '|' + JSON.stringify(localArea);
     let cached = results.get(key);
     if (!cached) {
-      const context = structuredClone(contextEntry.context);
-      const result = apply(context, {
+      onWorkingSet({ workingSet: results.size + 1, partId: part.id, totalInstances: parts.length });
+      const childParams = {
         ...params,
         area: localArea,
+        ...(params.incidence?.materialGeometry ? { arrayMaterialWorkingSet: true } : {}),
+        ...(contextEntry.repaired ? { materialHaloRepaired: true } : {}),
         ...(transferPlane === undefined ? {} : { arrayTransferPlane: transferPlane }),
-      });
+      };
+      const entry = { key, params: childParams, boundary: part.model.boundary };
+      const restored = restoreWorkingSet(entry);
+      const context = restored
+        ? null
+        : structuredClone(contextEntry.context || buildContext().context);
+      const result = restored?.result ?? apply(context, childParams);
       if (!result?.changed && result?.error && !NO_CHANGE.test(result.error))
         throw new Error(result.error);
-      const leaf = result?.changed ? cropContext(context, part.model.boundary) : null;
-      const addedDopants = (leaf?.dopantRegions || []).filter(
-        (dopant) => !existingDopants.has(dopant.id),
-      );
+      const leaf = restored
+        ? restored.leaf
+        : result?.changed
+          ? cropContext(
+              context,
+              part.model.boundary,
+              params.incidence?.materialGeometry ? { intersect: intersectMaterial } : {},
+            )
+          : null;
+      const addedDopants = restored
+        ? restored.addedDopants
+        : (leaf?.dopantRegions || []).filter((dopant) => !existingDopants.has(dopant.id));
+      if (leaf && restored && JSON.stringify(leaf.boundary) !== JSON.stringify(part.model.boundary))
+        throw Error('Restored array working set has a different physical domain.');
+      if (leaf && !restored && params.incidence?.materialGeometry) {
+        leaf.regions = partitionMaterialProcess(leaf, materialOwnerCoverage(part.model));
+      }
+      if (leaf) validateWorkingSet(leaf, { workingSet: results.size + 1, partId: part.id });
       // Root array dopants carry world-space intent. A leaf must not
       // inherit every other site's globally aggregated geometry.
       if (leaf) {
@@ -145,8 +247,13 @@ export function applyArrayOperation(model, params, apply) {
         }
       }
       cached = { result, leaf, addedDopants };
+      if (!restored) saveWorkingSet(entry, cached);
       results.set(key, cached);
     }
+    // Material halos can be large. Keep their immutable cache key and result,
+    // releasing the duplicate planning model after its first use. A different
+    // local area can reconstruct the same context from the unchanged root.
+    if (params.incidence?.materialGeometry) contextEntry.context = null;
     if (!cached.result?.changed) continue;
     const leaf = cached.leaf;
     // A neighboring operation may change its halo but leave this cell intact.
@@ -196,7 +303,9 @@ export function applyArrayOperation(model, params, apply) {
     return { ...i, templateId: id };
   });
   // Commit only after every working set has completed successfully.
-  model.array = { ...model.array, templates, instances };
+  const next = { ...model, ...counters, array: { ...model.array, templates, instances } };
+  if (params.incidence?.materialGeometry) compactMaterialArrayStorage(next);
+  model.array = next.array;
   // Preserve per-face provenance on existing material IDs when array working
   // sets regenerate their layer metadata from canonical template models.
   const previousLayers = new Map(model.layers.map((layer) => [layer.id, layer]));
