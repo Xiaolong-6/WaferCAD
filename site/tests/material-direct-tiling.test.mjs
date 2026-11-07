@@ -27,6 +27,64 @@ test('dense Al6 owner coverage preserves the full source footprint when tile edg
   );
 });
 
+test('halo repair reconciles a sub-lattice overlap missed by material integer clipping', async () => {
+  const { repairMaterialHaloPartition } = await import('../material-process-partition.js');
+  const { intersection, difference, materialGeometryArea } =
+    await import('../material-process-boolean.js');
+  const make = (overlapUm) => {
+    const model = api.createModel({ shape: 'rect', width: 2, height: 0.001, thickness: 1 });
+    const half = overlapUm / 2;
+    const left = v.rectMulti(1 + half, 0.001, -1 + (1 + half) / 2);
+    const right = v.rectMulti(1 + half, 0.001, 1 - (1 + half) / 2);
+    model.regions[0].geom = left;
+    model.regions.push({
+      ...structuredClone(model.regions[0]),
+      id: 'material-seam-right',
+      geom: right,
+    });
+    return model;
+  };
+
+  const model = make(3e-8);
+  const [left, right] = model.regions.map(({ geom }) => geom);
+  assert.deepEqual(
+    intersection(left, right),
+    [],
+    'integer material clipping misses the sub-lattice seam',
+  );
+  const floatOverlap = v.intersection(left, right);
+  assert.ok(materialGeometryArea(floatOverlap) > 2.9e-11);
+  assert.ok(materialGeometryArea(floatOverlap) < 3.1e-11);
+  assert.throws(() => validateProcessModel(model), /geom overlaps/);
+  const source = structuredClone(model);
+  assert.equal(
+    repairMaterialHaloPartition(model, () => source.boundary),
+    true,
+  );
+  validateProcessModel(model);
+  assert.equal(
+    materialGeometryArea(
+      difference(
+        source.boundary,
+        model.regions.flatMap((r) => r.geom),
+      ),
+    ),
+    0,
+  );
+  assert.deepEqual(model.layers, source.layers);
+  assert.deepEqual(
+    model.regions.map((r) => r.stack),
+    source.regions.map((r) => r.stack),
+  );
+
+  // A real non-grid-width overlap must not become acceptable by using the
+  // unsnapped diagnostic path, even if the overlap is in the same location.
+  const real = make(0.001);
+  const unchanged = structuredClone(real);
+  assert.throws(() => repairMaterialHaloPartition(real, () => real.boundary), /geom overlaps/);
+  assert.deepEqual(real, unchanged, 'failed repair remains transactional');
+});
+
 test('a dense Al6 halo repairs only its numerical seam and preserves the source support', async () => {
   const model = JSON.parse(
     gunzipSync(

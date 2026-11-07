@@ -8,6 +8,7 @@ import {
   materialGeometryArea,
 } from './material-process-boolean.js';
 import { bufferMulti } from './vector-geometry.js';
+import { robustIntersection } from './polygon-boolean.js';
 import { synchronizeMaterialPartition } from './material-process-noding.js';
 import { validateProcessModel } from './project-schema.js';
 import { unionMaterialTiles } from './material-tile-union.js';
@@ -30,9 +31,18 @@ function hasNumericalOwnerOverlap(regions, error, numerical) {
     /^Invalid project: model\.regions\[(\d+)\]\.geom overlaps model\.regions\[(\d+)\]\.geom\.$/.exec(
       error.message,
     );
-  return Boolean(
-    pair && numerical(intersection(regions[Number(pair[1])].geom, regions[Number(pair[2])].geom)),
-  );
+  if (!pair) return false;
+  const left = regions[Number(pair[1])].geom;
+  const right = regions[Number(pair[2])].geom;
+  const snapped = intersection(left, right);
+  if (snapped.length) return numerical(snapped);
+  // The material Boolean projects to its 1e-7 µm integer lattice. A genuine
+  // sub-lattice overlap can disappear there while the independent project
+  // validator still detects it. Confirm its original-area seam numerically
+  // before allowing the ordinary partition/noding path to attempt a repair.
+  // All source coverage and final model checks remain mandatory.
+  const unsnapped = robustIntersection(left, right);
+  return unsnapped.length > 0 && numerical(unsnapped);
 }
 
 export function repairMaterialHaloPartition(model, sourceCoverage) {

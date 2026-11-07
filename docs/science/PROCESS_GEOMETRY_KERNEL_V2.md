@@ -103,7 +103,13 @@ with shared templates. Neighbor halos cover the exposed-height ray envelope;
 cell faces are storage boundaries, not masks. Cropped owners are jointly
 noded on the existing 0.1 nm persistence grid and retain strict schema checks.
 Transient integer clipping uses finer arithmetic, including exact full-range
-integer slope predicates; it does not broaden geometric tolerances.
+integer slope predicates; it does not broaden geometric tolerances. When the
+independent project-schema validator identifies an owner overlap that vanishes
+on the integer clipping lattice, halo repair also examines the original
+floating-point intersection. **Only** a witnessed numerical seam may enter
+the existing noding and coverage-preserving owner partition; the repaired
+model still must pass the unchanged schema and source-support checks. Genuine
+non-grid-width overlap is rejected transactionally.
 
 Material operations deduplicate equal unannotated array templates by exact
 physical geometry and stack metadata. Comparison may ignore local region IDs,
