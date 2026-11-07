@@ -37,8 +37,12 @@ async () => {
       const stride = view.byteStride || 12;
       const samples = new Map();
       for (let index = 0; index < accessor.count; index++) {
-        const p = [0, 1, 2].map((axis) =>
-          data.getFloat32(offset + index * stride + axis * 4, true),
+        // POSITION is local Float32; the node's double-precision translation
+        // restores physical micrometres before comparing the morphology field.
+        const p = [0, 1, 2].map(
+          (axis) =>
+            data.getFloat32(offset + index * stride + axis * 4, true) +
+            (node.matrix?.[12 + axis] ?? node.translation?.[axis] ?? 0),
         );
         // Closure skirts meet the ideal plane; cap heights use the physical field.
         if (Math.abs(p[2] - extra.wafercadSurfaceZUm) < 2e-5) continue;

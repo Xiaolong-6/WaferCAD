@@ -1,9 +1,11 @@
 import { canonicalLineInterval, lineIntervalKey } from './line-intervals.js';
 import { roughDisplayProfileOffsetAtPoint } from './surface-rendering.js';
+import { glbWorldBoundaryPositions, glbWorldAtFloat32Precision } from './glb-export-precision.js';
 
 // These are renderer coordinates, never canonical material geometry. Retain the
 // actual Float32 cap endpoints instead of evaluating another morphology curve.
-export function boundaryProfileFromPositions(positions = new Float32Array()) {
+export function boundaryProfileFromPositions(positions = new Float32Array(), origin = null) {
+  positions = glbWorldBoundaryPositions(positions, origin);
   const segments = [],
     byLine = new Map();
   for (let index = 0; index + 5 < positions.length; index += 6) {
@@ -17,7 +19,7 @@ export function boundaryProfileFromPositions(positions = new Float32Array()) {
     if (!byLine.has(key)) byLine.set(key, []);
     byLine.get(key).push(segment);
   }
-  return { positions, segments, byLine };
+  return { positions, segments, byLine, origin };
 }
 
 function matchingSegments(profile, line) {
@@ -29,7 +31,9 @@ function matchingSegments(profile, line) {
   return profile.segments.filter(({ p, q }) => {
     const tolerance = Math.max(
       1e-10,
-      ...[...p.slice(0, 2), ...q.slice(0, 2)].map((value) => Math.abs(value) * 2 ** -22),
+      ...[...p.slice(0, 2), ...q.slice(0, 2)].map(
+        (value, axis) => Math.abs(value - (profile.origin?.[axis % 2] || 0)) * 2 ** -22,
+      ),
     );
     return [p, q].every(
       (point) => Math.abs(line.nx * point[0] + line.ny * point[1] - line.offset) <= tolerance,
@@ -37,8 +41,8 @@ function matchingSegments(profile, line) {
   });
 }
 
-function profileZ(segments, line, t, fallback) {
-  const epsilon = Math.max(1e-10, Math.abs(t) * 2 ** -22);
+function profileZ(segments, line, t, fallback, origin = null) {
+  const epsilon = Math.max(1e-10, (origin ? Math.abs(line.length) : Math.abs(t)) * 2 ** -22);
   for (const segment of segments) {
     const a = line.ux * segment.p[0] + line.uy * segment.p[1],
       b = line.ux * segment.q[0] + line.uy * segment.q[1];
@@ -51,7 +55,7 @@ function profileZ(segments, line, t, fallback) {
 
 export function sidewallBoundarySamples(
   part,
-  { lowerProfile = null, upperProfile = null, fallbackSegments = null } = {},
+  { lowerProfile = null, upperProfile = null, fallbackSegments = null, positionOrigin = null } = {},
 ) {
   const line = part.line || canonicalLineInterval(part.p, part.q);
   if (!line) return [];
@@ -61,9 +65,15 @@ export function sidewallBoundarySamples(
     project = (point) => line.ux * point[0] + line.uy * point[1],
     pT = project(part.p),
     qT = project(part.q),
-    epsilon = Math.max(1e-10, Math.abs(pT) * 2 ** -22, Math.abs(qT) * 2 ** -22);
-  samples.set(pT, [Math.fround(part.p[0]), Math.fround(part.p[1])]);
-  samples.set(qT, [Math.fround(part.q[0]), Math.fround(part.q[1])]);
+    epsilon = positionOrigin
+      ? Math.max(1e-10, Math.abs(qT - pT) * 2 ** -22)
+      : Math.max(1e-10, Math.abs(pT) * 2 ** -22, Math.abs(qT) * 2 ** -22);
+  const roundXY = (point) => [
+    glbWorldAtFloat32Precision(point[0], 0, positionOrigin),
+    glbWorldAtFloat32Precision(point[1], 1, positionOrigin),
+  ];
+  samples.set(pT, roundXY(part.p));
+  samples.set(qT, roundXY(part.q));
   const missing = [
     [lower, part.lowerSurface],
     [upper, part.upperSurface],
@@ -81,10 +91,13 @@ export function sidewallBoundarySamples(
     for (let index = 1; index < count; index++) {
       const fraction = index / count,
         t = pT + (qT - pT) * fraction;
-      samples.set(t, [
-        Math.fround(part.p[0] + (part.q[0] - part.p[0]) * fraction),
-        Math.fround(part.p[1] + (part.q[1] - part.p[1]) * fraction),
-      ]);
+      samples.set(
+        t,
+        roundXY([
+          part.p[0] + (part.q[0] - part.p[0]) * fraction,
+          part.p[1] + (part.q[1] - part.p[1]) * fraction,
+        ]),
+      );
     }
   }
   for (const segment of [...lower, ...upper]) {
@@ -105,8 +118,20 @@ export function sidewallBoundarySamples(
     .sort((a, b) => (a[0] - b[0]) * (line.forward ? 1 : -1))
     .map(([t, point]) => ({
       point,
-      lowerZ: profileZ(lower, line, t, () => displaced(point, part.z0, part.lowerSurface)),
-      upperZ: profileZ(upper, line, t, () => displaced(point, part.z1, part.upperSurface)),
+      lowerZ: profileZ(
+        lower,
+        line,
+        t,
+        () => displaced(point, part.z0, part.lowerSurface),
+        positionOrigin,
+      ),
+      upperZ: profileZ(
+        upper,
+        line,
+        t,
+        () => displaced(point, part.z1, part.upperSurface),
+        positionOrigin,
+      ),
     }));
   return result;
 }
