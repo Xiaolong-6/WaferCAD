@@ -64,6 +64,7 @@
 .v2-section-body .p-science {
   flex: 1;
   min-width: 0;
+  background: var(--wc-canvas-background, #ffffff);
 }
 .v2-detail-overlay {
   position: absolute;
@@ -135,6 +136,7 @@ body[data-workstation] #app-root {
   height: 100%;
   min-height: 240px;
   overflow: hidden;
+  background: #fff;
 }
 .v2-three-host canvas {
   position: absolute;
