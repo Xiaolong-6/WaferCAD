@@ -25,6 +25,18 @@ export function shouldTileMaterialModel(model) {
   );
 }
 
+// A native material tile is clipped on the 1e-7 µm Boolean lattice. Remove
+// only IEEE-754 translation noise on its derived local rectangle; keep any
+// genuinely off-lattice coordinate unchanged. Source material and Mask stay
+// untouched, and no morphological tolerance is enlarged.
+function exactMaterialLatticeCoordinate(value) {
+  const scaled = value * 10000000;
+  const rounded = Math.round(scaled);
+  return Number.isSafeInteger(rounded) && Math.abs(scaled - rounded) < 1e-6
+    ? rounded / 10000000
+    : value;
+}
+
 function canonicalGeometry(geometry) {
   const ring = (input) => {
     const open = input.slice(0, -1);
@@ -97,7 +109,9 @@ export function tileMaterialModel(model, { cellSizeUm = 120 } = {}) {
             ]
           : [];
       });
-      const boundary = translateGeometry(domain, -x, -y);
+      const boundary = translateGeometry(domain, -x, -y).map((polygon) =>
+        polygon.map((ring) => ring.map((point) => point.map(exactMaterialLatticeCoordinate))),
+      );
       const leaf = {
         ...model,
         width: box.maxX - box.minX,
