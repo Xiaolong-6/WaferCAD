@@ -6,6 +6,7 @@ import { drawMaskGeometry } from '../draw-mask-geometry.js';
 import { maskRoiWorldGeometry, multiBounds } from '../mask-roi-geometry.js';
 import { bufferPolyline, intersection, isEmpty } from '../vector-geometry.js';
 import { roughVisualBoundsZ } from '../surface-rendering.js';
+import { SCIENTIFIC_CANVAS_BACKGROUND } from '../scientific-canvas-background.js';
 import { DOWNLOAD_URL_REVOKE_DELAY_MS } from '../project-io.js';
 import {
   createSectionZTransform,
@@ -49,7 +50,7 @@ function svgPathFromMulti(geom, mapPoint) {
 function svgDocument(width, height, body) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${svgNumber(width)}" height="${svgNumber(
     height,
-  )}" viewBox="0 0 ${svgNumber(width)} ${svgNumber(height)}"><rect width="100%" height="100%" fill="#fbfcfd"/>${body}</svg>`;
+  )}" viewBox="0 0 ${svgNumber(width)} ${svgNumber(height)}"><rect width="100%" height="100%" fill="${SCIENTIFIC_CANVAS_BACKGROUND}"/>${body}</svg>`;
 }
 
 export function createExportController({
@@ -550,7 +551,7 @@ export function createExportController({
         zTransform.upperBottom,
       )}" width="${svgNumber(plotWidth)}" height="${svgNumber(
         zTransform.breakPixels,
-      )}" fill="#fbfcfd"/>`;
+      )}" fill="${SCIENTIFIC_CANVAS_BACKGROUND}"/>`;
       body += `<path d="M${svgNumber(plotLeft)} ${svgNumber(
         zTransform.frameTop,
       )}H${svgNumber(plotLeft + plotWidth)}V${svgNumber(
