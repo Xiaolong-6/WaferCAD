@@ -139,6 +139,7 @@ import {
 } from './surface-rendering.js';
 
 const RENDER_EDGE_EPSILON_UM = 1e-4;
+const THREE_VIEW_BACKGROUND_COLOR = 0xffffff;
 
 let THREE = null;
 let OrbitControls = null;
@@ -3393,7 +3394,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         try {
           preferredPixelRatio = Math.min(globalThis.devicePixelRatio || 1, 2);
           renderer.setPixelRatio(preferredPixelRatio);
-          renderer.setClearColor(0xf5f7f9);
+          renderer.setClearColor(THREE_VIEW_BACKGROUND_COLOR);
           preciseGpuRoughDisplacement = supportsPreciseGpuRoughDisplacement(renderer);
           host.dataset.roughDisplacementBackend = preciseGpuRoughDisplacement
             ? 'gpu-vertex'
@@ -5724,7 +5725,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       configureRenderer: (captureRenderer) => {
         captureRenderer.setPixelRatio(multiplier);
         captureRenderer.setSize(width, height, false);
-        captureRenderer.setClearColor(0xf5f7f9);
+        captureRenderer.setClearColor(THREE_VIEW_BACKGROUND_COLOR);
         captureRenderer.outputColorSpace = renderer.outputColorSpace;
         captureRenderer.toneMapping = renderer.toneMapping;
         captureRenderer.toneMappingExposure = renderer.toneMappingExposure;

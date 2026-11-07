@@ -19,6 +19,7 @@ import { ringMayIntersectCanvas } from './plan-ring-visibility.js';
 import { createMaskViewportCuller } from './mask-viewport-culling.js';
 import { maskVisibleOutlineEdges } from './mask-outline-edges.js';
 import { clipCanvasSegment } from './canvas-segment-clip.js';
+import { SCIENTIFIC_CANVAS_BACKGROUND } from './scientific-canvas-background.js';
 import { validateExperimentalPhysicalFacetModel } from './experimental/physical-facets/physical-facet-model.js';
 import {
   electricalRegionSectionBands,
@@ -1031,7 +1032,7 @@ export function createPlanRenderers({
       c.dataset.sectionCollapseBottomUm = String(collapse.bottom);
     }
 
-    ctx.fillStyle = '#fbfcfd';
+    ctx.fillStyle = SCIENTIFIC_CANVAS_BACKGROUND;
     ctx.fillRect(0, 0, w, h);
     const materialContours = sectionContours(model, section.a, section.b);
     for (const contour of materialContours) {
@@ -1561,7 +1562,7 @@ export function createPlanRenderers({
     // Hide all geometry inside the collapsed Z interval. With collapse disabled,
     // Section is one continuous physical-Z view and nothing is masked.
     if (collapseEnabled) {
-      ctx.fillStyle = '#fbfcfd';
+      ctx.fillStyle = SCIENTIFIC_CANVAS_BACKGROUND;
       const collapseLeft = screenX(viewportX(plotLeft)),
         collapseRight = screenX(viewportX(plotLeft + plotWidth)),
         collapseTop = screenY(viewportY(zTransform.upperBottom - 0.5)),

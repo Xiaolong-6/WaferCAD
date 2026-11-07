@@ -99,6 +99,14 @@ try {
         await waitForPaint(page);
       };
       await ready();
+      const clearColor = await canvas.evaluate((node) => {
+        const gl = node.getContext('webgl2');
+        if (!gl) throw new Error('3D WebGL2 context is unavailable');
+        return Array.from(gl.getParameter(gl.COLOR_CLEAR_VALUE), (channel) =>
+          Math.round(channel * 255),
+        );
+      });
+      assert.deepEqual(clearColor, [255, 255, 255, 255], '3D canvas clears to opaque white');
       profile.mark('first3DReady');
 
       // Two intermediate responsive breakpoints reuse the already-loaded
@@ -374,6 +382,26 @@ try {
         const box = await host.boundingBox();
         assert.ok(Math.abs(bytes.readUInt32BE(16) - Math.round(box.width * 3)) <= 2);
         assert.ok(Math.abs(bytes.readUInt32BE(20) - Math.round(box.height * 3)) <= 2);
+        const pngCornerPixels = await page.evaluate(async (encoded) => {
+          const response = await fetch(`data:image/png;base64,${encoded}`);
+          const bitmap = await createImageBitmap(await response.blob());
+          const image = document.createElement('canvas');
+          image.width = bitmap.width;
+          image.height = bitmap.height;
+          const context = image.getContext('2d', { willReadFrequently: true });
+          context.drawImage(bitmap, 0, 0);
+          bitmap.close();
+          return [
+            [0, 0],
+            [image.width - 1, 0],
+            [0, image.height - 1],
+            [image.width - 1, image.height - 1],
+          ].map(([x, y]) => Array.from(context.getImageData(x, y, 1, 1).data));
+        }, bytes.toString('base64'));
+        assert.ok(
+          pngCornerPixels.some((rgba) => rgba.every((channel) => channel === 255)),
+          `3D PNG must contain an opaque white background corner: ${JSON.stringify(pngCornerPixels)}`,
+        );
         await command('three-export-menu');
         const glbEvent = page.waitForEvent('download', { timeout: 120000 });
         await page.locator('[data-action="export:three:glb"]').click();
