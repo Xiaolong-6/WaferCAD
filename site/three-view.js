@@ -5,6 +5,11 @@ import { isArrayModel, resolveArrayModel, geometryBounds, arrayParts } from './m
 import { annotationDepthFraction, IMPLANT_DEPTH_GRADIENT } from './annotation-rendering.js';
 import { threeRenderPolicy } from './render-quality-policy.js';
 import {
+  glbCapLocalOrigin,
+  glbLocalFloat32Positions,
+  glbSidewallLocalOrigin,
+} from './glb-export-precision.js';
+import {
   electricalDisplaySolidForLod,
   transparentArrayPresentationLod,
 } from './transparent-array-lod.js';
@@ -1671,11 +1676,18 @@ export function createThreeView({
     return [minX, minY, maxX, maxY].every(Number.isFinite) ? { minX, minY, maxX, maxY } : null;
   }
 
-  function geometryFromSolid({ slabs, caps }, displayTolerance = 0) {
+  function geometryFromSolid({ slabs, caps }, displayTolerance = 0, localOrigin = null) {
     const positions = [],
       normals = [];
     const triangle = (a, b, c, normal) => {
-      positions.push(...a, ...b, ...c);
+      if (localOrigin) {
+        for (const point of [a, b, c])
+          positions.push(
+            point[0] - localOrigin[0],
+            point[1] - localOrigin[1],
+            point[2] - localOrigin[2],
+          );
+      } else positions.push(...a, ...b, ...c);
       normals.push(...normal, ...normal, ...normal);
     };
     for (const { z, normal, polys } of caps)
@@ -1828,6 +1840,8 @@ export function createThreeView({
     displayTolerance = 0,
     boundaryProfiles = null,
     appearanceByCapIndex = null,
+    exportPolicy = null,
+    exportOrigin = null,
   ) {
     const positions = [],
       normals = [],
@@ -1839,7 +1853,7 @@ export function createThreeView({
           (Number(surface.profileNormal) || 1) *
             roughDisplayProfileOffsetAtPoint(point[0], point[1], surface.appearance)
         : z;
-    const policy = renderPolicy(false);
+    const policy = exportPolicy || renderPolicy(false);
 
     for (const part of displayTolerance > 0
       ? simplifyDisplaySidewallParts(parts, displayTolerance)
@@ -1878,6 +1892,7 @@ export function createThreeView({
                 lowerProfile,
                 upperProfile,
                 fallbackSegments: segments,
+                positionOrigin: exportOrigin,
               })
             : Array.from({ length: segments + 1 }, (_, index) => {
                 const point = pointAt(index / segments);
@@ -1918,7 +1933,10 @@ export function createThreeView({
     }
 
     const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute(
+      'position',
+      new THREE.BufferAttribute(glbLocalFloat32Positions(positions, exportOrigin), 3),
+    );
     geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
     if (
       parts.some(
@@ -5327,6 +5345,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
               closeToIdeal: !task.cap.buried,
               sidewallBoundaryIntervals: task.cap.sidewallBoundaryIntervals,
               profileNormal: task.cap.profileNormal,
+              exportOrigin: glbCapLocalOrigin(task.cap),
               lodZones: task.lodZones.map((zone) => ({
                 baseTriangles: zone.baseTriangles,
                 maxEdge: zone.maxEdge,
@@ -5406,7 +5425,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
     throwIfAborted();
 
     const exportGroup = new THREE.Group(),
-      disposable = [];
+      disposable = [],
+      physicalExportPolicy = threeRenderPolicy({ fast: false, interactive: false });
     exportGroup.name = 'WaferCAD';
     // glTF uses metres. Canonical WaferCAD geometry is stored in micrometres.
     exportGroup.scale.setScalar(1e-6);
@@ -5418,7 +5438,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           metalness: 0.015,
           side: THREE.DoubleSide,
         }),
-      addExportMesh = (geometry, layerId, suffix = '', translations = null) => {
+      addExportMesh = (geometry, layerId, suffix = '', translations = null, origin = null) => {
         if (!geometry?.getAttribute?.('position')?.count) {
           geometry?.dispose?.();
           return null;
@@ -5437,6 +5457,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           });
         }
         mesh.name = `${layer?.name || layerId || 'Layer'}${suffix}`;
+        if (origin) mesh.position.set(...origin);
         exportGroup.add(mesh);
         disposable.push(mesh);
         return mesh;
@@ -5467,7 +5488,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
       // mesh policy, so GLB does not fall back to ideal flat canonical caps.
       for (let capIndex = 0; capIndex < surfacePlan.caps.length; capIndex++) {
         throwIfAborted();
-        const cap = surfacePlan.caps[capIndex];
+        const cap = surfacePlan.caps[capIndex],
+          origin = glbCapLocalOrigin(cap);
         if (cap.appearance?.kind === 'rough') {
           const task = roughTasks.find((entry) => entry.cap === cap),
             meshData = roughMeshDataByCap?.get(cap) || null;
@@ -5484,13 +5506,14 @@ diffuseColor.a *= waferCadAlphaScale;`,
                   sidewallBoundaryIntervals: cap.sidewallBoundaryIntervals,
                   profileNormal: cap.profileNormal,
                   lodZones: task.lodZones,
+                  exportOrigin: origin,
                 });
             const roughBorderVertexCount = Math.floor(
               (geometry.userData?.roughBorderPositions?.length || 0) / 3,
             );
             exportBoundaryProfiles.set(
               capIndex,
-              boundaryProfileFromPositions(geometry.userData.roughBoundaryPositions),
+              boundaryProfileFromPositions(geometry.userData.roughBoundaryPositions, origin),
             );
             // Renderer-only LOD/debug metadata can include large typed arrays.
             // Keep GLB extras compact and publish only the stable export contract
@@ -5501,6 +5524,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
               cap.layerId,
               ' · morphology',
               cap.instanceTranslations,
+              origin,
             );
             if (mesh) {
               mesh.userData.wafercadMorphology = cap.appearance.morphology || 'rough';
@@ -5519,13 +5543,18 @@ diffuseColor.a *= waferCadAlphaScale;`,
           }
         } else {
           const mesh = addExportMesh(
-            geometryFromSolid({
-              slabs: [],
-              caps: [{ z: cap.z, normal: cap.normal, polys: cap.polys }],
-            }),
+            geometryFromSolid(
+              {
+                slabs: [],
+                caps: [{ z: cap.z, normal: cap.normal, polys: cap.polys }],
+              },
+              0,
+              origin,
+            ),
             cap.layerId,
             '',
             cap.instanceTranslations,
+            origin,
           );
           if (mesh) {
             mesh.userData.wafercadLayerId = cap.layerId || null;
@@ -5537,18 +5566,31 @@ diffuseColor.a *= waferCadAlphaScale;`,
           }
         }
         reportProgress(0.58 + 0.2 * ((capIndex + 1) / capCount), 'Building surfaces');
+        if (capIndex % 8 === 7) await yieldToUi();
       }
 
       throwIfAborted();
       const sidewallsByLayer = new Map();
+      let instancedSidewallIndex = 0;
       for (const sidewall of surfacePlan.sidewalls) {
         if (sidewall.instanceTranslations) {
+          const parts = sidewall.parts || [sidewall],
+            origin = glbSidewallLocalOrigin(parts);
           addExportMesh(
-            geometryFromSidewallParts(sidewall.parts || [sidewall], 0, exportBoundaryProfiles),
+            geometryFromSidewallParts(
+              parts,
+              0,
+              exportBoundaryProfiles,
+              null,
+              physicalExportPolicy,
+              origin,
+            ),
             sidewall.layerId,
             ' · sidewalls',
             sidewall.instanceTranslations,
+            origin,
           );
+          if (++instancedSidewallIndex % 8 === 0) await yieldToUi();
           continue;
         }
         if (!sidewallsByLayer.has(sidewall.layerId)) sidewallsByLayer.set(sidewall.layerId, []);
@@ -5559,14 +5601,28 @@ diffuseColor.a *= waferCadAlphaScale;`,
       const sidewallGroupCount = Math.max(1, sidewallsByLayer.size);
       for (const [layerId, parts] of sidewallsByLayer) {
         throwIfAborted();
-        addExportMesh(
-          geometryFromSidewallParts(parts, 0, exportBoundaryProfiles),
-          layerId,
-          ' · sidewalls',
-        );
+        // Bound peak JS/typed-array allocation and yield between independent chunks.
+        for (let offset = 0; offset < parts.length; offset += 256) {
+          const batch = parts.slice(offset, offset + 256),
+            origin = glbSidewallLocalOrigin(batch);
+          addExportMesh(
+            geometryFromSidewallParts(
+              batch,
+              0,
+              exportBoundaryProfiles,
+              null,
+              physicalExportPolicy,
+              origin,
+            ),
+            layerId,
+            ' · sidewalls',
+            null,
+            origin,
+          );
+          await yieldToUi();
+        }
         sidewallIndex++;
         reportProgress(0.79 + 0.1 * (sidewallIndex / sidewallGroupCount), 'Building sidewalls');
-        if (sidewallIndex % 2 === 0) await yieldToUi();
       }
 
       await yieldToUi();
