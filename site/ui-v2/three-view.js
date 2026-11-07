@@ -443,6 +443,19 @@ export function createWorkstationThreeView({ store, workstation }) {
     borderStrength.disabled = !state.threeShowBorders;
   }
   const task = workstation.task;
+  const svgModeSelect = el(
+    'select',
+    { class: 'wc-input', 'aria-label': '3D SVG geometry scale' },
+    el('option', { value: 'view' }, 'As viewed · display Z'),
+    el('option', { value: 'physical' }, 'Physical · actual Z'),
+  );
+  const svgDetailSelect = el(
+    'select',
+    { class: 'wc-input', 'aria-label': '3D SVG vector detail' },
+    el('option', { value: 'standard' }, 'Standard · compact'),
+    el('option', { value: 'high', selected: true }, 'High · publication'),
+    el('option', { value: 'ultra' }, 'Ultra · largest files'),
+  );
   const download = (blob, name) => {
     const url = URL.createObjectURL(blob),
       link = el('a', { href: url, download: name });
@@ -456,32 +469,48 @@ export function createWorkstationThreeView({ store, workstation }) {
     const result = await task.runTask(
       async ({ signal, updateStage }) => {
         if (!renderer.ready) throw Error('3D view is unavailable.');
+        const progress = (progress, label) =>
+          updateStage(`${Math.round(progress * 100)}% · ${label || 'Working…'}`);
         const blob =
           format === 'glb'
-            ? await renderer.exportGlb({
-                signal,
-                onProgress: (progress, label) =>
-                  updateStage(`${Math.round(progress * 100)}% · ${label || 'Working…'}`),
-              })
-            : await renderer.capturePng(3);
+            ? await renderer.exportGlb({ signal, onProgress: progress })
+            : format === 'svg'
+              ? await renderer.exportSvg({
+                  signal,
+                  onProgress: progress,
+                  mode: svgModeSelect.value,
+                  detail: svgDetailSelect.value,
+                })
+              : await renderer.capturePng(3);
         return { blob };
       },
       {
         label:
-          format === 'glb'
-            ? `Exporting ${state.roi ? 'ROI' : 'full'} 3D GLB…`
-            : 'Capturing 3D PNG…',
-        abortable: format === 'glb',
-        initialStage: format === 'glb' ? 'Preparing…' : 'Rendering 3× frame…',
-        abortMessage: '3D GLB export cancelled. No file was written.',
+          format === 'png'
+            ? 'Capturing 3D PNG…'
+            : `Exporting ${state.roi ? 'ROI' : 'full'} 3D ${format.toUpperCase()}…`,
+        abortable: format !== 'png',
+        initialStage: format === 'png' ? 'Rendering 3× frame…' : 'Preparing…',
+        abortMessage: `3D ${format.toUpperCase()} export cancelled. No file was written.`,
         failurePrefix: '3D export failed',
       },
     );
     if (result?.busy) workstation.status('Another background task is already running.');
     if (!result?.aborted && !result?.error && result?.blob) {
-      download(result.blob, format === 'glb' ? 'wafercad-model.glb' : 'wafercad-3d-3x.png');
+      download(
+        result.blob,
+        format === 'glb'
+          ? 'wafercad-model.glb'
+          : format === 'svg'
+            ? 'wafercad-3d.svg'
+            : 'wafercad-3d-3x.png',
+      );
       workstation.status(
-        format === 'glb' ? 'Exported GLB in physical metres.' : 'Exported 3× 3D PNG.',
+        format === 'glb'
+          ? 'Exported GLB in physical metres.'
+          : format === 'svg'
+            ? 'Exported 3D vector SVG with deterministic Rough/Pyramid facets.'
+            : 'Exported 3× 3D PNG.',
       );
     }
   }
@@ -546,6 +575,21 @@ export function createWorkstationThreeView({ store, workstation }) {
         content: el(
           'div',
           { class: 'p-form v2-three-floating' },
+          el(
+            'label',
+            { class: 'wc-field' },
+            el('span', { class: 'wc-label' }, 'SVG geometry'),
+            svgModeSelect,
+          ),
+          el(
+            'label',
+            { class: 'wc-field' },
+            el('span', { class: 'wc-label' }, 'Vector detail'),
+            svgDetailSelect,
+          ),
+          button('SVG · vector', 'export:three:svg', 'export', {
+            'data-help': 'three.export.svg',
+          }),
           button('PNG · 3×', 'export:three:png', 'export', {
             'data-help': 'three.export.png',
           }),
@@ -554,7 +598,7 @@ export function createWorkstationThreeView({ store, workstation }) {
           }),
         ),
       });
-    } else if (action === 'export:three:png' || action === 'export:three:glb') {
+    } else if (['export:three:png', 'export:three:glb', 'export:three:svg'].includes(action)) {
       void exportFile(action.split(':')[2]);
     }
   });

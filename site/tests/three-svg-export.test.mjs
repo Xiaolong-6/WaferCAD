@@ -1,0 +1,160 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import {
+  projectThreeMeshesToSvg,
+  normalizeSvgExportOptions,
+  SVG_TRIANGLE_BUDGETS,
+} from '../three-svg-export.js';
+
+function camera() {
+  const view = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+  view.position.set(3, -4, 10);
+  view.lookAt(0, 0, 0);
+  view.updateProjectionMatrix();
+  view.updateMatrixWorld(true);
+  return view;
+}
+
+function triangle(z = [0, 0, 0], name = 'Si') {
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute(
+    'position',
+    new THREE.Float32BufferAttribute([-1, -1, z[0], 1, -1, z[1], 0, 1, z[2]], 3),
+  );
+  const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color: '#b86e39' }));
+  mesh.userData.wafercadLayerId = name;
+  return mesh;
+}
+
+function exportSvg(root, options = {}) {
+  return projectThreeMeshesToSvg(THREE, root, camera(), {
+    width: 900,
+    height: 900,
+    ...options,
+  });
+}
+
+test('3D SVG exports editable geometric paths, not bitmap wrappers', async () => {
+  const root = new THREE.Group();
+  root.add(triangle([0, 0, 0], 'Si'));
+  const svg = await exportSvg(root);
+  assert.match(svg, /^<svg /);
+  assert.match(svg, /<path d="M/);
+  assert.match(svg, /data-wafercad-layer="Si"/);
+  assert.doesNotMatch(svg, /<image|data:image|base64/i);
+  assert.equal((svg.match(/<path /g) || []).length, 1);
+});
+
+test('Rough CPU vertex heights affect actual projected vector geometry', async () => {
+  const flat = new THREE.Group();
+  flat.add(triangle([0, 0, 0]));
+  const rough = new THREE.Group();
+  rough.add(triangle([0, 0.65, 0.11]));
+  assert.notEqual(await exportSvg(flat), await exportSvg(rough));
+  assert.notEqual(
+    await exportSvg(rough, { mode: 'view', mapZ: (z) => z * 3 }),
+    await exportSvg(rough, {
+      mode: 'physical',
+      mapZ: (z) => z * 3,
+    }),
+  );
+});
+
+test('parallel layer surfaces are painted back-to-front', async () => {
+  const root = new THREE.Group();
+  root.add(triangle([-1, -1, -1], 'behind'));
+  root.add(triangle([1, 1, 1], 'front'));
+  const svg = await exportSvg(root);
+  assert.ok(
+    svg.indexOf('data-wafercad-layer="behind"') < svg.indexOf('data-wafercad-layer="front"'),
+  );
+});
+
+test('instanced material templates are projected at all translations', async () => {
+  const base = triangle();
+  const root = new THREE.Group();
+  const mesh = new THREE.InstancedMesh(base.geometry, base.material, 2);
+  const matrix = new THREE.Matrix4();
+  mesh.setMatrixAt(0, matrix.identity());
+  mesh.setMatrixAt(1, matrix.makeTranslation(2, 0, 0));
+  root.add(mesh);
+  const svg = await exportSvg(root);
+  assert.equal((svg.match(/<path /g) || []).length, 2);
+});
+
+test('SVG quality budget fails closed rather than silently dropping facets', async () => {
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute(
+    'position',
+    new THREE.Float32BufferAttribute(new Float32Array((SVG_TRIANGLE_BUDGETS.standard + 1) * 9), 3),
+  );
+  const root = new THREE.Group();
+  root.add(new THREE.Mesh(geometry, new THREE.MeshBasicMaterial()));
+  await assert.rejects(exportSvg(root, { detail: 'standard' }), /smaller 3D ROI/);
+});
+
+test('SVG options normalize to stable defaults and abort before work', async () => {
+  assert.deepEqual(normalizeSvgExportOptions({ detail: 'invalid', mode: 'invalid' }), {
+    detail: 'high',
+    mode: 'view',
+  });
+  const root = new THREE.Group();
+  root.add(triangle());
+  const aborter = new AbortController();
+  aborter.abort();
+  await assert.rejects(exportSvg(root, { signal: aborter.signal }), /cancelled/i);
+});
+
+test('back-facing wafer triangles cannot cover an exposed front surface', async () => {
+  const root = new THREE.Group();
+  const back = triangle([-5, -5, -5], 'bottom');
+  back.geometry.setIndex([0, 2, 1]);
+  root.add(back);
+  root.add(triangle([0, 0, 0], 'front'));
+  const svg = await exportSvg(root);
+  assert.doesNotMatch(svg, /data-wafercad-layer="bottom"/);
+  assert.match(svg, /data-wafercad-layer="front"/);
+  assert.match(svg, /stroke="#/);
+});
+
+test('SVG background follows the active renderer clear color without markup injection', async () => {
+  const root = new THREE.Group();
+  root.add(triangle());
+  const svg = await exportSvg(root, { background: '#ffffff' });
+  assert.match(svg, /<rect[^>]*fill="#ffffff"/);
+  await assert.rejects(
+    exportSvg(root, { background: 'url(javascript:alert(1))' }),
+    /six-digit RGB color/,
+  );
+});
+
+test('a visible vertical material wall remains in the vector projection', async () => {
+  const root = new THREE.Group();
+  const wall = new THREE.BufferGeometry();
+  wall.setAttribute(
+    'position',
+    new THREE.Float32BufferAttribute([-1, -1, -1, 1, -1, -1, 1, -1, 1], 3),
+  );
+  const mesh = new THREE.Mesh(wall, new THREE.MeshBasicMaterial({ color: '#aaaaaa' }));
+  mesh.userData.wafercadLayerId = 'wall';
+  root.add(mesh);
+  const svg = await exportSvg(root);
+  assert.match(svg, /data-wafercad-layer="wall"/);
+});
+
+test('camera below the wafer sees the exposed back face rather than the front face', async () => {
+  const root = new THREE.Group();
+  const face = triangle([-1, -1, -1], 'back');
+  face.geometry.setIndex([0, 2, 1]);
+  root.add(face);
+  const view = camera();
+  view.position.set(3, -4, -10);
+  view.lookAt(0, 0, 0);
+  view.updateMatrixWorld(true);
+  const svg = await projectThreeMeshesToSvg(THREE, root, view, {
+    width: 900,
+    height: 900,
+  });
+  assert.match(svg, /data-wafercad-layer="back"/);
+});

@@ -10,7 +10,7 @@ flowchart LR
   Workspace --> Project["Export .wafercad"]
   Project --> Restore[Open/import project]
   Workspace --> MaskExport["Mask export SVG/GDS/OAS"]
-  Workspace --> ViewExport["Section/Main SVG, 3D PNG or GLB"]
+  Workspace --> ViewExport["Section/Main SVG, 3D SVG/PNG or GLB"]
   Workspace --> Report["Export report ZIP (offline HTML/Markdown)"]
 ```
 
@@ -29,6 +29,7 @@ Export SVG, GDSII or OASIS from the active Mask view. Select export scope as app
 ## View and geometry export
 
 - **Main/Section** provide schematic SVG exports.
+- **3D SVG** exports editable vector facet paths from the same deterministic CPU morphology used for GLB, including Rough/Pyramid and sidewalls. It preserves the current camera and offers As viewed (display Z) or Physical (actual Z), plus Standard/High/Ultra triangle budgets. Facet shading is vectorized; WebGL lighting, border overlays, and GPU far-field noise are not pixel-identical. Layer IDs are attached to paths. A triangle-budget error asks for a smaller ROI rather than silently discarding geometry.
 - **3D PNG** captures the currently visible 3D view at 3× resolution, including its active opacity, vertical display scale, origin visibility, border and current roughness LOD. It is a presentation capture, not a physical geometry export; the GLB geometry contract is unchanged.
 - **GLB** exports the visible physical inspection geometry and respects an active Main ROI.
 - GLB can embed deterministic rough/pyramid relief. Export mesh quality is constrained by a triangle budget and is not a TCAD mesh.
