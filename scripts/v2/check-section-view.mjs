@@ -286,7 +286,13 @@ try {
       await command('detail');
       assert.equal((await snapshot()).sectionDetailRoi, null);
       await command('section-export-menu');
-      assert.equal(await page.locator('.v2-section-floating button:disabled').count(), 1);
+      // Section exports SVG only. Do not retain a disabled PNG placeholder.
+      assert.equal(await page.locator('.v2-section-floating button:disabled').count(), 0);
+      assert.equal(
+        await page.locator('.v2-section-floating [data-action="export:section:svg"]').count(),
+        1,
+      );
+      assert.equal(await page.locator('.v2-section-floating button').count(), 1);
       const download = page.waitForEvent('download');
       await page.locator('[data-action="export:section:svg"]').click();
       assert.ok((await download).suggestedFilename().endsWith('.svg'));

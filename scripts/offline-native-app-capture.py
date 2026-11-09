@@ -1035,6 +1035,25 @@ def run(args):
                 if args.check_glb:
                     expression = (root / 'scripts/offline-native-glb-check.js').read_text(encoding='utf-8')
                     report['physicalGlb'] = page.evaluate(expression)
+                if args.check_svg:
+                    if not ready:
+                        raise RuntimeError('SVG probe requires painted, exact native 3D geometry')
+                    svg_result = page.evaluate('''async () => {
+                      const item = window.__wafercadOfflineModel;
+                      const beforeModel = JSON.stringify(item.model);
+                      const blob = await item.renderer.exportSvg({detail: 'standard'});
+                      const svg = await blob.text();
+                      if (JSON.stringify(item.model) !== beforeModel)
+                        throw Error('SVG export mutated source model');
+                      if (!svg.startsWith('<svg ') || !svg.includes('<path ') ||
+                          /<image|data:image|base64/i.test(svg))
+                        throw Error('SVG export missing vector facets or has raster content');
+                      return { svg, bytes: blob.size, modelUnchanged: true };
+                    }''')
+                    svg_path = out / 'native-3d-vector.svg'
+                    svg_path.write_text(svg_result.pop('svg'), encoding='utf-8')
+                    report['nativeVectorSvg'] = {**svg_result, 'file': svg_path.name,
+                                                  'sha256': snapshot_sha(svg_path)}
                 if args.rough_cutline:
                     roi = args.inmemory_roi
                     density = 1100 / (roi[2] - roi[0]) if roi else 100
@@ -1114,6 +1133,7 @@ def main():
     parser.add_argument('--check-rough-parity', action='store_true', help='Probe production GLSL at Photodetector physical coordinates')
     parser.add_argument('--check-stable-rough-ui', action='store_true', help='Apply stable rough Etch/ALD and verify native Undo, Save, file Open and reload on a 2 um base')
     parser.add_argument('--check-glb', action='store_true', help='Check production physical GLB stable-profile heights and 50 nm film')
+    parser.add_argument('--check-svg', action='store_true', help='Capture native vector SVG from actual 3D model')
     parser.add_argument('--check-png-wysiwyg', action='store_true',
                         help='Capture exact native 3D PNG with origin on and compare scene state')
     parser.add_argument('--quality', action='store_true', help='Use Quality instead of Fast 3D mesh budget')
@@ -1148,6 +1168,8 @@ def main():
         parser.error('Rough height parity requires --inmemory-project')
     if args.check_glb and not args.inmemory_project:
         parser.error('Physical GLB check requires --inmemory-project')
+    if args.check_svg and not (args.inmemory_project or args.inmemory_demo):
+        parser.error('Native SVG check requires --inmemory-project or --inmemory-demo')
     if (args.rough_cutline or args.quality or args.native_section_compare or args.native_section_borders) and not args.inmemory_project:
         parser.error('Rough cutline and Quality require --inmemory-project')
     try:

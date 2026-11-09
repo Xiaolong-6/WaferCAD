@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import { gunzipSync } from 'node:zlib';
 import {
   fullSourceLayout,
   constructSourceProject,
@@ -13,6 +14,10 @@ const { parseGDS, flattenGDS } = await import('../gds.js');
 const { pointInMulti } = await import('../vector-geometry.js');
 const ROOT = '2024-04-07_EITR2_1';
 const sourcePath = process.env.WAFERCAD_TRANSMON_GDS;
+const projects = new URL(
+  '../../examples/projects/transmon-nature-communications-2025-candidate/',
+  import.meta.url,
+);
 
 function originalRef(name, xy) {
   return { kind: 'sref', name, xy, angle: 0, mag: 1, reflect: false };
@@ -167,6 +172,10 @@ test(
       // The default is intentionally Mask-only; no speculative etch on import.
     });
     const project = await readProjectFile(new Blob([result.content]));
+    const stored = gunzipSync(
+      await readFile(new URL('chip2-full-source-mask-only.wafercad.gz', projects)),
+    );
+    assert.equal(Buffer.from(result.content).equals(stored), true);
     assert.equal(result.report.maskOnly, true);
     assert.equal(result.report.materialPatterned, false);
     assert.deepEqual(project.selectedLayerKeys, ['2|0']);
@@ -230,5 +239,50 @@ test(
       greatestDeviationUm < 0.000051,
       `Unexpected GDS quantization ${greatestDeviationUm} µm`,
     );
+  },
+);
+
+for (const [file, root, count, bounds] of [
+  ['chip2', 'chip2', 39487, [-5000, -5000, 5000, 5000]],
+  ['reticle', '2024-04-07_EITR2_1', 157950, [-20000, -20000, 20000, 20000]],
+]) {
+  const readAsset = async () =>
+    gunzipSync(await readFile(new URL(`${file}-full-source-mask-only.wafercad.gz`, projects)));
+
+  test(`stored Transmon ${file} opens as a complete source Mask`, async () => {
+    const project = await readProjectFile(new Blob([await readAsset()]));
+    const { layout, model, selectedLayerKeys, snapshotBranches } = project;
+    assert.equal(layout.root, root);
+    assert.equal(layout.elements.length, count);
+    assert.deepEqual(
+      [layout.bounds.minX, layout.bounds.minY, layout.bounds.maxX, layout.bounds.maxY],
+      bounds,
+    );
+    assert.deepEqual(
+      [...new Set(layout.elements.map(({ layer, datatype }) => `${layer}/${datatype}`))].sort(),
+      ['0/0', '2/0', '8/0', '8/1'],
+    );
+    assert.deepEqual(selectedLayerKeys, ['2|0']);
+    assert.equal(model.processRevision, 0);
+    assert.equal(model.layers.length, 1);
+    assert.equal(snapshotBranches.nodes.length, 1);
+    if (file === 'reticle')
+      assert.equal(
+        layout.elements.filter(({ sourceCell }) => sourceCell.startsWith('boolean_e1ef2d48/'))
+          .length,
+        1,
+      );
+  });
+}
+
+test(
+  'stored Transmon reticle regenerates from the author GDS',
+  { skip: !sourcePath && 'Set WAFERCAD_TRANSMON_GDS to the public author sample.gds' },
+  async () => {
+    const { content } = await constructSourceProject(await readFile(sourcePath));
+    const stored = gunzipSync(
+      await readFile(new URL('reticle-full-source-mask-only.wafercad.gz', projects)),
+    );
+    assert.equal(Buffer.from(content).equals(stored), true);
   },
 );
