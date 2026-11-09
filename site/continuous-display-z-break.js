@@ -1,5 +1,17 @@
 // Presentation-only clipping for analytic Continuous Etch display meshes.
 // Never mutate the canonical physical owner or source triangle arrays.
+// Disabled Z Break can return its input by identity. The renderer later
+// remaps BufferGeometry positions in place, so detach only buffers that alias
+// retained source triangles; already-clipped buffers need no additional copy.
+export function detachContinuousDisplayBuffers(displayed, source) {
+  return {
+    ...displayed,
+    positions:
+      displayed.positions === source.positions ? displayed.positions.slice() : displayed.positions,
+    normals: displayed.normals === source.normals ? displayed.normals.slice() : displayed.normals,
+  };
+}
+
 function clipHalfspace(triangle, z, keepAbove) {
   const inside = (v) => (keepAbove ? v[2] >= z : v[2] <= z);
   const result = [];

@@ -3,7 +3,10 @@ import test from 'node:test';
 import * as THREE from 'three';
 import { createSectionCollapseController } from '../controllers/section-collapse-controller.js';
 import { continuousEtchDisplayCollapse } from '../continuous-etch-model.js';
-import { clipContinuousDisplayZBreak } from '../continuous-display-z-break.js';
+import {
+  clipContinuousDisplayZBreak,
+  detachContinuousDisplayBuffers,
+} from '../continuous-display-z-break.js';
 
 const part = {
   layerId: 'silicon',
@@ -25,6 +28,51 @@ test('Z Break clips physical display triangles on both Z planes without mutating
 
 test('disabled break leaves the original display geometry untouched', () => {
   assert.equal(clipContinuousDisplayZBreak(part, { enabled: false }), part);
+});
+
+test('Continuous Z Break round trip never mutates the retained source mesh', () => {
+  const originalPositions = part.positions.slice();
+  const originalNormals = part.normals.slice();
+
+  // Both a disabled Z break and an absent ROI return their inputs by identity.
+  // These buffers subsequently enter Three.js, whose Z display transform
+  // writes directly to BufferGeometry attributes.
+  const unbroken = detachContinuousDisplayBuffers(
+    clipContinuousDisplayZBreak(part, { enabled: false }),
+    part,
+  );
+  assert.notStrictEqual(unbroken.positions, part.positions);
+  assert.notStrictEqual(unbroken.normals, part.normals);
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(unbroken.positions, 3));
+  geometry.setAttribute('normal', new THREE.BufferAttribute(unbroken.normals, 3));
+  geometry.getAttribute('position').setZ(0, 999);
+  geometry.getAttribute('normal').setZ(0, 999);
+
+  assert.deepEqual(part.positions, originalPositions, '3D Z remapping corrupted source positions');
+  assert.deepEqual(part.normals, originalNormals, '3D normal updates corrupted source normals');
+
+  const broken = clipContinuousDisplayZBreak(part, { enabled: true, top: 2, bottom: -2 });
+  const detachedBroken = detachContinuousDisplayBuffers(broken, part);
+  assert.strictEqual(
+    detachedBroken.positions,
+    broken.positions,
+    'already clipped Z triangles copy unnecessarily',
+  );
+  assert.strictEqual(detachedBroken.normals, broken.normals);
+
+  const restored = detachContinuousDisplayBuffers(
+    clipContinuousDisplayZBreak(part, { enabled: false }),
+    part,
+  );
+  assert.deepEqual(
+    restored.positions,
+    originalPositions,
+    'disabling Z Break must restore original height',
+  );
+  assert.deepEqual(restored.normals, originalNormals);
+  geometry.dispose();
 });
 
 test('invalid Z Break bounds fail closed', () => {
