@@ -77,7 +77,10 @@ import { buildRenderSurfacePlanAsync } from './renderer-surface-plan-async.js';
 import { appendSidewallTriangle } from './renderer-sidewall-triangle.js';
 import { clipBorderPositions } from './renderer-border-position-clip.js';
 import { continuousStructuralBorderPositions } from './continuous-structural-borders.js';
-import { clipContinuousDisplayZBreak } from './continuous-display-z-break.js';
+import {
+  clipContinuousDisplayZBreak,
+  detachContinuousDisplayBuffers,
+} from './continuous-display-z-break.js';
 import {
   buildContinuousZBreakCaps,
   buildContinuousPlanarZBreakCaps,
@@ -3674,7 +3677,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
         .filter(Boolean);
       for (const part of buildContinuousRectMeshCaps(THREE, clippedParts, roiBounds)) {
         const exterior = { kind: 'material-exterior', layerId: part.layerId };
-        const displayed = clipContinuousDisplayZBreak(part, currentZDisplay);
+        const displayed = detachContinuousDisplayBuffers(
+          clipContinuousDisplayZBreak(part, currentZDisplay),
+          part,
+        );
         if (!displayed.triangles) continue;
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute('position', new THREE.BufferAttribute(displayed.positions, 3));
@@ -3714,7 +3720,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
         const source = mesh.userData?.continuousFullPart;
         if (!source || mesh.userData.continuousMeshCropSignature === signature) continue;
         const roiCropped = clipContinuousSurfaceToRect(source, roiBounds);
-        const cropped = clipContinuousDisplayZBreak(roiCropped, currentZDisplay);
+        const cropped = detachContinuousDisplayBuffers(
+          clipContinuousDisplayZBreak(roiCropped, currentZDisplay),
+          roiCropped,
+        );
         discardContinuousBorder(mesh);
         mesh.userData.continuousRoiSourcePart = roiCropped;
         const geometry = new THREE.BufferGeometry();
