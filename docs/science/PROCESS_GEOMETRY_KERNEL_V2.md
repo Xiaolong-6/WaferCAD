@@ -109,7 +109,14 @@ on the integer clipping lattice, halo repair also examines the original
 floating-point intersection. **Only** a witnessed numerical seam may enter
 the existing noding and coverage-preserving owner partition; the repaired
 model still must pass the unchanged schema and source-support checks. Genuine
-non-grid-width overlap is rejected transactionally.
+non-grid-width overlap is rejected transactionally. The independent project
+validator may disregard a positive floating-Boolean overlap **only** when a
+separate exact-integer contour proof demonstrates zero shared material interior.
+Coordinates must exactly round-trip through the internal 1e-7 µm clipping
+lattice; near-grid coordinates are not snapped for this proof. The proof handles
+simple rings and at most one strictly contained, non-touching hole per polygon.
+Malformed, multi-hole, or ambiguous contours retain ordinary strict validation;
+no material contact threshold or physical geometry is relaxed.
 
 Material operations deduplicate equal unannotated array templates by exact
 physical geometry and stack metadata. Comparison may ignore local region IDs,
