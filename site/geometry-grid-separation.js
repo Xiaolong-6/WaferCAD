@@ -10,8 +10,13 @@ const lattice = (geometry) => {
     const ring = [];
     for (const [x, y] of polygon[0]) {
       const raw = [x * GRID, y * GRID];
+      // A near-grid coordinate is not a grid coordinate: rounding it could
+      // conceal a positive-area contact that the general validator must reject.
+      // Only accept values that round-trip exactly through the material grid.
       if (
-        raw.some((v) => !Number.isSafeInteger(Math.round(v)) || Math.abs(v - Math.round(v)) > 1e-6)
+        raw.some(
+          (v, i) => !Number.isSafeInteger(Math.round(v)) || [x, y][i] !== Math.round(v) / GRID,
+        )
       )
         return null;
       ring.push(raw.map((v) => BigInt(Math.round(v))));
