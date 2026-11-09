@@ -4,20 +4,20 @@
   "scope": "draft",
   "status": "pass",
   "source": {
-    "digest": "b448107b5fe78dfcf533f5628a8c99a84f7e3ec0eac800fd2714ca0129d8e4d7",
-    "fileCount": 1380
+    "digest": "80ffcb71d81b3ee44d608e32d145af378fedaf77a488e46681e83cc4aec9224b",
+    "fileCount": 1388
   },
   "sourceRevision": "ed979180e5decfb238e0eaed2033ab7f8f3b685a",
   "planDigest": "a45061373e4a9c9e6f414d7b3b2e48cab7e2bd0feb4378633d0ff24a1a396899",
   "environment": {
-    "node": "v22.16.0",
+    "node": "v24.22.1",
     "platform": "linux",
     "dependencies": {
       "eslint": "10.11.0",
       "prettier": "3.9.9"
     }
   },
-  "startedAt": "2026-11-07T07:03:15.845Z",
+  "startedAt": "2026-11-09T08:28:52.536Z",
   "checks": [
     {
       "id": "lint",
@@ -29,8 +29,8 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 8300,
-      "logDigest": "7e083cff9d323606d09accd3389828279cc52091b6c62b45c8100c1ced589c7c"
+      "durationMs": 17631,
+      "logDigest": "d46391803643bd553cf3c7de1bbada8ee5dd156a742fdb8a9656b12d4c141ba7"
     },
     {
       "id": "format",
@@ -42,8 +42,8 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 21880,
-      "logDigest": "1230617af071df8c1efeb12bcd6d41c3aa159e1cd0841cc546fbae4c8c56f867"
+      "durationMs": 44562,
+      "logDigest": "7af202ff04a2f06f11b43384352ea678f21e2248c50db67cb4d00c4a92fa69a7"
     },
     {
       "id": "docs",
@@ -55,8 +55,8 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 526,
-      "logDigest": "30136a7c12e61da2a9dc79cfdc1a3d7dffda9953ea972062979cd31da6235866"
+      "durationMs": 1314,
+      "logDigest": "2d685de943ea266249d08740cf4de186c02d496e25281c42acc0dd9f69dc8238"
     },
     {
       "id": "node",
@@ -72,10 +72,10 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 2072,
-      "logDigest": "64dd7cdf693b2cb909937768d93e2a06ad46e424e96dd5538020a26fd732d80e"
+      "durationMs": 5355,
+      "logDigest": "b7a4e317ba4f77b6660ae3803ddacf642bff3972192a27a9418711f5208868a5"
     }
   ],
-  "finishedAt": "2026-11-07T07:03:48.624Z",
-  "transcriptDigest": "fb9ac64647851fd388715d9d8a8bf85ac2bb8d60f24344d33e1d5558b887268a"
+  "finishedAt": "2026-11-09T08:30:01.401Z",
+  "transcriptDigest": "c461b99f92e4466a115365f504c47689eac9e99bcffd2844c53258bcd5653ca3"
 }

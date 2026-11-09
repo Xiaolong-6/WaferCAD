@@ -623,7 +623,16 @@ function cachedGeometryArea(left, right, geometryCache, kind, operation, radialP
       kind === 'intersections'
         ? intersectionCandidates(left, right, geometryCache, radialProof)
         : [left, right];
-    const area = candidates ? multiArea(operation(...candidates)) : 0;
+    let area = 0;
+    if (candidates) {
+      try {
+        area = multiArea(operation(...candidates));
+      } catch (error) {
+        // A floating sweep can fail to close a ring even when two exact-grid
+        // contours only touch. Keep the error unless separation is proven.
+        if (kind !== 'intersections' || !provablyDisjointGridGeometry(...candidates)) throw error;
+      }
+    }
     results.set(right, area);
     if (kind === 'intersections') {
       let reverse = cache.get(right);

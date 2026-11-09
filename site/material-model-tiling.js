@@ -37,6 +37,23 @@ function exactMaterialLatticeCoordinate(value) {
     : value;
 }
 
+// Translate lattice coordinates in integer space so subtracting the tile
+// origin cannot move a clipped vertex off-grid by floating-point roundoff.
+// Refined clips can contain genuinely finer coordinates; preserve those.
+function localMaterialCoordinate(value, origin) {
+  const grid = 10000000;
+  const point = Math.round(value * grid);
+  const center = Math.round(origin * grid);
+  const local = point - center;
+  return Number.isSafeInteger(point) &&
+    Number.isSafeInteger(center) &&
+    Number.isSafeInteger(local) &&
+    value === point / grid &&
+    origin === center / grid
+    ? local / grid
+    : value - origin;
+}
+
 function canonicalGeometry(geometry) {
   const ring = (input) => {
     const open = input.slice(0, -1);
@@ -103,7 +120,16 @@ export function tileMaterialModel(model, { cellSizeUm = 120 } = {}) {
           ? [
               {
                 ...r,
-                geom: canonicalGeometry(translateGeometry(clipped, -x, -y)),
+                geom: canonicalGeometry(
+                  clipped.map((polygon) =>
+                    polygon.map((ring) =>
+                      ring.map(([px, py]) => [
+                        localMaterialCoordinate(px, x),
+                        localMaterialCoordinate(py, y),
+                      ]),
+                    ),
+                  ),
+                ),
                 stack: structuredClone(r.stack),
               },
             ]

@@ -38,7 +38,19 @@ function modelWithPair(first, second) {
 
 test('original dense halo grazing-grid contacts are not fabricated as overlapping material', () => {
   assert.match(fixture.source, /Transmon dense halo/);
-  for (const { first, second } of fixture.pairs) {
+  for (const pair of fixture.pairs) {
+    // The historical capture includes roundoff from translating the tile.
+    // Keep those bytes as evidence and construct the intended grid fixture
+    // here. Production validation must still decline off-grid coordinates.
+    const exactGrid = (geom) =>
+      geom.map((polygon) =>
+        polygon.map((ring) =>
+          ring.map((point) => point.map((value) => Math.round(value * 10000000) / 10000000)),
+        ),
+      );
+    const [first, second] = [exactGrid(pair.first), exactGrid(pair.second)];
+    if (JSON.stringify([first, second]) !== JSON.stringify([pair.first, pair.second]))
+      assert.equal(provablyDisjointGridGeometry(pair.first, pair.second), false);
     // Independent exact contour proof must rule out only area overlap. The
     // general floating-point Boolean can manufacture an impossible positive
     // region from these legitimate near-collinear material boundaries.

@@ -118,6 +118,15 @@ simple rings and at most one strictly contained, non-touching hole per polygon.
 Malformed, multi-hole, or ambiguous contours retain ordinary strict validation;
 no material contact threshold or physical geometry is relaxed.
 
+Native retile translates exact clipping-lattice vertices in integer space so
+the local origin does not introduce off-grid roundoff. If floating owner union
+reports holes, full tile coverage is accepted only when material subtraction
+against the original exact-grid owners clears the entire reported gap.
+Unresolved holes remain in the coverage used by the halo checks. A final repair
+of a witnessed numerical owner overlap uses the fine clipping lattice to avoid
+reintroducing that overlap on the ordinary 0.1 nm noding grid. The original
+source-support and schema checks still gate the resulting partition.
+
 Material operations deduplicate equal unannotated array templates by exact
 physical geometry and stack metadata. Comparison may ignore local region IDs,
 local allocation counters, ring ordering and exactly collinear grid nodes;

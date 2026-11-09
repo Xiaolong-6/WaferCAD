@@ -27,6 +27,38 @@ test('dense Al6 owner coverage preserves the full source footprint when tile edg
   );
 });
 
+test('dense Al5 source coverage excludes floating-union holes but keeps actual voids', async () => {
+  // Tiles 4-5 and 3-5 of the 4 µm retile of the dense-halo fixture cropped
+  // around (-20, 25) µm. Sequential subtraction fails for the second tile.
+  const { models } = JSON.parse(
+    gunzipSync(
+      await readFile(
+        new URL(
+          '../../tests/fixtures/transmon-material-false-coverage-holes.json.gz',
+          import.meta.url,
+        ),
+      ),
+    ),
+  );
+  const { materialOwnerCoverage } = await import('../material-process-partition.js');
+  const { difference, materialGeometryArea, unionGeometries } =
+    await import('../material-process-boolean.js');
+  for (const model of models) {
+    validateProcessModel(model);
+    const floatUnion = unionGeometries(model.regions.map(({ geom }) => geom));
+    assert.ok(materialGeometryArea(difference(model.boundary, floatUnion)) > 5e-5);
+    assert.deepEqual(materialOwnerCoverage(model), model.boundary);
+  }
+
+  const [model] = models;
+  const omitted = model.regions.findIndex(({ geom }) => materialGeometryArea(geom) > 0.001);
+  assert.ok(omitted >= 0);
+  const partial = { ...model, regions: model.regions.filter((_, i) => i !== omitted) };
+  validateProcessModel(partial);
+  const retained = materialOwnerCoverage(partial);
+  assert.ok(materialGeometryArea(difference(model.regions[omitted].geom, retained)) > 0.001);
+});
+
 test('halo repair reconciles a sub-lattice overlap missed by material integer clipping', async () => {
   const { repairMaterialHaloPartition } = await import('../material-process-partition.js');
   const { intersection, difference, materialGeometryArea } =
@@ -83,6 +115,27 @@ test('halo repair reconciles a sub-lattice overlap missed by material integer cl
   const unchanged = structuredClone(real);
   assert.throws(() => repairMaterialHaloPartition(real, () => real.boundary), /geom overlaps/);
   assert.deepEqual(real, unchanged, 'failed repair remains transactional');
+});
+
+test('4 µm Al6 halo removes the residual overlap on the fine grid', async () => {
+  const { context, sourceCoverage } = JSON.parse(
+    gunzipSync(
+      await readFile(
+        new URL(
+          '../../tests/fixtures/transmon-material-4um-halo-residual.json.gz',
+          import.meta.url,
+        ),
+      ),
+    ),
+  );
+  const { repairMaterialHaloPartition } = await import('../material-process-partition.js');
+  // A second coarse-grid pass recreated a 1.05e-12 µm² overlap after
+  // the coverage check passed. A successful repair still validates every
+  // owner against the original support and the unmodified project schema.
+  assert.equal(
+    repairMaterialHaloPartition(context, () => sourceCoverage),
+    true,
+  );
 });
 
 test('a dense Al6 halo repairs only its numerical seam and preserves the source support', async () => {
@@ -205,8 +258,9 @@ test('a real chip2 halo keeps exact material sets while sharing collinear source
   const { difference, materialGeometryArea } = await import('../material-process-boolean.js');
   const model = fixture.model,
     before = structuredClone(model.regions);
-  assert.throws(() => validateProcessModel(model), /overlaps/);
+  const pointCount = (regions) => regions.reduce((sum, { geom }) => sum + geom.flat(2).length, 0);
   model.regions = synchronizeMaterialPartition(model.regions);
+  assert.ok(pointCount(model.regions) > pointCount(before), 'noding inserts shared vertices');
   validateProcessModel(model);
   for (const region of before) {
     const after = model.regions.find((r) => r.id === region.id);

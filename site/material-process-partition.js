@@ -13,17 +13,42 @@ import { synchronizeMaterialPartition } from './material-process-noding.js';
 import { validateProcessModel } from './project-schema.js';
 import { unionMaterialTiles } from './material-tile-union.js';
 
+const MATERIAL_GRID = 10000000;
+
+function onMaterialGrid(geometry) {
+  return geometry.every((polygon) =>
+    polygon.every((ring) =>
+      ring.every((point) =>
+        point.every((value) => {
+          const integer = Math.round(value * MATERIAL_GRID);
+          return Number.isSafeInteger(integer) && value === integer / MATERIAL_GRID;
+        }),
+      ),
+    ),
+  );
+}
+
 export function materialOwnerCoverage(model) {
   const geometries = model.regions.map((region) => region.geom);
-  const shared = unionMaterialTiles(geometries, { gridScale: 10000000 });
+  const shared = unionMaterialTiles(geometries, { gridScale: MATERIAL_GRID });
   if (shared) return shared;
   // Validated owners can have tiny nonmatching seam nodes. Use the ordinary
   // polygon union before the integer fallback for dense disjoint partitions.
   const coverage = unionGeometries(geometries);
   const { boundary } = model;
-  return difference(boundary, coverage).length || difference(coverage, boundary).length
-    ? coverage
-    : boundary;
+  if (difference(coverage, boundary).length) return coverage;
+  if (!difference(boundary, coverage).length) return boundary;
+
+  // A floating union can invent holes between grazing contours. Ask the
+  // material Boolean to subtract the original owners in one operation,
+  // without using those inferred holes or rounding any off-grid input.
+  if (
+    onMaterialGrid(boundary) &&
+    geometries.every(onMaterialGrid) &&
+    !difference(boundary, geometries.flat()).length
+  )
+    return boundary;
+  return coverage;
 }
 
 function hasNumericalOwnerOverlap(regions, error, numerical) {
@@ -61,8 +86,8 @@ export function repairMaterialHaloPartition(model, sourceCoverage) {
 // Same grid-width seam witness and overlap budget as ordinary fixed Direct.
 // Integer clipping prevents a floating-point retry from independently rounding
 // the two owners and then manufacturing another seam while repairing one.
-function partition(model, inputCoverage, api, tolerance, numerical) {
-  const regions = synchronizeMaterialPartition(model.regions)
+function partition(model, inputCoverage, api, numerical, gridScale) {
+  const regions = synchronizeMaterialPartition(model.regions, { gridScale })
     .map((r) => ({ ...r, geom: unionGeometries([r.geom]) }))
     .filter((r) => r.geom.length);
   regions.sort(
@@ -133,7 +158,13 @@ export function partitionMaterialProcess(
   const tolerance = Math.max(2e-8, model.width * model.height * 1e-15);
   function reconcile(input, areaApi, allowSupportRepair, allowOverlapRepair) {
     const numerical = (geom) => areaApi.geometryArea(geom) <= tolerance || isMaterialGridSeam(geom);
-    const { owners, missing } = partition(input, inputCoverage, areaApi, tolerance, numerical);
+    const { owners, missing } = partition(
+      input,
+      inputCoverage,
+      areaApi,
+      numerical,
+      allowOverlapRepair ? undefined : MATERIAL_GRID,
+    );
     if (missing.length && areaApi.geometryArea(missing) > tolerance) {
       // Re-node a witnessed seam before discarding zero-area boundary traces.
       // Translation-stable area keeps narrow rings and contact ranking intact.
@@ -160,7 +191,8 @@ export function partitionMaterialProcess(
     } catch (error) {
       if (!allowOverlapRepair || !hasNumericalOwnerOverlap(regions, error, numerical)) throw error;
       // Rounded seam unions can leave a numerical overlap along an adjacent
-      // diagonal. Repeat with the same coverage and strict geometry checks.
+      // diagonal. Repeat on the fine clipping grid so the coarser noding cannot
+      // reintroduce the same positive-area overlap.
       return reconcile(candidate, areaApi, false, false);
     }
     return regions;

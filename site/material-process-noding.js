@@ -198,16 +198,16 @@ export function nodeMaterialProcessInputs(geometries, { sourceCount = 0, gridSca
 
 // A crop creates fine-lattice intersection points on both material owners.
 // Persist those owners on one shared arrangement, not independent polylines.
-export function synchronizeMaterialPartition(regions) {
+export function synchronizeMaterialPartition(regions, { gridScale = 10000 } = {}) {
   const geoms = nodeMaterialProcessInputs(
     regions.map((r) => r.geom),
-    { sourceCount: regions.length },
+    { sourceCount: regions.length, gridScale },
   );
   const hasArea = (ring) => {
     let sum = 0n;
     for (let i = 1; i < ring.length; i++) {
-      const a = ring[i - 1].map((x) => BigInt(Math.round(x * 10000))),
-        b = ring[i].map((x) => BigInt(Math.round(x * 10000)));
+      const a = ring[i - 1].map((x) => BigInt(Math.round(x * gridScale))),
+        b = ring[i].map((x) => BigInt(Math.round(x * gridScale)));
       sum += a[0] * b[1] - b[0] * a[1];
     }
     return sum !== 0n;
