@@ -1,4 +1,5 @@
 import { simplifyDisplayPolygons } from './renderer-line-reduction.js';
+import { buildCoarseCoveragePreview } from './renderer-coarse-overview.js';
 
 // Display-only first-frame sketch. It MUST NOT be used as an owned surface plan,
 // canonical geometry, collision/query input, or export geometry. In particular,
@@ -28,7 +29,7 @@ export function buildProgressiveSurfacePreview(model, clip = null) {
     if (!stack.length) continue;
     const polys = region.geom;
     if (!Array.isArray(polys) || !polys.length) continue;
-    if (caps.length + 2 > MAX_PREVIEW_CAPS) return null;
+    if (caps.length + 2 > MAX_PREVIEW_CAPS) return buildCoarseCoveragePreview(model);
     // Each region is already an independently validated polygon. Select only
     // its outermost visible faces; exact interface ownership comes later.
     const bottom = stack[0];
@@ -40,7 +41,7 @@ export function buildProgressiveSurfacePreview(model, clip = null) {
       for (const ring of poly) {
         if (!Array.isArray(ring) || ring.length < 4) return null;
         pointCount += ring.length;
-        if (pointCount > MAX_PREVIEW_POINTS) return null;
+        if (pointCount > MAX_PREVIEW_POINTS) return buildCoarseCoveragePreview(model);
         for (const point of ring) {
           if (!Array.isArray(point) || !Number.isFinite(point[0]) || !Number.isFinite(point[1]))
             return null;
@@ -56,7 +57,7 @@ export function buildProgressiveSurfacePreview(model, clip = null) {
         for (let i = 1; i < ring.length; i++) {
           const a = ring[i - 1],
             b = ring[i];
-          if (lineCount >= MAX_PREVIEW_LINES) return null;
+          if (lineCount >= MAX_PREVIEW_LINES) return buildCoarseCoveragePreview(model);
           let offset = lineCount++ * 6;
           borderPositions[offset] = a[0];
           borderPositions[offset + 1] = a[1];
@@ -67,7 +68,7 @@ export function buildProgressiveSurfacePreview(model, clip = null) {
           // The vertical strokes communicate height but are not Boolean-owned
           // exterior walls. Use each polygon vertex once, not a sidewall mesh.
           if (top.z1 !== bottom.z0 && (i - 1) % verticalStride === 0) {
-            if (lineCount >= MAX_PREVIEW_LINES) return null;
+            if (lineCount >= MAX_PREVIEW_LINES) return buildCoarseCoveragePreview(model);
             offset = lineCount++ * 6;
             borderPositions[offset] = a[0];
             borderPositions[offset + 1] = a[1];

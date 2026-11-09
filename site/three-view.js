@@ -20,6 +20,7 @@ import {
   internalRevealFraction,
 } from './three-internal-visibility.js';
 import { disposeRendererSceneResources } from './renderer-v4-resource-lifetime.js';
+import { shouldDeferDenseBorderBuffers } from './renderer-deferred-borders.js';
 import {
   assertExactThreePngReady,
   runTemporaryRendererCapture,
@@ -31,6 +32,11 @@ import {
   borderPresentationState,
 } from './border-inspector.js';
 import { shouldYieldDuringSceneAssembly } from './renderer-cooperative-assembly.js';
+import {
+  createDenseSidewallMotionLod,
+  shouldUseDenseInteractionSinglePass,
+} from './renderer-interaction-pass.js';
+import { chunkOpaquePlanarCaps } from './renderer-opaque-cap-chunks.js';
 import { progressivePreviewFacingNormal } from './renderer-progressive-preview.js';
 import { buildContinuousMaterialSurfaceMesh } from './continuous-etch-mesh.js';
 import { buildContinuousSiHeightfieldMeshAsync } from './continuous-heightfield-mesh-async.js';
@@ -237,6 +243,33 @@ export function createThreeView({
   let lastTransparencySort = -Infinity;
   let transparencyOrderDirty = true;
   let presentationObjects = new Set();
+  const denseSidewallMotion = createDenseSidewallMotionLod();
+  let denseWheelActive = false;
+  let denseWheelTimer = null;
+  function restoreDenseSidewalls() {
+    denseSidewallMotion.restore(
+      (object) => presentationState(object.userData?.waferCadPresentation, getInspection()).visible,
+    );
+    host.dataset.rendererMotionLod = 'exact';
+  }
+  function updateDenseSidewalls(targetRenderer = renderer) {
+    const approximate =
+      targetRenderer === renderer &&
+      (interacting || denseWheelActive) &&
+      !getClipGeometry() &&
+      !roughTasks.length &&
+      !getInspection()?.borders &&
+      getInspection()?.fast !== false &&
+      (physicalSurfacePlan?.sidewalls?.length || 0) >= 100000;
+    const count = denseSidewallMotion.update({
+      enabled: approximate,
+      objects: presentationObjects,
+      resolveVisibility: (object) =>
+        presentationState(object.userData?.waferCadPresentation, getInspection()).visible,
+    });
+    host.dataset.rendererMotionLod = count ? 'temporary-caps-only' : 'exact';
+    host.dataset.rendererMotionHiddenMeshes = String(count);
+  }
   // Focus is view-only: neutralize other materials without touching visibility,
   // opacity, depth ownership, geometry or persistent layer colors.
   let highlightedLayerId = null;
@@ -968,8 +1001,24 @@ export function createThreeView({
   }
 
   function renderInspectionFrame(targetRenderer = renderer) {
+    updateDenseSidewalls(targetRenderer);
     updateOriginVisibility();
     updateBorderDashScale();
+    // Three full WebGL passes (color, owned depth, contours) are too expensive
+    // for pointer-rate updates on dense imported layouts. Keep all geometry and
+    // saved Border settings; restore exact depth-aware outlines on pointer-up.
+    if (
+      shouldUseDenseInteractionSinglePass({
+        model: getModel(),
+        interacting,
+        primaryRenderer: targetRenderer === renderer,
+      })
+    ) {
+      targetRenderer.render(scene, camera);
+      host.dataset.outlineVisibility = 'interaction-single-pass';
+      host.dataset.outlineDepthMeshCount = '0';
+      return;
+    }
     const occluders = [],
       outlines = [];
     scene.traverseVisible((object) => {
@@ -1080,6 +1129,10 @@ export function createThreeView({
   }
 
   function disposeGroup() {
+    restoreDenseSidewalls();
+    if (denseWheelTimer !== null) clearTimeout(denseWheelTimer);
+    denseWheelTimer = null;
+    denseWheelActive = false;
     if (!group) return;
     activeProgressiveCapGroup = null;
     clearRoughRefineTimer();
@@ -2315,6 +2368,23 @@ diffuseColor.a *= waferCadAlphaScale;`,
     return edges;
   }
 
+  function ensureDeferredDenseBorders() {
+    if (!group?.userData.waferCadExteriorBorderDeferred || !getInspection()?.borders) return false;
+    const plan = group.userData.waferCadSurfacePlan;
+    if (!plan) return false;
+    addBorderPositions(displayBorderPositions(plan.borderLines.flat(2)), {
+      order: 100000,
+      opacity: Number(getInspection()?.opacity ?? 1),
+      presentation: { kind: 'border', category: 'exterior' },
+    });
+    group.userData.waferCadExteriorBorderDeferred = false;
+    if (group.userData.waferCadHiddenContoursDeferred) {
+      rebuildInspectionContours();
+      group.userData.waferCadHiddenContoursDeferred = false;
+    }
+    return true;
+  }
+
   // Add real, owned internal outlines lazily to an already-built scene.
   // Keep per-group ownership so cached opaque/transparent variants can restore
   // their own overlays without forcing another Process surface-plan build.
@@ -3364,6 +3434,19 @@ diffuseColor.a *= waferCadAlphaScale;`,
               if (gestureMode !== null && !(gestureWheelZoom ?? gestureMode === 'zoom')) {
                 event.preventDefault();
                 event.stopImmediatePropagation();
+              } else if (
+                (physicalSurfacePlan?.sidewalls?.length || 0) >= 100000 &&
+                !getInspection()?.borders &&
+                getInspection()?.fast !== false &&
+                !getClipGeometry()
+              ) {
+                denseWheelActive = true;
+                if (denseWheelTimer !== null) clearTimeout(denseWheelTimer);
+                denseWheelTimer = setTimeout(() => {
+                  denseWheelActive = false;
+                  denseWheelTimer = null;
+                  scheduleFrame();
+                }, 170);
               }
             },
             { capture: true, passive: false },
@@ -4125,7 +4208,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
       // Refining remains interactive without falsely satisfying those gates.
       host.dataset.renderState = 'refining';
       host.dataset.rendererProgressiveBuildMs = String(performance.now() - startedAt);
-      stats.textContent = '3D preview — refining exact solids…';
+      stats.textContent =
+        preview.approximation === 'coverage-grid'
+          ? '3D coarse coverage preview — refining exact solids…'
+          : '3D preview — refining exact solids…';
+      host.dataset.rendererPreviewApproximation = preview.approximation || 'contours';
       scheduleFrame();
     } catch (error) {
       disposeGroup();
@@ -4252,6 +4339,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         host.dataset.rendererUpdateKind = 'presentation';
         stats.textContent = 'updating 3D…';
         syncRenderPolicy();
+        ensureDeferredDenseBorders();
         ensureInternalBorderContours();
         applyPresentationState();
         return;
@@ -4263,6 +4351,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         host.dataset.renderState = 'updating';
         stats.textContent = 'updating 3D…';
         syncRenderPolicy();
+        ensureDeferredDenseBorders();
         ensureInternalBorderContours();
         applyPresentationState({ updateKind: 'variant-swap' });
         return;
@@ -4277,6 +4366,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         host.dataset.rendererUpdateKind = 'presentation';
         stats.textContent = 'updating 3D…';
         syncRenderPolicy();
+        ensureDeferredDenseBorders();
         ensureInternalBorderContours();
         applyPresentationState();
         return;
@@ -4437,6 +4527,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
           layerId: part.layerId,
           sortBias,
         }),
+        sidewallPresentationFor = (part, sortBias = 0) => ({
+          ...presentationFor(part, sortBias),
+          displayRole: 'sidewall',
+        }),
         bucketKey = (part, state) => {
           const base = `${part.layerId}\u0000${part.buried ? 'interface' : 'exterior'}`;
           if (!state?.transparent) return base;
@@ -4560,17 +4654,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
               }
 
               if (plane.instances.leftovers.length) {
-                const geometry = geometryFromSolid({
-                    slabs: [],
-                    caps: [
-                      {
-                        z: plane.z,
-                        normal: plane.normal,
-                        polys: plane.instances.leftovers,
-                      },
-                    ],
-                  }),
-                  presentation = {
+                const presentation = {
                     ...presentationFor(bucket.part, bucket.part.buried ? 10 : 0),
                     planarCap: true,
                   },
@@ -4580,31 +4664,31 @@ diffuseColor.a *= waferCadAlphaScale;`,
                     null,
                     presentation,
                   );
-                addSurfaceMesh(
-                  geometry,
-                  material,
-                  state,
-                  null,
-                  bucket.part.buried ? 10 : 0,
-                  false,
-                  null,
-                  presentation,
-                );
+                // The old whole-bucket triangulation could freeze UI for many
+                // seconds. Preserve every polygon but yield between batches.
+                for (const batch of chunkOpaquePlanarCaps([
+                  { z: plane.z, normal: plane.normal, polys: plane.instances.leftovers },
+                ])) {
+                  await maybeYieldAssembly();
+                  const geometry = geometryFromSolid({ slabs: [], caps: batch });
+                  addSurfaceMesh(
+                    geometry,
+                    material,
+                    state,
+                    null,
+                    bucket.part.buried ? 10 : 0,
+                    false,
+                    null,
+                    presentation,
+                  );
+                }
               }
             }
             continue;
           }
         }
 
-        const geometry = geometryFromSolid({
-            slabs: [],
-            caps: visibleCaps.map((part) => ({
-              z: part.z,
-              normal: part.normal,
-              polys: part.polys,
-            })),
-          }),
-          presentation = {
+        const presentation = {
             ...presentationFor(bucket.part, bucket.part.buried ? 10 : 0),
             planarCap: true,
           },
@@ -4613,17 +4697,29 @@ diffuseColor.a *= waferCadAlphaScale;`,
             state,
             null,
             presentation,
+          ),
+          planarCaps = visibleCaps.map((part) => ({
+            z: part.z,
+            normal: part.normal,
+            polys: part.polys,
+          }));
+        // Never change transparent depth ordering: only opaque large buckets
+        // are split into separate but identically owned triangle meshes.
+        const batches = state.transparent ? [planarCaps] : chunkOpaquePlanarCaps(planarCaps);
+        for (const batch of batches) {
+          await maybeYieldAssembly();
+          const geometry = geometryFromSolid({ slabs: [], caps: batch });
+          addSurfaceMesh(
+            geometry,
+            material,
+            state,
+            null,
+            bucket.part.buried ? 10 : 0,
+            false,
+            null,
+            presentation,
           );
-        addSurfaceMesh(
-          geometry,
-          material,
-          state,
-          null,
-          bucket.part.buried ? 10 : 0,
-          false,
-          null,
-          presentation,
-        );
+        }
       }
       recordVariantStage('caps-complete');
       host.dataset.smoothCapInstanceGroups = String(smoothCapInstanceGroupCount);
@@ -4648,7 +4744,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
               parts,
               sidewall.buried ? transparentArrayDisplayTolerance : 0,
             ),
-            presentation = presentationFor(sidewall),
+            presentation = sidewallPresentationFor(sidewall),
             material = createSurfaceMaterial(
               layerById(model, sidewall.layerId),
               state,
@@ -4686,7 +4782,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
             for (const groupInstances of instances.groups) {
               await maybeYieldAssembly();
               const geometry = geometryFromSidewallParts([groupInstances.template]),
-                presentation = presentationFor(bucket.part, bucket.part.buried ? 11 : 0),
+                presentation = sidewallPresentationFor(bucket.part, bucket.part.buried ? 11 : 0),
                 material = createSurfaceMaterial(
                   layerById(model, bucket.part.layerId),
                   state,
@@ -4711,7 +4807,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
             if (instances.leftovers.length) {
               const geometry = geometryFromSidewallParts(instances.leftovers),
-                presentation = presentationFor(bucket.part, bucket.part.buried ? 11 : 0),
+                presentation = sidewallPresentationFor(bucket.part, bucket.part.buried ? 11 : 0),
                 material = createSurfaceMaterial(
                   layerById(model, bucket.part.layerId),
                   state,
@@ -4737,7 +4833,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
             visibleParts,
             bucket.part.buried ? transparentArrayDisplayTolerance : 0,
           ),
-          presentation = presentationFor(bucket.part, bucket.part.buried ? 11 : 0),
+          presentation = sidewallPresentationFor(bucket.part, bucket.part.buried ? 11 : 0),
           material = createSurfaceMaterial(
             layerById(model, bucket.part.layerId),
             state,
@@ -4774,11 +4870,18 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.sceneAssemblyYields = String(sceneAssemblyYields);
       if (sceneAssemblyYields) host.dataset.renderPhase = 'assembling';
 
-      addBorderPositions(displayBorderPositions(plan.borderLines.flat(2)), {
-        order: 100000,
-        opacity,
-        presentation: { kind: 'border', category: 'exterior' },
+      const deferDenseBorders = shouldDeferDenseBorderBuffers({
+        borderLineCount: plan.borderLines.length,
+        borders,
       });
+      group.userData.waferCadExteriorBorderDeferred = deferDenseBorders;
+      if (!deferDenseBorders) {
+        addBorderPositions(displayBorderPositions(plan.borderLines.flat(2)), {
+          order: 100000,
+          opacity,
+          presentation: { kind: 'border', category: 'exterior' },
+        });
+      }
       // Internal outline geometry is a cached view overlay, not a new
       // physical scene signature or a second Process ownership calculation.
       group.userData.waferCadSurfacePlan = plan;
@@ -4799,7 +4902,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
         targetVariant === 'transparent' ||
         Number(plan.arrayInstances || 0) < 64 ||
         roughTasks.length > 0;
-      if (needsHiddenContourSuperset) {
+      group.userData.waferCadHiddenContoursDeferred =
+        needsHiddenContourSuperset && deferDenseBorders;
+      if (needsHiddenContourSuperset && !deferDenseBorders) {
         rebuildInspectionContours();
       }
 

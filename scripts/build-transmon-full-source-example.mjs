@@ -81,22 +81,58 @@ export function fullSourceLayout(parsed, choice = ROOT) {
   };
 }
 
-export async function constructSourceProject(bytes, { root = ROOT } = {}) {
+export async function constructSourceProject(bytes, { root = ROOT, maskOnly = true } = {}) {
   const sha = createHash('sha256').update(bytes).digest('hex');
   if (sha !== ORIGINAL_SHA) throw Error('Original author GDS hash mismatch');
   const parsed = parseGDS(
     bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
   );
   const layout = fullSourceLayout(parsed, root);
-  const { createModel } = await import('../site/model.js');
+  const { createModel, applyOperation } = await import('../site/model.js');
   const { validateProjectFile } = await import('../site/project-schema.js');
   const { prepareProjectForExport, expandProjectStorage } = await import('../site/project-io.js');
   const { width, height, minX, maxX } = layout.bounds;
   if (!(width > 0 && height > 0)) throw Error('Source layout has no physical extent');
   const model = createModel({ shape: 'rect', width, height, thickness: 675 });
   model.layers[0].name = 'Si (100) — original source footprint';
+  const stages = [
+    { model: structuredClone(model), label: 'Original source GDS: starting Si wafer' },
+  ];
+  const maskPolygonCount = layout.elements.filter((e) => e.layer === 2 && e.datatype === 0).length;
+  if (!maskOnly) {
+    const nb = applyOperation(model, {
+      type: 'add',
+      name: 'Nb blanket',
+      thickness: 0.2,
+      face: 'front',
+      growth: 'direct',
+      area: model.boundary,
+    });
+    assert.ok(nb.changed, 'Nb deposition failed');
+    stages.push({ model: structuredClone(model), label: '200 nm Nb blanket on Si' });
+    if (root !== ROOT) {
+      // Known source GDS 2/0 etch-mask interpretation remains explicitly provisional.
+      // Use every author polygon; no shape is replaced with a hand-drawn substitute.
+      const { unionGeometries } = await import('../site/vector-geometry.js');
+      const polygons = layout.elements.filter((e) => e.layer === 2 && e.datatype === 0);
+      const mask = unionGeometries(polygons.map((e) => [[[...e.points, e.points[0]]]]));
+      const etch = applyOperation(model, {
+        type: 'etch',
+        name: '2/0 GDS Nb/Si etch — provisional polarity',
+        etchProfile: 'directional',
+        thickness: 0.25,
+        face: 'front',
+        area: mask,
+      });
+      assert.ok(etch.changed, etch.error || 'Nb/Si etch failed');
+      stages.push({
+        model: structuredClone(model),
+        label: '250 nm directional etch — GDS 2/0 (provisional mask interpretation)',
+      });
+    }
+  }
   const stageLabel = root === ROOT ? 'four-die reticle' : 'entire ' + root;
-  const name = `Tuokkola 2025 — ${stageLabel} original-GDS source Mask audit only (not Josephson-complete)`;
+  const name = `Tuokkola 2025 — ${stageLabel} original-GDS ${maskOnly ? 'source Mask audit only' : root === ROOT ? 'mask + Nb baseline' : 'Nb/Si etched baseline'} (not Josephson-complete)`;
   const section =
     root === ROOT
       ? { a: [minX + width * 0.1, 0], b: [maxX - width * 0.1, 0] }
@@ -132,21 +168,22 @@ export async function constructSourceProject(bytes, { root = ROOT } = {}) {
     },
   };
   const createdAt = '2026-10-30T00:00:00.000Z';
-  const stepId = `original-${root}-step-0`;
-  const node = {
-    id: stepId,
+  const nodes = stages.map((step, i) => ({
+    id: `original-${root}-step-${i}`,
     branchId: 'main',
-    parentId: null,
+    parentId: i ? `original-${root}-step-${i - 1}` : null,
     createdAt,
-    processRevision: model.processRevision,
+    processRevision: step.model.processRevision,
     operation: {
       kind: 'record',
-      label: 'Original source GDS: starting Si wafer (source-backed geometry checkpoint)',
+      label: step.label + ' (source-backed geometry checkpoint)',
       geometryChanged: false,
       geometryCheckpoint: true,
     },
-    state: { ...structuredClone(state), model, layout },
-  };
+    state: { ...structuredClone(state), model: step.model, layout },
+  }));
+  const first = nodes[0].id,
+    last = nodes.at(-1).id;
   const project = {
     ...state,
     model,
@@ -155,16 +192,16 @@ export async function constructSourceProject(bytes, { root = ROOT } = {}) {
     snapshotBranches: {
       version: 3,
       activeBranchId: 'main',
-      cursorNodeId: stepId,
+      cursorNodeId: last,
       cursorSnapshotId: null,
-      nodes: [node],
+      nodes,
       branches: [
         {
           id: 'main',
           name: 'Main',
           parentBranchId: null,
-          rootNodeId: stepId,
-          headNodeId: stepId,
+          rootNodeId: first,
+          headNodeId: last,
           rootSnapshotId: null,
           headSnapshotId: null,
           createdAt,
@@ -196,8 +233,18 @@ export async function constructSourceProject(bytes, { root = ROOT } = {}) {
       bounds: layout.bounds,
       modelRegionCount: model.regions.length,
       processRevision: model.processRevision,
-      sourceMaskPolygonCount: counts.get('2/0'),
+      processCheckpoints: stages.map((x) => ({
+        label: x.label,
+        regions: x.model.regions.length,
+        revision: x.model.processRevision,
+      })),
+      processedLayers: model.layers.map((l) => l.name),
+      sourceMaskPolygonCount: maskPolygonCount,
+      materialPatterned: !maskOnly && root !== ROOT,
+      maskOnly,
       initiallySelectedMaskLayer: '2/0',
+      scientificLimitations:
+        'GDS 2/0 etch-mask polarity inferred; MMA/PMMA resist, Al shadow, lift-off, AlOx and Josephson electrical physics not modeled.',
       bytes: Buffer.byteLength(content),
     },
   };
@@ -207,13 +254,14 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const input = inputArg('--input'),
     output = inputArg('--output'),
     root = inputArg('--root') || ROOT,
-    report = inputArg('--report');
+    report = inputArg('--report'),
+    maskOnly = !process.argv.includes('--provisional-process');
   if (!input || !output)
     throw Error(
-      'Use --input original sample.gds --output project.wafercad [--root chip2|2024-04-07_EITR2_1] [--report report.json]',
+      'Use --input original sample.gds --output project.wafercad [--root chip2|2024-04-07_EITR2_1] [--provisional-process] [--report report.json]',
     );
   await loadGeometryKernel();
-  const result = await constructSourceProject(await readFile(input), { root });
+  const result = await constructSourceProject(await readFile(input), { root, maskOnly });
   await writeFile(
     output,
     output.endsWith('.gz')

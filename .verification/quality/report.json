@@ -1,24 +1,23 @@
 {
   "version": 2,
   "provenance": "developer-reported",
-  "scope": "full",
+  "scope": "draft",
   "status": "pass",
   "source": {
-    "digest": "e9e9a6a6b8eb6a6695ee3f9a7174766fc7b5989edeabc6eec6e34caa68c8922e",
-    "fileCount": 1316
+    "digest": "3b71b0826426d53fda9c965652d769917820e9719a40bee6b955ce4235f6d218",
+    "fileCount": 1392
   },
-  "sourceRevision": "3f5387c8714891be52e078a7e8537725f86533e0",
-  "planDigest": "9e40e14c41649069d23911dc155328f17e554f0307619aef8493378a2f26b4b3",
+  "sourceRevision": "d3ea3461a4840cee4337bccfd9fad5708fc905d6",
+  "planDigest": "a45061373e4a9c9e6f414d7b3b2e48cab7e2bd0feb4378633d0ff24a1a396899",
   "environment": {
     "node": "v24.22.1",
     "platform": "linux",
     "dependencies": {
       "eslint": "10.11.0",
-      "prettier": "3.9.9",
-      "three": "0.179.1"
+      "prettier": "3.9.9"
     }
   },
-  "startedAt": "2026-11-09T10:01:12.154Z",
+  "startedAt": "2026-11-09T10:37:40.690Z",
   "checks": [
     {
       "id": "lint",
@@ -30,7 +29,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 9566,
+      "durationMs": 11192,
       "logDigest": "d46391803643bd553cf3c7de1bbada8ee5dd156a742fdb8a9656b12d4c141ba7"
     },
     {
@@ -43,7 +42,7 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 29729,
+      "durationMs": 30771,
       "logDigest": "7af202ff04a2f06f11b43384352ea678f21e2248c50db67cb4d00c4a92fa69a7"
     },
     {
@@ -56,22 +55,27 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 906,
-      "logDigest": "5de01bcbbc20fb8f13479a4ace334725d00aca6d8db68fa5312ac65153d49b57"
+      "durationMs": 900,
+      "logDigest": "b60789ef07846c538af7d8d461c971cd7e6d0b872ed0abd43cdfc531de124765"
     },
     {
       "id": "node",
-      "command": "npm",
+      "command": "node",
       "args": [
-        "test"
+        "--test",
+        "site/tests/ci-test-plan.test.mjs",
+        "site/tests/ci-development-gates.test.mjs",
+        "site/tests/ci-workflow-architecture.test.mjs",
+        "site/tests/local-verification.test.mjs",
+        "site/tests/documentation-suite.test.mjs"
       ],
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 253475,
-      "logDigest": "c41106c134e63b6965f8388053890f47477f4b6bdc5d60aeb32e0c20a0d89410"
+      "durationMs": 3889,
+      "logDigest": "a34ec968289a5f8ee56cb51116578cf77b1f68f9ee8912e03b4b8488eabc977a"
     }
   ],
-  "finishedAt": "2026-11-09T10:06:05.833Z",
-  "transcriptDigest": "f7171b4cf1f8df5750ba27880c6cbf48d7b3703aaacf211094ca0ef60733c284"
+  "finishedAt": "2026-11-09T10:38:27.443Z",
+  "transcriptDigest": "ee0d12d2d78b455f541926b220bc79b5caee48927ec501596f0ac1e54c33c775"
 }

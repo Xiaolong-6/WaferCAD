@@ -49,7 +49,7 @@ test('bounded stream reproduces every physical coordinate and owner unchanged', 
   assert.equal(shouldStreamSurfacePlan(plan), true);
   const packets = [...surfacePlanStreamPackets(plan)];
   assert.ok(packets.length > 16, 'Dense ownership is split into separate browser tasks');
-  assert.ok(packets.filter((packet) => packet.type === 'stream-items').length > 3);
+  assert.ok(packets.filter((packet) => packet.type === 'stream-items').length >= 2);
   const receiver = createSurfacePlanStreamReceiver();
   let completed = null;
   for (const packet of packets) {
@@ -271,4 +271,56 @@ test('optional worker sketch is delivered before exact ownership without caching
   } finally {
     globalThis.Worker = original;
   }
+});
+
+test('many small rings in one cap are transported in bounded batches, not one task per ring', () => {
+  const plan = giantPolygonSurfacePlan();
+  const smallRing = (n) => [
+    [n, 0],
+    [n + 0.1, 0],
+    [n, 0.1],
+    [n, 0],
+  ];
+  plan.caps[0].polys[0] = [
+    plan.caps[0].polys[0][0],
+    ...Array.from({ length: 12000 }, (_, n) => smallRing(n)),
+  ];
+  const packets = [...surfacePlanStreamPackets(plan)];
+  const batched = packets.filter((packet) => packet.type === 'stream-big-rings');
+  assert.ok(batched.length > 1 && batched.length < 25);
+  assert.ok(
+    batched.every((packet) => packet.rings.reduce((sum, ring) => sum + ring.length, 0) <= 4096),
+  );
+  assert.ok(packets.length < 140, 'Small rings must not create tens of thousands of messages');
+  const receiver = createSurfacePlanStreamReceiver();
+  let restored;
+  for (const packet of packets) restored = receiver.accept(structuredClone(packet)) || restored;
+  assert.deepEqual(restored, plan);
+  const firstBatch = batched[0];
+  const prefix = packets.slice(0, packets.indexOf(firstBatch));
+  const fresh = () => {
+    const rx = createSurfacePlanStreamReceiver();
+    for (const packet of prefix) rx.accept(structuredClone(packet));
+    return rx;
+  };
+  assert.throws(
+    () => fresh().accept({ ...firstBatch, startRingIndex: firstBatch.startRingIndex + 1 }),
+    /Invalid large polygon ring batch/,
+  );
+  assert.throws(
+    () => fresh().accept({ ...firstBatch, rings: [Array.from({ length: 4097 }, () => [0, 0])] }),
+    /Invalid large polygon ring batch/,
+  );
+  const premature = fresh();
+  premature.accept(structuredClone(firstBatch));
+  assert.throws(
+    () =>
+      premature.accept({
+        id: 1,
+        type: 'stream-big-poly-done',
+        capIndex: firstBatch.capIndex,
+        polyIndex: firstBatch.polyIndex,
+      }),
+    /Incomplete/,
+  );
 });

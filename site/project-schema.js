@@ -8,6 +8,7 @@ import {
   geometryPointCount,
 } from './model-array.js';
 import { robustDifference, robustIntersection } from './polygon-boolean.js';
+import { provablyDisjointGridGeometry } from './geometry-grid-separation.js';
 import { normalizeProcessRecipe } from './process-recipe.js';
 import {
   CONTINUOUS_ETCH_MODEL_KERNEL,
@@ -622,7 +623,16 @@ function cachedGeometryArea(left, right, geometryCache, kind, operation, radialP
       kind === 'intersections'
         ? intersectionCandidates(left, right, geometryCache, radialProof)
         : [left, right];
-    const area = candidates ? multiArea(operation(...candidates)) : 0;
+    let area = 0;
+    if (candidates) {
+      try {
+        area = multiArea(operation(...candidates));
+      } catch (error) {
+        // A floating sweep can fail to close a ring even when two exact-grid
+        // contours only touch. Keep the error unless separation is proven.
+        if (kind !== 'intersections' || !provablyDisjointGridGeometry(...candidates)) throw error;
+      }
+    }
     results.set(right, area);
     if (kind === 'intersections') {
       let reverse = cache.get(right);
@@ -698,7 +708,10 @@ function validateModelGeometry(model, cache) {
           robustIntersection,
           radialProof,
         );
-        if (overlapArea > areaTolerance) {
+        if (
+          overlapArea > areaTolerance &&
+          !provablyDisjointGridGeometry(previous.region.geom, current.region.geom)
+        ) {
           fail(
             `model.regions[${current.index}].geom`,
             `overlaps model.regions[${previous.index}].geom.`,

@@ -155,6 +155,16 @@ export function validateRecipeExecution(
         `${prefix}: lift-off sacrificial layer "${params.sacrificial}" does not exist in the starting model or preceding Steps.`,
       );
     }
+    if (
+      step.command === 'deposit' &&
+      params.surfaceMaterial &&
+      !materials.has(params.surfaceMaterial)
+    )
+      errors.push(`${prefix}: surface material "${params.surfaceMaterial}" does not exist.`);
+    if (step.command === 'liftoff')
+      for (const material of params.additionalSacrificial || [])
+        if (!materials.has(material))
+          errors.push(`${prefix}: sacrificial material "${material}" does not exist.`);
     if (step.command === 'deposit') materials.add(params.material);
     if (['snapshot', 'record'].includes(step.command) || !['mask', 'invert'].includes(params.area))
       continue;
