@@ -18,6 +18,10 @@ import {
 } from './material-process-partition.js';
 import { nodeMaterialProcessInputs } from './material-process-noding.js';
 import { unionMaterialTiles } from './material-tile-union.js';
+import {
+  analyzeMaterialContacts,
+  retainedMaterialContactRegions,
+} from './material-contact-graph.js';
 
 const EPS = 1e-8;
 // Revalidate wall polygons after shared-grid noding. Each retained fragment
@@ -385,6 +389,7 @@ export function applyMaterialDirect(model, params, area, api, traceHorizontalCap
       }
     }
   if (!patches.length) return { changed: false, error: 'No ray-visible material surface.' };
+  const hasWallPatches = patches.some((patch) => patch.receiver);
   const candidate = structuredClone(model);
   const noded = nodeMaterialProcessInputs(
     [...candidate.regions.map((r) => r.geom), ...patches.map((p) => p.geom)],
@@ -403,6 +408,22 @@ export function applyMaterialDirect(model, params, area, api, traceHorizontalCap
   candidate.regions = insert(candidate, patches, layer.id, api);
   const coverage = originalCoverage ?? uniteSource(model.regions.map((r) => r.geom));
   candidate.regions = partitionMaterialProcess(candidate, coverage, api);
+  if (hasWallPatches) {
+    // Boolean insertion and owner reconciliation can split a visible wall strip.
+    // Classify the final solids against pre-existing material in this halo.
+    const analysis = analyzeMaterialContacts(candidate, {
+      isDeposit: (id) => id === layer.id,
+      supportFlags: () => 1,
+      operation: 'Material Direct',
+    });
+    const detached = new Set(
+      [...analysis.components].filter(([, component]) => !component.flags).map(([id]) => id),
+    );
+    if (detached.size === analysis.components.size)
+      return { changed: false, error: 'No ray-visible material surface.' };
+    if (detached.size)
+      candidate.regions = retainedMaterialContactRegions(candidate, analysis, detached, api);
+  }
   candidate.revision++;
   candidate.processRevision = (candidate.processRevision || 0) + 1;
   Object.assign(destination, candidate);

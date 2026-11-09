@@ -689,6 +689,41 @@ test('sidewall receiving support requires a finite shared edge, not a corner tan
   );
 });
 
+test('original Q2 Al3 wall film stays anchored after Boolean insertion and owner partition', async () => {
+  const job = JSON.parse(
+    gunzipSync(
+      readFileSync(
+        new URL('../../tests/fixtures/transmon-q2-al3-support-workset.json.gz', import.meta.url),
+      ),
+    ),
+  );
+  const model = JSON.parse(job.entry.key.slice(0, job.entry.key.lastIndexOf('|')));
+  const before = model.layers.map(({ id, name }) => ({ id, name }));
+  const outcome = api.applyOperation(model, job.entry.params);
+  assert.ok(outcome.changed, outcome.error);
+  validateProcessModel(model);
+  assert.deepEqual(
+    model.layers.slice(0, -1).map(({ id, name }) => ({ id, name })),
+    before,
+  );
+  const { analyzeMaterialLiftOff } = await import('../material-lift-off.js');
+  const { materialGeometryArea } = await import('../material-process-boolean.js');
+  const resists = ['MMA', 'PMMA'].map(
+    (name) => model.layers.find((layer) => layer.name === name).id,
+  );
+  const graph = analyzeMaterialLiftOff(model, resists);
+  let volume = 0;
+  for (const component of graph.components.values()) {
+    for (const id of component.nodeIds) {
+      const node = graph.nodes[id];
+      if (node.layerId !== outcome.layerId) continue;
+      assert.ok(component.flags, 'Al3 must retain finite-area support through the final partition');
+      volume += materialGeometryArea(node.piece.geom) * (node.z1 - node.z0);
+    }
+  }
+  assert.ok(volume > 0.01, 'retain the finite-area wall and cap film');
+});
+
 test('lift-off graph rejects point-only and zero-height metal support without losing a real sidewall', async () => {
   const { analyzeMaterialLiftOff, LIFT_PERMANENT } = await import('../material-lift-off.js');
   const layers = ['base', 'nb', 'resist', 'al'].map((id) => ({ id }));

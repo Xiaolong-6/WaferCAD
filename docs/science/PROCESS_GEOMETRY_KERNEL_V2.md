@@ -93,7 +93,11 @@ rechecks finite-length contact with that original receiver at the same Z
 interval. A previously supported strip may split into a vertex-only triangle
 on the 0.1 nm grid; that fragment has no material receiving face and cannot
 be retained as a deposit. This is a support-topology check, **not** an area
-threshold, blanket sliver removal or relaxed contact tolerance. Horizontal
+threshold, blanket sliver removal or relaxed contact tolerance. When a dose
+produces wall patches, Boolean insertion and owner reconciliation are followed
+by a finite-area contact check on the final halo. Each surviving component of
+the new layer must touch pre-dose material, either directly or through another
+part of the same component. Only disconnected new film is removed. Horizontal
 caps retain their separate exposure rule. No in-dose kinetics or calibrated
 process chemistry is implied. Normal Direct and the older isolated-wall/aperture
 modes retain their separate contracts.
