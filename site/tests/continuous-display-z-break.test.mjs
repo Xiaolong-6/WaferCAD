@@ -55,14 +55,22 @@ test('Continuous Z Break round trip never mutates the retained source mesh', () 
 
   const broken = clipContinuousDisplayZBreak(part, { enabled: true, top: 2, bottom: -2 });
   const detachedBroken = detachContinuousDisplayBuffers(broken, part);
-  assert.strictEqual(detachedBroken.positions, broken.positions, 'already clipped Z triangles copy unnecessarily');
+  assert.strictEqual(
+    detachedBroken.positions,
+    broken.positions,
+    'already clipped Z triangles copy unnecessarily',
+  );
   assert.strictEqual(detachedBroken.normals, broken.normals);
 
   const restored = detachContinuousDisplayBuffers(
     clipContinuousDisplayZBreak(part, { enabled: false }),
     part,
   );
-  assert.deepEqual(restored.positions, originalPositions, 'disabling Z Break must restore original height');
+  assert.deepEqual(
+    restored.positions,
+    originalPositions,
+    'disabling Z Break must restore original height',
+  );
   assert.deepEqual(restored.normals, originalNormals);
   geometry.dispose();
 });
