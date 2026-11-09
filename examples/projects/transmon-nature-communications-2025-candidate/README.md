@@ -19,6 +19,25 @@ The main file top cell is `2024-04-07_EITR2_1`. It references `chip0`, `chip1`, 
 
 The observed GDS layer/datatype pairs are `0/0`, `2/0`, `8/0` and `8/1`. **Material mapping is not established by layer numbers alone.** `chip2` is a GDS hierarchy name, not evidence that the chosen source cell is experimental qubit Q2.
 
+### Original source Mask projects
+
+Open either decompressed `.wafercad` file in the Workstation. Both projects start with a Si substrate and the original File Mask. The only History checkpoint is the initial wafer.
+
+| Project | Original GDS root | Source polygons |
+| --- | --- | ---: |
+| [Chip2 source Mask](chip2-full-source-mask-only.wafercad.gz) | `chip2` | 39,487 |
+| [Four-die reticle source Mask](reticle-full-source-mask-only.wafercad.gz) | `2024-04-07_EITR2_1` | 157,950 |
+
+The reticle preserves the four original die placements and the auxiliary Boolean cell. The project storage grid is 0.1 nm. Layer 2/0 is selected when the project opens, and layers 0/0, 8/0 and 8/1 remain available in the Mask view.
+
+Regenerate either project from the checksum-verified author GDS by selecting its root and destination:
+
+```sh
+node scripts/build-transmon-full-source-example.mjs \
+  --input /path/to/Zenodo_files/sample.gds --root chip2 \
+  --output chip2-full-source-mask-only.wafercad.gz
+```
+
 ### Reproduce a lossless single-chip selection
 
 ```sh
